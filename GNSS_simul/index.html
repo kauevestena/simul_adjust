@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GNSS Orbit Simulator</title>
+    <!-- CesiumJS CSS -->
+    <link href="https://unpkg.com/cesium@1.116.0/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link href="style.css" rel="stylesheet">
+</head>
+<body>
+    <div id="cesiumContainer"></div>
+    <div id="uiPanel" class="glass-panel">
+        <h1>GNSS Simulator</h1>
+        <div class="stats">
+            <p>Active Satellites: <span id="satCount">0</span></p>
+        </div>
+        <div class="controls">
+            <label>
+                <input type="checkbox" id="toggleOrbits" checked>
+                Show Orbit Paths
+            </label>
+        </div>
+        <div class="sat-list-container">
+            <h3>Constellations</h3>
+            <ul id="satList">
+                <li class="loading">Loading TLE data...</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Satellite.js -->
+    <script src="https://unpkg.com/satellite.js@4.1.3/dist/satellite.min.js"></script>
+    <!-- CesiumJS -->
+    <script src="https://unpkg.com/cesium@1.116.0/Build/Cesium/Cesium.js"></script>
+    <!-- App Logic -->
+    <script src="app.js"></script>
+</body>
+</html>

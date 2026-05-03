@@ -1,0 +1,80 @@
+:root {
+  --bg: #f6f8fb;
+  --panel: #fff;
+  --text: #172033;
+  --muted: #667085;
+  --border: #d0d7e2;
+  --accent: #1d4ed8;
+  --good: #166534;
+  --bad: #b91c1c;
+  --warn: #b45309;
+  --teal: #0f766e;
+}
+
+body.dark {
+  --bg: #0f172a;
+  --panel: #111827;
+  --text: #e5edf7;
+  --muted: #a8b6cc;
+  --border: #334155;
+  --accent: #60a5fa;
+  --good: #4ade80;
+  --bad: #f87171;
+  --warn: #f59e0b;
+  --teal: #2dd4bf;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; line-height: 1.45; }
+header, main, footer { max-width: 1380px; margin: auto; padding: 1rem; }
+h1 { margin: .2rem 0; }
+p, .hint, footer { color: var(--muted); }
+.panel { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 1rem; margin: 1rem 0; box-shadow: 0 1px 2px #0001; }
+.row { display: flex; gap: 1rem; }
+.between { justify-content: space-between; }
+.grid { display: grid; gap: 1rem; }
+.two { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.three { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+fieldset { border: 1px solid var(--border); border-radius: 12px; padding: .8rem; }
+legend { font-weight: 700; }
+label { display: block; margin: .55rem 0; }
+input, select, button { font: inherit; }
+input, select { width: 100%; padding: .55rem; border: 1px solid var(--border); border-radius: 9px; background: var(--panel); color: var(--text); }
+button { border: 1px solid var(--border); border-radius: 10px; padding: .55rem .85rem; background: var(--panel); color: var(--text); cursor: pointer; }
+.primary { background: var(--accent); border-color: var(--accent); color: white; }
+.buttons, .tabs { display: flex; gap: .55rem; flex-wrap: wrap; margin-top: .8rem; }
+.tab.active { background: var(--accent); color: white; border-color: var(--accent); }
+.error { margin-top: .8rem; padding: .7rem; border-radius: 10px; border: 1px solid #fecaca; background: #fef2f2; color: #991b1b; }
+.hidden { display: none; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: .75rem; }
+.kpi { border: 1px solid var(--border); border-radius: 12px; padding: .75rem; background: color-mix(in srgb, var(--panel) 80%, var(--accent) 6%); }
+.kpi h4 { margin: 0 0 .2rem; color: var(--muted); font-size: .9rem; }
+.kpi div { font-weight: 800; font-size: 1.08rem; }
+.pass { color: var(--good); font-weight: 800; }
+.fail { color: var(--bad); font-weight: 800; }
+.warn { color: var(--warn); font-weight: 800; }
+.table { overflow: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+th, td { border-bottom: 1px solid var(--border); padding: .5rem; text-align: left; vertical-align: top; }
+th { background: color-mix(in srgb, var(--panel) 80%, var(--accent) 8%); }
+.viz, .mcgrid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap: 1rem; }
+svg { width: 100%; min-height: 420px; border: 1px solid var(--border); border-radius: 12px; background: color-mix(in srgb, var(--panel) 96%, white 4%); }
+#net { cursor: zoom-in; }
+#vizText { border: 1px solid var(--border); border-radius: 12px; padding: .8rem; }
+.bars { display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 1rem; margin-top: 1rem; }
+.barbox { border: 1px solid var(--border); border-radius: 12px; padding: .8rem; }
+.barrow { display: grid; grid-template-columns: 150px 1fr 62px; gap: .5rem; align-items: center; margin: .4rem 0; }
+.track { position: relative; height: 15px; border-radius: 99px; background: color-mix(in srgb, var(--panel) 60%, var(--border)); }
+.fill { position: absolute; top: 0; height: 100%; }
+.pos { background: var(--teal); }
+.neg { background: var(--bad); }
+.blue { background: var(--accent); left: 0; }
+.heat { display: inline-block; padding: .4rem .55rem; border-radius: 8px; font-weight: 800; color: #111827; }
+body.dark .heat { color: #fff; }
+.mcstatus { margin-top: .8rem; padding: .8rem; border: 1px solid var(--border); border-radius: 12px; color: var(--muted); background: color-mix(in srgb, var(--panel) 85%, var(--accent) 5%); }
+#mcPanelBtn { margin: .4rem 0; }
+
+@media (max-width: 900px) {
+  .viz, .mcgrid { grid-template-columns: 1fr; }
+  .row { flex-direction: column; }
+}

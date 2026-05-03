@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>2D Resection Lab v3</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <div class="row between">
+    <div>
+      <h1>2D Resection Lab v3</h1>
+      <p>Single-setup 2D resection with directions, a derived-angle alternative, slope-distance plus zenith preprocessing, least-squares adjustment, reliability, sensitivity, matrices, Monte Carlo, and model comparison. Angles are displayed as degrees-minutes-seconds.</p>
+    </div>
+    <button id="themeBtn">Toggle theme</button>
+  </div>
+</header>
+<main>
+<section class="panel"><h2>Network and ellipses</h2><div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;margin-bottom:.5rem"><button id="fitBtn">Fit to window</button><label style="display:flex;align-items:center;gap:.5rem;margin:0;font-size:.9rem">Ellipse scale <input id="ellipseExag" type="range" min="1" max="20" step="0.5" value="1" style="width:120px;padding:0;background:none;border:none"><span id="ellipseExagVal" style="min-width:2.5rem">1.0×</span></label></div><div class="viz"><svg id="net" viewBox="0 0 900 460"></svg><div id="vizText"></div></div></section>
+<section class="panel">
+  <h2>Inputs</h2>
+  <div class="grid three">
+    <label>Model<select id="mode"><option value="dir">Directions + one orientation constant</option><option value="ang">Derived horizontal angle + distances</option></select></label>
+    <label>Global test alpha<input id="alpha" type="number" value="0.05" step="0.001"></label>
+    <label>Data snooping |w| threshold<input id="wlim" type="number" value="3.0" step="0.1"></label>
+    <label>delta0 for MDB/MDS<input id="delta0" type="number" value="4.13" step="0.01"></label>
+    <label>MC samples<input id="mcN" type="number" value="300" step="1" min="10" max="2000"></label>
+    <label>MC seed<input id="seed" type="number" value="12345" step="1"></label>
+  </div>
+  <div class="grid two">
+    <fieldset><legend>Known stations</legend>
+      <div class="grid two">
+        <div><h3>A</h3><label>E<input id="AE" type="number" value="1000.000" step="0.001"></label><label>N<input id="AN" type="number" value="1000.000" step="0.001"></label></div>
+        <div><h3>B</h3><label>E<input id="BE" type="number" value="1200.000" step="0.001"></label><label>N<input id="BN" type="number" value="1000.000" step="0.001"></label></div>
+      </div>
+    </fieldset>
+    <fieldset><legend>Approximate point P0</legend>
+      <label>E0<input id="E0" type="number" value="1082.000" step="0.001"></label>
+      <label>N0<input id="N0" type="number" value="1118.000" step="0.001"></label>
+      <button id="guessBtn">Guess from distances</button>
+    </fieldset>
+  </div>
+  <div class="grid two">
+    <fieldset><legend>Direction readings at P</legend>
+      <label>Direction P to A (DMS)<input id="dirA" value="213 41 24.85"></label>
+      <label>Direction P to B (DMS)<input id="dirB" value="133 53 39.16"></label>
+      <label>sigma direction (arcsec)<input id="sigDir" type="number" value="2.0" step="0.001"></label>
+    </fieldset>
+    <fieldset><legend>Slope distances and zenith angles</legend>
+      <div class="grid two">
+        <div><h3>To A</h3><label>Slope S_A (m)<input id="SA" type="number" value="143.701426" step="0.001"></label><label>Zenith Z_A (DMS)<input id="ZA" value="90 34 40.00"></label></div>
+        <div><h3>To B</h3><label>Slope S_B (m)<input id="SB" type="number" value="166.877333" step="0.001"></label><label>Zenith Z_B (DMS)<input id="ZB" value="89 55 40.00"></label></div>
+      </div>
+      <label>sigma slope distance (mm)<input id="sigS" type="number" value="2.0" step="0.001"></label>
+      <label>sigma zenith (arcsec)<input id="sigZ" type="number" value="3.0" step="0.001"></label>
+    </fieldset>
+  </div>
+  <div class="buttons">
+    <button id="runBtn" class="primary">Run adjustment</button>
+    <button id="cleanBtn">Clean example</button>
+    <button id="blunderBtn">Small blunder</button>
+    <button id="noisyBtn">Noisy case</button>
+    <button id="compareBtn">Compare models</button>
+    <button id="mcBtn">Run Monte Carlo</button>
+    <button id="jsonBtn">Export JSON</button>
+    <button id="csvBtn">Export CSV</button>
+  </div>
+  <div id="err" class="error hidden"></div>
+</section>
+<section class="panel"><h2>Summary</h2><div id="summary"></div></section>
+<section class="panel"><h2>Direction-vs-angle comparison</h2><div id="comparison"></div></section>
+<section class="panel"><h2>Preprocessing</h2><div id="pre"></div></section>
+<section class="panel"><h2>Observations, residuals, reliability</h2><div id="obs"></div><div id="bars"></div></section>
+<section class="panel"><h2>Iteration history</h2><div id="iters"></div></section>
+<section class="panel"><h2>Matrices</h2><div class="tabs"><button data-m="A" class="tab active">A</button><button data-m="P" class="tab">P</button><button data-m="N" class="tab">N=A^T P A</button><button data-m="Qxx" class="tab">Qxx</button><button data-m="Cvv" class="tab">Cvv</button></div><div id="mat"></div></section>
+<section class="panel"><h2>Covariance / correlation heatmap</h2><div id="heat"></div></section>
+<section class="panel"><h2>Precision and sensitivity</h2><div id="quality"></div></section>
+<section class="panel">
+  <h2>Monte Carlo</h2>
+  <p class="hint">Monte Carlo is here to check the linearized adjustment from repeated simulated observations. It perturbs the measured directions, slope distances, and zenith angles using their entered standard deviations, solves the station again for each trial, then compares the empirical coordinate spread with the formal covariance from least squares.</p>
+  <button id="mcPanelBtn">Run Monte Carlo</button>
+  <div id="mc" class="mcstatus">No Monte Carlo run yet. Use this section's button or the input-panel button to generate trials.</div>
+</section>
+<section class="panel"><h2>Model notes</h2><ul><li>There is only one setup at P. Direction mode estimates exactly one orientation constant omega.</li><li>Angle mode forms beta = direction(P to B) - direction(P to A). Its variance is propagated from the two directions.</li><li>Zenith angles are used only to reduce slope distances to horizontal distances for this 2D adjustment.</li><li>The two-point mixed resection is minimally redundant: direction mode has 4 observations and 3 unknowns; angle mode has 3 observations and 2 unknowns.</li></ul></section>
+</main>
+<footer>Static client-side website. Upload the folder to GitHub Pages.</footer>
+<script src="app.js"></script>
+</body>
+</html>
