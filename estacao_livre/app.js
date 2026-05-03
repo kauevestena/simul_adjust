@@ -16,8 +16,9 @@ const app = {
     SIGMA_DIST_MM: 5,
     SIGMA_DIST_PPM: 2,
     SIGMA_AZ_SEC: 3,
-    CRIT_W_TEST: 2.576, // alpha = 0.01 (two-tailed Normal)
-    NON_CENTRALITY: 4.13, // Power 80%, alpha 0.01 for 1 DOF
+    ALPHA_PCT: 5,
+    CRIT_W_TEST: 2.5758, // Z for 1 - alpha/2
+    NON_CENTRALITY: 3.4174, // Z(1-alpha/2) + Z(beta=0.8)
     
     init() {
         this.canvas = document.getElementById('networkCanvas');
@@ -44,11 +45,71 @@ const app = {
 
         const blunderPct = document.getElementById('blunderPct');
         if (blunderPct) {
-            blunderPct.value = 5;
-            document.getElementById('blunderPctVal').textContent = '5%';
+            blunderPct.value = 10;
+            document.getElementById('blunderPctVal').textContent = '10\u03C3';
+        }
+
+        const aprioriDistMm = document.getElementById('aprioriDistMm');
+        if (aprioriDistMm) {
+            aprioriDistMm.value = 5;
+            document.getElementById('aprioriDistMmVal').textContent = '5.0 mm';
+        }
+        const aprioriDistPpm = document.getElementById('aprioriDistPpm');
+        if (aprioriDistPpm) {
+            aprioriDistPpm.value = 2;
+            document.getElementById('aprioriDistPpmVal').textContent = '2.0 ppm';
+        }
+        const aprioriAz = document.getElementById('aprioriAz');
+        if (aprioriAz) {
+            aprioriAz.value = 3;
+            document.getElementById('aprioriAzVal').textContent = '3.0\u2033';
+        }
+        const aprioriAlpha = document.getElementById('aprioriAlpha');
+        if (aprioriAlpha) {
+            aprioriAlpha.value = 5;
+            document.getElementById('aprioriAlphaVal').textContent = '5.0%';
         }
 
         this.generateNetwork();
+    },
+
+    updateApriori() {
+        const distMmEl = document.getElementById('aprioriDistMm');
+        const distPpmEl = document.getElementById('aprioriDistPpm');
+        const azEl = document.getElementById('aprioriAz');
+        const alphaEl = document.getElementById('aprioriAlpha');
+        
+        if (distMmEl) this.SIGMA_DIST_MM = parseFloat(distMmEl.value);
+        if (distPpmEl) this.SIGMA_DIST_PPM = parseFloat(distPpmEl.value);
+        if (azEl) this.SIGMA_AZ_SEC = parseFloat(azEl.value);
+        if (alphaEl) {
+            this.ALPHA_PCT = parseFloat(alphaEl.value);
+            const alpha = this.ALPHA_PCT / 100;
+            this.CRIT_W_TEST = this.normInv(1 - alpha / 2);
+            this.NON_CENTRALITY = this.CRIT_W_TEST + 0.8416212335; // Power 80% (Z_0.8)
+        }
+
+        if (!this.observations) return;
+
+        this.observations.forEach(obs => {
+            const st = this.stations.find(s => s.id === obs.stationId);
+            if (!st) return;
+            const trueX = (st.true_x != null) ? st.true_x : st.x;
+            const trueY = (st.true_y != null) ? st.true_y : st.y;
+            const dx = obs.target.x - trueX;
+            const dy = obs.target.y - trueY;
+            const trueDist = Math.sqrt(dx*dx + dy*dy);
+
+            if (obs.type === 'dist') {
+                obs.std = (this.SIGMA_DIST_MM / 1000) + (trueDist * this.SIGMA_DIST_PPM / 1000000);
+            } else {
+                obs.std = this.SIGMA_AZ_SEC * (Math.PI / 180 / 3600);
+            }
+        });
+
+        this.adjResults = null;
+        this.updateUI_Clear();
+        this.drawNetwork();
     },
 
     resizeCanvas() {
@@ -143,6 +204,25 @@ const app = {
         return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
     },
 
+    normInv(p) {
+        const a1 = -39.69683028665376, a2 = 220.9460984245205, a3 = -275.9285104469687, a4 = 138.3577518672690, a5 = -30.66479806614716, a6 = 2.506628277459239;
+        const b1 = -54.47609879822406, b2 = 161.5858368580409, b3 = -155.6989798598866, b4 = 66.80131188771972, b5 = -13.28068155288572;
+        const c1 = -0.007784894002430293, c2 = -0.3223964580411365, c3 = -2.400758277161838, c4 = -2.549732539343734, c5 = 4.374664141464968, c6 = 2.938163982698783;
+        const d1 = 0.007784695709041462, d2 = 0.3224671290700398, d3 = 2.445134137142996, d4 = 3.754408661907416;
+        const p_low = 0.02425;
+        let q, r;
+        if (p < p_low) {
+            q = Math.sqrt(-2 * Math.log(p));
+            return (((((c1 * q + c2) * q + c3) * q + c4) * q + c5) * q + c6) / ((((d1 * q + d2) * q + d3) * q + d4) * q + 1);
+        } else if (p <= 1 - p_low) {
+            q = p - 0.5; r = q * q;
+            return (((((a1 * r + a2) * r + a3) * r + a4) * r + a5) * r + a6) * q / (((((b1 * r + b2) * r + b3) * r + b4) * r + b5) * r + 1);
+        } else {
+            q = Math.sqrt(-2 * Math.log(1 - p));
+            return -(((((c1 * q + c2) * q + c3) * q + c4) * q + c5) * q + c6) / ((((d1 * q + d2) * q + d3) * q + d4) * q + 1);
+        }
+    },
+
     injectOutlier() {
         if (this.observations.length === 0) return;
         // Randomly pre-select one eligible (no existing error) observation
@@ -170,7 +250,7 @@ const app = {
         });
         // Reset slider display
         const pctInput = document.getElementById('blunderPct');
-        document.getElementById('blunderPctVal').textContent = pctInput.value + '%';
+        document.getElementById('blunderPctVal').textContent = pctInput.value + '\u03C3';
         document.getElementById('blunderModal').style.display = 'flex';
     },
 
@@ -185,11 +265,11 @@ const app = {
             alert('Selecione ao menos uma observação candidata.');
             return;
         }
-        const pct = parseFloat(document.getElementById('blunderPct').value) / 100;
+        const k = parseFloat(document.getElementById('blunderPct').value);
         const injected = [];
         selected.forEach(idx => {
             const obs = this.observations[idx];
-            const magnitude = Math.abs(obs._baseVal) * pct;
+            const magnitude = obs.std * k;
             const sign = Math.random() > 0.5 ? 1 : -1;
             obs._blunderOffset = sign * magnitude;
             obs.val = obs._baseVal + obs._blunderOffset + (obs._simNoise || 0);
@@ -204,7 +284,7 @@ const app = {
         this.updateUI_Clear();
         this.drawNetwork();
         this.closeBlunderModal();
-        alert(`Erros grosseiros injetados (${(pct * 100).toFixed(0)}%):\n${injected.join('\n')}\n\nExecute o ajustamento para detectar os outliers.`);
+        alert(`Erros grosseiros injetados (${k}σ):\n${injected.join('\n')}\n\nExecute o ajustamento para detectar os outliers.`);
     },
 
     runAdjustment() {
@@ -285,8 +365,10 @@ const app = {
             const U   = math.multiply(AtP, L); // nu × 1
 
             try {
-                dx_vec = math.lusolve(N, U).toArray(); // nu × 1, as [[v], ...]
+                let sol = math.lusolve(N, U);
+                dx_vec = typeof sol.toArray === 'function' ? sol.toArray() : sol; // nu × 1, as [[v], ...]
             } catch(e) {
+                console.error(e);
                 alert('Erro Matemático: Geometria fraca ou singular no sistema de equações normais.');
                 return;
             }
@@ -306,29 +388,51 @@ const app = {
         }
 
         // --- Post-adjustment quality control (single combined system) ---
-        const V    = math.subtract(math.multiply(A, dx_vec), L); // V = A*dx - L
+
+        // Recompute residuals directly from converged coordinates
+        const V = [];
+        this.observations.forEach((o) => {
+            const k  = stIdx[o.stationId];
+            const st = this.stations[k];
+            const dx = o.target.x - st.x;
+            const dy = o.target.y - st.y;
+            const computedDist = Math.sqrt(dx * dx + dy * dy);
+            if (o.type === 'dist') {
+                V.push([computedDist - o.val]);
+            } else {
+                let computedAz = Math.atan2(dx, dy);
+                let diff = computedAz - o.val;
+                while (diff >  Math.PI) diff -= 2 * Math.PI;
+                while (diff < -Math.PI) diff += 2 * Math.PI;
+                V.push([diff]);
+            }
+        });
+
         const VtPV = math.multiply(math.multiply(math.transpose(V), P), V)[0][0];
         const sigma02 = VtPV / dof;
+        const sigma0  = Math.sqrt(sigma02);
 
         // Full Qxx (nu × nu) via general matrix inverse
         const AtP_f = math.multiply(math.transpose(A), P);
         const N_f   = math.multiply(AtP_f, A);
         const Qxx   = math.inv(N_f);
 
-        // Residual covariance Qv = P⁻¹ − A Qxx Aᵀ
+        // Residual cofactor Qv = P⁻¹ − A Qxx Aᵀ
         const Qv = math.subtract(
             math.inv(P),
             math.multiply(math.multiply(A, Qxx), math.transpose(A))
         );
 
-        // Chi-square critical value (Wilson-Hilferty approximation, α = 1%)
-        const chi2_upper = dof * Math.pow(1 - 2/(9*dof) + 2.326 * Math.sqrt(2/(9*dof)), 3);
-        const globalPass = VtPV <= chi2_upper;
+        // Chi-square critical values (Wilson-Hilferty approximation)
+        const z_alpha = this.CRIT_W_TEST; // z for 1 - alpha/2
+        const chi2_upper = dof * Math.pow(1 - 2/(9*dof) + z_alpha * Math.sqrt(2/(9*dof)), 3);
+        const chi2_lower = Math.max(0, dof * Math.pow(1 - 2/(9*dof) - z_alpha * Math.sqrt(2/(9*dof)), 3));
+        const globalPass = VtPV >= chi2_lower && VtPV <= chi2_upper;
 
         const obsData = this.observations.map((o, i) => {
             const v        = V[i][0];
-            const sigma_vi = Math.sqrt(Qv[i][i]);
-            const w        = v / sigma_vi;
+            const sigma_vi = Math.sqrt(Math.max(0, Qv[i][i]));
+            const w        = sigma_vi > 0 ? v / (sigma0 * sigma_vi) : NaN;
             const r_i      = Qv[i][i] * P[i][i];
             const mdb      = (this.NON_CENTRALITY * o.std) / Math.sqrt(r_i);
             // External reliability: coordinate displacement caused by undetected MDB
@@ -338,7 +442,7 @@ const app = {
 
         // Extract per-station 2×2 Qxx sub-blocks + external reliability
         const stationResults = this.stations.map((st, k) => {
-            const SigmaX = [
+            const QxxBlock = [
                 [Qxx[2*k][2*k],   Qxx[2*k][2*k+1]],
                 [Qxx[2*k+1][2*k], Qxx[2*k+1][2*k+1]]
             ];
@@ -348,10 +452,10 @@ const app = {
                 const mag = Math.sqrt(dE*dE + dN*dN);
                 if (mag > maxExtMag) { maxExtMag = mag; maxExtObs = r.obs.id; }
             });
-            return { stationId: st.id, x: st.x, y: st.y, SigmaX, maxExtMag, maxExtObs };
+            return { stationId: st.id, x: st.x, y: st.y, QxxBlock, maxExtMag, maxExtObs };
         });
 
-        this.adjResults = { VtPV, dof, sigma02, globalPass, chi2lim: chi2_upper, obsData, stationResults };
+        this.adjResults = { VtPV, dof, sigma02, sigma0, globalPass, chi2lim: chi2_upper, chi2low: chi2_lower, obsData, stationResults };
         this.updateUI_Results();
         this.drawNetwork();
     },
@@ -446,7 +550,7 @@ const app = {
                 const stResult = this.adjResults.stationResults.find(r => r.stationId === st.id);
                 if (stResult) {
                     const stC = toCanvas(st.x, st.y);
-                    const Qx = stResult.SigmaX;
+                    const Qx = stResult.QxxBlock;
                     const trace = Qx[0][0] + Qx[1][1];
                     const det = Qx[0][0]*Qx[1][1] - Qx[0][1]*Qx[1][0];
                     const l1 = (trace + Math.sqrt(trace*trace - 4*det))/2;
@@ -521,8 +625,10 @@ const app = {
             </div>
             <div class="space-y-1 text-sm text-stone-600 font-mono">
                 <div class="flex justify-between"><span>V<sup>T</sup>PV:</span> <span class="font-bold">${res.VtPV.toFixed(4)}</span></div>
-                <div class="flex justify-between"><span>&chi;&sup2; lim (&alpha;=1%):</span> <span>${res.chi2lim.toFixed(4)}</span></div>
+                <div class="flex justify-between"><span>&chi;&sup2; inf (&alpha;=${this.ALPHA_PCT}%):</span> <span>${res.chi2low.toFixed(4)}</span></div>
+                <div class="flex justify-between"><span>&chi;&sup2; sup (&alpha;=${this.ALPHA_PCT}%):</span> <span>${res.chi2lim.toFixed(4)}</span></div>
                 <div class="flex justify-between"><span>&sigma;&sup2;<sub>0</sub>:</span> <span>${res.sigma02.toFixed(4)}</span></div>
+                <div class="flex justify-between"><span>&sigma;<sub>0</sub>:</span> <span>${res.sigma0.toFixed(4)}</span></div>
                 <div class="flex justify-between"><span>Graus de Liberdade:</span> <span>${res.dof}</span></div>
             </div>
             ${!res.globalPass ? '<p class="text-xs text-rose-600 mt-3">Anomalia detectada na rede. Analise o teste de Baarda abaixo.</p>' : ''}`;
@@ -549,8 +655,10 @@ const app = {
                 ? this.r2as(r.sigma_v).toFixed(2) + '″'
                 : (r.sigma_v * 1000).toFixed(3) + ' mm';
 
+            const injectedIcon = r.obs.hasError ? ' <span class="text-rose-500" title="Erro Grosseiro Injetado">&#9888;</span>' : '';
+
             tr.innerHTML = `
-                <td class="font-mono">${r.obs.id}</td>
+                <td class="font-mono">${r.obs.id}${injectedIcon}</td>
                 <td>${isAngle ? 'Azimute' : 'Distância'}</td>
                 <td class="font-mono">${obsDisplay}</td>
                 <td class="font-mono">${vDisplay}</td>
@@ -578,8 +686,10 @@ const app = {
                 ? this.r2as(r.mdb).toFixed(2) + '″'
                 : (r.mdb * 1000).toFixed(3) + ' mm';
 
+            const injectedIcon = r.obs.hasError ? ' <span class="text-rose-500" title="Erro Grosseiro Injetado">&#9888;</span>' : '';
+
             tr.innerHTML = `
-                <td class="font-mono">${r.obs.id}</td>
+                <td class="font-mono">${r.obs.id}${injectedIcon}</td>
                 <td class="font-mono ${rColor}">${r.r.toFixed(3)}</td>
                 <td class="font-mono">${mdbDisplay}</td>
                 <td class="${rColor} text-xs uppercase font-semibold">${rQual}</td>
@@ -592,16 +702,18 @@ const app = {
         tbCoords.innerHTML = '';
         res.stationResults.forEach(sr => {
             const tr = document.createElement('tr');
-            const sigE = Math.sqrt(sr.SigmaX[0][0]) * 1000; // mm
-            const sigN = Math.sqrt(sr.SigmaX[1][1]) * 1000; // mm
-            const rhoEN = sr.SigmaX[0][1] / (Math.sqrt(sr.SigmaX[0][0]) * Math.sqrt(sr.SigmaX[1][1]));
+            const sigE_pri = Math.sqrt(sr.QxxBlock[0][0]) * 1000; // mm (a-priori)
+            const sigN_pri = Math.sqrt(sr.QxxBlock[1][1]) * 1000; // mm (a-priori)
+            const sigE_pos = res.sigma0 * sigE_pri; // mm (a-posteriori)
+            const sigN_pos = res.sigma0 * sigN_pri; // mm (a-posteriori)
+            const rhoEN = sr.QxxBlock[0][1] / (Math.sqrt(sr.QxxBlock[0][0]) * Math.sqrt(sr.QxxBlock[1][1]));
             const extMm = sr.maxExtMag * 1000; // mm
             tr.innerHTML = `
                 <td class="font-mono font-bold">${sr.stationId}</td>
                 <td class="font-mono">${sr.x.toFixed(4)}</td>
                 <td class="font-mono">${sr.y.toFixed(4)}</td>
-                <td class="font-mono">${sigE.toFixed(3)}</td>
-                <td class="font-mono">${sigN.toFixed(3)}</td>
+                <td class="font-mono">${sigE_pri.toFixed(3)} <span class="text-stone-400 text-[10px]">(${sigE_pos.toFixed(3)})</span></td>
+                <td class="font-mono">${sigN_pri.toFixed(3)} <span class="text-stone-400 text-[10px]">(${sigN_pos.toFixed(3)})</span></td>
                 <td class="font-mono">${rhoEN.toFixed(3)}</td>
                 <td class="font-mono">${extMm.toFixed(3)}</td>
                 <td class="font-mono text-stone-400 text-xs">${sr.maxExtObs || '—'}</td>

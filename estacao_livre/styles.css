@@ -38,3 +38,41 @@ td { font-size: 0.875rem; color: #292524; }
 #pointModal { display: none; }
 #pointModal.active { display: flex; }
 .insert-btn-active { background-color: #0f766e !important; color: #fff !important; border-color: #0f766e !important; }
+
+/* Custom Tooltip */
+[data-tooltip] { position: relative; }
+[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #1c1917;
+    color: #fff;
+    padding: 0.4rem 0.6rem;
+    border-radius: 0.25rem;
+    font-size: 0.7rem;
+    white-space: normal;
+    width: max-content;
+    max-width: 180px;
+    z-index: 50;
+    pointer-events: none;
+    margin-top: 0.35rem;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    text-transform: none;
+    font-weight: 500;
+    line-height: 1.3;
+    text-align: center;
+}
+[data-tooltip]:hover::before {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-bottom-color: #1c1917;
+    margin-top: -0.25rem;
+    z-index: 50;
+    pointer-events: none;
+}
