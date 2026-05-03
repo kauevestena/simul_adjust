@@ -11,6 +11,10 @@ const app = {
     _pendingPoint: null,
     _userZoom: 1,
     _userPan: { x: 0, y: 0 },
+    _mcZoom: 1,
+    _mcPan: { x: 0, y: 0 },
+    mcPts: [],
+    mcStats: [],
     
     // Constants
     SIGMA_DIST_MM: 5,
@@ -27,6 +31,8 @@ const app = {
         window.addEventListener('resize', () => this.resizeCanvas());
         this.canvas.addEventListener('click', e => this.canvasClick(e));
         this.canvas.addEventListener('wheel', e => this.onWheel(e), { passive: false });
+        const mcCanvas = document.getElementById('mcCanvas');
+        if (mcCanvas) mcCanvas.addEventListener('wheel', e => this.onMcWheel(e), { passive: false });
 
         // Reset range inputs to defaults to prevent browser form caching from restoring stale values
         const sigLin = document.getElementById('simSigLin');
@@ -70,6 +76,7 @@ const app = {
             document.getElementById('aprioriAlphaVal').textContent = '5.0%';
         }
 
+        this.updateApriori();
         this.generateNetwork();
     },
 
@@ -87,7 +94,10 @@ const app = {
             const alpha = this.ALPHA_PCT / 100;
             this.CRIT_W_TEST = this.normInv(1 - alpha / 2);
             this.NON_CENTRALITY = this.CRIT_W_TEST + 0.8416212335; // Power 80% (Z_0.8)
+            const wDisp = document.getElementById('wTestLimitDisplay');
+            if (wDisp) wDisp.textContent = `(Limite Crítico |w| > ${this.CRIT_W_TEST.toFixed(2)})`;
         }
+
 
         if (!this.observations) return;
 
@@ -964,6 +974,315 @@ const app = {
         this._userPan.y = my + (this._userPan.y - my) * factor;
         this._userZoom *= factor;
         this.drawNetwork();
+    },
+
+    fitMcNetwork() {
+        this._mcZoom = 1;
+        this._mcPan = { x: 0, y: 0 };
+        this.drawMonteCarlo();
+    },
+
+    onMcWheel(event) {
+        event.preventDefault();
+        const c = document.getElementById('mcCanvas');
+        if (!c) return;
+        const rect = c.getBoundingClientRect();
+        const scaleX = c.width / rect.width;
+        const scaleY = c.height / rect.height;
+        const mx = event.offsetX * scaleX;
+        const my = event.offsetY * scaleY;
+        const factor = event.deltaY < 0 ? 1.1 : (1 / 1.1);
+        this._mcPan.x = mx + (this._mcPan.x - mx) * factor;
+        this._mcPan.y = my + (this._mcPan.y - my) * factor;
+        this._mcZoom *= factor;
+        this.drawMonteCarlo();
+    },
+
+    // --- Monte Carlo Simulation ---
+    rng(seed) {
+        let s = seed >>> 0;
+        return () => ((s = (1664525 * s + 1013904223) >>> 0) / 4294967296);
+    },
+    
+    seededGauss(r) {
+        let u = 0, v = 0;
+        while(u === 0) u = Math.max(r(), 1e-12);
+        while(v === 0) v = Math.max(r(), 1e-12);
+        return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+    },
+
+    runMonteCarlo() {
+        if (this.stations.length === 0 || this.observations.length === 0 || !this.adjResults) {
+            alert('Você deve executar um ajustamento válido (Executar Ajustamento) antes de rodar o Monte Carlo.');
+            return;
+        }
+
+        const n = Math.max(10, Math.min(100000, parseInt(document.getElementById('mcN').value) || 500));
+        const seed = Math.floor(Math.random() * 1000) + 1; // Uniform from 1 to 1000
+        const r = this.rng(seed);
+        
+        const mcStatus = document.getElementById('mcGlobalStatus');
+        const mcTableContainer = document.getElementById('mcTableContainer');
+        const tbMC = document.querySelector('#tableMC tbody');
+        
+        mcStatus.innerHTML = '<span class="text-stone-500">Executando simulação...</span>';
+        
+        setTimeout(() => {
+            let pts = []; 
+            let accepted = 0, rejected = 0, crashed = 0;
+            
+            const m = this.observations.length;
+            const nu = 2 * this.stations.length;
+            const dof = m - nu;
+            const z_alpha = this.CRIT_W_TEST;
+            const chi2_upper = dof * Math.pow(1 - 2/(9*dof) + z_alpha * Math.sqrt(2/(9*dof)), 3);
+            const chi2_lower = Math.max(0, dof * Math.pow(1 - 2/(9*dof) - z_alpha * Math.sqrt(2/(9*dof)), 3));
+            
+            const P = this.observations.map(() => Array(m).fill(0));
+            this.observations.forEach((o, i) => P[i][i] = 1.0 / (o.std * o.std));
+            const stIdx = {};
+            this.stations.forEach((st, k) => { stIdx[st.id] = k; });
+
+            for (let i = 0; i < n; i++) {
+                let L_obs = this.observations.map(o => {
+                    const st = this.stations.find(s => s.id === o.stationId);
+                    const tgIdx = stIdx[o.target.id];
+                    const tgE = tgIdx !== undefined ? this.stations[tgIdx].x : o.target.x;
+                    const tgN = tgIdx !== undefined ? this.stations[tgIdx].y : o.target.y;
+                    
+                    const dx = tgE - st.x;
+                    const dy = tgN - st.y;
+                    let baseL = o.type === 'dist' ? Math.sqrt(dx*dx + dy*dy) : Math.atan2(dx, dy);
+                    
+                    return baseL + this.seededGauss(r) * o.std;
+                });
+                let coords = this.stations.map(st => ({ E: st._x0, N: st._y0 }));
+                let maxIter = 15, iter = 0, dx_vec, converged = false;
+                
+                while (iter < maxIter) {
+                    let A = this.observations.map(() => Array(nu).fill(0));
+                    let L = [];
+                    
+                    this.observations.forEach((o, idx) => {
+                        const k = stIdx[o.stationId];
+                        const tgIdx = stIdx[o.target.id];
+                        const targetE = tgIdx !== undefined ? coords[tgIdx].E : o.target.x;
+                        const targetN = tgIdx !== undefined ? coords[tgIdx].N : o.target.y;
+                        
+                        const calcDx = targetE - coords[k].E;
+                        const calcDy = targetN - coords[k].N;
+                        const calcDist = Math.sqrt(calcDx * calcDx + calcDy * calcDy);
+                        
+                        if (o.type === 'dist') {
+                            A[idx][2*k] = -calcDx / calcDist;
+                            A[idx][2*k+1] = -calcDy / calcDist;
+                            L.push([L_obs[idx] - calcDist]);
+                        } else {
+                            A[idx][2*k] = -calcDy / (calcDist * calcDist);
+                            A[idx][2*k+1] = calcDx / (calcDist * calcDist);
+                            let calcAz = Math.atan2(calcDx, calcDy);
+                            let diff = L_obs[idx] - calcAz;
+                            while (diff > Math.PI) diff -= 2 * Math.PI;
+                            while (diff < -Math.PI) diff += 2 * Math.PI;
+                            L.push([diff]);
+                        }
+                    });
+                    
+                    try {
+                        const At = math.transpose(A);
+                        const AtP = math.multiply(At, P);
+                        const N_mat = math.multiply(AtP, A);
+                        const U = math.multiply(AtP, L);
+                        let sol = math.lusolve(N_mat, U);
+                        dx_vec = typeof sol.toArray === 'function' ? sol.toArray() : sol;
+                        
+                        let maxC = 0;
+                        coords.forEach((c, k) => {
+                            c.E += dx_vec[2*k][0];
+                            c.N += dx_vec[2*k+1][0];
+                            maxC = Math.max(maxC, Math.abs(dx_vec[2*k][0]), Math.abs(dx_vec[2*k+1][0]));
+                        });
+                        
+                        if (maxC < 0.0001) { converged = true; break; }
+                        iter++;
+                    } catch(e) {
+                        break;
+                    }
+                }
+                
+                if (converged) {
+                    let VtPV = 0;
+                    this.observations.forEach((o, idx) => {
+                        const k = stIdx[o.stationId];
+                        const tgIdx = stIdx[o.target.id];
+                        const targetE = tgIdx !== undefined ? coords[tgIdx].E : o.target.x;
+                        const targetN = tgIdx !== undefined ? coords[tgIdx].N : o.target.y;
+                        const dx = targetE - coords[k].E;
+                        const dy = targetN - coords[k].N;
+                        let v = 0;
+                        if (o.type === 'dist') {
+                            v = Math.sqrt(dx*dx + dy*dy) - L_obs[idx];
+                        } else {
+                            let calcAz = Math.atan2(dx, dy);
+                            v = calcAz - L_obs[idx];
+                            while (v > Math.PI) v -= 2 * Math.PI;
+                            while (v < -Math.PI) v += 2 * Math.PI;
+                        }
+                        VtPV += v * P[idx][idx] * v;
+                    });
+                    const pass = (VtPV >= chi2_lower && VtPV <= chi2_upper);
+                    pts.push({ coords, pass });
+                    if (pass) accepted++; else rejected++;
+                } else {
+                    crashed++;
+                }
+            }
+            
+            mcStatus.innerHTML = `
+                <div class="text-teal-600 font-bold">Aceitos no Teste Global: ${accepted} (${(100*accepted/n).toFixed(1)}%)</div>
+                <div class="text-rose-600">Rejeitados: ${rejected} (${(100*rejected/n).toFixed(1)}%)</div>
+                ${crashed > 0 ? `<div class="text-amber-600">Falhas numéricas: ${crashed}</div>` : ''}
+                <div class="mt-2 text-[10px] text-stone-500 font-sans leading-tight normal-case text-justify">
+                    As simulações reprovadas não passaram em um teste global de qui-quadrado com significância de ${this.ALPHA_PCT}%. Idealmente, o número de retornos negativos deve se aproximar deste valor teórico, sobretudo quando N for grande.
+                </div>
+            `;
+            
+            tbMC.innerHTML = '';
+            let stats = [];
+            this.stations.forEach((st, k) => {
+                let sMeanE = 0, sMeanN = 0;
+                let c = pts.length;
+                if(c === 0) return;
+                pts.forEach(p => { sMeanE += p.coords[k].E; sMeanN += p.coords[k].N; });
+                sMeanE /= c; sMeanN /= c;
+                
+                let varE = 0, varN = 0, covEN = 0;
+                pts.forEach(p => {
+                    let dE = p.coords[k].E - sMeanE;
+                    let dN = p.coords[k].N - sMeanN;
+                    varE += dE * dE;
+                    varN += dN * dN;
+                    covEN += dE * dN;
+                });
+                varE /= (c - 1); varN /= (c - 1); covEN /= (c - 1);
+                
+                let sigE = Math.sqrt(varE);
+                let sigN = Math.sqrt(varN);
+                let rho = covEN / (sigE * sigN);
+                
+                stats.push({ k, meanE: sMeanE, meanN: sMeanN, sigE, sigN, rho });
+                
+                let tr = document.createElement('tr');
+                let biasE = (sMeanE - st.x) * 1000;
+                let biasN = (sMeanN - st.y) * 1000;
+                tr.innerHTML = `
+                    <td class="font-mono font-bold">${st.id}</td>
+                    <td class="font-mono">${biasE.toFixed(3)}</td>
+                    <td class="font-mono">${biasN.toFixed(3)}</td>
+                    <td class="font-mono">${(sigE*1000).toFixed(3)}</td>
+                    <td class="font-mono">${(sigN*1000).toFixed(3)}</td>
+                    <td class="font-mono">${rho.toFixed(3)}</td>
+                `;
+                tbMC.appendChild(tr);
+            });
+            
+            mcTableContainer.style.display = 'block';
+            this.mcPts = pts;
+            this.mcStats = stats;
+            this.fitMcNetwork();
+            
+        }, 10);
+    },
+    
+    drawMonteCarlo(pts = this.mcPts, stats = this.mcStats) {
+        const c = document.getElementById('mcCanvas');
+        if (!c) return;
+        const rect = c.parentElement.getBoundingClientRect();
+        c.width = rect.width;
+        c.height = rect.height;
+        const ctx = c.getContext('2d');
+        ctx.clearRect(0, 0, c.width, c.height);
+        
+        const mcExagSlider = document.getElementById('mcExag');
+        const mcExag = mcExagSlider ? (parseFloat(mcExagSlider.value) * 1000) : 5000;
+        
+        if (pts.length === 0) return;
+        
+        let minE = Infinity, maxE = -Infinity, minN = Infinity, maxN = -Infinity;
+        this.points.forEach(p => { minE=Math.min(minE,p.x); maxE=Math.max(maxE,p.x); minN=Math.min(minN,p.y); maxN=Math.max(maxN,p.y); });
+        this.stations.forEach(p => { minE=Math.min(minE,p.x); maxE=Math.max(maxE,p.x); minN=Math.min(minN,p.y); maxN=Math.max(maxN,p.y); });
+        
+        const m = 40; 
+        let rangeE = maxE - minE || 10;
+        let rangeN = maxN - minN || 10;
+        const sc = Math.min((c.width - 2*m) / rangeE, (c.height - 2*m) / rangeN);
+        
+        const cx = (maxE + minE) / 2;
+        const cy = (maxN + minN) / 2;
+        
+        const tx = E => (c.width/2 + (E - cx) * sc) * this._mcZoom + this._mcPan.x;
+        const ty = N => (c.height/2 - (N - cy) * sc) * this._mcZoom + this._mcPan.y;
+        
+        ctx.strokeStyle = '#e7e5e4';
+        ctx.lineWidth = 1;
+        this.observations.forEach(o => {
+            const st = this.stations.find(s => s.id === o.stationId);
+            const tg = this.points.find(p => p.id === o.target.id) || this.stations.find(s => s.id === o.target.id);
+            if (st && tg) {
+                ctx.beginPath();
+                ctx.moveTo(tx(st.x), ty(st.y));
+                ctx.lineTo(tx(tg.x), ty(tg.y));
+                ctx.stroke();
+            }
+        });
+        
+        pts.forEach(p => {
+            ctx.fillStyle = p.pass ? 'rgba(15, 118, 110, 0.4)' : 'rgba(225, 29, 72, 0.4)';
+            p.coords.forEach((stCoords, k) => {
+                const st = this.stations[k];
+                const dE = stCoords.E - st.x;
+                const dN = stCoords.N - st.y;
+                const eX = st.x + dE * mcExag;
+                const eY = st.y + dN * mcExag;
+                ctx.beginPath();
+                ctx.arc(tx(eX), ty(eY), 2, 0, 2*Math.PI);
+                ctx.fill();
+            });
+        });
+        
+        this.stations.forEach((st, k) => {
+            ctx.fillStyle = '#0f766e';
+            ctx.beginPath();
+            ctx.arc(tx(st.x), ty(st.y), 4, 0, 2*Math.PI);
+            ctx.fill();
+            ctx.fillStyle = '#0f766e';
+            ctx.font = '10px monospace';
+            ctx.fillText(st.id, tx(st.x)+8, ty(st.y)-8);
+            
+            if (stats[k]) {
+                const dE = stats[k].meanE - st.x;
+                const dN = stats[k].meanN - st.y;
+                const mX = st.x + dE * mcExag;
+                const mY = st.y + dN * mcExag;
+                
+                ctx.strokeStyle = '#b45309';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(tx(mX)-4, ty(mY));
+                ctx.lineTo(tx(mX)+4, ty(mY));
+                ctx.moveTo(tx(mX), ty(mY)-4);
+                ctx.lineTo(tx(mX), ty(mY)+4);
+                ctx.stroke();
+            }
+        });
+        
+        this.points.forEach(p => {
+            ctx.fillStyle = '#292524';
+            ctx.fillRect(tx(p.x)-4, ty(p.y)-4, 8, 8);
+            ctx.fillStyle = '#292524';
+            ctx.font = '10px monospace';
+            ctx.fillText(p.id, tx(p.x)+8, ty(p.y)-8);
+        });
     }
 
 };
