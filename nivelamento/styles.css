@@ -1,0 +1,78 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
+body { font-family: 'Inter', sans-serif; background-color: #f5f5f4; }
+.font-mono { font-family: 'JetBrains Mono', monospace; }
+
+.canvas-container {
+    position: relative;
+    width: 100%;
+    background-color: #ffffff;
+    border-radius: 0.75rem;
+    box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+    border: 1px solid #e7e5e4;
+    overflow: hidden;
+}
+
+canvas {
+    display: block;
+    width: 100%;
+    height: 500px;
+}
+
+.table-container {
+    overflow-x: auto;
+}
+
+table { width: 100%; text-align: left; border-collapse: collapse; }
+th, td { padding: 0.5rem 0.75rem; border-bottom: 1px solid #e7e5e4; }
+th { font-size: 0.75rem; text-transform: uppercase; color: #57534e; background-color: #f5f5f4; }
+td { font-size: 0.875rem; color: #292524; }
+
+.btn { transition: all 0.2s; }
+.btn:active { transform: scale(0.98); }
+
+/* Custom Scrollbar for tables */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #f5f5f4; }
+::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #a8a29e; }
+#pointModal { display: none; }
+#pointModal.active { display: flex; }
+.insert-btn-active { background-color: #0f766e !important; color: #fff !important; border-color: #0f766e !important; }
+
+/* Custom Tooltip */
+[data-tooltip] { position: relative; }
+[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #1c1917;
+    color: #fff;
+    padding: 0.4rem 0.6rem;
+    border-radius: 0.25rem;
+    font-size: 0.7rem;
+    white-space: normal;
+    width: max-content;
+    max-width: 180px;
+    z-index: 50;
+    pointer-events: none;
+    margin-top: 0.35rem;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    text-transform: none;
+    font-weight: 500;
+    line-height: 1.3;
+    text-align: center;
+}
+[data-tooltip]:hover::before {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-bottom-color: #1c1917;
+    margin-top: -0.25rem;
+    z-index: 50;
+    pointer-events: none;
+}
