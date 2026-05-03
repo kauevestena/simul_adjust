@@ -1,0 +1,39 @@
+name: Update GNSS TLE Data
+
+on:
+  schedule:
+    # Run every Sunday at midnight UTC
+    - cron: '0 0 * * 0'
+  workflow_dispatch:
+    # Allow manual triggering
+
+jobs:
+  update-tle:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Fetch latest GNSS TLE
+        run: |
+          # Use a browser-like user agent to avoid CelesTrak blocking default curl
+          curl -s --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36" \
+          "https://celestrak.org/NORAD/elements/gp.php?GROUP=gnss&FORMAT=tle" -o GNSS_simul/gnss.txt
+          
+          # Verify the file is not empty and contains standard TLE lines (starting with "1 ")
+          if [ ! -s GNSS_simul/gnss.txt ] || ! grep -q "^1 " GNSS_simul/gnss.txt; then
+            echo "Error: Downloaded file is empty or invalid. CelesTrak might be blocking the request."
+            exit 1
+          fi
+
+      - name: Commit and Push Changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: update GNSS TLE almanacs"
+          file_pattern: "GNSS_simul/gnss.txt"
+          commit_user_name: "github-actions[bot]"
+          commit_user_email: "github-actions[bot]@users.noreply.github.com"
+          commit_author: "github-actions[bot] <github-actions[bot]@users.noreply.github.com>"

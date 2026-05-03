@@ -31,7 +31,6 @@ console.log('Viewer initialized.');
 viewer.scene.highDynamicRange = true;
 viewer.clock.shouldAnimate = true;
 
-// TODO: Create a GitHub Action to automatically fetch and update this serialized gnss.txt file periodically.
 const TLE_URL = 'gnss.txt';
 const satellites = [];
 let showOrbits = true;

@@ -1,72 +1,3 @@
-// --- Mini Matrix Math Library (No dependencies) ---
-const Mat = {
-    transpose: (a) => a[0].map((_, c) => a.map(r => r[c])),
-    multiply: (a, b) => {
-        const result = Array(a.length).fill(0).map(() => Array(b[0].length).fill(0));
-        return result.map((row, i) => row.map((val, j) => a[i].reduce((sum, elm, k) => sum + elm * b[k][j], 0)));
-    },
-    // Special fast inverse for 2x2 matrices (perfect for 2D Resection with X, Y unknowns)
-    invert2x2: (m) => {
-        const det = m[0][0] * m[1][1] - m[0][1] * m[1][0];
-        if (Math.abs(det) < 1e-12) throw new Error("Matriz singular.");
-        return [
-            [m[1][1] / det, -m[0][1] / det],
-            [-m[1][0] / det, m[0][0] / det]
-        ];
-    },
-    subtract: (a, b) => a.map((row, i) => row.map((val, j) => val - b[i][j])),
-    add: (a, b) => a.map((row, i) => row.map((val, j) => val + b[i][j])),
-    // For n x n diagonal matrices (like P matrix)
-    invertDiag: (m) => m.map((row, i) => row.map((val, j) => i === j ? 1/val : 0)),
-    // Solve n×n system A*x = b using Gaussian elimination with partial pivoting.
-    // A is n×n array-of-arrays, b is n×1 array-of-arrays. Returns n×1 array-of-arrays.
-    solve: (A, b) => {
-        const n = A.length;
-        const M = A.map((row, i) => [...row, b[i][0]]);
-        for (let col = 0; col < n; col++) {
-            let maxRow = col;
-            for (let row = col + 1; row < n; row++)
-                if (Math.abs(M[row][col]) > Math.abs(M[maxRow][col])) maxRow = row;
-            [M[col], M[maxRow]] = [M[maxRow], M[col]];
-            if (Math.abs(M[col][col]) < 1e-12) throw new Error('Matriz singular.');
-            for (let row = col + 1; row < n; row++) {
-                const f = M[row][col] / M[col][col];
-                for (let k = col; k <= n; k++) M[row][k] -= f * M[col][k];
-            }
-        }
-        const x = new Array(n).fill(0);
-        for (let i = n - 1; i >= 0; i--) {
-            x[i] = M[i][n];
-            for (let j = i + 1; j < n; j++) x[i] -= M[i][j] * x[j];
-            x[i] /= M[i][i];
-        }
-        return x.map(v => [v]);
-    },
-    // Invert general n×n matrix using Gauss-Jordan elimination.
-    inv: (A) => {
-        const n = A.length;
-        const M = A.map((row, i) => [
-            ...row,
-            ...Array(n).fill(0).map((_, j) => i === j ? 1 : 0)
-        ]);
-        for (let col = 0; col < n; col++) {
-            let maxRow = col;
-            for (let row = col + 1; row < n; row++)
-                if (Math.abs(M[row][col]) > Math.abs(M[maxRow][col])) maxRow = row;
-            [M[col], M[maxRow]] = [M[maxRow], M[col]];
-            if (Math.abs(M[col][col]) < 1e-12) throw new Error('Matriz singular.');
-            const div = M[col][col];
-            for (let k = col; k < 2 * n; k++) M[col][k] /= div;
-            for (let row = 0; row < n; row++) {
-                if (row === col) continue;
-                const f = M[row][col];
-                for (let k = col; k < 2 * n; k++) M[row][k] -= f * M[col][k];
-            }
-        }
-        return M.map(row => row.slice(n));
-    }
-};
-
 // --- Application Logic ---
 const app = {
     canvas: null,
@@ -348,13 +279,13 @@ const app = {
                 }
             });
 
-            const At  = Mat.transpose(A);
-            const AtP = Mat.multiply(At, P);
-            const N   = Mat.multiply(AtP, A); // nu × nu
-            const U   = Mat.multiply(AtP, L); // nu × 1
+            const At  = math.transpose(A);
+            const AtP = math.multiply(At, P);
+            const N   = math.multiply(AtP, A); // nu × nu
+            const U   = math.multiply(AtP, L); // nu × 1
 
             try {
-                dx_vec = Mat.solve(N, U); // nu × 1, as [[v], ...]
+                dx_vec = math.lusolve(N, U).toArray(); // nu × 1, as [[v], ...]
             } catch(e) {
                 alert('Erro Matemático: Geometria fraca ou singular no sistema de equações normais.');
                 return;
@@ -375,19 +306,19 @@ const app = {
         }
 
         // --- Post-adjustment quality control (single combined system) ---
-        const V    = Mat.subtract(Mat.multiply(A, dx_vec), L); // V = A*dx - L
-        const VtPV = Mat.multiply(Mat.multiply(Mat.transpose(V), P), V)[0][0];
+        const V    = math.subtract(math.multiply(A, dx_vec), L); // V = A*dx - L
+        const VtPV = math.multiply(math.multiply(math.transpose(V), P), V)[0][0];
         const sigma02 = VtPV / dof;
 
         // Full Qxx (nu × nu) via general matrix inverse
-        const AtP_f = Mat.multiply(Mat.transpose(A), P);
-        const N_f   = Mat.multiply(AtP_f, A);
-        const Qxx   = Mat.inv(N_f);
+        const AtP_f = math.multiply(math.transpose(A), P);
+        const N_f   = math.multiply(AtP_f, A);
+        const Qxx   = math.inv(N_f);
 
         // Residual covariance Qv = P⁻¹ − A Qxx Aᵀ
-        const Qv = Mat.subtract(
-            Mat.invertDiag(P),
-            Mat.multiply(Mat.multiply(A, Qxx), Mat.transpose(A))
+        const Qv = math.subtract(
+            math.inv(P),
+            math.multiply(math.multiply(A, Qxx), math.transpose(A))
         );
 
         // Chi-square critical value (Wilson-Hilferty approximation, α = 1%)
