@@ -35,6 +35,11 @@ viewer.clock.shouldAnimate = true;
 const TLE_URL = 'gnss.txt';
 const satellites = [];
 let showOrbits = true;
+let showLOS = true;
+let receiverPoint = null;
+let receiverCartesian = null;
+let receiverGd = null;
+const losEntities = {};
 
 const constellationVisibility = {
     'GPS': true,
@@ -47,14 +52,31 @@ const constellationVisibility = {
 const satCountEl = document.getElementById('satCount');
 const satListEl = document.getElementById('satList');
 const toggleOrbitsEl = document.getElementById('toggleOrbits');
+const toggleLOSEl = document.getElementById('toggleLOS');
+const gdopValueEl = document.getElementById('gdopValue');
+const hdopValueEl = document.getElementById('hdopValue');
+const vdopValueEl = document.getElementById('vdopValue');
+const receiverCoordsEl = document.getElementById('receiverCoords');
+const inViewCountEl = document.getElementById('inViewCount');
+
+toggleLOSEl.addEventListener('change', (e) => {
+    showLOS = e.target.checked;
+    viewer.entities.suspendEvents();
+    Object.values(losEntities).forEach(entity => {
+        if (entity.inViewFlag) entity.show = showLOS;
+    });
+    viewer.entities.resumeEvents();
+});
 
 toggleOrbitsEl.addEventListener('change', (e) => {
     showOrbits = e.target.checked;
-    viewer.entities.values.forEach(entity => {
-        if (entity.polyline) {
-            entity.polyline.show = showOrbits;
+    viewer.entities.suspendEvents();
+    satellites.forEach(sat => {
+        if (sat.entity && sat.entity.polyline) {
+            sat.entity.polyline.show = showOrbits;
         }
     });
+    viewer.entities.resumeEvents();
 });
 
 async function fetchTLEData() {
@@ -217,13 +239,171 @@ function updateUIList(constCounts) {
             const constel = e.target.getAttribute('data-constel');
             constellationVisibility[constel] = e.target.checked;
             
+            viewer.entities.suspendEvents();
             satellites.forEach(sat => {
                 if (sat.constellation === constel && sat.entity) {
                     sat.entity.show = constellationVisibility[constel];
                 }
             });
+            viewer.entities.resumeEvents();
         });
     });
 }
+
+const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+handler.setInputAction((click) => {
+    const ray = viewer.camera.getPickRay(click.position);
+    const cartesian = viewer.scene.globe.pick(ray, viewer.scene);
+    
+    if (cartesian) {
+        if (!receiverPoint) {
+            receiverPoint = viewer.entities.add({
+                position: new Cesium.CallbackProperty(() => receiverCartesian, false),
+                point: {
+                    pixelSize: 12,
+                    color: Cesium.Color.BLACK,
+                    outlineColor: Cesium.Color.WHITE,
+                    outlineWidth: 2
+                },
+                label: {
+                    text: 'Receiver',
+                    font: '14px Inter, sans-serif',
+                    fillColor: Cesium.Color.WHITE,
+                    outlineColor: Cesium.Color.BLACK,
+                    outlineWidth: 2,
+                    style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+                    pixelOffset: new Cesium.Cartesian2(0, -20)
+                }
+            });
+        }
+        
+        receiverCartesian = cartesian;
+        const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
+        receiverGd = {
+            longitude: cartographic.longitude,
+            latitude: cartographic.latitude,
+            height: cartographic.height / 1000 // satellite.js expects km
+        };
+        
+        const lonDeg = Cesium.Math.toDegrees(cartographic.longitude).toFixed(4);
+        const latDeg = Cesium.Math.toDegrees(cartographic.latitude).toFixed(4);
+        receiverCoordsEl.innerText = `Lat: ${latDeg}°, Lon: ${lonDeg}°`;
+    }
+}, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+viewer.clock.onTick.addEventListener((clock) => {
+    if (!receiverGd) return;
+
+    const time = Cesium.JulianDate.toDate(clock.currentTime);
+    const gmst = satellite.gstime(time);
+
+    let H = [];
+    let inViewCount = 0;
+    
+    satellites.forEach(sat => {
+        if (!sat.entity || constellationVisibility[sat.constellation] === false) {
+            if (losEntities[sat.name]) {
+                losEntities[sat.name].show = false;
+                losEntities[sat.name].inViewFlag = false;
+            }
+            if (sat.entity && sat.entity.point) sat.entity.point.pixelSize = 8;
+            return;
+        }
+
+        const positionAndVelocity = satellite.propagate(sat.satrec, time);
+        let inView = false;
+        let cartesianPos = null;
+
+        if (positionAndVelocity.position && !isNaN(positionAndVelocity.position.x)) {
+            const positionEci = positionAndVelocity.position;
+            const positionEcf = satellite.eciToEcf(positionEci, gmst);
+            const lookAngles = satellite.ecfToLookAngles(receiverGd, positionEcf);
+            
+            // 10 degrees elevation mask
+            if (lookAngles.elevation > 10 * Math.PI / 180) {
+                inView = true;
+                
+                const az = lookAngles.azimuth;
+                const el = lookAngles.elevation;
+                const e = Math.cos(el) * Math.sin(az);
+                const n = Math.cos(el) * Math.cos(az);
+                const u = Math.sin(el);
+                
+                H.push([-e, -n, -u, 1]);
+            }
+            
+            const positionGd = satellite.eciToGeodetic(positionEci, gmst);
+            cartesianPos = Cesium.Cartesian3.fromRadians(positionGd.longitude, positionGd.latitude, positionGd.height * 1000);
+        }
+
+        if (inView) {
+            inViewCount++;
+            sat.entity.point.pixelSize = 16; 
+            
+            if (!losEntities[sat.name]) {
+                losEntities[sat.name] = viewer.entities.add({
+                    polyline: {
+                        positions: new Cesium.CallbackProperty(() => {
+                            if (!receiverCartesian || !sat.lastPos) {
+                                const safePos = receiverCartesian || Cesium.Cartesian3.ZERO;
+                                return [safePos, safePos];
+                            }
+                            return [receiverCartesian, sat.lastPos];
+                        }, false),
+                        width: 2,
+                        arcType: Cesium.ArcType.NONE,
+                        material: new Cesium.PolylineDashMaterialProperty({
+                            color: Cesium.Color.YELLOW.withAlpha(0.6),
+                            dashLength: 16.0
+                        })
+                    }
+                });
+            }
+            sat.lastPos = cartesianPos;
+            losEntities[sat.name].show = showLOS;
+            losEntities[sat.name].inViewFlag = true;
+        } else {
+            sat.entity.point.pixelSize = 8;
+            if (losEntities[sat.name]) {
+                losEntities[sat.name].show = false;
+                losEntities[sat.name].inViewFlag = false;
+            }
+        }
+    });
+
+    inViewCountEl.innerText = inViewCount;
+
+    if (H.length >= 4) {
+        try {
+            const H_mat = math.matrix(H);
+            const H_t = math.transpose(H_mat);
+            const Q = math.inv(math.multiply(H_t, H_mat));
+            
+            const q_ee = Q.get([0, 0]);
+            const q_nn = Q.get([1, 1]);
+            const q_uu = Q.get([2, 2]);
+            const q_tt = Q.get([3, 3]);
+
+            const gdop = Math.sqrt(q_ee + q_nn + q_uu + q_tt).toFixed(2);
+            const hdop = Math.sqrt(q_ee + q_nn).toFixed(2);
+            const vdop = Math.sqrt(q_uu).toFixed(2);
+
+            gdopValueEl.innerText = gdop;
+            hdopValueEl.innerText = hdop;
+            vdopValueEl.innerText = vdop;
+            
+            gdopValueEl.style.color = gdop < 3 ? '#00ff7f' : gdop < 6 ? '#ffd700' : '#ff6b6b';
+        } catch (e) {
+            gdopValueEl.innerText = "Error";
+            hdopValueEl.innerText = "Error";
+            vdopValueEl.innerText = "Error";
+        }
+    } else {
+        gdopValueEl.innerText = "N/A";
+        hdopValueEl.innerText = "N/A";
+        vdopValueEl.innerText = "N/A";
+        gdopValueEl.style.color = '#a0aec0';
+    }
+});
 
 fetchTLEData();
