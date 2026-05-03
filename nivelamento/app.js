@@ -14,6 +14,12 @@ const app = {
     _mcPan: { x: 0, y: 0 },
     mcPts: [],
     mcStats: [],
+    _selectedPoint: null,
+    _dragging: false,
+    _dragTarget: null,
+    _dragStartGeo: null,
+    _mouseDownPos: null,
+    _DRAG_THRESHOLD: 5,
 
     // Constants
     SIGMA_DIST_MM: 5, // mm / sqrt(km)
@@ -26,8 +32,12 @@ const app = {
         this.ctx = this.canvas.getContext('2d');
         this.resizeCanvas();
         window.addEventListener('resize', () => this.resizeCanvas());
-        this.canvas.addEventListener('click', e => this.canvasClick(e));
+        this.canvas.addEventListener('mousedown', e => this.onCanvasMouseDown(e));
+        this.canvas.addEventListener('mousemove', e => this.onCanvasMouseMove(e));
+        this.canvas.addEventListener('mouseup', e => this.onCanvasMouseUp(e));
+        this.canvas.addEventListener('mouseleave', e => this.onCanvasMouseUp(e));
         this.canvas.addEventListener('wheel', e => this.onWheel(e), { passive: false });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') this.deselectPoint(); });
         const mcCanvas = document.getElementById('mcCanvas');
         if (mcCanvas) mcCanvas.addEventListener('wheel', e => this.onMcWheel(e), { passive: false });
 
@@ -107,6 +117,8 @@ const app = {
     // Generates a random realistic network geometry
     generateNetwork() {
         this.adjResults = null;
+        this._selectedPoint = null;
+        this._hideTrashButton();
         // Generate a sample leveling network with some fixed and some unknown points
         this.points = [
             { id: 'RN1', x: 800, y: 800, fixed: true, H: 100.000, true_H: 100.000, _H0: 100.000 },
@@ -526,18 +538,41 @@ const app = {
                 }
             }
 
+            const isSelected = this._selectedPoint && this._selectedPoint.obj.id === pt.id;
+
             if (pt.fixed) {
+                if (isSelected) {
+                    ctx.strokeStyle = 'rgba(41, 37, 36, 0.5)';
+                    ctx.lineWidth = 3;
+                    ctx.setLineDash([4, 3]);
+                    ctx.strokeRect(pc.cx - 10, pc.cy - 10, 20, 20);
+                    ctx.setLineDash([]);
+                }
                 ctx.fillStyle = '#292524'; // Stone-800
                 ctx.beginPath();
                 ctx.rect(pc.cx - 5, pc.cy - 5, 10, 10);
                 ctx.fill();
+                if (isSelected) {
+                    ctx.strokeStyle = '#78716c';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(pc.cx - 5, pc.cy - 5, 10, 10);
+                }
             } else {
+                if (isSelected) {
+                    ctx.beginPath();
+                    ctx.arc(pc.cx, pc.cy, 12, 0, 2*Math.PI);
+                    ctx.strokeStyle = 'rgba(20, 184, 166, 0.5)';
+                    ctx.lineWidth = 3;
+                    ctx.setLineDash([4, 3]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
                 ctx.beginPath();
                 ctx.arc(pc.cx, pc.cy, 5, 0, 2*Math.PI);
                 ctx.fillStyle = '#14b8a6'; // Teal
                 ctx.fill();
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 1;
+                ctx.strokeStyle = isSelected ? '#0f766e' : '#fff';
+                ctx.lineWidth = isSelected ? 2 : 1;
                 ctx.stroke();
             }
 
@@ -672,15 +707,169 @@ const app = {
         };
     },
 
-    canvasClick(event) {
-        if (!this.insertMode) return;
+    _getCanvasXY(event) {
         const rect = this.canvas.getBoundingClientRect();
         const scaleX = this.canvas.width / rect.width;
         const scaleY = this.canvas.height / rect.height;
-        const cx = event.offsetX * scaleX;
-        const cy = event.offsetY * scaleY;
-        const geo = this.geoFromCanvas(cx, cy);
-        this.openPointModal('Point', geo.x, geo.y);
+        return { cx: event.offsetX * scaleX, cy: event.offsetY * scaleY };
+    },
+
+    _hitTestPoint(cx, cy) {
+        if (!this._mapTransform) return null;
+        const { minX, minY, scale, h } = this._mapTransform;
+        const toCanvas = (geoX, geoY) => {
+            const bx = (geoX - minX) * scale;
+            const by = h - ((geoY - minY) * scale);
+            return { cx: bx * this._userZoom + this._userPan.x, cy: by * this._userZoom + this._userPan.y };
+        };
+        const HIT_RADIUS = 15;
+        let best = null, bestDist = HIT_RADIUS;
+        this.points.forEach(pt => {
+            const pc = toCanvas(pt.x, pt.y);
+            const d = Math.hypot(pc.cx - cx, pc.cy - cy);
+            if (d < bestDist) { bestDist = d; best = { obj: pt }; }
+        });
+        return best;
+    },
+
+    onCanvasMouseDown(event) {
+        const { cx, cy } = this._getCanvasXY(event);
+        this._mouseDownPos = { cx, cy };
+        this._dragging = false;
+        this._dragTarget = null;
+        if (!this.insertMode) {
+            const hit = this._hitTestPoint(cx, cy);
+            if (hit) {
+                this._dragTarget = hit;
+                this._dragStartGeo = { x: hit.obj.x, y: hit.obj.y };
+            }
+        }
+    },
+
+    onCanvasMouseMove(event) {
+        const { cx, cy } = this._getCanvasXY(event);
+
+        // Hover cursor feedback (no button pressed)
+        if (!this._mouseDownPos) {
+            if (!this.insertMode) {
+                const hover = this._hitTestPoint(cx, cy);
+                this.canvas.style.cursor = hover ? 'grab' : 'default';
+            }
+            return;
+        }
+        const dx = cx - this._mouseDownPos.cx;
+        const dy = cy - this._mouseDownPos.cy;
+
+        if (!this._dragging && this._dragTarget && Math.hypot(dx, dy) > this._DRAG_THRESHOLD) {
+            this._dragging = true;
+            this.canvas.style.cursor = 'grabbing';
+        }
+        if (this._dragging && this._dragTarget) {
+            const geo = this.geoFromCanvas(cx, cy);
+            const pt = this._dragTarget.obj;
+            pt.x = geo.x;
+            pt.y = geo.y;
+            this.drawNetwork();
+        }
+    },
+
+    onCanvasMouseUp(event) {
+        if (!this._mouseDownPos) return;
+        const wasDragging = this._dragging;
+        const dragTarget = this._dragTarget;
+
+        if (wasDragging && dragTarget) {
+            // Finished dragging — reset solution
+            this._resetAfterGeometryChange();
+            this.canvas.style.cursor = this.insertMode ? 'crosshair' : 'default';
+        } else if (!wasDragging) {
+            // It was a click (no drag)
+            const { cx, cy } = this._getCanvasXY(event);
+            if (this.insertMode) {
+                const geo = this.geoFromCanvas(cx, cy);
+                this.openPointModal('Point', geo.x, geo.y);
+            } else {
+                const hit = this._hitTestPoint(cx, cy);
+                if (hit) {
+                    this.selectPoint(hit);
+                } else {
+                    this.deselectPoint();
+                }
+            }
+        }
+
+        this._mouseDownPos = null;
+        this._dragging = false;
+        this._dragTarget = null;
+        this._dragStartGeo = null;
+    },
+
+    selectPoint(hit) {
+        this._selectedPoint = hit;
+        this.drawNetwork();
+        this._showTrashButton();
+    },
+
+    deselectPoint() {
+        if (!this._selectedPoint) return;
+        this._selectedPoint = null;
+        this.drawNetwork();
+        this._hideTrashButton();
+    },
+
+    _showTrashButton() {
+        let btn = document.getElementById('canvasTrashBtn');
+        if (!btn) {
+            btn = document.createElement('button');
+            btn.id = 'canvasTrashBtn';
+            btn.innerHTML = '&#128465;';
+            btn.title = 'Excluir ponto selecionado';
+            btn.addEventListener('click', () => this.deleteSelectedPoint());
+            this.canvas.parentElement.style.position = 'relative';
+            this.canvas.parentElement.appendChild(btn);
+        }
+        btn.style.display = 'flex';
+    },
+
+    _hideTrashButton() {
+        const btn = document.getElementById('canvasTrashBtn');
+        if (btn) btn.style.display = 'none';
+    },
+
+    deleteSelectedPoint() {
+        if (!this._selectedPoint) return;
+        const id = this._selectedPoint.obj.id;
+        // Remove observations involving the deleted point
+        this.observations = this.observations.filter(o => o.from !== id && o.to !== id);
+        this.observations.forEach((o, i) => o.idx = i);
+        // Remove the point itself
+        this.points = this.points.filter(p => p.id !== id);
+        // Remove connections referencing this point
+        this.points.forEach(pt => {
+            if (pt.connections) pt.connections = pt.connections.filter(c => c !== id);
+        });
+        this._selectedPoint = null;
+        this._hideTrashButton();
+        this.adjResults = null;
+        this.updateUI_Clear();
+        this.drawNetwork();
+    },
+
+    _resetAfterGeometryChange() {
+        // Recalculate observation distances and weights without regenerating
+        this.observations.forEach(obs => {
+            const pFrom = this.points.find(p => p.id === obs.from);
+            const pTo = this.points.find(p => p.id === obs.to);
+            if (pFrom && pTo) {
+                const dx = pTo.x - pFrom.x;
+                const dy = pTo.y - pFrom.y;
+                obs.distance = Math.sqrt(dx * dx + dy * dy);
+                obs.std = (this.SIGMA_DIST_MM / 1000) * Math.sqrt(obs.distance / 1000);
+            }
+        });
+        this.adjResults = null;
+        this.updateUI_Clear();
+        this.drawNetwork();
     },
 
     setInsertMode(type) {
@@ -689,9 +878,186 @@ const app = {
 
         this.insertMode = (this.insertMode === type) ? null : type;
 
+        // Entering insert mode clears any selection
+        if (this.insertMode) {
+            this._selectedPoint = null;
+            this._hideTrashButton();
+        }
+
         if (btnA) btnA.classList.toggle('insert-btn-active', this.insertMode === 'Point');
         if (this.canvas) this.canvas.style.cursor = this.insertMode ? 'crosshair' : 'default';
         if (hint) hint.classList.toggle('hidden', !this.insertMode);
+    },
+
+    // --- Tab System ---
+    _activeTab: 'map',
+
+    switchTab(tab) {
+        this._activeTab = tab;
+        const mapContent = document.getElementById('tabMapContent');
+        const tableContent = document.getElementById('tabTableContent');
+        const mapBtn = document.getElementById('tabMapBtn');
+        const tableBtn = document.getElementById('tabTableBtn');
+        const legend = document.getElementById('mapLegend');
+
+        if (tab === 'map') {
+            mapContent.style.display = '';
+            tableContent.style.display = 'none';
+            mapBtn.classList.add('tab-btn-active');
+            tableBtn.classList.remove('tab-btn-active');
+            if (legend) legend.style.display = '';
+            this.resizeCanvas();
+        } else {
+            mapContent.style.display = 'none';
+            tableContent.style.display = '';
+            mapBtn.classList.remove('tab-btn-active');
+            tableBtn.classList.add('tab-btn-active');
+            if (legend) legend.style.display = 'none';
+            this.renderObsTable();
+        }
+    },
+
+    renderObsTable() {
+        const tbody = document.getElementById('obsEditBody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        if (this.observations.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-stone-400 py-4">Nenhuma observação. Clique em "+ Novo Trecho" para adicionar.</td></tr>';
+            return;
+        }
+
+        this.observations.forEach((obs, idx) => {
+            const tr = document.createElement('tr');
+            const stdMm = obs.std * 1000;
+
+            // Build point option lists
+            const pointOpts = this.points.map(p =>
+                `<option value="${p.id}"${p.id === obs.from ? ' selected' : ''}>${p.id}</option>`
+            ).join('');
+            const pointOptsTo = this.points.map(p =>
+                `<option value="${p.id}"${p.id === obs.to ? ' selected' : ''}>${p.id}</option>`
+            ).join('');
+
+            tr.innerHTML = `
+                <td><select data-idx="${idx}" data-field="from">${pointOpts}</select></td>
+                <td><select data-idx="${idx}" data-field="to">${pointOptsTo}</select></td>
+                <td><input type="number" step="0.0001" value="${obs.val.toFixed(4)}" data-idx="${idx}" data-field="val"></td>
+                <td><input type="number" step="0.01" value="${stdMm.toFixed(2)}" data-idx="${idx}" data-field="std"></td>
+                <td><button class="obs-delete-btn" data-idx="${idx}" title="Remover trecho">&#215;</button></td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        // Attach event listeners
+        tbody.querySelectorAll('input, select').forEach(el => {
+            el.addEventListener('change', e => this.updateObsFromTable(e));
+        });
+        tbody.querySelectorAll('.obs-delete-btn').forEach(el => {
+            el.addEventListener('click', e => {
+                const idx = parseInt(e.currentTarget.dataset.idx);
+                this.removeObservation(idx);
+            });
+        });
+    },
+
+    updateObsFromTable(event) {
+        const el = event.target;
+        const idx = parseInt(el.dataset.idx);
+        const field = el.dataset.field;
+        const obs = this.observations[idx];
+        if (!obs) return;
+
+        if (field === 'val') {
+            const newVal = parseFloat(el.value);
+            if (isNaN(newVal)) return;
+            obs.val = newVal;
+            obs._baseVal = newVal;
+            obs._blunderOffset = 0;
+            obs._simNoise = 0;
+            obs.hasError = false;
+        } else if (field === 'std') {
+            const newStdMm = parseFloat(el.value);
+            if (isNaN(newStdMm) || newStdMm <= 0) return;
+            obs.std = newStdMm / 1000;
+        } else if (field === 'from') {
+            obs.from = el.value;
+            obs.id = `\u0394H_${obs.from}-${obs.to}`;
+            // Recalculate distance for weight
+            const pFrom = this.points.find(p => p.id === obs.from);
+            const pTo = this.points.find(p => p.id === obs.to);
+            if (pFrom && pTo) {
+                const dx = pTo.x - pFrom.x;
+                const dy = pTo.y - pFrom.y;
+                obs.distance = Math.sqrt(dx*dx + dy*dy);
+                obs.std = (this.SIGMA_DIST_MM / 1000) * Math.sqrt(obs.distance / 1000);
+            }
+        } else if (field === 'to') {
+            obs.to = el.value;
+            obs.id = `\u0394H_${obs.from}-${obs.to}`;
+            const pFrom = this.points.find(p => p.id === obs.from);
+            const pTo = this.points.find(p => p.id === obs.to);
+            if (pFrom && pTo) {
+                const dx = pTo.x - pFrom.x;
+                const dy = pTo.y - pFrom.y;
+                obs.distance = Math.sqrt(dx*dx + dy*dy);
+                obs.std = (this.SIGMA_DIST_MM / 1000) * Math.sqrt(obs.distance / 1000);
+            }
+        }
+
+        this.adjResults = null;
+        this.updateUI_Clear();
+        this.drawNetwork();
+        // Re-render table to reflect recalculated σ when from/to changes
+        if (field === 'from' || field === 'to') this.renderObsTable();
+    },
+
+    addObservationRow() {
+        if (this.points.length < 2) {
+            alert('É necessário ter ao menos 2 pontos na rede para criar um trecho.');
+            return;
+        }
+
+        const pFrom = this.points[0];
+        const pTo = this.points[1];
+        const dx = pTo.x - pFrom.x;
+        const dy = pTo.y - pFrom.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        const stdDist = (this.SIGMA_DIST_MM / 1000) * Math.sqrt(dist / 1000);
+
+        const trueH_from = (pFrom.true_H != null) ? pFrom.true_H : pFrom.H;
+        const trueH_to = (pTo.true_H != null) ? pTo.true_H : pTo.H;
+        const trueDH = trueH_to - trueH_from;
+
+        this.observations.push({
+            id: `\u0394H_${pFrom.id}-${pTo.id}`,
+            type: 'dh',
+            from: pFrom.id,
+            to: pTo.id,
+            val: trueDH,
+            std: stdDist,
+            hasError: false,
+            _baseVal: trueDH,
+            _blunderOffset: 0,
+            _simNoise: 0,
+            idx: this.observations.length,
+            distance: dist
+        });
+
+        this.adjResults = null;
+        this.updateUI_Clear();
+        this.drawNetwork();
+        this.renderObsTable();
+    },
+
+    removeObservation(idx) {
+        this.observations.splice(idx, 1);
+        // Re-index
+        this.observations.forEach((o, i) => o.idx = i);
+        this.adjResults = null;
+        this.updateUI_Clear();
+        this.drawNetwork();
+        this.renderObsTable();
     },
 
     openPointModal(type, geoX, geoY) {
@@ -789,7 +1155,32 @@ const app = {
 
         if (connections.length > 0) {
             this.adjResults = null;
-            this.generateObservations();
+            // Append new observations for the new connections (don't regenerate all)
+            const newPt = this.points.find(p => p.id === id);
+            connections.forEach(connId => {
+                const otherPt = this.points.find(p => p.id === connId);
+                if (!newPt || !otherPt) return;
+                const dx = otherPt.x - newPt.x;
+                const dy = otherPt.y - newPt.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                const stdDist = (this.SIGMA_DIST_MM / 1000) * Math.sqrt(dist / 1000);
+                const trueDH = (otherPt.true_H != null ? otherPt.true_H : otherPt.H)
+                             - (newPt.true_H != null ? newPt.true_H : newPt.H);
+                this.observations.push({
+                    id: `\u0394H_${id}-${connId}`,
+                    type: 'dh',
+                    from: id,
+                    to: connId,
+                    val: trueDH + this.randn_bm() * stdDist,
+                    std: stdDist,
+                    hasError: false,
+                    _baseVal: trueDH,
+                    _blunderOffset: 0,
+                    _simNoise: 0,
+                    idx: this.observations.length,
+                    distance: dist
+                });
+            });
             this.updateUI_Clear();
         }
 

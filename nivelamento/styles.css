@@ -39,6 +39,46 @@ td { font-size: 0.875rem; color: #292524; }
 #pointModal.active { display: flex; }
 .insert-btn-active { background-color: #0f766e !important; color: #fff !important; border-color: #0f766e !important; }
 
+/* Tab buttons */
+.tab-btn { color: #78716c; cursor: pointer; background: transparent; border: none; }
+.tab-btn:hover { color: #292524; }
+.tab-btn-active { background: #fff !important; color: #292524 !important; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+
+/* Editable observation table */
+#tableObsEdit input[type="number"],
+#tableObsEdit select {
+    width: 100%;
+    border: 1px solid #e7e5e4;
+    border-radius: 0.25rem;
+    padding: 0.3rem 0.4rem;
+    font-size: 0.8rem;
+    font-family: 'JetBrains Mono', monospace;
+    background: #fafaf9;
+    color: #292524;
+    transition: border-color 0.15s;
+}
+#tableObsEdit input[type="number"]:focus,
+#tableObsEdit select:focus {
+    outline: none;
+    border-color: #14b8a6;
+    background: #fff;
+}
+#tableObsEdit select {
+    appearance: auto;
+    cursor: pointer;
+}
+.obs-delete-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px;
+    border: none; border-radius: 0.25rem;
+    background: rgba(244, 63, 94, 0.08);
+    color: #e11d48; cursor: pointer;
+    font-size: 0.85rem;
+    transition: background 0.15s, transform 0.1s;
+}
+.obs-delete-btn:hover { background: rgba(244, 63, 94, 0.2); transform: scale(1.1); }
+.obs-delete-btn:active { transform: scale(0.95); }
+
 /* Custom Tooltip */
 [data-tooltip] { position: relative; }
 [data-tooltip]:hover::after {
@@ -75,4 +115,34 @@ td { font-size: 0.875rem; color: #292524; }
     margin-top: -0.25rem;
     z-index: 50;
     pointer-events: none;
+}
+
+/* Trash button overlay on the canvas */
+#canvasTrashBtn {
+    display: none;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 10;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    font-size: 1.15rem;
+    background: rgba(244, 63, 94, 0.12);
+    border: 1px solid rgba(244, 63, 94, 0.35);
+    border-radius: 0.5rem;
+    color: #e11d48;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+    transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+#canvasTrashBtn:hover {
+    background: rgba(244, 63, 94, 0.25);
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(225,29,72,0.18);
+}
+#canvasTrashBtn:active {
+    transform: scale(0.95);
 }

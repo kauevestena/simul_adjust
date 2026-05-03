@@ -18,7 +18,7 @@
                 <h1 class="text-xl md:text-2xl font-bold tracking-tight">Rede de Nivelamento</h1>
                 <p class="text-stone-400 text-xs md:text-sm mt-1">Simulação de Ajustamento pelo Método dos Mínimos Quadrados</p>
             </div>
-            <div class="text-3xl">&#9878;</div>
+
         </div>
     </header>
 
@@ -118,8 +118,18 @@
 
             <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-sm">
                 <div class="flex justify-between items-center mb-3">
-                    <h2 class="text-sm font-bold text-stone-600">Visualização Espacial (Plano Topográfico Local)</h2>
-                    <div class="flex gap-4 text-xs text-stone-500">
+                    <!-- Tab buttons -->
+                    <div class="flex gap-1 bg-stone-100 rounded-lg p-0.5">
+                        <button id="tabMapBtn" onclick="app.switchTab('map')"
+                            class="tab-btn tab-btn-active px-3 py-1.5 text-xs font-semibold rounded-md transition-all">
+                            &#9635; Vista de Mapa
+                        </button>
+                        <button id="tabTableBtn" onclick="app.switchTab('table')"
+                            class="tab-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all">
+                            &#9776; Tabela de Dados
+                        </button>
+                    </div>
+                    <div class="flex gap-4 text-xs text-stone-500" id="mapLegend">
                         <span class="flex items-center gap-1">
                             <div class="w-3 h-3 bg-stone-800"></div> Ponto Fixo
                         </span>
@@ -128,22 +138,58 @@
                         </span>
                     </div>
                 </div>
-                <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;margin-bottom:.5rem">
-                    <button onclick="app.fitNetwork()"
-                        class="btn py-1 px-3 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-xs font-semibold">&#8982;
-                        Ajustar à janela</button>
-                    <label
-                        style="display:flex;align-items:center;gap:.5rem;font-size:.75rem;color:#57534e;margin:0">Escala
-                        barras de erro <input id="ellipseExag" type="range" min="1" max="50" step="1" value="10"
-                            style="width:100px"
-                            oninput="document.getElementById('ellipseExagVal').textContent=parseFloat(this.value).toFixed(1)+'\u00d7';app.drawNetwork()"><span
-                            id="ellipseExagVal" style="min-width:2.5rem">10.0×</span></label>
+
+                <!-- Map Tab Content -->
+                <div id="tabMapContent">
+                    <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;margin-bottom:.5rem">
+                        <button onclick="app.fitNetwork()"
+                            class="btn py-1 px-3 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-xs font-semibold">&#8982;
+                            Ajustar à janela</button>
+                        <label
+                            style="display:flex;align-items:center;gap:.5rem;font-size:.75rem;color:#57534e;margin:0">Escala
+                            barras de erro <input id="ellipseExag" type="range" min="1" max="50" step="1" value="10"
+                                style="width:100px"
+                                oninput="document.getElementById('ellipseExagVal').textContent=parseFloat(this.value).toFixed(1)+'\u00d7';app.drawNetwork()"><span
+                                id="ellipseExagVal" style="min-width:2.5rem">10.0×</span></label>
+                    </div>
+                    <div class="canvas-container">
+                        <canvas id="networkCanvas"></canvas>
+                    </div>
+                    <p class="text-xs text-stone-400 mt-2 text-right">As barras de erro verticais estão ampliadas para
+                        efeitos de visualização.</p>
                 </div>
-                <div class="canvas-container">
-                    <canvas id="networkCanvas"></canvas>
+
+                <!-- Data Table Tab Content -->
+                <div id="tabTableContent" style="display:none">
+                    <div class="flex justify-between items-center mb-3">
+                        <p class="text-xs text-stone-500">Edite diretamente os desníveis observados e os desvios padrão. Alterações resetam o ajustamento.</p>
+                        <button onclick="app.addObservationRow()"
+                            class="btn py-1.5 px-3 bg-teal-600 text-white rounded shadow hover:bg-teal-700 text-xs font-bold flex items-center gap-1">
+                            &#43; Novo Trecho
+                        </button>
+                    </div>
+                    <div class="table-container" style="max-height:460px;overflow-y:auto">
+                        <table id="tableObsEdit">
+                            <thead>
+                                <tr>
+                                    <th>De</th>
+                                    <th>Para</th>
+                                    <th data-tooltip="Desnível observado em metros"
+                                        class="border-b border-dotted border-stone-400 cursor-help">&Delta;H (m)</th>
+                                    <th data-tooltip="Desvio padrão a priori em milímetros"
+                                        class="border-b border-dotted border-stone-400 cursor-help">&sigma; (mm)</th>
+                                    <th style="width:36px"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="obsEditBody">
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="text-[10px] text-stone-400 mt-2 leading-tight">
+                        O desvio padrão (&sigma;) é calculado automaticamente como &sigma;<sub>priori</sub> &middot; &radic;d,
+                        mas pode ser editado manualmente. Ao adicionar um novo trecho, os pontos devem existir na rede.
+                    </p>
                 </div>
-                <p class="text-xs text-stone-400 mt-2 text-right">As barras de erro verticais estão ampliadas para
-                    efeitos de visualização.</p>
             </div>
 
             <!-- Bottom Data Panels -->
