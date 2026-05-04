@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Projeto Rodoviario</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body class="text-stone-800 antialiased min-h-screen flex flex-col">
+    <header class="bg-stone-900 text-stone-50 py-4 shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 flex justify-between items-center">
+            <div>
+                <h1 class="text-xl md:text-2xl font-bold tracking-tight">Projeto Rodoviario</h1>
+                <p class="text-stone-400 text-xs md:text-sm mt-1">Curvas, perfil, terraplenagem e locacao</p>
+            </div>
+            <span id="calcStatus" class="text-xs text-stone-400 font-mono hidden sm:inline">Pronto</span>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex-grow w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <aside class="lg:col-span-3 space-y-6">
+            <section class="bg-white p-5 rounded-xl border border-stone-200 shadow-sm">
+                <h2 class="text-sm font-bold text-stone-500 uppercase tracking-wider mb-4 border-b pb-2">Curva Horizontal</h2>
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="field-label col-span-2">Estaca PI (m)
+                        <input id="piStation" type="number" step="1" value="420" class="field-input">
+                    </label>
+                    <label class="field-label">Delta (&deg;)
+                        <input id="deltaDeg" type="number" step="0.1" value="42" class="field-input">
+                    </label>
+                    <label class="field-label">Raio (m)
+                        <input id="radius" type="number" step="1" value="300" class="field-input">
+                    </label>
+                    <label class="field-label">Sentido
+                        <select id="turnDirection" class="field-input">
+                            <option value="R">Direita</option>
+                            <option value="L">Esquerda</option>
+                        </select>
+                    </label>
+                    <label class="field-label">Azimute inicial
+                        <input id="azimuthDeg" type="number" step="0.1" value="38" class="field-input">
+                    </label>
+                    <label class="field-label">E inicial
+                        <input id="startE" type="number" step="1" value="1000" class="field-input">
+                    </label>
+                    <label class="field-label">N inicial
+                        <input id="startN" type="number" step="1" value="1000" class="field-input">
+                    </label>
+                    <label class="field-label col-span-2">Estaca inicial (m)
+                        <input id="startStation" type="number" step="1" value="0" class="field-input">
+                    </label>
+                </div>
+            </section>
+
+            <section class="bg-white p-5 rounded-xl border border-stone-200 shadow-sm">
+                <h2 class="text-sm font-bold text-stone-500 uppercase tracking-wider mb-4 border-b pb-2">Perfil Vertical</h2>
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="field-label col-span-2">Estaca VPI (m)
+                        <input id="vpiStation" type="number" step="1" value="420" class="field-input">
+                    </label>
+                    <label class="field-label col-span-2">Cota VPI (m)
+                        <input id="vpiElev" type="number" step="0.01" value="118" class="field-input">
+                    </label>
+                    <label class="field-label">g1 (%)
+                        <input id="gradeIn" type="number" step="0.01" value="2.2" class="field-input">
+                    </label>
+                    <label class="field-label">g2 (%)
+                        <input id="gradeOut" type="number" step="0.01" value="-1.4" class="field-input">
+                    </label>
+                    <label class="field-label col-span-2">Comprimento L (m)
+                        <input id="verticalLength" type="number" step="1" value="260" class="field-input">
+                    </label>
+                </div>
+            </section>
+
+            <section class="bg-white p-5 rounded-xl border border-stone-200 shadow-sm">
+                <h2 class="text-sm font-bold text-stone-500 uppercase tracking-wider mb-4 border-b pb-2">Terraplenagem</h2>
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="field-label">Intervalo (m)
+                        <input id="stationInterval" type="number" step="5" value="20" class="field-input">
+                    </label>
+                    <label class="field-label">Plataforma (m)
+                        <input id="roadWidth" type="number" step="0.5" value="12" class="field-input">
+                    </label>
+                    <label class="field-label">Terreno transversal (%)
+                        <input id="crossSlope" type="number" step="0.5" value="4" class="field-input">
+                    </label>
+                    <label class="field-label">Fator aterro (%)
+                        <input id="fillFactor" type="number" step="1" value="15" class="field-input">
+                    </label>
+                    <label class="field-label">Talude corte H:V
+                        <input id="cutSlope" type="number" step="0.1" value="1.5" class="field-input">
+                    </label>
+                    <label class="field-label">Talude aterro H:V
+                        <input id="fillSlope" type="number" step="0.1" value="2" class="field-input">
+                    </label>
+                </div>
+                <div class="mt-4 pt-4 border-t border-stone-100 space-y-2">
+                    <button id="btnTerrain" class="btn w-full py-2 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-sm font-semibold flex items-center justify-center gap-2">
+                        <i data-lucide="shuffle"></i> Gerar Terreno
+                    </button>
+                    <button id="btnRecalc" class="btn w-full py-3 bg-teal-600 text-white rounded shadow hover:bg-teal-700 text-sm font-bold flex items-center justify-center gap-2">
+                        <i data-lucide="calculator"></i> Recalcular
+                    </button>
+                </div>
+            </section>
+
+            <section class="bg-white p-5 rounded-xl border border-stone-200 shadow-sm">
+                <h2 class="text-sm font-bold text-stone-500 uppercase tracking-wider mb-4 border-b pb-2">Locacao</h2>
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="field-label">Estaca (m)
+                        <input id="stakeStation" type="number" step="1" value="460" class="field-input">
+                    </label>
+                    <label class="field-label">Offset +D (m)
+                        <input id="stakeOffset" type="number" step="0.1" value="3" class="field-input">
+                    </label>
+                    <label class="field-label">E instrumento
+                        <input id="instE" type="number" step="1" value="940" class="field-input">
+                    </label>
+                    <label class="field-label">N instrumento
+                        <input id="instN" type="number" step="1" value="1025" class="field-input">
+                    </label>
+                    <label class="field-label col-span-2">Azimute re (graus)
+                        <input id="backsightAz" type="number" step="0.1" value="20" class="field-input">
+                    </label>
+                </div>
+            </section>
+        </aside>
+
+        <section class="lg:col-span-9 flex flex-col gap-6">
+            <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-sm">
+                <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-3 mb-3">
+                    <div class="flex gap-1 bg-stone-100 rounded-lg p-0.5 w-fit">
+                        <button id="tabPlan" class="tab-btn tab-btn-active px-3 py-1.5 text-xs font-semibold rounded-md transition-all" data-tab="plan">
+                            <i data-lucide="map"></i> Tracado
+                        </button>
+                        <button id="tabProfile" class="tab-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all" data-tab="profile">
+                            <i data-lucide="activity"></i> Perfil
+                        </button>
+                        <button id="tabEarth" class="tab-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all" data-tab="earth">
+                            <i data-lucide="layers"></i> Terra
+                        </button>
+                        <button id="tabStake" class="tab-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all" data-tab="stake">
+                            <i data-lucide="crosshair"></i> Locacao
+                        </button>
+                    </div>
+                    <div id="viewLegend" class="flex gap-4 text-xs text-stone-500 flex-wrap"></div>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="mainCanvas"></canvas>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4" id="summaryGrid"></div>
+
+            <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-sm">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-3">
+                    <h2 id="tableTitle" class="text-sm font-bold text-stone-500 uppercase tracking-wider">Tabela</h2>
+                    <span id="tableHint" class="text-xs text-stone-400 font-mono"></span>
+                </div>
+                <div class="table-container">
+                    <table id="dataTable"></table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
