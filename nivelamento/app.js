@@ -1,5 +1,7 @@
 // --- Application Logic ---
 const app = {
+    map: null,
+    terrainLoaded: false,
     canvas: null,
     ctx: null,
     points: [], // Points (fixed or calculated)
@@ -28,20 +30,91 @@ const app = {
     NON_CENTRALITY: 3.4174, // Z(1-alpha/2) + Z(beta=0.8)
 
     init() {
-        this.canvas = document.getElementById('networkCanvas');
-        this.ctx = this.canvas.getContext('2d');
-        this.resizeCanvas();
-        window.addEventListener('resize', () => this.resizeCanvas());
-        this.canvas.addEventListener('mousedown', e => this.onCanvasMouseDown(e));
-        this.canvas.addEventListener('mousemove', e => this.onCanvasMouseMove(e));
-        this.canvas.addEventListener('mouseup', e => this.onCanvasMouseUp(e));
-        this.canvas.addEventListener('mouseleave', e => this.onCanvasMouseUp(e));
-        this.canvas.addEventListener('wheel', e => this.onWheel(e), { passive: false });
+        // Inicializa o MapLibre GL JS
+        this.map = new maplibregl.Map({
+            container: 'map',
+            style: {
+                version: 8,
+                sources: {
+                    'carto': {
+                        type: 'raster',
+                        tiles: [
+                            'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+                            'https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+                            'https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png'
+                        ],
+                        tileSize: 256,
+                        attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+                    }
+                },
+                layers: [
+                    {
+                        id: 'carto-basemap',
+                        type: 'raster',
+                        source: 'carto',
+                        minzoom: 0,
+                        maxzoom: 22
+                    }
+                ]
+            },
+            center: [-49.236, -25.448], // initial_points center
+            zoom: 14,
+            pitch: 0,
+            bearing: 0
+        });
+
+        this.map.addControl(new maplibregl.ScaleControl({
+            maxWidth: 150,
+            unit: 'metric'
+        }), 'bottom-left');
+
+        this.map.on('load', () => {
+            // Adiciona a fonte de terreno global (Mapzen Terrarium hospedado na AWS Open Data)
+            this.map.addSource('terrain', {
+                type: 'raster-dem',
+                tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+                encoding: 'terrarium',
+                tileSize: 256,
+                maxzoom: 14
+            });
+            this.map.setTerrain({ source: 'terrain', exaggeration: 1 });
+            this.terrainLoaded = true;
+
+            // Sources para a rede
+            this.map.addSource('network-lines', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+            
+            // Camadas para as linhas
+            this.map.addLayer({
+                id: 'network-lines-layer',
+                type: 'line',
+                source: 'network-lines',
+                layout: {
+                    'line-join': 'round',
+                    'line-cap': 'round'
+                },
+                paint: {
+                    'line-color': ['get', 'color'],
+                    'line-width': ['get', 'width']
+                }
+            });
+
+            this.map.on('click', (e) => this.onMapClick(e));
+            this.drawNetwork();
+        });
+
+        // Força um redesenho quando o mapa terminar totalmente de carregar terreno e tiles
+        this.map.on('idle', () => {
+            if (!this._initialIdleDone) {
+                this._initialIdleDone = true;
+                this.drawNetwork();
+            }
+        });
+
         document.addEventListener('keydown', e => { if (e.key === 'Escape') this.deselectPoint(); });
         const mcCanvas = document.getElementById('mcCanvas');
         if (mcCanvas) mcCanvas.addEventListener('wheel', e => this.onMcWheel(e), { passive: false });
 
-        // Reset range inputs to defaults to prevent browser form caching from restoring stale values
+        // Reset range inputs to defaults
         const sigLin = document.getElementById('simSigLin');
         if (sigLin) {
             sigLin.value = 0;
@@ -75,6 +148,15 @@ const app = {
         this.generateNetwork();
     },
 
+    toggleRelief(enabled) {
+        if (!this.map) return;
+        if (enabled) {
+            this.map.setTerrain({ source: 'terrain', exaggeration: 1 });
+        } else {
+            this.map.setTerrain(null);
+        }
+    },
+
     updateApriori() {
         const distMmEl = document.getElementById('aprioriDistMm');
         const alphaEl = document.getElementById('aprioriAlpha');
@@ -97,7 +179,7 @@ const app = {
             if (!pFrom || !pTo) return;
             const dx = pTo.x - pFrom.x;
             const dy = pTo.y - pFrom.y;
-            const dist = Math.sqrt(dx*dx + dy*dy); // 2D distance for weight
+            const dist = this.haversineDist(pFrom.x, pFrom.y, pTo.x, pTo.y); // Geo distance for weight
 
             obs.std = (this.SIGMA_DIST_MM / 1000) * Math.sqrt(dist / 1000);
         });
@@ -108,42 +190,49 @@ const app = {
     },
 
     resizeCanvas() {
-        const rect = this.canvas.parentElement.getBoundingClientRect();
-        this.canvas.width = rect.width;
-        this.canvas.height = rect.height || 500;
-        if(this.points.length > 0) this.drawNetwork();
+        if (this.map) this.map.resize();
+        // MC canvas
+        const mcCanvas = document.getElementById('mcCanvas');
+        if (mcCanvas && mcCanvas.parentElement) {
+            const rect = mcCanvas.parentElement.getBoundingClientRect();
+            mcCanvas.width = rect.width;
+            mcCanvas.height = rect.height || 350;
+            if(this.points.length > 0) this.drawMonteCarlo();
+        }
     },
 
     // Generates a random realistic network geometry
     generateNetwork() {
         this.adjResults = null;
         this._selectedPoint = null;
-        this._hideTrashButton();
-        // Generate a sample leveling network with some fixed and some unknown points
-        this.points = [
-            { id: 'RN1', x: 800, y: 800, fixed: true, H: 100.000, true_H: 100.000, _H0: 100.000 },
-            { id: 'P1', x: 1000, y: 900, fixed: false, H: 101.5, true_H: 101.500, _H0: 101.500 },
-            { id: 'P2', x: 1100, y: 1100, fixed: false, H: 103.2, true_H: 103.200, _H0: 103.200 },
-            { id: 'RN2', x: 900, y: 1200, fixed: true, H: 105.000, true_H: 105.000, _H0: 105.000 },
-            { id: 'P3', x: 1200, y: 950, fixed: false, H: 102.8, true_H: 102.800, _H0: 102.800 }
-        ];
+        
+        // Carrega os pontos da defaultNetwork gerada do geojson
+        this.points = [];
+        if (typeof defaultNetwork !== 'undefined') {
+            this.points = defaultNetwork.map(p => ({
+                id: p.id,
+                x: p.lon,
+                y: p.lat,
+                fixed: p.fixed,
+                H: p.elev,
+                true_H: p.elev,
+                _H0: p.elev
+            }));
+        }
 
-        // Define observation lines (from -> to)
-        const lines = [
-            ['RN1', 'P1'],
-            ['P1', 'P2'],
-            ['P2', 'RN2'],
-            ['P1', 'P3'],
-            ['P3', 'P2'],
-            ['RN1', 'P3']
-        ];
+        // Define observation lines (from -> to) connecting all to all
+        const lines = [];
+        for (let i = 0; i < this.points.length; i++) {
+            for (let j = i + 1; j < this.points.length; j++) {
+                lines.push([this.points[i].id, this.points[j].id]);
+            }
+        }
 
         this.generateObservations(lines);
         this.updateUI_Clear();
         this.setInsertMode(null);
-        this._userZoom = 1;
-        this._userPan = { x: 0, y: 0 };
         this.drawNetwork();
+        this.fitNetwork();
     },
 
     generateObservations(lines = null) {
@@ -173,7 +262,7 @@ const app = {
 
             const dx = pTo.x - pFrom.x;
             const dy = pTo.y - pFrom.y;
-            const trueDist = Math.sqrt(dx*dx + dy*dy);
+            const trueDist = this.haversineDist(pFrom.x, pFrom.y, pTo.x, pTo.y);
 
             const trueH_from = (pFrom.true_H != null) ? pFrom.true_H : pFrom.H;
             const trueH_to = (pTo.true_H != null) ? pTo.true_H : pTo.H;
@@ -195,6 +284,19 @@ const app = {
                 distance: trueDist
             });
         });
+    },
+
+    haversineDist(lon1, lat1, lon2, lat2) {
+        const R = 6371e3; // meters
+        const phi1 = lat1 * Math.PI/180;
+        const phi2 = lat2 * Math.PI/180;
+        const deltaPhi = (lat2-lat1) * Math.PI/180;
+        const deltaLambda = (lon2-lon1) * Math.PI/180;
+        const a = Math.sin(deltaPhi/2) * Math.sin(deltaPhi/2) +
+                  Math.cos(phi1) * Math.cos(phi2) *
+                  Math.sin(deltaLambda/2) * Math.sin(deltaLambda/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c; // distance in meters
     },
 
     randn_bm() {
@@ -415,175 +517,151 @@ const app = {
         this.drawNetwork();
     },
 
-    // --- Drawing / Canvas Logic ---
+    // --- Drawing / MapLibre Logic ---
+    _markers: {},
+
     drawNetwork() {
-        const ctx = this.ctx;
-        const w = this.canvas.width;
-        const h = this.canvas.height;
-        ctx.clearRect(0, 0, w, h);
+        if (!this.map || !this.map.getSource('network-lines')) return;
 
-        // If no points yet, show a placeholder hint
-        if (this.points.length === 0) {
-            ctx.fillStyle = '#a8a29e';
-            ctx.font = '13px Inter';
-            ctx.textAlign = 'center';
-            ctx.fillText('Clique em Adicionar Ponto para começar.', w / 2, h / 2);
-            ctx.textAlign = 'left';
-            return;
-        }
-
-        // Find bounding box
-        let minX = 9999, minY = 9999, maxX = -9999, maxY = -9999;
-        this.points.forEach(p => {
-            if(p.x < minX) minX = p.x; if(p.x > maxX) maxX = p.x;
-            if(p.y < minY) minY = p.y; if(p.y > maxY) maxY = p.y;
-        });
-
-        // Add padding
-        const pad = 100;
-        minX -= pad; minY -= pad; maxX += pad; maxY += pad;
-        const rangeX = maxX - minX;
-        const rangeY = maxY - minY;
-        const scale = Math.min(w / rangeX, h / rangeY);
-
-        // Save transform for canvas→geo coordinate conversion
-        this._mapTransform = { minX, minY, scale, h };
-
-        const toCanvas = (geoX, geoY) => {
-            // Geodetic Y is North (up). Canvas Y is down.
-            // Apply base fit-to-content transform, then user zoom/pan.
-            const bx = (geoX - minX) * scale;
-            const by = h - ((geoY - minY) * scale);
-            return {
-                cx: bx * this._userZoom + this._userPan.x,
-                cy: by * this._userZoom + this._userPan.y
-            };
-        };
-
-        // Draw grid
-        ctx.strokeStyle = '#f5f5f4';
-        ctx.lineWidth = 1;
-        for(let i=0; i<w; i+=50) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,h); ctx.stroke(); }
-        for(let i=0; i<h; i+=50) { ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(w,i); ctx.stroke(); }
-
-        // Draw leveling lines
+        // Atualizar Fonte GeoJSON (Linhas)
+        const features = [];
         this.observations.forEach(obs => {
             const pFrom = this.points.find(p => p.id === obs.from);
             const pTo = this.points.find(p => p.id === obs.to);
             if (!pFrom || !pTo) return;
-
-            const cFrom = toCanvas(pFrom.x, pFrom.y);
-            const cTo = toCanvas(pTo.x, pTo.y);
 
             let isOutlierLine = false;
             if (this.adjResults) {
                 isOutlierLine = this.adjResults.obsData.some(res => res.obs.id === obs.id && res.isOutlier);
             }
 
-            ctx.beginPath();
-            ctx.moveTo(cFrom.cx, cFrom.cy);
-            ctx.lineTo(cTo.cx, cTo.cy);
-
-            if (isOutlierLine) {
-                ctx.strokeStyle = 'rgba(244, 63, 94, 0.8)';
-                ctx.lineWidth = 2;
-                ctx.setLineDash([5, 5]);
-            } else {
-                ctx.strokeStyle = 'rgba(120, 113, 108, 0.4)';
-                ctx.lineWidth = 1;
-                ctx.setLineDash([]);
-            }
-            ctx.stroke();
-            ctx.setLineDash([]);
-
-            // Draw small arrow to indicate direction
-            const angle = Math.atan2(cTo.cy - cFrom.cy, cTo.cx - cFrom.cx);
-            const midX = (cFrom.cx + cTo.cx) / 2;
-            const midY = (cFrom.cy + cTo.cy) / 2;
-            ctx.beginPath();
-            ctx.moveTo(midX, midY);
-            ctx.lineTo(midX - 5 * Math.cos(angle - Math.PI/6), midY - 5 * Math.sin(angle - Math.PI/6));
-            ctx.lineTo(midX - 5 * Math.cos(angle + Math.PI/6), midY - 5 * Math.sin(angle + Math.PI/6));
-            ctx.closePath();
-            ctx.fillStyle = isOutlierLine ? 'rgba(244, 63, 94, 0.8)' : 'rgba(120, 113, 108, 0.6)';
-            ctx.fill();
+            features.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'LineString',
+                    coordinates: [[pFrom.x, pFrom.y], [pTo.x, pTo.y]]
+                },
+                properties: {
+                    color: isOutlierLine ? '#f43f5e' : '#78716c',
+                    width: isOutlierLine ? 4 : 2
+                }
+            });
         });
 
-        // Draw Points
-        this.points.forEach(pt => {
-            const pc = toCanvas(pt.x, pt.y);
+        const source = this.map.getSource('network-lines');
+        if (source) {
+            source.setData({ type: 'FeatureCollection', features });
+        }
 
-            // Error bar for adjusted points
+        // Limpar marcadores antigos
+        Object.values(this._markers).forEach(m => m.remove());
+        this._markers = {};
+
+        // Adicionar Marcadores para os Pontos
+        this.points.forEach(pt => {
+            const el = document.createElement('div');
+            el.className = 'cursor-pointer select-none';
+            el.style.position = 'relative';
+            el.style.width = '0px';
+            el.style.height = '0px';
+            el.style.setProperty('opacity', '1', 'important');
+
+            // Marcador Base
+            const dot = document.createElement('div');
+            const isSelected = this._selectedPoint && this._selectedPoint.id === pt.id;
+            
+            dot.style.position = 'absolute';
+            dot.style.top = '0px';
+            dot.style.left = '0px';
+            dot.style.width = pt.fixed ? '12px' : '10px';
+            dot.style.height = pt.fixed ? '12px' : '10px';
+            dot.style.backgroundColor = pt.fixed ? '#292524' : '#2076DF';
+            dot.style.borderRadius = pt.fixed ? '2px' : '50%';
+            dot.style.border = isSelected ? '2px solid #f59e0b' : '1px solid #fff';
+            dot.style.boxShadow = '0 0 4px rgba(0,0,0,0.5)';
+            dot.style.transform = 'translate(-50%, -50%)';
+
+            el.appendChild(dot);
+
+            // Label
+            const label = document.createElement('div');
+            label.innerText = pt.id;
+            label.style.position = 'absolute';
+            label.style.left = '8px';
+            label.style.top = '-16px';
+            label.style.fontSize = '12px';
+            label.style.fontWeight = 'bold';
+            label.style.color = '#292524';
+            label.style.textShadow = '1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff';
+            label.style.pointerEvents = 'none';
+            el.appendChild(label);
+
+            const hLabel = document.createElement('div');
+            hLabel.innerText = `H: ${pt.H.toFixed(3)}`;
+            hLabel.style.position = 'absolute';
+            hLabel.style.left = '10px';
+            hLabel.style.top = '4px';
+            hLabel.style.fontSize = '10px';
+            hLabel.style.color = '#57534e';
+            hLabel.style.fontFamily = 'monospace';
+            hLabel.style.whiteSpace = 'nowrap';
+            hLabel.style.background = 'rgba(255,255,255,0.8)';
+            hLabel.style.padding = '0 2px';
+            hLabel.style.borderRadius = '2px';
+            hLabel.style.pointerEvents = 'none';
+            el.appendChild(hLabel);
+
+            // Barra de Erro
             if (this.adjResults && !pt.fixed) {
                 const pResult = this.adjResults.stationResults.find(r => r.stationId === pt.id);
                 if (pResult) {
                     const stdH = Math.sqrt(pResult.QxxBlock);
                     const ellipseExag = parseFloat(document.getElementById('ellipseExag')?.value) || 10;
-                    const vizScale = 5000 * scale * ellipseExag;
-                    const barH = stdH * vizScale;
+                    // Escala visual da barra de erro
+                    const barH = stdH * 1000 * ellipseExag; // std em mm * exage
+                    
+                    const bar = document.createElement('div');
+                    bar.style.position = 'absolute';
+                    bar.style.left = '-1px';
+                    bar.style.top = `-${barH/2}px`;
+                    bar.style.width = '2px';
+                    bar.style.height = `${barH}px`;
+                    bar.style.backgroundColor = 'rgba(15, 118, 110, 0.6)';
+                    bar.style.pointerEvents = 'none';
+                    el.appendChild(bar);
 
-                    ctx.beginPath();
-                    ctx.moveTo(pc.cx, pc.cy - barH);
-                    ctx.lineTo(pc.cx, pc.cy + barH);
-                    ctx.strokeStyle = '#0f766e';
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
+                    // Top/Bottom caps
+                    const capTop = document.createElement('div');
+                    capTop.style.position = 'absolute';
+                    capTop.style.left = '-4px';
+                    capTop.style.top = `-${barH/2}px`;
+                    capTop.style.width = '8px';
+                    capTop.style.height = '2px';
+                    capTop.style.backgroundColor = 'rgba(15, 118, 110, 0.6)';
+                    el.appendChild(capTop);
 
-                    ctx.beginPath();
-                    ctx.moveTo(pc.cx - 3, pc.cy - barH);
-                    ctx.lineTo(pc.cx + 3, pc.cy - barH);
-                    ctx.moveTo(pc.cx - 3, pc.cy + barH);
-                    ctx.lineTo(pc.cx + 3, pc.cy + barH);
-                    ctx.stroke();
+                    const capBot = document.createElement('div');
+                    capBot.style.position = 'absolute';
+                    capBot.style.left = '-4px';
+                    capBot.style.top = `${barH/2}px`;
+                    capBot.style.width = '8px';
+                    capBot.style.height = '2px';
+                    capBot.style.backgroundColor = 'rgba(15, 118, 110, 0.6)';
+                    el.appendChild(capBot);
                 }
             }
 
-            const isSelected = this._selectedPoint && this._selectedPoint.obj.id === pt.id;
+            el.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (this.insertMode) return;
+                this.selectPoint(pt);
+            });
 
-            if (pt.fixed) {
-                if (isSelected) {
-                    ctx.strokeStyle = 'rgba(41, 37, 36, 0.5)';
-                    ctx.lineWidth = 3;
-                    ctx.setLineDash([4, 3]);
-                    ctx.strokeRect(pc.cx - 10, pc.cy - 10, 20, 20);
-                    ctx.setLineDash([]);
-                }
-                ctx.fillStyle = '#292524'; // Stone-800
-                ctx.beginPath();
-                ctx.rect(pc.cx - 5, pc.cy - 5, 10, 10);
-                ctx.fill();
-                if (isSelected) {
-                    ctx.strokeStyle = '#78716c';
-                    ctx.lineWidth = 2;
-                    ctx.strokeRect(pc.cx - 5, pc.cy - 5, 10, 10);
-                }
-            } else {
-                if (isSelected) {
-                    ctx.beginPath();
-                    ctx.arc(pc.cx, pc.cy, 12, 0, 2*Math.PI);
-                    ctx.strokeStyle = 'rgba(20, 184, 166, 0.5)';
-                    ctx.lineWidth = 3;
-                    ctx.setLineDash([4, 3]);
-                    ctx.stroke();
-                    ctx.setLineDash([]);
-                }
-                ctx.beginPath();
-                ctx.arc(pc.cx, pc.cy, 5, 0, 2*Math.PI);
-                ctx.fillStyle = '#14b8a6'; // Teal
-                ctx.fill();
-                ctx.strokeStyle = isSelected ? '#0f766e' : '#fff';
-                ctx.lineWidth = isSelected ? 2 : 1;
-                ctx.stroke();
-            }
-
-            ctx.font = '10px Inter';
-            ctx.fillStyle = '#292524';
-            ctx.fillText(pt.id, pc.cx + 8, pc.cy - 8);
-
-            // Draw H value
-            ctx.font = '9px JetBrains Mono';
-            ctx.fillStyle = '#57534e';
-            ctx.fillText(`H: ${pt.H.toFixed(3)}`, pc.cx + 8, pc.cy + 4);
+            const marker = new maplibregl.Marker({ element: el })
+                .setLngLat([pt.x, pt.y])
+                .addTo(this.map);
+            
+            this._markers[pt.id] = marker;
         });
     },
 
@@ -695,113 +773,71 @@ const app = {
 
     // --- Point Insertion Methods ---
 
-    geoFromCanvas(cx, cy) {
-        if (!this._mapTransform) return { x: 0, y: 0 };
-        const { minX, minY, scale, h } = this._mapTransform;
-        // Reverse user zoom/pan, then reverse base transform
-        const bx = (cx - this._userPan.x) / this._userZoom;
-        const by = (cy - this._userPan.y) / this._userZoom;
-        return {
-            x: bx / scale + minX,
-            y: (h - by) / scale + minY
-        };
-    },
-
-    _getCanvasXY(event) {
-        const rect = this.canvas.getBoundingClientRect();
-        const scaleX = this.canvas.width / rect.width;
-        const scaleY = this.canvas.height / rect.height;
-        return { cx: event.offsetX * scaleX, cy: event.offsetY * scaleY };
-    },
-
-    _hitTestPoint(cx, cy) {
-        if (!this._mapTransform) return null;
-        const { minX, minY, scale, h } = this._mapTransform;
-        const toCanvas = (geoX, geoY) => {
-            const bx = (geoX - minX) * scale;
-            const by = h - ((geoY - minY) * scale);
-            return { cx: bx * this._userZoom + this._userPan.x, cy: by * this._userZoom + this._userPan.y };
-        };
-        const HIT_RADIUS = 15;
-        let best = null, bestDist = HIT_RADIUS;
-        this.points.forEach(pt => {
-            const pc = toCanvas(pt.x, pt.y);
-            const d = Math.hypot(pc.cx - cx, pc.cy - cy);
-            if (d < bestDist) { bestDist = d; best = { obj: pt }; }
-        });
-        return best;
-    },
-
-    onCanvasMouseDown(event) {
-        const { cx, cy } = this._getCanvasXY(event);
-        this._mouseDownPos = { cx, cy };
-        this._dragging = false;
-        this._dragTarget = null;
-        if (!this.insertMode) {
-            const hit = this._hitTestPoint(cx, cy);
-            if (hit) {
-                this._dragTarget = hit;
-                this._dragStartGeo = { x: hit.obj.x, y: hit.obj.y };
-            }
-        }
-    },
-
-    onCanvasMouseMove(event) {
-        const { cx, cy } = this._getCanvasXY(event);
-
-        // Hover cursor feedback (no button pressed)
-        if (!this._mouseDownPos) {
-            if (!this.insertMode) {
-                const hover = this._hitTestPoint(cx, cy);
-                this.canvas.style.cursor = hover ? 'grab' : 'default';
-            }
-            return;
-        }
-        const dx = cx - this._mouseDownPos.cx;
-        const dy = cy - this._mouseDownPos.cy;
-
-        if (!this._dragging && this._dragTarget && Math.hypot(dx, dy) > this._DRAG_THRESHOLD) {
-            this._dragging = true;
-            this.canvas.style.cursor = 'grabbing';
-        }
-        if (this._dragging && this._dragTarget) {
-            const geo = this.geoFromCanvas(cx, cy);
-            const pt = this._dragTarget.obj;
-            pt.x = geo.x;
-            pt.y = geo.y;
-            this.drawNetwork();
-        }
-    },
-
-    onCanvasMouseUp(event) {
-        if (!this._mouseDownPos) return;
-        const wasDragging = this._dragging;
-        const dragTarget = this._dragTarget;
-
-        if (wasDragging && dragTarget) {
-            // Finished dragging — reset solution
-            this._resetAfterGeometryChange();
-            this.canvas.style.cursor = this.insertMode ? 'crosshair' : 'default';
-        } else if (!wasDragging) {
-            // It was a click (no drag)
-            const { cx, cy } = this._getCanvasXY(event);
-            if (this.insertMode) {
-                const geo = this.geoFromCanvas(cx, cy);
-                this.openPointModal('Point', geo.x, geo.y);
-            } else {
-                const hit = this._hitTestPoint(cx, cy);
-                if (hit) {
-                    this.selectPoint(hit);
-                } else {
-                    this.deselectPoint();
-                }
+    async getElevation(lng, lat) {
+        // Try to get from MapLibre first if available and loaded at high res
+        if (this.terrainLoaded && this.map.getZoom() > 10) {
+            const elev = this.map.queryTerrainElevation({lng, lat});
+            if (elev !== null && elev > -10000 && elev < 10000) {
+                // If it looks reasonable, we might still want to fetch the real data
+                // because queryTerrainElevation might return interpolated or exaggerated values.
+                // Actually, let's always use the direct tile fetch to guarantee precision.
             }
         }
 
-        this._mouseDownPos = null;
-        this._dragging = false;
-        this._dragTarget = null;
-        this._dragStartGeo = null;
+        // Direct tile decode (Robust Serverless approach)
+        try {
+            const zoom = 14; // Max zoom for Mapzen terrain
+            const x = Math.floor((lng + 180) / 360 * Math.pow(2, zoom));
+            const y = Math.floor((1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * Math.pow(2, zoom));
+
+            const url = `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${zoom}/${x}/${y}.png`;
+            
+            const response = await fetch(url);
+            if (!response.ok) return 100.000; // Fallback
+            
+            const blob = await response.blob();
+            const img = await createImageBitmap(blob);
+            
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+
+            const n = Math.pow(2, zoom);
+            const x_pixel = Math.floor(((lng + 180) / 360 * n - x) * 256);
+            const y_pixel = Math.floor(((1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * n - y) * 256);
+
+            // Bounds check
+            const px = Math.max(0, Math.min(255, x_pixel));
+            const py = Math.max(0, Math.min(255, y_pixel));
+
+            const pixelData = ctx.getImageData(px, py, 1, 1).data;
+            const r = pixelData[0];
+            const g = pixelData[1];
+            const b = pixelData[2];
+
+            const elev = (r * 256 + g + b / 256) - 32768;
+            return elev;
+        } catch (err) {
+            console.error("Erro ao buscar elevação", err);
+            return 100.000;
+        }
+    },
+
+    async onMapClick(e) {
+        if (this.insertMode === 'Point') {
+            const lng = e.lngLat.lng;
+            const lat = e.lngLat.lat;
+            
+            document.body.style.cursor = 'wait';
+            const elevation = await this.getElevation(lng, lat);
+            document.body.style.cursor = 'default';
+
+            this.openPointModal('Point', lng, lat, elevation);
+        } else {
+            this.deselectPoint();
+        }
     },
 
     selectPoint(hit) {
@@ -824,11 +860,11 @@ const app = {
             btn.id = 'canvasTrashBtn';
             btn.innerHTML = '&#128465;';
             btn.title = 'Excluir ponto selecionado';
+            btn.className = 'absolute top-2 right-2 bg-rose-600 text-white rounded p-2 shadow hover:bg-rose-700 z-20';
             btn.addEventListener('click', () => this.deleteSelectedPoint());
-            this.canvas.parentElement.style.position = 'relative';
-            this.canvas.parentElement.appendChild(btn);
+            document.getElementById('map').parentElement.appendChild(btn);
         }
-        btn.style.display = 'flex';
+        btn.style.display = 'block';
     },
 
     _hideTrashButton() {
@@ -863,7 +899,7 @@ const app = {
             if (pFrom && pTo) {
                 const dx = pTo.x - pFrom.x;
                 const dy = pTo.y - pFrom.y;
-                obs.distance = Math.sqrt(dx * dx + dy * dy);
+                obs.distance = this.haversineDist(pFrom.x, pFrom.y, pTo.x, pTo.y);
                 obs.std = (this.SIGMA_DIST_MM / 1000) * Math.sqrt(obs.distance / 1000);
             }
         });
@@ -885,7 +921,7 @@ const app = {
         }
 
         if (btnA) btnA.classList.toggle('insert-btn-active', this.insertMode === 'Point');
-        if (this.canvas) this.canvas.style.cursor = this.insertMode ? 'crosshair' : 'default';
+        if (this.map) this.map.getCanvas().style.cursor = this.insertMode ? 'crosshair' : 'grab';
         if (hint) hint.classList.toggle('hidden', !this.insertMode);
     },
 
@@ -1022,7 +1058,7 @@ const app = {
         const pTo = this.points[1];
         const dx = pTo.x - pFrom.x;
         const dy = pTo.y - pFrom.y;
-        const dist = Math.sqrt(dx*dx + dy*dy);
+        const dist = this.haversineDist(pFrom.x, pFrom.y, pTo.x, pTo.y);
         const stdDist = (this.SIGMA_DIST_MM / 1000) * Math.sqrt(dist / 1000);
 
         const trueH_from = (pFrom.true_H != null) ? pFrom.true_H : pFrom.H;
@@ -1060,7 +1096,7 @@ const app = {
         this.renderObsTable();
     },
 
-    openPointModal(type, geoX, geoY) {
+    openPointModal(type, geoX, geoY, defaultElev = 100.000) {
         this._pendingPoint = { type, geoX, geoY };
         document.getElementById('modalTitle').textContent = 'Novo Ponto de Nivelamento';
 
@@ -1075,27 +1111,27 @@ const app = {
 
             <div class="grid grid-cols-2 gap-3">
                 <div>
-                    <label class="block text-xs font-semibold text-stone-600 mb-1">E (X) para Vis. (m)</label>
-                    <input id="modalInputX" type="number" step="0.1" value="${geoX.toFixed(1)}"
+                    <label class="block text-xs font-semibold text-stone-600 mb-1">Longitude</label>
+                    <input id="modalInputX" type="number" step="0.000001" value="${geoX.toFixed(6)}"
                         class="w-full px-3 py-2 text-sm border border-stone-300 rounded focus:outline-none focus:border-teal-500" />
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-stone-600 mb-1">N (Y) para Vis. (m)</label>
-                    <input id="modalInputY" type="number" step="0.1" value="${geoY.toFixed(1)}"
+                    <label class="block text-xs font-semibold text-stone-600 mb-1">Latitude</label>
+                    <input id="modalInputY" type="number" step="0.000001" value="${geoY.toFixed(6)}"
                         class="w-full px-3 py-2 text-sm border border-stone-300 rounded focus:outline-none focus:border-teal-500" />
                 </div>
             </div>
 
             <div class="pt-2 border-t border-stone-100">
                 <label class="flex items-center gap-2 text-sm text-stone-600 cursor-pointer select-none">
-                    <input type="checkbox" id="modalInputFixed" class="accent-teal-600 w-4 h-4" onchange="document.getElementById('modalInputH').disabled = !this.checked; if(!this.checked) document.getElementById('modalInputH').value = '100.000';" />
+                    <input type="checkbox" id="modalInputFixed" class="accent-teal-600 w-4 h-4" onchange="document.getElementById('modalInputH').disabled = !this.checked; if(!this.checked) document.getElementById('modalInputH').value = '${defaultElev.toFixed(3)}';" />
                     <span class="font-bold">Ponto Fixo (Altitude Conhecida)</span>
                 </label>
             </div>
 
             <div>
                 <label class="block text-xs font-semibold text-stone-600 mb-1">Altitude Inicial / Fixa H (m)</label>
-                <input id="modalInputH" type="number" step="0.001" value="100.000" disabled
+                <input id="modalInputH" type="number" step="0.001" value="${defaultElev.toFixed(3)}" disabled
                     class="w-full px-3 py-2 text-sm border border-stone-300 rounded focus:outline-none focus:border-teal-500 disabled:bg-stone-100 disabled:text-stone-400" />
             </div>`;
 
@@ -1162,7 +1198,7 @@ const app = {
                 if (!newPt || !otherPt) return;
                 const dx = otherPt.x - newPt.x;
                 const dy = otherPt.y - newPt.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
+                const dist = this.haversineDist(newPt.x, newPt.y, otherPt.x, otherPt.y);
                 const stdDist = (this.SIGMA_DIST_MM / 1000) * Math.sqrt(dist / 1000);
                 const trueDH = (otherPt.true_H != null ? otherPt.true_H : otherPt.H)
                              - (newPt.true_H != null ? newPt.true_H : newPt.H);
@@ -1195,25 +1231,14 @@ const app = {
     },
 
     fitNetwork() {
-        this._userZoom = 1;
-        this._userPan = { x: 0, y: 0 };
-        this.drawNetwork();
-    },
-
-    onWheel(event) {
-        event.preventDefault();
-        const rect = this.canvas.getBoundingClientRect();
-        const scaleX = this.canvas.width / rect.width;
-        const scaleY = this.canvas.height / rect.height;
-        // Mouse position in canvas pixel space
-        const mx = event.offsetX * scaleX;
-        const my = event.offsetY * scaleY;
-        const factor = event.deltaY < 0 ? 1.1 : (1 / 1.1);
-        // Zoom centered on mouse: keep the point under the cursor stationary
-        this._userPan.x = mx + (this._userPan.x - mx) * factor;
-        this._userPan.y = my + (this._userPan.y - my) * factor;
-        this._userZoom *= factor;
-        this.drawNetwork();
+        if (this.map && this.points.length > 0) {
+            let minX = 9999, minY = 9999, maxX = -9999, maxY = -9999;
+            this.points.forEach(p => {
+                if(p.x < minX) minX = p.x; if(p.x > maxX) maxX = p.x;
+                if(p.y < minY) minY = p.y; if(p.y > maxY) maxY = p.y;
+            });
+            this.map.fitBounds([[minX, minY], [maxX, maxY]], { padding: 50 });
+        }
     },
 
     fitMcNetwork() {

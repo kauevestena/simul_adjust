@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Astrometry Position Simulator</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        slate: {
+                            850: '#151e2e',
+                            900: '#0f172a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-black text-slate-200 overflow-hidden select-none font-sans">
+
+    <!-- Three.js Canvas Container -->
+    <div id="canvas-container" class="absolute inset-0 z-0"></div>
+
+    <!-- Theodolite Lens Overlay -->
+    <div class="absolute inset-0 pointer-events-none z-10 flex items-center justify-center">
+        <div class="lens-mask w-[80vmin] h-[80vmin] rounded-full border border-white/10 relative">
+            <!-- Crosshairs -->
+            <div class="absolute top-1/2 left-0 w-full h-[1px] bg-red-500/50"></div>
+            <div class="absolute top-0 left-1/2 w-[1px] h-full bg-red-500/50"></div>
+            <!-- Center Dot -->
+            <div class="absolute top-1/2 left-1/2 w-[4px] h-[4px] -mt-[2px] -ml-[2px] bg-red-500 rounded-full"></div>
+        </div>
+        <div class="lens-shadow absolute inset-0"></div>
+    </div>
+
+    <!-- UI Overlay -->
+    <div class="absolute inset-0 z-20 pointer-events-none flex flex-col justify-between p-6">
+        
+        <!-- Top Bar -->
+        <div class="flex justify-between items-start pointer-events-auto">
+            <div class="glass-panel p-4 rounded-xl flex flex-col gap-2">
+                <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400" id="ui-title">Astrometry Simulator</h1>
+                <div class="flex gap-2 text-xs">
+                    <button id="lang-en" class="px-2 py-1 rounded bg-white/10 hover:bg-white/20 transition-colors">EN</button>
+                    <button id="lang-pt" class="px-2 py-1 rounded hover:bg-white/20 transition-colors">PT</button>
+                </div>
+            </div>
+
+            <div class="glass-panel p-4 rounded-xl text-right font-mono">
+                <div class="text-sm text-slate-400" id="ui-gmt-label">Greenwich Mean Time</div>
+                <div class="text-2xl font-bold text-emerald-400" id="clock-display">00:00:00</div>
+            </div>
+        </div>
+
+        <!-- Middle Area (Tooltips) -->
+        <div class="flex-1 flex items-center justify-center pointer-events-none relative">
+            <!-- Star Info Tooltip (Hidden by default) -->
+            <div id="star-tooltip" class="absolute glass-panel p-4 rounded-xl border border-blue-500/30 opacity-0 transition-opacity duration-300 ml-[45vmin] mb-[20vmin]">
+                <div class="text-lg font-bold text-blue-300" id="star-name">Sirius</div>
+                <div class="grid grid-cols-2 gap-x-4 gap-y-1 mt-2 text-sm font-mono">
+                    <div class="text-slate-400" id="ui-ra-label">RA:</div><div id="star-ra">06h 45m 09s</div>
+                    <div class="text-slate-400" id="ui-dec-label">DEC:</div><div id="star-dec">-16° 42' 58"</div>
+                    <div class="text-slate-400" id="ui-mag-label">Mag:</div><div id="star-mag">-1.46</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Area (Readings and Notebook) -->
+        <div class="flex justify-between items-end pointer-events-auto">
+            
+            <!-- Instructions Panel -->
+            <div class="glass-panel p-6 rounded-xl max-w-sm w-full border border-amber-500/20 bg-slate-900/80">
+                <h2 class="text-sm font-bold text-amber-500 mb-2 uppercase tracking-wider" id="ui-instruction-title">Instructions</h2>
+                <p class="text-slate-200 mb-4" id="instruction-text">Loading...</p>
+                <button id="action-btn" class="w-full py-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 rounded-lg font-semibold text-white transition-all shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed">
+                    Record Observation
+                </button>
+            </div>
+
+            <!-- Instruments Panel -->
+            <div class="flex gap-4">
+                <div class="glass-panel p-4 rounded-xl w-32 flex flex-col items-center">
+                    <div class="text-xs text-slate-400 mb-1 text-center" id="ui-zenith-label">Zenith Dist.</div>
+                    <div class="text-xl font-mono text-cyan-400" id="reading-zenith">00°00'00"</div>
+                </div>
+                <div class="glass-panel p-4 rounded-xl w-32 flex flex-col items-center">
+                    <div class="text-xs text-slate-400 mb-1 text-center" id="ui-azimuth-label">Horiz. Angle</div>
+                    <div class="text-xl font-mono text-cyan-400" id="reading-azimuth">00°00'00"</div>
+                </div>
+            </div>
+
+            <!-- Notebook Panel -->
+            <div class="glass-panel p-4 rounded-xl w-72 h-64 flex flex-col">
+                <h2 class="text-sm font-bold text-slate-300 mb-3 border-b border-white/10 pb-2" id="ui-notebook-title">Observation Log</h2>
+                <div id="observation-list" class="flex-1 overflow-y-auto text-xs font-mono space-y-2">
+                    <!-- Entries go here -->
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="i18n.js"></script>
+    <script src="stars.js"></script>
+    <script src="astronomy_math.js"></script>
+    <script src="three_viewport.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
