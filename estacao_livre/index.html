@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Simulador de Interseção à Ré - MMQ</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <!-- Chosen Palette: Warm Neutrals for background, Slate/Teal for UI elements, Red/Green for status -->
     <!-- Application Structure Plan: Dashboard layout. Left: Controls & Simulation parameters. Center: Visual Interactive Canvas (Network Map). Right/Bottom: Analytical Tables (Residuals, Reliability, Global Tests). This structure allows the user to instantly see the visual impact of an injected outlier on the geometry while correlating it with the rigorous statistical metrics. -->
     <!-- Visualization & Content Choices: Native HTML5 Canvas for the network rendering (allows custom drawing of error ellipses and dynamic lines). Tailwind for UI. Custom JS Matrix math for the Least Squares Adjustment, ensuring no external dependencies break the math logic. -->
@@ -215,7 +216,7 @@
                                     </td>
                                 </tr>
                             </tbody>
-                        </table>B Azimute 112
+                        </table>
                     </div>
                 </div>
 
@@ -269,10 +270,10 @@
                                     class="border-b border-dotted border-stone-400 cursor-help">E<sub>adj</sub> (m)</th>
                                 <th data-tooltip="Coordenada Norte (Y) ajustada final"
                                     class="border-b border-dotted border-stone-400 cursor-help">N<sub>adj</sub> (m)</th>
-                                <th data-tooltip="Desvio padrão da coordenada Este a priori e (a posteriori)"
+                                <th data-tooltip="Desvio padrão a priori e (a posteriori)"
                                     class="border-b border-dotted border-stone-400 cursor-help">std E (mm) <span
                                         class="text-[9px] font-normal text-stone-400">pri (pos)</span></th>
-                                <th data-tooltip="Desvio padrão da coordenada Norte a priori e (a posteriori)"
+                                <th data-tooltip="Desvio padrão a priori e (a posteriori)"
                                     class="border-b border-dotted border-stone-400 cursor-help">std N (mm) <span
                                         class="text-[9px] font-normal text-stone-400">pri (pos)</span></th>
                                 <th data-tooltip="Correlação estatística entre as coordenadas E e N"
@@ -292,10 +293,28 @@
                     </table>
                 </div>
                 <p class="text-[10px] text-stone-400 mt-2 leading-tight">
-                    <strong>Conf. ext. m&aacute;x.:</strong> maior deslocamento de posi&ccedil;&atilde;o causado pelo
+                    <strong>Conf. ext. m&aacute;x.:</strong> maior deslocamento geográfico absoluto (módulo) da posição causado pelo
                     erro m&iacute;nimo detect&aacute;vel (&nabla;<sub>0</sub>) de qualquer observa&ccedil;&atilde;o
                     &mdash; confiabilidade externa da rede.
                 </p>
+            </div>
+
+            <!-- Matrices Visualization -->
+            <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-sm mt-4">
+                <h2 class="text-sm font-bold text-stone-500 uppercase tracking-wider mb-3">Matrizes do Ajustamento</h2>
+                <div class="flex flex-wrap gap-1 bg-stone-100 rounded-lg p-0.5 mb-3">
+                    <button onclick="app.switchMatrixTab('A')" id="matTab-A" class="mat-tab-btn mat-tab-active px-3 py-1.5 text-xs font-semibold rounded-md transition-all bg-white shadow-sm text-teal-700">A</button>
+                    <button onclick="app.switchMatrixTab('P')" id="matTab-P" class="mat-tab-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all text-stone-600 hover:bg-stone-200">P</button>
+                    <button onclick="app.switchMatrixTab('L')" id="matTab-L" class="mat-tab-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all text-stone-600 hover:bg-stone-200">L</button>
+                    <button onclick="app.switchMatrixTab('X')" id="matTab-X" class="mat-tab-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all text-stone-600 hover:bg-stone-200">X (dx)</button>
+                    <button onclick="app.switchMatrixTab('V')" id="matTab-V" class="mat-tab-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all text-stone-600 hover:bg-stone-200">V</button>
+                    <button onclick="app.switchMatrixTab('N')" id="matTab-N" class="mat-tab-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all text-stone-600 hover:bg-stone-200">N</button>
+                    <button onclick="app.switchMatrixTab('SigmaXa')" id="matTab-SigmaXa" class="mat-tab-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all text-stone-600 hover:bg-stone-200">&Sigma;<sub>Xa</sub></button>
+                </div>
+                <div id="matrixContent" class="overflow-auto p-4 flex justify-center items-center bg-stone-50 rounded border border-stone-100 min-h-[150px]">
+                    <p class="text-xs text-stone-400">Aguardando ajustamento...</p>
+                </div>
+                <p id="matDesc" class="text-[10px] text-stone-400 mt-2 leading-tight"></p>
             </div>
 
             <!-- Monte Carlo Simulation -->
@@ -440,8 +459,9 @@
         </div>
     </div>
 
-    <!-- Math.js -->
+    <!-- Math.js, KaTeX e Script da Aplicação -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script src="app.js"></script>
 
 </body>

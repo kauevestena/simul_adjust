@@ -438,6 +438,8 @@ const app = {
         const AtP_f = math.multiply(math.transpose(A), P);
         const N_f   = math.multiply(AtP_f, A);
         const Qxx   = math.inv(N_f);
+        const Qxx_arr = typeof Qxx.toArray === 'function' ? Qxx.toArray() : Qxx;
+        const SigmaXa = Qxx_arr.map(row => row.map(v => v * sigma02));
 
         // Residual cofactor Qv = P⁻¹ − A Qxx Aᵀ
         const Qv = math.subtract(
@@ -454,7 +456,7 @@ const app = {
         const obsData = this.observations.map((o, i) => {
             const v        = V[i][0];
             const sigma_vi = Math.sqrt(Math.max(0, Qv[i][i]));
-            const w        = sigma_vi > 0 ? v / (sigma0 * sigma_vi) : NaN;
+            const w        = sigma_vi > 0 ? v / sigma_vi : NaN; // Teste de Baarda exige variância a priori
             const r_i      = Qv[i][i] * P[i][i];
             const mdb      = (this.NON_CENTRALITY * o.std) / Math.sqrt(r_i);
             // External reliability: coordinate displacement caused by undetected MDB
@@ -477,7 +479,12 @@ const app = {
             return { stationId: st.id, x: st.x, y: st.y, QxxBlock, maxExtMag, maxExtObs };
         });
 
-        this.adjResults = { VtPV, dof, sigma02, sigma0, globalPass, chi2lim: chi2_upper, chi2low: chi2_lower, obsData, stationResults };
+        this.adjResults = { 
+            VtPV, dof, sigma02, sigma0, globalPass, 
+            chi2lim: chi2_upper, chi2low: chi2_lower, 
+            obsData, stationResults,
+            matrices: { A, P, L, X: dx_vec, V, N: N_f, SigmaXa }
+        };
         this.updateUI_Results();
         this.drawNetwork();
     },
@@ -651,6 +658,9 @@ const app = {
         document.querySelector('#tableResiduals tbody').innerHTML = `<tr><td colspan="7" class="text-center text-stone-400 py-4">Aguardando ajustamento...</td></tr>`;
         document.querySelector('#tableReliability tbody').innerHTML = `<tr><td colspan="4" class="text-center text-stone-400 py-4">Aguardando ajustamento...</td></tr>`;
         document.querySelector('#tableCoords tbody').innerHTML = `<tr><td colspan="8" class="text-center text-stone-400 py-4">Aguardando ajustamento...</td></tr>`;
+        
+        const matContainer = document.getElementById('matrixContent');
+        if (matContainer) matContainer.innerHTML = '<p class="text-xs text-stone-400">Aguardando ajustamento...</p>';
     },
 
     updateUI_Results() {
@@ -765,6 +775,105 @@ const app = {
             `;
             tbCoords.appendChild(tr);
         });
+        
+        this.renderMatrixTab();
+    },
+
+    _activeMatrixTab: 'A',
+
+    switchMatrixTab(tab) {
+        this._activeMatrixTab = tab;
+        document.querySelectorAll('.mat-tab-btn').forEach(btn => {
+            btn.className = 'mat-tab-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all text-stone-600 hover:bg-stone-200';
+        });
+        const activeBtn = document.getElementById(`matTab-${tab}`);
+        if (activeBtn) activeBtn.className = 'mat-tab-btn mat-tab-active px-3 py-1.5 text-xs font-semibold rounded-md transition-all bg-white shadow-sm text-teal-700';
+        this.renderMatrixTab();
+    },
+
+    formatMatrixToLatex(name, mat) {
+        if (!mat) return '\\text{Erro: Matriz indefinida}';
+        if (!mat.length) return '\\text{Erro: Matriz vazia}';
+        
+        // Only show up to 20 rows/cols to prevent browser freezing if huge
+        const MAX_DIM = 20;
+        let isTruncated = mat.length > MAX_DIM || mat[0] && mat[0].length > MAX_DIM;
+        
+        let displayMat = mat;
+        if (isTruncated) {
+            displayMat = mat.slice(0, MAX_DIM).map(row => row ? row.slice(0, MAX_DIM) : []);
+        }
+
+        const formatNumber = (v) => {
+            if (v === null || v === undefined || isNaN(v)) return '\\text{NaN}';
+            if (Math.abs(v) < 1e-15) return '0';
+            if (Number.isInteger(v)) return v.toString();
+            
+            let absV = Math.abs(v);
+            if (absV < 0.001 || absV > 100000) {
+                let exp = v.toExponential(4);
+                let parts = exp.split('e');
+                return `${parts[0]} \\times 10^{${parseInt(parts[1])}}`;
+            }
+            return parseFloat(v).toFixed(4);
+        };
+
+        let rows = displayMat.map(row => {
+            if (!Array.isArray(row)) return formatNumber(row);
+            return row.map(v => formatNumber(v)).join(' & ');
+        }).join(' \\\\ \n');
+        
+        if (isTruncated) {
+             rows += ' \\\\ \n \\vdots & \\ddots';
+        }
+
+        let prefix = name;
+        if (name === 'X') prefix = 'dx';
+        else if (name === 'SigmaXa') prefix = '\\Sigma_{X_a}';
+        
+        return `${prefix} = \\begin{bmatrix}\n${rows}\n\\end{bmatrix}`;
+    },
+
+    renderMatrixTab() {
+        const container = document.getElementById('matrixContent');
+        if (!container) return;
+        if (!this.adjResults || !this.adjResults.matrices) {
+            container.innerHTML = '<p class="text-xs text-stone-400">Aguardando ajustamento...</p>';
+            return;
+        }
+        
+        const mat = this.adjResults.matrices[this._activeMatrixTab];
+        if (!mat) return;
+
+        container.innerHTML = '<div id="katexWrapper" class="w-full overflow-x-auto flex justify-center"></div><p id="matDesc" class="text-xs text-stone-600 mt-4 text-justify border-t border-stone-200 pt-3 px-2 leading-relaxed"></p>';
+        const kWrap = document.getElementById('katexWrapper');
+        const mDesc = document.getElementById('matDesc');
+
+        const explanations = {
+            'A': '<strong>Matriz de Configuração / Jacobiana (A):</strong> Contém as derivadas parciais das equações de observação em relação às incógnitas. Ela descreve matematicamente a geometria da rede, conectando os parâmetros calculados com as medições de campo.',
+            'P': '<strong>Matriz de Pesos (P):</strong> Uma matriz quadrada, que no contexto não-correlacionado, é puramente diagonal contendo o inverso das variâncias a priori. Ela quantifica o nível de incerteza da medição, fazendo com que observações mais precisas tenham maior atração/peso na solução.',
+            'L': '<strong>Vetor de Termos Independentes ou Desfechamento (L):</strong> Vetor que armazena a diferença entre os valores observados no campo (L<sub>obs</sub>) e os calculados matematicamente a partir das coordenadas atuais/aproximadas (L<sub>calc</sub>).',
+            'X': '<strong>Vetor de Solução (dx):</strong> Este é o vetor de correções iterativas estimado pelo princípio dos mínimos quadrados (dx = N<sup>-1</sup>U). Em redes não-lineares, a cada iteração seus valores são somados às posições parciais até que todo o sistema estabilize.',
+            'V': '<strong>Vetor de Resíduos (V):</strong> Valores teóricos impostos pelo ajustamento que devem ser somados às observações originais para que a rede "feche" geometricamente. O princípio fundamental do MMQ é fazer com que a soma global ponderada V<sup>T</sup> P V atinja seu ponto mínimo.',
+            'N': '<strong>Matriz das Equações Normais (N):</strong> Equacionada por N = A<sup>T</sup> P A, condensa o modelo estocástico (peso) e geométrico da rede numa única matriz simétrica e positiva definida. <em>Nota: É normal que os valores numéricos sejam altos, pois os pesos derivam do inverso da variância em metros (ex: &sigma;=5mm &rarr; P=40.000), o que propaga elevada magnitude para N.</em>',
+            'SigmaXa': '<strong>Matriz de Variância-Covariância (MVC) dos Parâmetros Ajustados (&Sigma;<sub>X<sub>a</sub></sub>):</strong> Obtida pela propagação das variâncias multiplicando a Matriz Cofatora (Q<sub>xx</sub> = N<sup>-1</sup>) pelo Fator de Variância a posteriori (&sigma;<sub>0</sub><sup>2</sup>). Sua diagonal principal contém a variância estatística (incerteza) final de cada parâmetro ajustado, e os demais elementos representam as covariâncias entre eles.'
+        };
+
+        mDesc.innerHTML = explanations[this._activeMatrixTab] || '';
+
+        const latexStr = this.formatMatrixToLatex(this._activeMatrixTab, mat);
+        if (window.katex) {
+            try {
+                katex.render(latexStr, kWrap, {
+                    displayMode: true,
+                    throwOnError: false
+                });
+            } catch(e) {
+                kWrap.innerHTML = '<p class="text-xs text-rose-500">Erro ao renderizar matriz.</p>';
+            }
+        } else {
+            kWrap.innerHTML = '<p class="text-xs text-rose-500">Erro: KaTeX não carregado.</p>';
+        }
     },
 
     // --- Point Insertion Methods ---
