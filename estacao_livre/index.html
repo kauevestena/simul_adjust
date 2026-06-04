@@ -118,7 +118,7 @@
 
                     <div>
                         <div class="flex justify-between text-xs text-stone-500 mb-1">
-                            <label for="aprioriAz">&sigma; Azimutes</label>
+                            <label for="aprioriAz">&sigma; Direções horizontais</label>
                             <span id="aprioriAzVal" class="font-mono font-semibold text-stone-700">3.0&Prime;</span>
                         </div>
                         <input id="aprioriAz" type="range" min="1" max="10" step="0.5" value="3" class="w-full"
@@ -202,8 +202,9 @@
                                         class="border-b border-dotted border-stone-400 cursor-help">Observado</th>
                                     <th data-tooltip="Diferença entre o valor ajustado e o valor observado"
                                         class="border-b border-dotted border-stone-400 cursor-help">v (Resíduo)</th>
-                                    <th data-tooltip="Desvio padrão a posteriori do resíduo"
-                                        class="border-b border-dotted border-stone-400 cursor-help">std(v)</th>
+                                    <th data-tooltip="Desvio padrão a priori do resíduo e valor a posteriori entre parênteses"
+                                        class="border-b border-dotted border-stone-400 cursor-help">std(v) <span
+                                            class="text-[9px] font-normal text-stone-400">pri (pos)</span></th>
                                     <th data-tooltip="Estatística de teste w (Resíduo padronizado). Se |w| > limite crítico, a observação é considerada um possível erro grosseiro."
                                         class="border-b border-dotted border-stone-400 cursor-help">w-test (Baarda)</th>
                                     <th data-tooltip="Resultado do Data Snooping (OK ou OUTLIER)"
@@ -270,11 +271,16 @@
                                     class="border-b border-dotted border-stone-400 cursor-help">E<sub>adj</sub> (m)</th>
                                 <th data-tooltip="Coordenada Norte (Y) ajustada final"
                                     class="border-b border-dotted border-stone-400 cursor-help">N<sub>adj</sub> (m)</th>
+                                <th data-tooltip="Constante de orientação ajustada da estação"
+                                    class="border-b border-dotted border-stone-400 cursor-help">&omega;<sub>adj</sub></th>
                                 <th data-tooltip="Desvio padrão a priori e (a posteriori)"
                                     class="border-b border-dotted border-stone-400 cursor-help">std E (mm) <span
                                         class="text-[9px] font-normal text-stone-400">pri (pos)</span></th>
                                 <th data-tooltip="Desvio padrão a priori e (a posteriori)"
                                     class="border-b border-dotted border-stone-400 cursor-help">std N (mm) <span
+                                        class="text-[9px] font-normal text-stone-400">pri (pos)</span></th>
+                                <th data-tooltip="Desvio padrão a priori e (a posteriori) da orientação"
+                                    class="border-b border-dotted border-stone-400 cursor-help">std &omega; <span
                                         class="text-[9px] font-normal text-stone-400">pri (pos)</span></th>
                                 <th data-tooltip="Correlação estatística entre as coordenadas E e N"
                                     class="border-b border-dotted border-stone-400 cursor-help">&rho;<sub>EN</sub></th>
@@ -287,7 +293,7 @@
                         </thead>
                         <tbody>
                             <tr>
-                                <td colspan="8" class="text-center text-stone-400 py-4">Aguardando ajustamento...</td>
+                                <td colspan="10" class="text-center text-stone-400 py-4">Aguardando ajustamento...</td>
                             </tr>
                         </tbody>
                     </table>

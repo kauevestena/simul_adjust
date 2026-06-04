@@ -121,7 +121,7 @@ const app = {
             const trueDist = Math.sqrt(dx*dx + dy*dy);
 
             if (obs.type === 'dist') {
-                obs.std = (this.SIGMA_DIST_MM / 1000) + (trueDist * this.SIGMA_DIST_PPM / 1000000);
+                obs.std = this.distanceStd(trueDist);
             } else {
                 obs.std = this.SIGMA_AZ_SEC * (Math.PI / 180 / 3600);
             }
@@ -157,7 +157,8 @@ const app = {
             id: 'E1', 
             true_x: 1000 + (Math.random()-0.5)*100, 
             true_y: 1000 + (Math.random()-0.5)*100,
-            x: 0, y: 0 // Will hold current estimate
+            true_omega: Math.random() * 2 * Math.PI,
+            x: 0, y: 0, omega: 0 // Will hold current estimate
         };
         
         // Initial guess (Centroid of control points - standard geodetic start)
@@ -165,6 +166,7 @@ const app = {
         genSt.y = this.points.reduce((s, p) => s + p.y, 0) / this.points.length;
         genSt._x0 = genSt.x;
         genSt._y0 = genSt.y;
+        genSt._omega0 = 0;
 
         // All control points connected by default for auto-generated networks
         genSt.connections = this.points.map(p => p.id);
@@ -186,21 +188,23 @@ const app = {
             // Use true position for simulated networks; approx position for manual placements
             const trueX = (st.true_x != null) ? st.true_x : st.x;
             const trueY = (st.true_y != null) ? st.true_y : st.y;
+            const trueOmega = st.true_omega != null ? st.true_omega : 0;
 
             connectedPts.forEach((pt) => {
                 const dx = pt.x - trueX;
                 const dy = pt.y - trueY;
                 const trueDist = Math.sqrt(dx*dx + dy*dy);
                 const trueAz = Math.atan2(dx, dy); // Geodetic az: atan2(dE, dN)
+                const trueDir = this.wrap2Pi(trueAz - trueOmega);
 
-                const stdDist = (this.SIGMA_DIST_MM / 1000) + (trueDist * this.SIGMA_DIST_PPM / 1000000);
-                const stdAzRad = this.SIGMA_AZ_SEC * (Math.PI / 180 / 3600);
+                const stdDist = this.distanceStd(trueDist);
+                const stdDirRad = this.SIGMA_AZ_SEC * (Math.PI / 180 / 3600);
 
                 const n1 = this.randn_bm();
                 const n2 = this.randn_bm();
 
                 const obsDist = trueDist + n1 * stdDist;
-                const obsAz = trueAz + n2 * stdAzRad;
+                const obsDir = this.wrap2Pi(trueDir + n2 * stdDirRad);
 
                 this.observations.push({
                     id: `D_${st.id}-${pt.id}`, type: 'dist', target: pt,
@@ -210,13 +214,78 @@ const app = {
                 });
 
                 this.observations.push({
-                    id: `Az_${st.id}-${pt.id}`, type: 'azimuth', target: pt,
-                    stationId: st.id, val: obsAz, std: stdAzRad, hasError: false,
-                    _baseVal: obsAz, _blunderOffset: 0, _simNoise: 0,
+                    id: `Dir_${st.id}-${pt.id}`, type: 'direction', target: pt,
+                    stationId: st.id, val: obsDir, std: stdDirRad, hasError: false,
+                    _baseVal: obsDir, _blunderOffset: 0, _simNoise: 0,
                     idx: this.observations.length
                 });
             });
         }
+        this.initializeOrientationApproximations();
+    },
+
+    initializeOrientationApproximations() {
+        this.stations.forEach(st => {
+            let sumSin = 0, sumCos = 0, count = 0;
+            this.observations.forEach(obs => {
+                if (obs.stationId !== st.id || obs.type !== 'direction') return;
+                const dx = obs.target.x - st.x;
+                const dy = obs.target.y - st.y;
+                const az = Math.atan2(dx, dy);
+                const omega = this.wrap2Pi(az - obs.val);
+                sumSin += Math.sin(omega);
+                sumCos += Math.cos(omega);
+                count++;
+            });
+            const omega0 = count > 0 ? this.wrap2Pi(Math.atan2(sumSin, sumCos)) : 0;
+            st._omega0 = omega0;
+            if (st.omega == null) st.omega = omega0;
+        });
+    },
+
+    buildFreeStationSystem(stIdx, nu) {
+        const A = this.observations.map(() => Array(nu).fill(0));
+        const L = [];
+
+        this.observations.forEach((o, i) => {
+            const k = stIdx[o.stationId];
+            const st = this.stations[k];
+            const base = 3 * k;
+            const calcDx = o.target.x - st.x;
+            const calcDy = o.target.y - st.y;
+            const calcDist = Math.sqrt(calcDx * calcDx + calcDy * calcDy);
+
+            if (calcDist <= 0) throw Error('Distância nula em uma observação da estação livre.');
+
+            if (o.type === 'dist') {
+                A[i][base] = -calcDx / calcDist;
+                A[i][base + 1] = -calcDy / calcDist;
+                A[i][base + 2] = 0;
+                L.push([o.val - calcDist]);
+            } else {
+                A[i][base] = -calcDy / (calcDist * calcDist);
+                A[i][base + 1] =  calcDx / (calcDist * calcDist);
+                A[i][base + 2] = -1;
+                const calcDir = this.wrap2Pi(Math.atan2(calcDx, calcDy) - st.omega);
+                L.push([this.wrapPi(o.val - calcDir)]);
+            }
+        });
+
+        return { A, L };
+    },
+
+    computeFreeStationResiduals(stIdx) {
+        return this.observations.map((o) => {
+            const k = stIdx[o.stationId];
+            const st = this.stations[k];
+            const dx = o.target.x - st.x;
+            const dy = o.target.y - st.y;
+            if (o.type === 'dist') {
+                return [Math.sqrt(dx * dx + dy * dy) - o.val];
+            }
+            const computedDir = this.wrap2Pi(Math.atan2(dx, dy) - st.omega);
+            return [this.wrapPi(computedDir - o.val)];
+        });
     },
 
     randn_bm() {
@@ -224,6 +293,94 @@ const app = {
         while(u === 0) u = Math.random();
         while(v === 0) v = Math.random();
         return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+    },
+
+    wrapPi(rad) {
+        while (rad > Math.PI) rad -= 2 * Math.PI;
+        while (rad < -Math.PI) rad += 2 * Math.PI;
+        return rad;
+    },
+
+    wrap2Pi(rad) {
+        return ((rad % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+    },
+
+    distanceStd(dist) {
+        const fixed = this.SIGMA_DIST_MM / 1000;
+        const ppm = dist * this.SIGMA_DIST_PPM / 1000000;
+        return Math.hypot(fixed, ppm);
+    },
+
+    logGamma(z) {
+        const p = [
+            676.5203681218851, -1259.1392167224028, 771.32342877765313,
+            -176.61502916214059, 12.507343278686905, -0.13857109526572012,
+            9.9843695780195716e-6, 1.5056327351493116e-7
+        ];
+        if (z < 0.5) return Math.log(Math.PI) - Math.log(Math.sin(Math.PI * z)) - this.logGamma(1 - z);
+        z -= 1;
+        let x = 0.99999999999980993;
+        for (let i = 0; i < p.length; i++) x += p[i] / (z + i + 1);
+        const t = z + p.length - 0.5;
+        return Math.log(Math.sqrt(2 * Math.PI)) + (z + 0.5) * Math.log(t) - t + Math.log(x);
+    },
+
+    regularizedGammaP(a, x) {
+        if (x <= 0) return 0;
+        if (a <= 0) return NaN;
+        const gln = this.logGamma(a);
+        const EPS = 1e-14;
+        const ITMAX = 200;
+        if (x < a + 1) {
+            let ap = a;
+            let sum = 1 / a;
+            let del = sum;
+            for (let n = 1; n <= ITMAX; n++) {
+                ap += 1;
+                del *= x / ap;
+                sum += del;
+                if (Math.abs(del) < Math.abs(sum) * EPS) {
+                    return sum * Math.exp(-x + a * Math.log(x) - gln);
+                }
+            }
+            return sum * Math.exp(-x + a * Math.log(x) - gln);
+        }
+
+        let b = x + 1 - a;
+        let c = 1 / 1e-300;
+        let d = 1 / b;
+        let h = d;
+        for (let i = 1; i <= ITMAX; i++) {
+            const an = -i * (i - a);
+            b += 2;
+            d = an * d + b;
+            if (Math.abs(d) < 1e-300) d = 1e-300;
+            c = b + an / c;
+            if (Math.abs(c) < 1e-300) c = 1e-300;
+            d = 1 / d;
+            const del = d * c;
+            h *= del;
+            if (Math.abs(del - 1) < EPS) break;
+        }
+        return 1 - Math.exp(-x + a * Math.log(x) - gln) * h;
+    },
+
+    chi2CDF(x, dof) {
+        return this.regularizedGammaP(dof / 2, x / 2);
+    },
+
+    chi2Inv(p, dof) {
+        if (p <= 0) return 0;
+        if (p >= 1) return Infinity;
+        let lo = 0;
+        let hi = Math.max(dof, 1);
+        while (this.chi2CDF(hi, dof) < p) hi *= 2;
+        for (let i = 0; i < 80; i++) {
+            const mid = (lo + hi) / 2;
+            if (this.chi2CDF(mid, dof) < p) lo = mid;
+            else hi = mid;
+        }
+        return (lo + hi) / 2;
     },
 
     normInv(p) {
@@ -256,7 +413,7 @@ const app = {
         const list = document.getElementById('blunderObsList');
         list.innerHTML = '';
         this.observations.forEach((obs, idx) => {
-            const isAngle = obs.type === 'azimuth';
+            const isAngle = obs.type === 'direction';
             const valDisplay = isAngle
                 ? this.formatDMS(obs.val)
                 : obs.val.toFixed(4) + ' m';
@@ -266,7 +423,7 @@ const app = {
             label.innerHTML = `
                 <input type="checkbox" class="blunderObsCheck accent-rose-500" value="${idx}"${obs.hasError ? ' disabled' : checked}>
                 <span class="font-mono">${obs.id}</span>
-                <span class="text-stone-400">(${isAngle ? 'Azimute' : 'Distância'}: ${valDisplay}${obs.hasError ? ' — já contém erro' : ''})</span>
+                <span class="text-stone-400">(${isAngle ? 'Direção horizontal' : 'Distância'}: ${valDisplay}${obs.hasError ? ' — já contém erro' : ''})</span>
             `;
             list.appendChild(label);
         });
@@ -296,7 +453,7 @@ const app = {
             obs._blunderOffset = sign * magnitude;
             obs.val = obs._baseVal + obs._blunderOffset + (obs._simNoise || 0);
             obs.hasError = true;
-            const isAngle = obs.type === 'azimuth';
+            const isAngle = obs.type === 'direction';
             const errDisplay = isAngle
                 ? this.r2as(magnitude).toFixed(2) + '″'
                 : (magnitude * 1000).toFixed(3) + ' mm';
@@ -326,10 +483,11 @@ const app = {
             obs._simNoise = obs.type === 'dist'
                 ? (sigLin > 0 ? this.randn_bm() * sigLin : 0)
                 : (sigAng > 0 ? this.randn_bm() * sigAng : 0);
-            obs.val = (obs._baseVal || obs.val) + (obs._blunderOffset || 0) + obs._simNoise;
+            const rawVal = (obs._baseVal != null ? obs._baseVal : obs.val) + (obs._blunderOffset || 0) + obs._simNoise;
+            obs.val = obs.type === 'dist' ? rawVal : this.wrap2Pi(rawVal);
         });
 
-        const nu = 2 * this.stations.length; // total unknowns (X,Y per station)
+        const nu = 3 * this.stations.length; // total unknowns (E,N,omega per station)
         const m  = this.observations.length;
         const dof = m - nu;
 
@@ -342,44 +500,31 @@ const app = {
         const P = this.observations.map(() => Array(m).fill(0));
         this.observations.forEach((o, i) => P[i][i] = 1.0 / (o.std * o.std));
 
-        // Map station id → column-block index k  (unknowns at cols 2k, 2k+1)
+        // Map station id → column-block index k  (unknowns at cols 3k, 3k+1, 3k+2)
         const stIdx = {};
         this.stations.forEach((st, k) => { stIdx[st.id] = k; });
 
         // Reset station positions to initial approximations so each run is independent
-        this.stations.forEach(st => { if (st._x0 != null) { st.x = st._x0; st.y = st._y0; } });
+        this.stations.forEach(st => {
+            if (st._x0 != null) { st.x = st._x0; st.y = st._y0; }
+            st.omega = 0;
+        });
+        this.initializeOrientationApproximations();
+        this.stations.forEach(st => { st.omega = st._omega0 || 0; });
 
         const maxIter = 15;
         const tol = 0.0001; // 0.1 mm
+        const tolAng = 1e-10; // radians
         let iter = 0;
         let A, L, dx_vec;
 
         while (iter < maxIter) {
-            // Build full design matrix A (m × nu) and misclosure vector L (m × 1)
-            A = this.observations.map(() => Array(nu).fill(0));
-            L = [];
-
-            this.observations.forEach((o, i) => {
-                const k  = stIdx[o.stationId];
-                const st = this.stations[k];
-                const calcDx   = o.target.x - st.x;
-                const calcDy   = o.target.y - st.y;
-                const calcDist = Math.sqrt(calcDx * calcDx + calcDy * calcDy);
-
-                if (o.type === 'dist') {
-                    A[i][2*k]   = -calcDx / calcDist;
-                    A[i][2*k+1] = -calcDy / calcDist;
-                    L.push([o.val - calcDist]);
-                } else {
-                    A[i][2*k]   = -calcDy / (calcDist * calcDist);
-                    A[i][2*k+1] =  calcDx / (calcDist * calcDist);
-                    let calcAz = Math.atan2(calcDx, calcDy);
-                    let diff = o.val - calcAz;
-                    while (diff >  Math.PI) diff -= 2 * Math.PI;
-                    while (diff < -Math.PI) diff += 2 * Math.PI;
-                    L.push([diff]);
-                }
-            });
+            try {
+                ({ A, L } = this.buildFreeStationSystem(stIdx, nu));
+            } catch(e) {
+                alert(e.message);
+                return;
+            }
 
             const At  = math.transpose(A);
             const AtP = math.multiply(At, P);
@@ -395,40 +540,34 @@ const app = {
                 return;
             }
 
-            let maxCorr = 0;
+            let maxLinCorr = 0;
+            let maxAngCorr = 0;
             this.stations.forEach((st, k) => {
-                const dx = dx_vec[2*k][0];
-                const dy = dx_vec[2*k+1][0];
+                const base = 3 * k;
+                const dx = dx_vec[base][0];
+                const dy = dx_vec[base + 1][0];
+                const domega = dx_vec[base + 2][0];
                 st.x += dx;
                 st.y += dy;
-                if (Math.abs(dx) > maxCorr) maxCorr = Math.abs(dx);
-                if (Math.abs(dy) > maxCorr) maxCorr = Math.abs(dy);
+                st.omega = this.wrap2Pi(st.omega + domega);
+                maxLinCorr = Math.max(maxLinCorr, Math.abs(dx), Math.abs(dy));
+                maxAngCorr = Math.max(maxAngCorr, Math.abs(domega));
             });
 
             iter++;
-            if (maxCorr < tol) break;
+            if (maxLinCorr < tol && maxAngCorr < tolAng) break;
         }
 
         // --- Post-adjustment quality control (single combined system) ---
 
-        // Recompute residuals directly from converged coordinates
-        const V = [];
-        this.observations.forEach((o) => {
-            const k  = stIdx[o.stationId];
-            const st = this.stations[k];
-            const dx = o.target.x - st.x;
-            const dy = o.target.y - st.y;
-            const computedDist = Math.sqrt(dx * dx + dy * dy);
-            if (o.type === 'dist') {
-                V.push([computedDist - o.val]);
-            } else {
-                let computedAz = Math.atan2(dx, dy);
-                let diff = computedAz - o.val;
-                while (diff >  Math.PI) diff -= 2 * Math.PI;
-                while (diff < -Math.PI) diff += 2 * Math.PI;
-                V.push([diff]);
-            }
-        });
+        // Recompute final design matrix and residuals directly from converged coordinates
+        try {
+            ({ A, L } = this.buildFreeStationSystem(stIdx, nu));
+        } catch(e) {
+            alert(e.message);
+            return;
+        }
+        const V = this.computeFreeStationResiduals(stIdx);
 
         const VtPV = math.multiply(math.multiply(math.transpose(V), P), V)[0][0];
         const sigma02 = VtPV / dof;
@@ -437,46 +576,56 @@ const app = {
         // Full Qxx (nu × nu) via general matrix inverse
         const AtP_f = math.multiply(math.transpose(A), P);
         const N_f   = math.multiply(AtP_f, A);
-        const Qxx   = math.inv(N_f);
-        const Qxx_arr = typeof Qxx.toArray === 'function' ? Qxx.toArray() : Qxx;
-        const SigmaXa = Qxx_arr.map(row => row.map(v => v * sigma02));
+        const QxxRaw = math.inv(N_f);
+        const Qxx = typeof QxxRaw.toArray === 'function' ? QxxRaw.toArray() : QxxRaw;
+        const SigmaXa = Qxx.map(row => row.map(v => v * sigma02));
 
         // Residual cofactor Qv = P⁻¹ − A Qxx Aᵀ
-        const Qv = math.subtract(
+        const QvRaw = math.subtract(
             math.inv(P),
             math.multiply(math.multiply(A, Qxx), math.transpose(A))
         );
+        const Qv = typeof QvRaw.toArray === 'function' ? QvRaw.toArray() : QvRaw;
 
-        // Chi-square critical values (Wilson-Hilferty approximation)
-        const z_alpha = this.CRIT_W_TEST; // z for 1 - alpha/2
-        const chi2_upper = dof * Math.pow(1 - 2/(9*dof) + z_alpha * Math.sqrt(2/(9*dof)), 3);
-        const chi2_lower = Math.max(0, dof * Math.pow(1 - 2/(9*dof) - z_alpha * Math.sqrt(2/(9*dof)), 3));
+        // Exact chi-square critical values
+        const alpha = this.ALPHA_PCT / 100;
+        const chi2_upper = this.chi2Inv(1 - alpha / 2, dof);
+        const chi2_lower = this.chi2Inv(alpha / 2, dof);
         const globalPass = VtPV >= chi2_lower && VtPV <= chi2_upper;
 
         const obsData = this.observations.map((o, i) => {
             const v        = V[i][0];
             const sigma_vi = Math.sqrt(Math.max(0, Qv[i][i]));
             const w        = sigma_vi > 0 ? v / sigma_vi : NaN; // Teste de Baarda exige variância a priori
-            const r_i      = Qv[i][i] * P[i][i];
-            const mdb      = (this.NON_CENTRALITY * o.std) / Math.sqrt(r_i);
-            // External reliability: coordinate displacement caused by undetected MDB
-            const ext = Qxx.map(row => row.reduce((s, q, j) => s + q * A[i][j] * P[i][i] * mdb, 0));
+            const r_i      = Math.max(0, Qv[i][i] * P[i][i]);
+            const reliable = r_i > 1e-12 && Number.isFinite(r_i);
+            const mdb      = reliable ? (this.NON_CENTRALITY * o.std) / Math.sqrt(r_i) : null;
+            const ext = reliable
+                ? Qxx.map(row => row.reduce((s, q, j) => s + q * A[i][j] * P[i][i] * mdb, 0))
+                : null;
             return { obs: o, v, sigma_v: sigma_vi, w, r: r_i, mdb, ext, isOutlier: Math.abs(w) > this.CRIT_W_TEST };
         });
 
-        // Extract per-station 2×2 Qxx sub-blocks + external reliability
+        // Extract per-station 3×3 Qxx sub-blocks + external reliability
         const stationResults = this.stations.map((st, k) => {
+            const base = 3 * k;
             const QxxBlock = [
-                [Qxx[2*k][2*k],   Qxx[2*k][2*k+1]],
-                [Qxx[2*k+1][2*k], Qxx[2*k+1][2*k+1]]
+                [Qxx[base][base],         Qxx[base][base + 1],     Qxx[base][base + 2]],
+                [Qxx[base + 1][base],     Qxx[base + 1][base + 1], Qxx[base + 1][base + 2]],
+                [Qxx[base + 2][base],     Qxx[base + 2][base + 1], Qxx[base + 2][base + 2]]
+            ];
+            const coordQxx = [
+                [QxxBlock[0][0], QxxBlock[0][1]],
+                [QxxBlock[1][0], QxxBlock[1][1]]
             ];
             let maxExtMag = 0, maxExtObs = null;
             obsData.forEach(r => {
-                const dE = r.ext[2*k], dN = r.ext[2*k+1];
+                if (!r.ext) return;
+                const dE = r.ext[base], dN = r.ext[base + 1];
                 const mag = Math.sqrt(dE*dE + dN*dN);
                 if (mag > maxExtMag) { maxExtMag = mag; maxExtObs = r.obs.id; }
             });
-            return { stationId: st.id, x: st.x, y: st.y, QxxBlock, maxExtMag, maxExtObs };
+            return { stationId: st.id, x: st.x, y: st.y, omega: st.omega, QxxBlock, coordQxx, maxExtMag, maxExtObs };
         });
 
         this.adjResults = { 
@@ -579,7 +728,7 @@ const app = {
                 const stResult = this.adjResults.stationResults.find(r => r.stationId === st.id);
                 if (stResult) {
                     const stC = toCanvas(st.x, st.y);
-                    const Qx = stResult.QxxBlock;
+                    const Qx = stResult.coordQxx;
                     const trace = Qx[0][0] + Qx[1][1];
                     const det = Qx[0][0]*Qx[1][1] - Qx[0][1]*Qx[1][0];
                     const l1 = (trace + Math.sqrt(trace*trace - 4*det))/2;
@@ -657,7 +806,7 @@ const app = {
         
         document.querySelector('#tableResiduals tbody').innerHTML = `<tr><td colspan="7" class="text-center text-stone-400 py-4">Aguardando ajustamento...</td></tr>`;
         document.querySelector('#tableReliability tbody').innerHTML = `<tr><td colspan="4" class="text-center text-stone-400 py-4">Aguardando ajustamento...</td></tr>`;
-        document.querySelector('#tableCoords tbody').innerHTML = `<tr><td colspan="8" class="text-center text-stone-400 py-4">Aguardando ajustamento...</td></tr>`;
+        document.querySelector('#tableCoords tbody').innerHTML = `<tr><td colspan="10" class="text-center text-stone-400 py-4">Aguardando ajustamento...</td></tr>`;
         
         const matContainer = document.getElementById('matrixContent');
         if (matContainer) matContainer.innerHTML = '<p class="text-xs text-stone-400">Aguardando ajustamento...</p>';
@@ -693,7 +842,7 @@ const app = {
         tbRes.innerHTML = '';
         res.obsData.forEach(r => {
             const tr = document.createElement('tr');
-            const isAngle = r.obs.type === 'azimuth';
+            const isAngle = r.obs.type === 'direction';
             const badge = r.isOutlier 
                 ? '<span class="bg-rose-100 text-rose-700 px-2 py-0.5 rounded text-xs font-bold border border-rose-200">OUTLIER</span>' 
                 : '<span class="bg-teal-100 text-teal-700 px-2 py-0.5 rounded text-xs border border-teal-200">OK</span>';
@@ -707,14 +856,14 @@ const app = {
                 ? this.r2as(r.v).toFixed(2) + '″'
                 : (r.v * 1000).toFixed(3) + ' mm';
             const svDisplay   = isAngle
-                ? this.r2as(r.sigma_v).toFixed(2) + '″'
-                : (r.sigma_v * 1000).toFixed(3) + ' mm';
+                ? `${this.r2as(r.sigma_v).toFixed(2)}″ <span class="text-stone-400 text-[10px]">(${this.r2as(res.sigma0 * r.sigma_v).toFixed(2)})</span>`
+                : `${(r.sigma_v * 1000).toFixed(3)} mm <span class="text-stone-400 text-[10px]">(${(res.sigma0 * r.sigma_v * 1000).toFixed(3)})</span>`;
 
             const injectedIcon = r.obs.hasError ? ' <span class="text-rose-500" title="Erro Grosseiro Injetado">&#9888;</span>' : '';
 
             tr.innerHTML = `
                 <td class="font-mono">${r.obs.id}${injectedIcon}</td>
-                <td>${isAngle ? 'Azimute' : 'Distância'}</td>
+                <td>${isAngle ? 'Direção horizontal' : 'Distância'}</td>
                 <td class="font-mono">${obsDisplay}</td>
                 <td class="font-mono">${vDisplay}</td>
                 <td class="font-mono">${svDisplay}</td>
@@ -729,7 +878,7 @@ const app = {
         tbRel.innerHTML = '';
         res.obsData.forEach(r => {
             const tr = document.createElement('tr');
-            const isAngle = r.obs.type === 'azimuth';
+            const isAngle = r.obs.type === 'direction';
             
             // Color code redundancy (r > 0.5 is good, r < 0.1 is dangerous)
             let rColor = 'text-teal-600';
@@ -737,9 +886,9 @@ const app = {
             if(r.r < 0.3) { rColor = 'text-amber-500'; rQual = 'Média'; }
             if(r.r < 0.1) { rColor = 'text-rose-600 font-bold'; rQual = 'Crítica (Sem Controlo)'; }
 
-            const mdbDisplay = isAngle
-                ? this.r2as(r.mdb).toFixed(2) + '″'
-                : (r.mdb * 1000).toFixed(3) + ' mm';
+            const mdbDisplay = r.mdb == null
+                ? '--'
+                : (isAngle ? this.r2as(r.mdb).toFixed(2) + '″' : (r.mdb * 1000).toFixed(3) + ' mm');
 
             const injectedIcon = r.obs.hasError ? ' <span class="text-rose-500" title="Erro Grosseiro Injetado">&#9888;</span>' : '';
 
@@ -757,18 +906,22 @@ const app = {
         tbCoords.innerHTML = '';
         res.stationResults.forEach(sr => {
             const tr = document.createElement('tr');
-            const sigE_pri = Math.sqrt(sr.QxxBlock[0][0]) * 1000; // mm (a-priori)
-            const sigN_pri = Math.sqrt(sr.QxxBlock[1][1]) * 1000; // mm (a-priori)
+            const sigE_pri = Math.sqrt(sr.coordQxx[0][0]) * 1000; // mm (a-priori)
+            const sigN_pri = Math.sqrt(sr.coordQxx[1][1]) * 1000; // mm (a-priori)
+            const sigOmega_pri = Math.sqrt(sr.QxxBlock[2][2]); // rad (a-priori)
             const sigE_pos = res.sigma0 * sigE_pri; // mm (a-posteriori)
             const sigN_pos = res.sigma0 * sigN_pri; // mm (a-posteriori)
-            const rhoEN = sr.QxxBlock[0][1] / (Math.sqrt(sr.QxxBlock[0][0]) * Math.sqrt(sr.QxxBlock[1][1]));
+            const sigOmega_pos = res.sigma0 * sigOmega_pri; // rad (a-posteriori)
+            const rhoEN = sr.coordQxx[0][1] / (Math.sqrt(sr.coordQxx[0][0]) * Math.sqrt(sr.coordQxx[1][1]));
             const extMm = sr.maxExtMag * 1000; // mm
             tr.innerHTML = `
                 <td class="font-mono font-bold">${sr.stationId}</td>
                 <td class="font-mono">${sr.x.toFixed(4)}</td>
                 <td class="font-mono">${sr.y.toFixed(4)}</td>
+                <td class="font-mono">${this.formatDMS(sr.omega)}</td>
                 <td class="font-mono">${sigE_pri.toFixed(3)} <span class="text-stone-400 text-[10px]">(${sigE_pos.toFixed(3)})</span></td>
                 <td class="font-mono">${sigN_pri.toFixed(3)} <span class="text-stone-400 text-[10px]">(${sigN_pos.toFixed(3)})</span></td>
+                <td class="font-mono">${this.r2as(sigOmega_pri).toFixed(2)}″ <span class="text-stone-400 text-[10px]">(${this.r2as(sigOmega_pos).toFixed(2)})</span></td>
                 <td class="font-mono">${rhoEN.toFixed(3)}</td>
                 <td class="font-mono">${extMm.toFixed(3)}</td>
                 <td class="font-mono text-stone-400 text-xs">${sr.maxExtObs || '—'}</td>
@@ -853,9 +1006,9 @@ const app = {
             'A': '<strong>Matriz de Configuração / Jacobiana (A):</strong> Contém as derivadas parciais das equações de observação em relação às incógnitas. Ela descreve matematicamente a geometria da rede, conectando os parâmetros calculados com as medições de campo.',
             'P': '<strong>Matriz de Pesos (P):</strong> Uma matriz quadrada, que no contexto não-correlacionado, é puramente diagonal contendo o inverso das variâncias a priori. Ela quantifica o nível de incerteza da medição, fazendo com que observações mais precisas tenham maior atração/peso na solução.',
             'L': '<strong>Vetor de Termos Independentes ou Desfechamento (L):</strong> Vetor que armazena a diferença entre os valores observados no campo (L<sub>obs</sub>) e os calculados matematicamente a partir das coordenadas atuais/aproximadas (L<sub>calc</sub>).',
-            'X': '<strong>Vetor de Solução (dx):</strong> Este é o vetor de correções iterativas estimado pelo princípio dos mínimos quadrados (dx = N<sup>-1</sup>U). Em redes não-lineares, a cada iteração seus valores são somados às posições parciais até que todo o sistema estabilize.',
+            'X': '<strong>Vetor de Solução (dx):</strong> Correções iterativas de E, N e da orientação &omega; estimadas por mínimos quadrados (dx = N<sup>-1</sup>U). Seus valores são somados aos parâmetros aproximados até a convergência.',
             'V': '<strong>Vetor de Resíduos (V):</strong> Valores teóricos impostos pelo ajustamento que devem ser somados às observações originais para que a rede "feche" geometricamente. O princípio fundamental do MMQ é fazer com que a soma global ponderada V<sup>T</sup> P V atinja seu ponto mínimo.',
-            'N': '<strong>Matriz das Equações Normais (N):</strong> Equacionada por N = A<sup>T</sup> P A, condensa o modelo estocástico (peso) e geométrico da rede numa única matriz simétrica e positiva definida. <em>Nota: É normal que os valores numéricos sejam altos, pois os pesos derivam do inverso da variância em metros (ex: &sigma;=5mm &rarr; P=40.000), o que propaga elevada magnitude para N.</em>',
+            'N': '<strong>Matriz das Equações Normais (N):</strong> Equacionada por N = A<sup>T</sup> P A, condensa o modelo estocástico (peso) e geométrico da rede numa matriz simétrica. Ela só é positiva definida quando a geometria fornece posto completo para E, N e &omega;. <em>Nota: valores altos são normais porque os pesos são inversos das variâncias.</em>',
             'SigmaXa': '<strong>Matriz de Variância-Covariância (MVC) dos Parâmetros Ajustados (&Sigma;<sub>X<sub>a</sub></sub>):</strong> Obtida pela propagação das variâncias multiplicando a Matriz Cofatora (Q<sub>xx</sub> = N<sup>-1</sup>) pelo Fator de Variância a posteriori (&sigma;<sub>0</sub><sup>2</sup>). Sua diagonal principal contém a variância estatística (incerteza) final de cada parâmetro ajustado, e os demais elementos representam as covariâncias entre eles.'
         };
 
@@ -1222,10 +1375,13 @@ const app = {
                 id,
                 true_x: null,
                 true_y: null,
+                true_omega: 0,
                 x: approxX,
                 y: approxY,
+                omega: 0,
                 _x0: approxX,
                 _y0: approxY,
+                _omega0: 0,
                 connections
             });
 
@@ -1337,11 +1493,11 @@ const app = {
             let accepted = 0, rejected = 0, crashed = 0;
             
             const m = this.observations.length;
-            const nu = 2 * this.stations.length;
+            const nu = 3 * this.stations.length;
             const dof = m - nu;
-            const z_alpha = this.CRIT_W_TEST;
-            const chi2_upper = dof * Math.pow(1 - 2/(9*dof) + z_alpha * Math.sqrt(2/(9*dof)), 3);
-            const chi2_lower = Math.max(0, dof * Math.pow(1 - 2/(9*dof) - z_alpha * Math.sqrt(2/(9*dof)), 3));
+            const alpha = this.ALPHA_PCT / 100;
+            const chi2_upper = this.chi2Inv(1 - alpha / 2, dof);
+            const chi2_lower = this.chi2Inv(alpha / 2, dof);
             
             const P = this.observations.map(() => Array(m).fill(0));
             this.observations.forEach((o, i) => P[i][i] = 1.0 / (o.std * o.std));
@@ -1357,11 +1513,14 @@ const app = {
                     
                     const dx = tgE - st.x;
                     const dy = tgN - st.y;
-                    let baseL = o.type === 'dist' ? Math.sqrt(dx*dx + dy*dy) : Math.atan2(dx, dy);
+                    let baseL = o.type === 'dist'
+                        ? Math.sqrt(dx*dx + dy*dy)
+                        : this.wrap2Pi(Math.atan2(dx, dy) - st.omega);
                     
-                    return baseL + this.seededGauss(r) * o.std;
+                    const sim = baseL + this.seededGauss(r) * o.std;
+                    return o.type === 'dist' ? sim : this.wrap2Pi(sim);
                 });
-                let coords = this.stations.map(st => ({ E: st._x0, N: st._y0 }));
+                let coords = this.stations.map(st => ({ E: st._x0, N: st._y0, omega: st._omega0 || 0 }));
                 let maxIter = 15, iter = 0, dx_vec, converged = false;
                 
                 while (iter < maxIter) {
@@ -1371,6 +1530,7 @@ const app = {
                     this.observations.forEach((o, idx) => {
                         const k = stIdx[o.stationId];
                         const tgIdx = stIdx[o.target.id];
+                        const base = 3 * k;
                         const targetE = tgIdx !== undefined ? coords[tgIdx].E : o.target.x;
                         const targetN = tgIdx !== undefined ? coords[tgIdx].N : o.target.y;
                         
@@ -1379,17 +1539,16 @@ const app = {
                         const calcDist = Math.sqrt(calcDx * calcDx + calcDy * calcDy);
                         
                         if (o.type === 'dist') {
-                            A[idx][2*k] = -calcDx / calcDist;
-                            A[idx][2*k+1] = -calcDy / calcDist;
+                            A[idx][base] = -calcDx / calcDist;
+                            A[idx][base + 1] = -calcDy / calcDist;
+                            A[idx][base + 2] = 0;
                             L.push([L_obs[idx] - calcDist]);
                         } else {
-                            A[idx][2*k] = -calcDy / (calcDist * calcDist);
-                            A[idx][2*k+1] = calcDx / (calcDist * calcDist);
-                            let calcAz = Math.atan2(calcDx, calcDy);
-                            let diff = L_obs[idx] - calcAz;
-                            while (diff > Math.PI) diff -= 2 * Math.PI;
-                            while (diff < -Math.PI) diff += 2 * Math.PI;
-                            L.push([diff]);
+                            A[idx][base] = -calcDy / (calcDist * calcDist);
+                            A[idx][base + 1] = calcDx / (calcDist * calcDist);
+                            A[idx][base + 2] = -1;
+                            const calcDir = this.wrap2Pi(Math.atan2(calcDx, calcDy) - coords[k].omega);
+                            L.push([this.wrapPi(L_obs[idx] - calcDir)]);
                         }
                     });
                     
@@ -1401,14 +1560,17 @@ const app = {
                         let sol = math.lusolve(N_mat, U);
                         dx_vec = typeof sol.toArray === 'function' ? sol.toArray() : sol;
                         
-                        let maxC = 0;
+                        let maxLin = 0, maxAng = 0;
                         coords.forEach((c, k) => {
-                            c.E += dx_vec[2*k][0];
-                            c.N += dx_vec[2*k+1][0];
-                            maxC = Math.max(maxC, Math.abs(dx_vec[2*k][0]), Math.abs(dx_vec[2*k+1][0]));
+                            const base = 3 * k;
+                            c.E += dx_vec[base][0];
+                            c.N += dx_vec[base + 1][0];
+                            c.omega = this.wrap2Pi(c.omega + dx_vec[base + 2][0]);
+                            maxLin = Math.max(maxLin, Math.abs(dx_vec[base][0]), Math.abs(dx_vec[base + 1][0]));
+                            maxAng = Math.max(maxAng, Math.abs(dx_vec[base + 2][0]));
                         });
                         
-                        if (maxC < 0.0001) { converged = true; break; }
+                        if (maxLin < 0.0001 && maxAng < 1e-10) { converged = true; break; }
                         iter++;
                     } catch(e) {
                         break;
@@ -1428,10 +1590,8 @@ const app = {
                         if (o.type === 'dist') {
                             v = Math.sqrt(dx*dx + dy*dy) - L_obs[idx];
                         } else {
-                            let calcAz = Math.atan2(dx, dy);
-                            v = calcAz - L_obs[idx];
-                            while (v > Math.PI) v -= 2 * Math.PI;
-                            while (v < -Math.PI) v += 2 * Math.PI;
+                            const calcDir = this.wrap2Pi(Math.atan2(dx, dy) - coords[k].omega);
+                            v = this.wrapPi(calcDir - L_obs[idx]);
                         }
                         VtPV += v * P[idx][idx] * v;
                     });

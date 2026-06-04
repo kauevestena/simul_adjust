@@ -299,11 +299,141 @@ const app = {
         return R * c; // distance in meters
     },
 
+    validateLevelingNetwork() {
+        const errors = [];
+        const pointIds = new Set(this.points.map(p => p.id));
+        if (!this.points.some(p => p.fixed)) {
+            errors.push('A rede precisa de ao menos um ponto fixo para definir o datum altimétrico.');
+        }
+
+        const adjacency = new Map(this.points.map(p => [p.id, new Set()]));
+        this.observations.forEach((obs, idx) => {
+            const label = obs.id || `linha ${idx + 1}`;
+            const pFrom = this.points.find(p => p.id === obs.from);
+            const pTo = this.points.find(p => p.id === obs.to);
+
+            if (!pointIds.has(obs.from) || !pointIds.has(obs.to) || !pFrom || !pTo) {
+                errors.push(`${label}: ponto de origem ou destino inexistente.`);
+                return;
+            }
+            if (obs.from === obs.to) {
+                errors.push(`${label}: origem e destino não podem ser o mesmo ponto.`);
+            }
+            if (!(obs.std > 0) || !Number.isFinite(obs.std)) {
+                errors.push(`${label}: desvio padrão deve ser positivo.`);
+            }
+
+            const dist = this.haversineDist(pFrom.x, pFrom.y, pTo.x, pTo.y);
+            obs.distance = dist;
+            if (!(dist > 0) || !Number.isFinite(dist)) {
+                errors.push(`${label}: trecho com distância nula ou inválida.`);
+            }
+
+            if (obs.from !== obs.to) {
+                adjacency.get(obs.from).add(obs.to);
+                adjacency.get(obs.to).add(obs.from);
+            }
+        });
+
+        const reachable = new Set();
+        const queue = this.points.filter(p => p.fixed).map(p => p.id);
+        queue.forEach(id => reachable.add(id));
+        while (queue.length) {
+            const id = queue.shift();
+            (adjacency.get(id) || []).forEach(next => {
+                if (!reachable.has(next)) {
+                    reachable.add(next);
+                    queue.push(next);
+                }
+            });
+        }
+
+        this.points.forEach(p => {
+            if (!p.fixed && !reachable.has(p.id)) {
+                errors.push(`${p.id}: ponto desconhecido desconectado de qualquer ponto fixo.`);
+            }
+        });
+
+        return [...new Set(errors)];
+    },
+
     randn_bm() {
         let u = 0, v = 0;
         while(u === 0) u = Math.random();
         while(v === 0) v = Math.random();
         return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+    },
+
+    logGamma(z) {
+        const p = [
+            676.5203681218851, -1259.1392167224028, 771.32342877765313,
+            -176.61502916214059, 12.507343278686905, -0.13857109526572012,
+            9.9843695780195716e-6, 1.5056327351493116e-7
+        ];
+        if (z < 0.5) return Math.log(Math.PI) - Math.log(Math.sin(Math.PI * z)) - this.logGamma(1 - z);
+        z -= 1;
+        let x = 0.99999999999980993;
+        for (let i = 0; i < p.length; i++) x += p[i] / (z + i + 1);
+        const t = z + p.length - 0.5;
+        return Math.log(Math.sqrt(2 * Math.PI)) + (z + 0.5) * Math.log(t) - t + Math.log(x);
+    },
+
+    regularizedGammaP(a, x) {
+        if (x <= 0) return 0;
+        if (a <= 0) return NaN;
+        const gln = this.logGamma(a);
+        const EPS = 1e-14;
+        const ITMAX = 200;
+        if (x < a + 1) {
+            let ap = a;
+            let sum = 1 / a;
+            let del = sum;
+            for (let n = 1; n <= ITMAX; n++) {
+                ap += 1;
+                del *= x / ap;
+                sum += del;
+                if (Math.abs(del) < Math.abs(sum) * EPS) {
+                    return sum * Math.exp(-x + a * Math.log(x) - gln);
+                }
+            }
+            return sum * Math.exp(-x + a * Math.log(x) - gln);
+        }
+
+        let b = x + 1 - a;
+        let c = 1 / 1e-300;
+        let d = 1 / b;
+        let h = d;
+        for (let i = 1; i <= ITMAX; i++) {
+            const an = -i * (i - a);
+            b += 2;
+            d = an * d + b;
+            if (Math.abs(d) < 1e-300) d = 1e-300;
+            c = b + an / c;
+            if (Math.abs(c) < 1e-300) c = 1e-300;
+            d = 1 / d;
+            const del = d * c;
+            h *= del;
+            if (Math.abs(del - 1) < EPS) break;
+        }
+        return 1 - Math.exp(-x + a * Math.log(x) - gln) * h;
+    },
+
+    chi2CDF(x, dof) {
+        return this.regularizedGammaP(dof / 2, x / 2);
+    },
+
+    chi2Inv(p, dof) {
+        if (p <= 0) return 0;
+        if (p >= 1) return Infinity;
+        let lo = 0;
+        let hi = Math.max(dof, 1);
+        while (this.chi2CDF(hi, dof) < p) hi *= 2;
+        for (let i = 0; i < 80; i++) {
+            const mid = (lo + hi) / 2;
+            if (this.chi2CDF(mid, dof) < p) lo = mid;
+            else hi = mid;
+        }
+        return (lo + hi) / 2;
     },
 
     normInv(p) {
@@ -393,12 +523,17 @@ const app = {
             alert('Sem observações. Verifique as conexões.');
             return;
         }
+        const validationErrors = this.validateLevelingNetwork();
+        if (validationErrors.length > 0) {
+            alert(`Rede de nivelamento inválida:\n${validationErrors.join('\n')}`);
+            return;
+        }
 
         // Re-sample Gaussian noise on every run; if sigma=0 no noise is added
         const sigLin = parseFloat(document.getElementById('simSigLin').value) / 1000; // mm/sqrt(km) -> m/sqrt(km)
         this.observations.forEach(obs => {
             obs._simNoise = sigLin > 0 ? this.randn_bm() * sigLin * Math.sqrt(obs.distance / 1000) : 0;
-            obs.val = (obs._baseVal || obs.val) + (obs._blunderOffset || 0) + obs._simNoise;
+            obs.val = (obs._baseVal != null ? obs._baseVal : obs.val) + (obs._blunderOffset || 0) + obs._simNoise;
         });
 
         const nu = unknowns.length; // total unknowns (H per station)
@@ -475,31 +610,35 @@ const app = {
         // Full Qxx (nu × nu)
         const AtP_f = math.multiply(math.transpose(A), P);
         const N_f   = math.multiply(AtP_f, A);
-        const Qxx   = math.inv(N_f);
-        const Qxx_arr = typeof Qxx.toArray === 'function' ? Qxx.toArray() : Qxx;
-        const SigmaXa = Qxx_arr.map(row => row.map(v => v * sigma02));
+        const QxxRaw = math.inv(N_f);
+        const Qxx = typeof QxxRaw.toArray === 'function' ? QxxRaw.toArray() : QxxRaw;
+        const SigmaXa = Qxx.map(row => row.map(v => v * sigma02));
 
         // Residual cofactor Qv = P⁻¹ − A Qxx Aᵀ
-        const Qv = math.subtract(
+        const QvRaw = math.subtract(
             math.inv(P),
             math.multiply(math.multiply(A, Qxx), math.transpose(A))
         );
+        const Qv = typeof QvRaw.toArray === 'function' ? QvRaw.toArray() : QvRaw;
 
-        // Chi-square critical values
-        const z_alpha = this.CRIT_W_TEST; // z for 1 - alpha/2
-        const chi2_upper = dof * Math.pow(1 - 2/(9*dof) + z_alpha * Math.sqrt(2/(9*dof)), 3);
-        const chi2_lower = Math.max(0, dof * Math.pow(1 - 2/(9*dof) - z_alpha * Math.sqrt(2/(9*dof)), 3));
+        // Exact chi-square critical values
+        const alpha = this.ALPHA_PCT / 100;
+        const chi2_upper = this.chi2Inv(1 - alpha / 2, dof);
+        const chi2_lower = this.chi2Inv(alpha / 2, dof);
         const globalPass = VtPV >= chi2_lower && VtPV <= chi2_upper;
 
         const obsData = this.observations.map((o, i) => {
             const v        = V[i][0];
             const sigma_vi = Math.sqrt(Math.max(0, Qv[i][i]));
             const w        = sigma_vi > 0 ? v / sigma_vi : NaN; // Teste de Baarda exige variância a priori
-            const r_i      = Qv[i][i] * P[i][i];
-            const mdb      = (this.NON_CENTRALITY * o.std) / Math.sqrt(r_i);
+            const r_i      = Math.max(0, Qv[i][i] * P[i][i]);
+            const reliable = r_i > 1e-12 && Number.isFinite(r_i);
+            const mdb      = reliable ? (this.NON_CENTRALITY * o.std) / Math.sqrt(r_i) : null;
 
             // External reliability: elevation displacement caused by undetected MDB
-            const ext = Qxx.map(row => row.reduce((s, q, j) => s + q * A[i][j] * P[i][i] * mdb, 0));
+            const ext = reliable
+                ? Qxx.map(row => row.reduce((s, q, j) => s + q * A[i][j] * P[i][i] * mdb, 0))
+                : null;
             return { obs: o, v, sigma_v: sigma_vi, w, r: r_i, mdb, ext, isOutlier: Math.abs(w) > this.CRIT_W_TEST };
         });
 
@@ -508,6 +647,7 @@ const app = {
             const QxxBlock = Qxx[k][k];
             let maxExtMag = 0, maxExtObs = null;
             obsData.forEach(r => {
+                if (!r.ext) return;
                 const dH = Math.abs(r.ext[k]);
                 if (dH > maxExtMag) { maxExtMag = dH; maxExtObs = r.obs.id; }
             });
@@ -722,7 +862,7 @@ const app = {
 
             const obsDisplay  = r.obs.val.toFixed(4) + ' m';
             const vDisplay    = (r.v * 1000).toFixed(3) + ' mm';
-            const svDisplay   = (r.sigma_v * 1000).toFixed(3) + ' mm';
+            const svDisplay   = `${(r.sigma_v * 1000).toFixed(3)} mm <span class="text-stone-400 text-[10px]">(${(res.sigma0 * r.sigma_v * 1000).toFixed(3)})</span>`;
 
             const injectedIcon = r.obs.hasError ? ' <span class="text-rose-500" title="Erro Grosseiro Injetado">&#9888;</span>' : '';
 
@@ -749,7 +889,7 @@ const app = {
             if(r.r < 0.3) { rColor = 'text-amber-500'; rQual = 'Média'; }
             if(r.r < 0.1) { rColor = 'text-rose-600 font-bold'; rQual = 'Crítica (Sem Controlo)'; }
 
-            const mdbDisplay = (r.mdb * 1000).toFixed(3) + ' mm';
+            const mdbDisplay = r.mdb == null ? '--' : (r.mdb * 1000).toFixed(3) + ' mm';
 
             const injectedIcon = r.obs.hasError ? ' <span class="text-rose-500" title="Erro Grosseiro Injetado">&#9888;</span>' : '';
 
@@ -856,9 +996,9 @@ const app = {
             'A': '<strong>Matriz de Configuração / Jacobiana (A):</strong> Contém as derivadas parciais das equações de observação em relação às incógnitas. Ela descreve matematicamente a geometria da rede, conectando os parâmetros calculados com as medições de campo.',
             'P': '<strong>Matriz de Pesos (P):</strong> Uma matriz quadrada, que no contexto não-correlacionado, é puramente diagonal contendo o inverso das variâncias a priori. Ela quantifica o nível de incerteza da medição, fazendo com que observações mais precisas tenham maior atração/peso na solução.',
             'L': '<strong>Vetor de Termos Independentes ou Desfechamento (L):</strong> Vetor que armazena a diferença entre os valores observados no campo (L<sub>obs</sub>) e os calculados matematicamente a partir das coordenadas atuais/aproximadas (L<sub>calc</sub>).',
-            'X': '<strong>Vetor de Solução (dx):</strong> Este é o vetor de correções iterativas estimado pelo princípio dos mínimos quadrados (dx = N<sup>-1</sup>U). Em redes não-lineares, a cada iteração seus valores são somados às posições parciais até que todo o sistema estabilize em zero.',
+            'X': '<strong>Vetor de Solução (dx):</strong> Correções estimadas por mínimos quadrados (dx = N<sup>-1</sup>U). No nivelamento, o modelo é linear, então a solução é obtida em uma etapa após montar A, P e L.',
             'V': '<strong>Vetor de Resíduos (V):</strong> Valores teóricos impostos pelo ajustamento que devem ser somados às observações originais (L<sub>obs</sub>) para que a rede "feche" geometricamente (L<sub>adj</sub> = L<sub>obs</sub> + V). O princípio fundamental do MMQ é fazer com que a soma global ponderada V<sup>T</sup> P V atinja seu ponto mínimo.',
-            'N': '<strong>Matriz das Equações Normais (N):</strong> Equacionada por N = A<sup>T</sup> P A, condensa o modelo estocástico (peso) e geométrico da rede numa única matriz simétrica e positiva definida. <em>Nota: É normal que os valores numéricos sejam altos, pois os pesos derivam do inverso da variância em metros (ex: &sigma;=5mm &rarr; P=40.000), o que propaga elevada magnitude para N.</em>',
+            'N': '<strong>Matriz das Equações Normais (N):</strong> Equacionada por N = A<sup>T</sup> P A, condensa o modelo estocástico (peso) e geométrico da rede numa matriz simétrica. Ela só é positiva definida quando há datum altimétrico e cada componente desconhecida está conectada a ponto fixo. <em>Nota: valores altos são normais porque os pesos são inversos das variâncias.</em>',
             'SigmaXa': '<strong>Matriz de Variância-Covariância (MVC) dos Parâmetros Ajustados (&Sigma;<sub>X<sub>a</sub></sub>):</strong> Obtida pela propagação das variâncias multiplicando a Matriz Cofatora (Q<sub>xx</sub> = N<sup>-1</sup>) pelo Fator de Variância a posteriori (&sigma;<sub>0</sub><sup>2</sup>). Sua diagonal principal contém a variância estatística (incerteza) final de cada parâmetro ajustado, e os demais elementos representam as covariâncias entre eles.'
         };
 
@@ -1131,9 +1271,7 @@ const app = {
             const pFrom = this.points.find(p => p.id === obs.from);
             const pTo = this.points.find(p => p.id === obs.to);
             if (pFrom && pTo) {
-                const dx = pTo.x - pFrom.x;
-                const dy = pTo.y - pFrom.y;
-                obs.distance = Math.sqrt(dx*dx + dy*dy);
+                obs.distance = this.haversineDist(pFrom.x, pFrom.y, pTo.x, pTo.y);
                 obs.std = (this.SIGMA_DIST_MM / 1000) * Math.sqrt(obs.distance / 1000);
             }
         } else if (field === 'to') {
@@ -1142,9 +1280,7 @@ const app = {
             const pFrom = this.points.find(p => p.id === obs.from);
             const pTo = this.points.find(p => p.id === obs.to);
             if (pFrom && pTo) {
-                const dx = pTo.x - pFrom.x;
-                const dy = pTo.y - pFrom.y;
-                obs.distance = Math.sqrt(dx*dx + dy*dy);
+                obs.distance = this.haversineDist(pFrom.x, pFrom.y, pTo.x, pTo.y);
                 obs.std = (this.SIGMA_DIST_MM / 1000) * Math.sqrt(obs.distance / 1000);
             }
         }
@@ -1390,6 +1526,11 @@ const app = {
             alert('Você deve executar um ajustamento válido (Executar Ajustamento) antes de rodar o Monte Carlo.');
             return;
         }
+        const validationErrors = this.validateLevelingNetwork();
+        if (validationErrors.length > 0) {
+            alert(`Rede de nivelamento inválida:\n${validationErrors.join('\n')}`);
+            return;
+        }
 
         const n = Math.max(10, Math.min(100000, parseInt(document.getElementById('mcN').value) || 500));
         const seed = Math.floor(Math.random() * 1000) + 1; // Uniform from 1 to 1000
@@ -1408,15 +1549,17 @@ const app = {
             const nu = unknowns.length;
             const m = this.observations.length;
             const dof = m - nu;
-            const z_alpha = this.CRIT_W_TEST;
-            const chi2_upper = dof * Math.pow(1 - 2/(9*dof) + z_alpha * Math.sqrt(2/(9*dof)), 3);
-            const chi2_lower = Math.max(0, dof * Math.pow(1 - 2/(9*dof) - z_alpha * Math.sqrt(2/(9*dof)), 3));
+            const alpha = this.ALPHA_PCT / 100;
+            const chi2_upper = this.chi2Inv(1 - alpha / 2, dof);
+            const chi2_lower = this.chi2Inv(alpha / 2, dof);
 
             const P = this.observations.map(() => Array(m).fill(0));
             this.observations.forEach((o, i) => P[i][i] = 1.0 / (o.std * o.std));
 
             const unkIdx = {};
             unknowns.forEach((p, k) => { unkIdx[p.id] = k; });
+            const nominalH = {};
+            this.points.forEach(p => { nominalH[p.id] = p.H; });
 
             // A matrix is constant for leveling
             const A = this.observations.map(() => Array(nu).fill(0));
@@ -1444,8 +1587,8 @@ const app = {
                     const pFrom = this.points.find(p => p.id === o.from);
                     const pTo = this.points.find(p => p.id === o.to);
 
-                    const trueH_from = pFrom._H0;
-                    const trueH_to = pTo._H0;
+                    const trueH_from = nominalH[pFrom.id];
+                    const trueH_to = nominalH[pTo.id];
                     const trueDH = trueH_to - trueH_from;
 
                     return trueDH + this.seededGauss(r) * o.std;
@@ -1456,8 +1599,8 @@ const app = {
                 this.observations.forEach((o, idx) => {
                     const pFrom = this.points.find(p => p.id === o.from);
                     const pTo = this.points.find(p => p.id === o.to);
-                    const hFromApprox = pFrom.fixed ? pFrom.H : pFrom._H0;
-                    const hToApprox = pTo.fixed ? pTo.H : pTo._H0;
+                    const hFromApprox = nominalH[pFrom.id];
+                    const hToApprox = nominalH[pTo.id];
                     const calcDH = hToApprox - hFromApprox;
                     L.push([L_obs[idx] - calcDH]);
                 });
@@ -1466,15 +1609,15 @@ const app = {
                 let dx_vec = math.multiply(N_inv, U);
 
                 // Form simulated point heights
-                let simH = unknowns.map((p, k) => p._H0 + dx_vec[k][0]);
+                let simH = unknowns.map((p, k) => nominalH[p.id] + dx_vec[k][0]);
 
                 // Global test
                 let VtPV = 0;
                 this.observations.forEach((o, idx) => {
                     const pFrom = this.points.find(p => p.id === o.from);
                     const pTo = this.points.find(p => p.id === o.to);
-                    const hFrom = pFrom.fixed ? pFrom.H : simH[unkIdx[pFrom.id]];
-                    const hTo = pTo.fixed ? pTo.H : simH[unkIdx[pTo.id]];
+                    const hFrom = pFrom.fixed ? nominalH[pFrom.id] : simH[unkIdx[pFrom.id]];
+                    const hTo = pTo.fixed ? nominalH[pTo.id] : simH[unkIdx[pTo.id]];
                     const v = (hTo - hFrom) - L_obs[idx];
                     VtPV += v * P[idx][idx] * v;
                 });
@@ -1514,7 +1657,7 @@ const app = {
                 stats.push({ k, meanH: sMeanH, sigH });
 
                 let tr = document.createElement('tr');
-                let biasH = (sMeanH - p._H0) * 1000;
+                let biasH = (sMeanH - nominalH[p.id]) * 1000;
                 tr.innerHTML = `
                     <td class="font-mono font-bold">${p.id}</td>
                     <td class="font-mono">${biasH.toFixed(3)}</td>
@@ -1580,7 +1723,7 @@ const app = {
         pts.forEach(pt_sim => {
             ctx.fillStyle = pt_sim.pass ? 'rgba(15, 118, 110, 0.2)' : 'rgba(225, 29, 72, 0.2)';
             unknowns.forEach((p, k) => {
-                const dH = pt_sim.simH[k] - p._H0;
+                const dH = pt_sim.simH[k] - p.H;
                 const offsetY = dH * mcExag;
                 ctx.beginPath();
                 ctx.arc(tx(p.x), ty(p.y) - offsetY, 2, 0, 2*Math.PI);
