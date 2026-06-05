@@ -22,3 +22,7 @@ The best solution identified is `AJUSTAMENTOINTEGRADO`, which incorporates both 
 - The use of neural networks to classify Scintrex observations effectively validated their compatibility with LaCoste & Romberg data without degrading the pre-established precision or reliability.
 
 *Reference: Section 4.4 and Chapter 5, Thesis*
+
+
+### Weights and Variances
+The extracted network data includes `weight` calculated as the average variance across the different instruments (as listed in Appendix 4, page 139), and `heuristic_weight` calculated as the average variation of time in hours (Appendix 4, page 138).

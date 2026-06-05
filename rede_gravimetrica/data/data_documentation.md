@@ -25,7 +25,8 @@ Defines the relative gravimetric observations forming the micro-circuits of the 
 - **city to:** Destination station name.
 - **relative gravimetric value (mGal):** The calculated difference in gravity between the destination and origin stations. Left blank if no absolute gravity data was available for calculation.
 - **equipment:** The equipment used for the measurement populated based on integrated adjustment metadata.
-- **weight:** The statistical weight of the observation in the network adjustment populated based on integrated adjustment metadata.
+- **weight:** The statistical weight of the observation (average variance calculated for the line across the different measurements and equipments).
+- **heuristic_weight:** The heuristic weight based on the average time variation (in hours) across the different equipments.
 
 ## Quality Report
 
