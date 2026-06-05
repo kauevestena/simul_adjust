@@ -1,0 +1,265 @@
+
+36
+macro-circuitos envolve as estações pertencentes a RENEGA, estações de Valinhos
+(SP) e de Curitiba (PR). Estes macro-circuitos originaram-se de três campanhas
+específicas partindo e fechando na estação RENEGA de Curitiba. Em cada estação
+foi prevista a utilização de correções das derivas estática e dinâmica, da perturbação
+luni-solar e da resposta dinâmica local, pela utilização de fatores gravimétricos locais
+já determinados no Estado do Paraná, via observação das marés terrestres
+(FREITAS, 1993). A concepção dos macro-circuitos, com três a sete estações, e
+fechamento de micro-circuitos com múltiplas linhas entre duas ou três estações,
+trazem a possibilidade de teste de diversas formas de ajustamento final da rede.
+
+Os micro-circuitos realizados com duas ou três estações originaram 28 linhas
+de desnível gravimétrico entre duas estações. Para compreensão da figura 3.4 e das
+análises realizadas na seqüência, as 28 linhas de desnível gravimétrico referentes
+às respectivas estações, são expostas no quadro 3.1.
+
+FIGURA 3.4 – CIRCUITOS GRAVIMÉTRICOS E METODOLOGIA APLICADA
+Londrina
+Curitiba
+São Mateus do
+Sul
+Guarapuava
+Bituruna
+Clevelândia
+Foz do
+Iguaçu
+Toledo
+Guaíra
+Querência
+do Norte
+Paranavaí
+Maringá
+Iretama
+Goio-erê
+ Valinhos
+Pontal do
+Paraná
+Jaguariaíva
+Joaquim
+Távora
+Ortigueira
+Ponta
+Grossa
+Laranjeiras
+do Sul
+Francisco
+Beltrão
+51º 30' W
+49º W
+54º W
+26º S
+24º30'  S
+23º S
+Escala 1:1.000.000
+200 km
+100 km
+0
+
+
+Devido ao planejamento estabelecido à rede (seção 3.1), observa-se na figura
+3.4 que algumas estações têm duas ou três ligações. Duas ligações significam o
+fechamento de um único micro-circuito, possibilitando apenas uma observação de
+
+37
+desnível gravimétrico  entre duas estações para cada gravímetro. Para três ligações,
+tem-se o fechamento de dois micro-circuitos, possibilitando duas observações entre
+duas estações para cada gravímetro.
+
+3.4 CÁLCULO DOS DESNÍVEIS GRAVIMÉTRICOS
+
+
+Os dados foram processados, considerando micro-circuitos independentes
+com duas ou três estações, cada um sendo fechado no mesmo dia, eliminando
+assim a correção da deriva estática e considerando apenas a deriva dinâmica. Com
+esses circuitos independentes, fecha-se outro circuito maior. Duas estratégias foram
+adotadas para o cálculo dos desníveis gravimétricos entre as estações componentes
+da rede, conforme a figura 3.4: a) considerando a estação de Valinhos (circuito
+Curitiba – Jaguariaíva – Valinhos - Jaguariaíva – Curitiba) como parte da rede, tal
+que foram utilizadas as tabelas de calibração mais recentes dos gravímetros e a
+condição do desnível gravimétrico entre as estações RENEGA de Curitiba e de
+Valinhos ser conhecido; b) utilizando o circuito Curitiba – Valinhos – Curitiba para
+determinação de um fator de escala para os gravímetros empregados no
+levantamento. Desta forma os dados foram processados empregando as duas
+estratégias acima mencionadas, fazendo as devidas correções de maré terrestre e
+de deriva dinâmica.
+
+No quadro 3.1, para facilitar o entendimento no decorrer do trabalho, os
+micro-circuitos são numerados. Os símbolos ← ou → indicam o sentido em que o
+valor da gravidade aumenta entre duas estações.
+
+
+
+
+
+
+
+
+
+
+
+38
+QUADRO 3.1 – LINHAS DE DESNÍVEL GRAVIMÉTRICO REFERENTES ÀS ESTAÇÕES
+IMPLANTADAS NA REDE
+Linha
+Estações Pertencentes à Rede
+01
+Curitiba →São Mateus do Sul
+02
+São Mateus do Sul →Bituruna
+03
+Bituruna →Clevelândia
+04
+Clevelândia → Francisco Beltrão
+05
+Francisco Beltrão ←Toledo
+06
+Toledo →Guaíra
+07
+Toledo ←Goio-erê
+08
+Toledo →Foz do Iguaçu
+09
+Toledo ←Laranjeiras do Sul
+10
+Laranjeiras do Sul ←Guarapuava
+11
+Guarapuava →Bituruna
+12
+Guarapuava →Ponta Grossa
+13
+Ponta Grossa →Curitiba
+14ª
+Ponta Grossa ←Ortigueira
+14b
+Ortigueira ←Londrina
+15ª
+Ponta Grossa ←Jaguariaíva
+15b
+Jaguariaíva →Joaquim Távora
+16
+Londrina →Joaquim Távora
+17
+Londrina →Maringá
+18ª
+Maringá → Iretama
+18b
+Iretama ←Guarapuava
+19ª
+Maringá →Paranavaí
+19b
+Paranavaí →Querência do Norte
+20
+Paranavaí →Goio-erê
+21
+Goio-erê → Guaíra
+22
+Curitiba →Pontal do Paraná
+23ª
+Curitiba ← Jaguariaíva
+23b
+Jaguariaíva ← Valinhos
+
+
+Para as soluções discutidas no decorrer do trabalho, nos ajustamentos não
+foram utilizadas as linhas 08, 19b e 22. Isto foi feito porque estas três observações
+referem-se às estações que ficaram excêntricas a rede.
+
+
+
+
+
+
+
+
+
+
+
+39
+4 ESTRATÉGIAS APLICADAS NO AJUSTAMENTO DA REDE GRAVIMÉTRICA E
+   ANÁLISE DE PRECISÃO E CONFIABILIDADE DAS SOLUÇÕES OBTIDAS
+
+
+Com o objetivo de ajustar a rede gravimétrica, foi aplicado o Método dos
+Mínimos Quadrados, na forma paramétrica. A aplicação do ajustamento pelo método
+dos Mínimos Quadrados na forma paramétrica possibilita calcular quantidades
+indiretamente, se estas se vinculam matematicamente a outras medidas, obtidas de
+forma direta.
+
+As soluções analisadas nas subseções 4.1 e 4.2 deste trabalho originaram de
+ajustamentos da rede, os quais, devido à metodologia aplicada implica em 23
+observações e conseqüentemente 6 graus de liberdade (redundância do sistema) ou
+25 observações e conseqüentemente 8 graus de liberdade (redundância do
+sistema). Trabalhou-se com 23 observações quando se utilizou a estratégia (b) ou
+com 25 observações quando se utilizou a estratégia (a). Estas estratégias de cálculo
+dos desníveis gravimétricos estão explicadas na subseção 3.4 deste trabalho.
+
+Nas equações de observação, os parâmetros incógnitos (estações
+gravimétricas) são representados pelos nomes das cidades onde estão localizados.
+As estações de Curitiba e de Valinhos são as estações absolutas pertencentes a
+RENEGA. Considerando o quadro 3.1, as equações de observação utilizadas nos
+ajustamentos descritos nas subseções 4.1 e 4.2 são:
+
+l1 + Curitiba = São Mateus do Sul;                                                                         (4.1)
+l2 = Bituruna – São Mateus do Sul;                                                                        (4.2)
+l3 = Clevelândia – Bituruna;                                                                                    (4.3)
+l4 = Francisco Beltrão – Clevelândia;                                                                     (4.4)
+l5 = Francisco Beltrão – Toledo;                                                                             (4.5)
+l6 = Guaíra – Toledo;                                                                                              (4.6)
+l7 = Toledo – Goio-erê;                                                                                           (4.7)
+l9 = Toledo – Laranjeiras do Sul;                                                                            (4.8)
+l10 = Laranjeiras do Sul – Guarapuava;                                                                 (4.9)
+l11 = Bituruna – Guarapuava;                                                                               (4.10)
+l12 = Ponta Grossa – Guarapuava;                                                                      (4.11)
+l13 – Curitiba = – Ponta Grossa;                                                                          (4.12)
+
+40
+l14a = Ponta Grossa – Ortigueira;                                                                        (4.13)
+l14b = Ortigueira – Londrina;                                                                                (4.14)
+l15a = Ponta Grossa – Jaguariaíva;                                                                     (4.15)
+l15b = Joaquim Távora – Jaguariaíva;                                                                 (4.16)
+l16 = Joaquim Távora – Londrina;                                                                        (4.17)
+l17 = Maringá – Londrina;                                                                                     (4.18)
+l18a = Iretama – Maringá;                                                                                     (4.19)
+l18b = Iretama – Guarapuava;                                                                              (4.20)
+l19a = Paranavaí – Maringá;                                                                                 (4.21)
+l20 = Goio-erê – Paranavaí;                                                                                  (4.22)
+l21 = Guaíra – Goio-erê;                                                                                       (4.23)
+l23a = Curitiba – Jaguariaíva;                                                                               (4.24)
+l23b = Jaguariaíva – Valinhos;                                                                              (4.25)
+
+4.1 AJUSTAMENTO INDIVIDUAL
+
+
+Com o objetivo de avaliar o comportamento, de cada um dos gravímetros
+envolvidos
+no
+levantamento,
+os
+dados
+foram
+inicialmente
+processados
+individualmente.
+Utilizaram-se
+nos
+ajustamentos
+individuais
+os
+desníveis
+gravimétricos oriundos dos gravímetros G-114, G-143, G-372 e Scintrex,
+considerando as duas estratégias, a e b, citadas na seção 3.4.  Para as linhas 01,
+02, 03, 04, 05, 09, 10, 12 e 13, devido à metodologia aplicada no levantamento, foi
+possível obter duas observações de desnível gravimétrico para cada um dos
+gravímetros. Com essas duas observações, devidamente corrigidas da maré
+terrestre e da deriva dinâmica, calculou-se a média aritmética. Esta média foi usada
+como observação no ajustamento. Para as demais linhas de desnível gravimétrico,
+foi possível obter apenas uma observação por gravímetro, a qual foi utilizada no
+ajustamento.
+
+Para obtenção da matriz dos pesos, foram consideradas três concepções
+distintas descritas a seguir. Nos ajustamentos representados pelos símbolos G114T,
+G114TO, G143T, G143TO, G372T, G327TO e SCINTREXT, indicam o equipamento
+utilizado e que a matriz dos pesos foi obtida inversamente proporcional à variação do
+tempo utilizado para fechar cada micro-circuito. Nos ajustamentos representados
