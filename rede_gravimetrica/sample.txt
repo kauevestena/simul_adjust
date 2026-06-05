@@ -1,0 +1,307 @@
+
+121
+FIGURA 4.13 – ESTIMATIVA DO ERRO GROSSEIRO PRESENTE EM CADA OBSERVAÇÃO
+REFERENTE À SOLUÇÃO AJUSTAMENTOINTEGRADO
+-0,500
+-0,400
+-0,300
+-0,200
+-0,100
+0,000
+0,100
+0,200
+0,300
+0,400
+0,500
+OBSERVAÇÕES
+ESTIMATIVA EM MILIGAL
+
+
+
+A figura 4.13 mostra que a solução AJUSTAMENTOINTEGRADO apresenta
+uma situação próxima da solução AJUSTAMENTOTOTAL6 quanto às magnitudes
+das estimativas dos erros grosseiros não localizados. Esta situação apresentada
+pela solução AJUSTAMENTOINTEGRADO é refletida na análise da influência
+dessas estimativas sobre os parâmetros ajustados. Na seqüência, no quadro 4.88, é
+exposta a influência dos erros grosseiros estimados sobre os parâmetros ajustados,
+bem como as respectivas precisões obtidas com respeito às soluções
+AJUSTAMENTOTOTAL6 e AJUSTAMENTOINTEGRADO.
+
+Pelos resultados apresentados no quadro 4.88, mostram que a integração das
+observações Scintrex com as observações Lacoste & Romberg proporcionou uma
+solução com a mesma qualidade da solução obtida apenas com observações
+LaCoste & Romberg. Tanto em precisão como em confiabilidade não houve prejuízo
+quando se incluíram as observações Scintrex no rol de observações LaCoste &
+Romberg. Para a solução AJUSTAMENTOTOTAL6 tem-se precisão média para os
+parâmetros de 16 Gal
+µ
+contra 15 Gal
+µ
+ da solução AJUSTAMENTOINTEGRADO, e
+percebe-se a coerência na medida de confiabilidade externa, pois as estações que
+estão apresentando pior situação em confiabilidade externa são as mesmas e com
+valores muito próximos um do outro.
+
+
+
+122
+QUADRO 4.88 – COMPARAÇÃO DA INFLUÊNCIA DOS ERROS GROSSEIROS ESTIMADOS SOBRE
+OS PARÂMETROS COM AS RESPECTIVAS PRECISÕES OBTIDAS
+ajustamentos
+AJUSTAMENTOTOTAL6
+AJUSTAMENTOINTEGRADO
+parâmetros
+gravidade
+mGal
+precisão
+mGal
+influência
+mGal
+gravidade
+mGal
+precisão
+mGal
+Influência
+mGal
+São Mateus
+do Sul
+978777,553
+0,009
+0,006
+978777,552
+0,008
+0,005
+Bituruna
+978779,494
+0,012
+0,005
+978779,494
+0,011
+0,004
+Clevelândia
+978785,956
+0,016
+0,003
+978785,956
+0,014
+0,003
+Francisco
+Beltrão
+978807,887
+0,017
+-0,001
+978807,889
+0,015
+-0,002
+Toledo
+978798,269
+0,018
+-0,010
+978798,274
+0,016
+-0,011
+Laranjeiras do
+Sul
+978704,752
+0,017
+-0,004
+978704,752
+0,015
+-0,003
+Guarapuava
+978679,223
+0,006
+-0,001
+978679,223
+0,006
+-0,001
+Ponta Grossa
+978718,590
+0,004
+-0,001
+978718,590
+0,004
+-0,001
+Jaguariaíva
+978652,193
+0,018
+0,010
+978652,187
+0,017
+0,014
+Joaquim
+Távora
+978670,154
+0,022
+0,014
+978670,149
+0,021
+0,014
+Ortigueira
+978678,785
+0,018
+0,007
+978678,783
+0,017
+0,008
+Londrina
+978636,851
+0,018
+0,027
+978636,848
+0,017
+0,028
+Maringá
+978666,846
+0,018
+-0,002
+978666,844
+0,017
+-0,006
+Iretama
+978715,296
+0,018
+0,008
+978715,295
+0,017
+0,006
+Paranavaí
+978677,868
+0,021
+-0,029
+978677,870
+0,020
+-0,034
+Goio-erê
+978744,595
+0,021
+0,005
+978744,597
+0,018
+0,007
+Guaíra
+978800,482
+0,021
+-0,028
+978800,484
+0,018
+-0,033
+
+
+Para a estação de Londrina esperava-se uma situação pior que as demais
+devido a grande instabilidade observada no ponto. Já para as estações de
+Paranavaí e de Guaíra este resultado um pouco inferior das demais na
+confiabilidade externa traz surpresa, pois não se observou nenhum inconveniente no
+levantamento envolvendo essas duas estações.
+Portanto, de todas as soluções analisadas neste trabalho, considerando as
+análises de precisão e confiabilidade, a solução que melhor concebe a Rede
+Gravimétrica
+Científica
+do
+Estado
+do
+Paraná
+é
+a
+solução
+AJUSTAMENTOINTEGRADO.
+Deve-se ter atenção para a interpretação da medida de confiabilidade
+externa (influência de erros não localizados sobre os parâmetros ajustados)
+apresentada no quadro 4.88. A estação de Ponta Grossa tem valor estimado para a
+gravidade igual a 978718,590 mGal, com precisão de 0,004 mGal e com uma
+medida de confiabilidade externa igual a -0,001 mGal. Já para a estação de Londrina
+tem-se 978636,848 mGal para a estimativa do valor da gravidade, com precisão
+
+123
+igual a 0,017 mGal e medida de confiabilidade externa igual a 0,028 mGal. Logo, se
+deve considerar que além das precisões estabelecidas, a estação de Ponta Grossa
+está apresentando, de acordo com as análises realizadas, um erro de -0,001 mGal e
+a estação de Londrina um erro de 0,028 mGal. Portanto, a confiabilidade no valor
+estimado para a gravidade da estação de Ponta Grossa é maior que para a estação
+de Londrina.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+124
+5 CONCLUSÃO
+
+Sabe-se da importância existente na definição do projeto de uma rede
+gravimétrica, principalmente na obtenção da melhor geometria para a rede e escolha
+dos pesos das observações. Dentre outros, um ponto fundamental neste trabalho
+está relacionado com o comportamento da rede quando as estações absolutas são
+introduzidas no ajustamento ou quando elas são apenas utilizadas para normalizar
+os gravímetros. Conclui-se que é melhor utilizar as estações absolutas selecionadas
+na região do levantamento tal que seja possível gerar um fator de escala para os
+instrumentos na época dos levantamentos. Neste caso, a influência das estações
+absolutas sobre a rede, é distribuída de forma homogênea para toda a rede. Caso
+contrário, a influência das estações absolutas se propaga pela rede de forma menos
+homogênea e podendo contribuir menos para as estações mais distantes das
+estações absolutas ou que passam a ter suas determinações dependentes da
+geometria da rede.
+Enfatiza-se que o processamento dos dados também é muito importante.
+Em muitos estudos sobre redes gravimétricas, como neste caso, diversas soluções
+para a rede são propostas, com diferentes precisões. Dentre essas soluções, qual a
+mais confiável? Com a teoria e as análises apresentadas neste trabalho, mostra-se
+que não se deve julgar a qualidade de uma rede gravimétrica apenas pela precisão
+dos parâmetros. Critérios adicionais devem ser utilizados. Além dos critérios de
+precisão, os critérios de confiabilidade devem ser aplicados. Daí a importância de se
+utilizar o critério de confiabilidade. Nem sempre, a solução mais precisa é também a
+mais confiável. Uma análise de detecção e localização de erros grosseiros nas
+observações deve ser efetivada. Assim como para a precisão, deseja-se obter
+também a menor magnitude possível para a medida de confiabilidade externa,
+procurando minimizar o máximo possível os erros existentes nos valores calculados
+para os parâmetros. Deve-se desejar uma rede precisa e confiável seguindo os
+critérios estabelecidos neste trabalho. Pode-se apresentar como exemplo, uma
+solução para a rede que foi obtida via ajustamento de observações médias. Neste
+caso, se pode até obter precisão satisfatória, mas a confiabilidade no resultado
+obtido gera dúvidas. Neste caso, provavelmente os erros são distribuídos nos
+parâmetros. Portanto verificou-se que é muito mais confiável ajustar uma rede
+
+125
+gravimétrica com observações independentes a considerar observações médias. Foi
+visto que, considerando observações independentes, a análise de detecção e
+localização de erros nas observações realmente é operacional e efetiva, não
+causando prejuízo na análise de confiabilidade das soluções analisadas. Desta
+forma se pode de fato dar credibilidade à precisão obtida.
+Outra contribuição deste trabalho está relacionada com o critério utilizado
+para integração de observações LaCoste & Romberg e Scintrex. Verificou-se através
+dos resultados obtidos, que é possível integrar observações oriundas do gravímetro
+Scintrex com as oriundas de gravímetros LaCoste & Romberg para o
+estabelecimento, por exemplo, de uma rede gravimétrica de alta precisão. Os
+resultados mostram que, fazendo uma classificação à priori das observações
+Scintrex, estas não afetaram as condições da rede pré-estabelecida com
+observações LaCoste & Romberg. As observações Scintrex mostraram-se
+compatíveis com observações LaCoste & Romberg no estabelecimento da rede,
+tanto em precisão como em confiabilidade, o que é muito importante. Um indicativo
+para se obter essa conclusão partiu-se da análise das soluções individuais, onde as
+soluções obtidas com observações Scintrex mostraram-se se mais precisas e
+confiáveis que as soluções obtidas com observações LaCoste & Romberg.
+Portanto, enfatiza-se a importância na integração dos critérios de precisão e
+de confiabilidade na análise da qualidade de uma rede gravimétrica de alta precisão.
+Solução que se deve considerar como ótima para a Rede Gravimétrica
+Científica do Estado do Paraná é a solução AJUSTAMENTOINTEGRADO.

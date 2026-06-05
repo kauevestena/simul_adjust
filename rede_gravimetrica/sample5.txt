@@ -1,0 +1,238 @@
+
+116
+contrário, classificada como classe 2, ela não deve ser adicionada ao rol de
+observações LaCoste & Romberg.
+
+Para o entendimento do treinamento das redes neurais, cita-se como exemplo
+o treinamento da rede neural utilizada para classificação das observações scintrex
+referente à linha 1. Para esta linha dispõe-se de seis observações LaCoste &
+Romberg, das quais cinco foram utilizadas para o treinamento. Uma observação
+ficou de fora do treinamento para avaliação da rede neural estabelecida. Em seguida
+essa observação que ficou para avaliação voltou para o conjunto de observações
+utilizadas no treinamento e uma outra observação foi retirada deste conjunto para
+servir como opção para nova avaliação da rede neural. Este procedimento foi
+seguido, até que todas as observações LaCoste & Romberg pertencentes a esta
+linha 1, uma a uma, serviram como observação teste para avaliação da rede neural.
+Obtendo resultado satisfatório para todas as observações, a rede foi treinada com o
+conjunto completo de observações LaCoste & Romberg. Este critério para
+treinamento foi igualmente utilizado para as demais linhas gravimétricas. Com as
+redes neurais devidamente treinadas, as observações Scintrex foram classificadas,
+obtendo-se o seguinte resultado apresentado no quadro 4.84.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+117
+QUADRO 4.84 – CLASSIFICAÇÃO DAS OBSERVAÇÕES SCINTREX
+observações
+testadas
+classe 1
+classe 2
+l1
+X
+
+l1k
+X
+
+l2
+X
+
+l2k
+X
+
+l3
+X
+
+l3k
+X
+
+l4
+X
+
+l4k
+X
+
+l5
+X
+
+l5k
+X
+
+l6
+X
+
+l7
+X
+
+l9
+X
+
+l9k
+
+X
+l10
+X
+
+l10k
+X
+
+l11
+
+X
+l12
+X
+
+l12k
+X
+
+l13
+X
+
+l14a
+X
+
+l14b
+
+X
+l15a
+X
+
+l15b
+
+X
+l16
+
+X
+l17
+X
+
+l18a
+
+X
+l18b
+X
+
+l19a
+X
+
+l20
+
+X
+l21
+
+X
+
+Portanto, adicionando as observações Scintrex classificadas na classe 1 às
+observações pertencentes ao rol de observações que geraram a solução
+AJUSTAMENTOTOTAL6, gerou-se uma nova solução para a rede, identificada
+neste trabalho por AJUSTAMENTOINTEGRADO. Este novo ajustamento, inicia-se
+com um total de 112 observações e conseqüentemente 95 graus de liberdade, pois
+se repete a mesma estratégia de ajustamento utilizada para gerar a solução
+AJUSTAMENTOTOTAL6.
+A solução AJUSTAMENTOINTEGRADO foi submetida à análise de precisão
+e confiabilidade, tal qual a solução AJUSTAMENTOTOTAL6 foi submetida.
+
+118
+
+Pelos resultados apresentados no quadro 4.85, da mesma forma que
+acontece para a solução AJUSTAMENTOTOTAL6, não se tem característica global
+de homogeneidade e isotropismo para a solução AJUSTAMENTOINTEGRADO. Os
+resultados apresentados no quadro 4.86 mostram que não houve prejuízo em
+precisão quando se considera a solução AJUSTAMENTOINTEGRADO. Integrando
+as observações Scintrex, além de não haver prejuízo em precisão, esta ainda
+apresenta uma pequena melhora.
+
+QUADRO 4.85 – TESTE DE IGUALDADE DE VALORES PRÓPRIOS
+DADOS
+AJUSTAMENTOTOTAL6
+AJUSTAMENTOINTEGRADO
+r
+72
+95
+b
+17
+17
+α
+5%
+5%
+Estatística
+Calculada
+1771,50
+2292,01
+2
+95
+,0;
+152
+χ
+
+181,77
+181,77
+
+QUADRO 4.86 – APLICAÇÃO DOS CRITÉRIOS DE PRECISÃO
+Critérios
+AJUSTAMENTOTOTAL6
+AJUSTAMENTOINTEGRADO
+(
+)
+xa
+det ∑
+
+1,0.10 -71
+8,0.10 -73
+(
+)
+xa
+tr ∑
+
+0,00482
+0,00404
+máx
+λ
+
+0,00173
+0,00144
+mín
+máx
+λ
+λ
+
+
+5805,62
+
+
+5300,01
+
+
+
+Os resultados apresentados no quadro 4.87, mostram que não se está tendo
+prejuízo
+na
+qualidade
+do
+ajustamento
+quando
+se
+compara
+a
+solução
+AJUSTAMENTOTOTAL6 com a solução AJUSTAMENTOINTEGRADO. Para a
+solução AJUSTAMENTOINTEGRADO, a hipótese nula não é rejeitada. Portanto, o
+teste global não está detectando observação afetada por erro grosseiro. Mesmo o
+teste global não detectando observação afetada por erro grosseiro na solução
+AJUSTAMENTOINTEGRADO, a análise quanto à localização de possíveis
+observações afetadas por erro grosseiro é realizada. A figura 4.11 ilustra a situação
+de controlabilidade das observações quanto à localização de erros grosseiros para
+as soluções AJUSTAMENTOTOTAL6 e AJUSTAMENTOINTEGRADO1.

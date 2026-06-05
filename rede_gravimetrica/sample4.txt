@@ -1,0 +1,299 @@
+
+113
+se uma melhora significativa tanto na precisão como na confiabilidade dos valores
+da gravidade estimados para as estações gravimétricas.
+
+QUADRO 4.82 – INFLUÊNCIA DOS ERROS GROSSEIROS ESTIMADOS (
+)
+i
+∇
+ SOBRE OS
+PARÂMETROS DO AJUSTAMENTOTOTAL6
+Parâmetros
+Gravidade
+(mGal)
+Precisão dos
+ parâmetros
+(mGal)
+Influência de
+i
+∇
+sobre os parâmetros
+(mGal)
+São Mateus do Sul 978777,553
+0,009
+0,006
+Bituruna
+978779,494
+0,012
+0,005
+Clevelândia
+978785,956
+0,016
+0,003
+Francisco Beltrão
+978807,887
+0,017
+-0,001
+Toledo
+978798,269
+0,018
+-0,010
+Laranjeiras do sul
+978704,752
+0,017
+-0,004
+Guarapuava
+978679,223
+0,006
+-0,001
+Ponta Grossa
+978718,590
+0,004
+-0,001
+Jaguariaíva
+978652,193
+0,018
+0,010
+Joaquim Távora
+978670,154
+0,022
+0,014
+Ortigueira
+978678,785
+0,018
+0,007
+Londrina
+978636,851
+0,018
+0,027
+Maringá
+978666,846
+0,018
+-0,002
+Iretama
+978715,296
+0,018
+0,008
+Paranavaí
+978677,868
+0,021
+-0,029
+Goio-erê
+978744,595
+0,021
+0,005
+Guaíra
+978800,482
+0,021
+-0,028
+
+QUADRO 4.83 – INFLUÊNCIA DOS ERROS GROSSEIROS ESTIMADOS (
+)
+i
+∇
+ SOBRE OS
+PARÂMETROS DO AJUSTAMENTOTOTAL6O
+Parâmetros
+Gravidade
+(mGal)
+Precisão dos
+ parâmetros
+(mGal)
+Influência de
+i
+∇
+sobre os parâmetros
+(mGal)
+São Mateus do Sul 978777,571
+0,017
+0,012
+Bituruna
+978779,494
+0,023
+0,008
+Clevelândia
+978785,936
+0,030
+0,008
+Francisco Beltrão
+978807,853
+0,032
+0,003
+Toledo
+978798,158
+0,032
+-0,026
+Laranjeiras do sul
+978704,660
+0,032
+-0,017
+Guarapuava
+978679,080
+0,012
+-0,014
+Ponta Grossa
+978718,517
+0,008
+-0,008
+Jaguariaíva
+978652,172
+0,003
+-0,019
+Joaquim Távora
+978670,243
+0,011
+0,024
+Ortigueira
+978678,748
+0,037
+0,020
+Londrina
+978636,809
+0,022
+0,018
+Maringá
+978666,784
+0,023
+-0,007
+Iretama
+978715,160
+0,033
+-0,032
+Paranavaí
+978677,812
+0,031
+-0,043
+Goio-erê
+978744,506
+0,037
+-0,008
+Guaíra
+978800,376
+0,037
+-0,048
+
+
+114
+
+A solução AJUSTAMENTOTOTAL6 apresenta uma precisão média de 16
+Gal
+µ
+e influência média sobre os parâmetros igual a 10 Gal
+µ
+. A solução
+AJUSTAMENTOTOTAL6O apresenta precisão média de 25
+Gal
+µ
+e 19
+Gal
+µ
+de
+influência média sobre os parâmetros.
+
+Os resultados apresentados nos quadros 4.82 e 4.83, confirmam a tendência
+de se obter melhores resultados em precisão e confiabilidade quando se utiliza a
+estratégia b descrita na subseção 3.4 (utilização da tabela de calibração corrigida).
+
+Como não foi localizada nenhuma observação afetada por erro grosseiro na
+análise das soluções AJUSTAMENTOTOTAL6 e AJUSTAMENTOTOTAL6O, não se
+tem outro argumento que possa ser utilizado para tentar obter outras soluções ainda
+melhores. A solução AJUSTAMENTOTOTAL6 supera, tanto em precisão quanto em
+confiabilidade, todas as outras soluções apresentadas, até então, para a Rede
+Gravimétrica Científica do Estado Paraná.
+
+4.4 INFLUÊNCIA EM UMA REDE AJUSTADA COM OBSERVAÇÕES LACOSTE &
+ROMBERG DA INJUNÇÃO DE OBSERVAÇÕES SCINTREX CLASSIFICADAS
+POR UMA REDE NEURAL ARTIFICIAL PROBABILÍSTICA
+
+
+Neste estudo, utilizou-se a solução AJUSTAMENTOTOTAL6 como referência
+para Rede Gravimétrica Científica do Estado do Paraná. Para análise desta nova
+solução tem-se adicionalmente às 89 observações LaCoste & Romberg utilizadas
+para gerar a solução AJUSTAMENTOTOTAL6, 31 observações oriundas do
+gravímetro Scintrex. Estas 31 observações Scintrex correspondem às mesmas
+utilizadas para gerar as soluções individuais SCINTREXT, SCINTREXV e
+SCINTREXVP, descritas na subseção 4.1. Cada uma dessas 31 observações
+Scintrex, antes da integração com as observações LaCoste & Romberg, foram
+submetidas a uma classificação por uma rede neural probabilística, a qual é um tipo
+de rede neural função de base radial.
+Uma rede neural probabilística possui três camadas: camada de entrada
+(onde temos os vetores de entrada), camada escondida e camada de saída. O
+número de neurônios na camada escondida é definido de acordo com o número de
+vetores utilizados para o treinamento. Na Camada de saída a quantidade de
+neurônios é a mesma do número de classes a serem reconhecidas. A rede neural
+
+115
+probabilística consiste no seguinte: Um vetor de entrada é apresentado à rede na
+primeira camada. Na segunda camada é calculada a distância “d” existente entre
+este vetor de entrada e o somatório dado pela equação (2.58), e com a função de
+base radial
+2
+n
+e
+)
+n
+(f
+−
+=
+,                                                                                             (4.129)
+onde “e” é a constante numero de Nepper e n é a distância “d” calculada,
+produz um vetor cujos elementos variam de 0 a 1indicando o quão perto está de um
+elemento de treinamento. A terceira camada, soma essas contribuições para cada
+classe de entradas e produz uma saída como vetor de probabilidades. Finalmente, a
+função de transferência competitiva, na saída da terceira camada, escolhe o máximo
+destas probabilidades, produzindo o número 1 para esta classe e zeros em outros
+casos.
+Em cada uma das 23 linhas utilizadas no ajustamento da rede gravimétrica
+utilizou-se uma rede neural artificial probabilística, com a qual foi testada a
+possibilidade de uma determinada observação oriunda do gravímetro Scintrex poder
+ou não fazer parte do rol de observações LaCoste & Romberg. Para ser possível
+fazer essa classificação, duas classes foram criadas: classe 1 e classe 2. A classe 1
+é composta por observações oriundas exclusivamente do gravímetro LaCoste &
+Romberg,
+utilizadas
+para
+obtenção
+da
+solução
+de
+referência
+(AJUSTAMENTOTOTAL6) para a Rede Gravimétrica Científica do Estado do
+Paraná. Para obtenção da classe 2, os seguintes procedimentos foram seguidos em
+todas as 23 linhas utilizadas no ajustamento para obtenção da solução
+AJUSTAMENTOTOTAL6:
+a) com o conjunto de observações LaCoste & Romberg, calculou-se a
+média  aritmética
+)
+x
+(
+ juntamente com o respectivo desvio-padrão s;
+b) considerou-se que aproximadamente 99,7% dos elementos de uma
+amostra estão dentro de três desvios-padrão a contar da média:
+[
+S
+3
+x ;
+S
+3
+x
++
+−
+] (TRIOLA, 1999, p. 43). Criou-se a classe 2, esta
+composta de dois elementos, sendo estes
+S
+3
+x
+
+e
+
+S
+3
+x
++
+−
+.
+
+Efetuando a classificação utilizando a rede neural artificial probabilística, tem
+como resultado que se uma observação Scintrex é classificada como classe 1,
+significa que ela pode fazer parte do rol de observações LaCoste & Romberg. Caso

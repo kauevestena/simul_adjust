@@ -1,0 +1,109 @@
+
+3
+elevada precisão para a época de realização, a UFPR utilizou um conjunto de
+gravímetros LaCoste & Romberg sobre linhas medidas duplamente (em ida e volta)
+em intervalos de tempo não superiores a 36 horas.
+Na época os equipamentos disponíveis para determinações absolutas, não
+alcançavam precisões melhores que 50 Gal
+µ
+. Já na década de 80 (FALLER, 1983),
+com o desenvolvimento de novos equipamentos para este fim, foi possível chegar à
+ordem de 10
+Gal
+µ
+, permitindo o estabelecimento de estações gravimétricas
+absolutas de alta precisão, com distribuição adequada, de modo a formar apoio às
+redes fundamentais, servindo para controle de estações já existentes, implantadas
+com diversas metodologias, de diferentes propósitos, entre eles, servir de base para
+calibração periódica de gravímetros.
+Com este intuito, a Rede Nacional de Estações Gravimétricas Absolutas –
+RENEGA (GEMAEL et al., 1990), foi estabelecida no Brasil pela Universidade
+Federal do Paraná, com a colaboração do Institut für Erdmessung, da Universidade
+de Hannover, proprietária do gravímetro absoluto JILAG-3, usado na implementação
+da rede. Com este equipamento foram implantadas sete estações absolutas (Tabela
+1.1). A precisão desta rede é melhor que 10 Gal
+µ
+ (TORGE et al., p. 10, 1994).
+
+TABELA 1.1 - ESTAÇÕES DA RENEGA
+Estações
+ϕ
+λ
+h (m)
+gravidade (mGal)
+Teresina (PI)
+- 50 03’ 36’’
+- 420 48’ 00’’
+70
+978016,343
+Brasília (DF)
+- 150 39’ 36’’
+- 470 54’ 00’’
+1100
+978048,798
+Viçosa (RJ)
+- 200 45’ 36’’
+- 420 49’ 48’’
+653
+978460,230
+Vassouras (MG)
+- 220 24’ 00’’
+- 430 39’ 00’’
+400
+978637,581
+Valinhos (SP)
+- 230 00’ 15’’
+- 460 57’ 50’’
+850
+978563,778
+Curitiba (PR)
+- 250 27’ 15’’
+- 490 14’ 16’’
+910
+978760,387
+Santa Maria (RS)
+- 290 43’ 12’’
+- 530 43’ 12’’
+85
+979261,636
+
+
+FONTE: (GEMAEL et al., 2002)
+
+Tem-se que 1 mGal equivale a 10 -5  m/s2 e que 1µGal equivale a 10 -8 m/s2.
+
+
+
+
+
+
+
+
+4
+1.2 COOPERAÇÃO E SUPORTE PARA A SUA REALIZAÇÃO
+
+a) Curso de Pós-Graduação em Ciências Geodésicas, do Departamento de
+Geomática, Setor Ciências da Terra, da Universidade Federal do Paraná,
+mediante a linha de pesquisa em Geodésia, sub-área de Otimização de
+Levantamentos Geodésicos;
+b) orientação do Prof. Dr. Sílvio Rogério Correia de Freitas e co-orientação
+dos professores Dr. Camil Gemael e Dr. Pedro Luis Faggion;
+c) Laboratório de Instrumentação Geodésica (LAIG), da Universidade
+Federal do Paraná (UFPR), com sua infra-estrutura a disposição, incluindo
+um gravímetro tipo LaCoste&Romberg, modelo G-372;
+d) colaboração de Jair Silveira da Silva Junior e Kauem Simões, enquanto
+alunos do Curso de Graduação de Engenharia Cartográfica da
+Universidade Federal do Paraná e bolsistas(CNPq) de iniciação científica
+com atuação no LAIG.
+e) Fundação Instituto Brasileiro de Geografia e Estatística (IBGE), com
+empréstimo de dois gravímetros tipo LaCoste&Romberg, modelos G-114 e
+G-143;
+f) Ao projeto de pesquisa do Prof. Dr. Sílvio Rogério Correia de Freitas, o
+qual proporcionou o desenvolvimento deste trabalho;
+g) Conselho Nacional de Desenvolvimento Científico e Tecnológico (CNPq),
+com apoio financeiro a este trabalho;
+h) colaboração do Prof. Dr. Francisco Ferreira, responsável pelo Laboratório
+de Pesquisas em Geofísica Aplicada da Universidade Federal do Paraná,
+com o empréstimo de um gravímetro digital Scintrex, modelo CG3;
+i) biblioteca do Setor de Ciências da Terra, Tecnologia e Ciências Exatas da
+UFPR;
