@@ -625,6 +625,7 @@ const app = {
         const alpha = this.ALPHA_PCT / 100;
         const chi2_upper = this.chi2Inv(1 - alpha / 2, dof);
         const chi2_lower = this.chi2Inv(alpha / 2, dof);
+        // Global test (Gemael): χ²calc = VtPV compared against chi-square table bounds
         const globalPass = VtPV >= chi2_lower && VtPV <= chi2_upper;
 
         const obsData = this.observations.map((o, i) => {
@@ -840,11 +841,10 @@ const app = {
                 <span class="font-bold ${color}">${icon}</span>
             </div>
             <div class="space-y-1 text-sm text-stone-600 font-mono">
-                <div class="flex justify-between"><span>V<sup>T</sup>PV:</span> <span class="font-bold">${res.VtPV.toFixed(4)}</span></div>
-                <div class="flex justify-between"><span>&chi;&sup2; inf (&alpha;=${this.ALPHA_PCT}%):</span> <span>${res.chi2low.toFixed(4)}</span></div>
-                <div class="flex justify-between"><span>&chi;&sup2; sup (&alpha;=${this.ALPHA_PCT}%):</span> <span>${res.chi2lim.toFixed(4)}</span></div>
-                <div class="flex justify-between"><span>&sigma;&sup2;<sub>0</sub>:</span> <span>${res.sigma02.toFixed(4)}</span></div>
-                <div class="flex justify-between"><span>&sigma;<sub>0</sub>:</span> <span>${res.sigma0.toFixed(4)}</span></div>
+                <div class="flex justify-between"><span>&chi;&sup2; calc. (V<sup>T</sup>PV):</span> <span class="font-bold">${res.VtPV.toFixed(4)}</span></div>
+                <div class="flex justify-between"><span>&chi;&sup2; inf (&alpha;/2 = ${this.ALPHA_PCT/2}%):</span> <span>${res.chi2low.toFixed(4)}</span></div>
+                <div class="flex justify-between"><span>&chi;&sup2; sup (1-&alpha;/2 = ${100 - this.ALPHA_PCT/2}%):</span> <span>${res.chi2lim.toFixed(4)}</span></div>
+                <div class="flex justify-between"><span>&sigma;&#x302;&sup2;<sub>0</sub>:</span> <span>${res.sigma02.toFixed(4)}</span></div>
                 <div class="flex justify-between"><span>Graus de Liberdade:</span> <span>${res.dof}</span></div>
             </div>
             ${!res.globalPass ? '<p class="text-xs text-rose-600 mt-3">Anomalia detectada na rede. Analise o teste de Baarda abaixo.</p>' : ''}`;
