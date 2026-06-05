@@ -998,7 +998,7 @@ const app = {
         const mat = this.adjResults.matrices[this._activeMatrixTab];
         if (!mat) return;
 
-        container.innerHTML = '<div id="katexWrapper" class="w-full overflow-x-auto flex justify-center"></div><p id="matDesc" class="text-xs text-stone-600 mt-4 text-justify border-t border-stone-200 pt-3 px-2 leading-relaxed"></p>';
+        container.innerHTML = '<div id="katexWrapper" class="w-full overflow-x-auto flex justify-center"></div>';
         const kWrap = document.getElementById('katexWrapper');
         const mDesc = document.getElementById('matDesc');
 

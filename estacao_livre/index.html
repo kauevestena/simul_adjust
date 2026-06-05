@@ -184,7 +184,7 @@
             </div>
 
             <!-- Bottom Data Panels -->
-            <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 gap-6">
                 <!-- Residuals Table -->
                 <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-sm">
                     <h2 class="text-sm font-bold text-stone-500 uppercase tracking-wider mb-3">Resíduos & Data Snooping
@@ -317,10 +317,13 @@
                     <button onclick="app.switchMatrixTab('N')" id="matTab-N" class="mat-tab-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all text-stone-600 hover:bg-stone-200">N</button>
                     <button onclick="app.switchMatrixTab('SigmaXa')" id="matTab-SigmaXa" class="mat-tab-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all text-stone-600 hover:bg-stone-200">&Sigma;<sub>Xa</sub></button>
                 </div>
-                <div id="matrixContent" class="overflow-auto p-4 flex justify-center items-center bg-stone-50 rounded border border-stone-100 min-h-[150px]">
+                <div id="matrixContent" class="overflow-auto p-2 flex justify-center items-start bg-stone-50 rounded border border-stone-100 min-h-[150px]" style="font-size:0.72rem">
                     <p class="text-xs text-stone-400">Aguardando ajustamento...</p>
                 </div>
-                <p id="matDesc" class="text-[10px] text-stone-400 mt-2 leading-tight"></p>
+                <details class="mt-2">
+                    <summary class="text-[10px] text-stone-400 cursor-pointer select-none">Descrição</summary>
+                    <p id="matDesc" class="text-[10px] text-stone-400 mt-1 leading-tight"></p>
+                </details>
             </div>
 
             <!-- Monte Carlo Simulation -->
