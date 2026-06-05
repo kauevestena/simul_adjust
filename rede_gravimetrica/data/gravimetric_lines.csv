@@ -1,0 +1,29 @@
+line name,city from,city to,relative gravimetric value (mGal),equipment,weight
+01,Curitiba,São Mateus do Sul,17.165,"G-114, G-143, G-372, Scintrex",1
+02,São Mateus do Sul,Bituruna,1.942,"G-114, G-143, G-372, Scintrex",1
+03,Bituruna,Clevelândia,6.462,"G-114, G-143, G-372, Scintrex",1
+04,Clevelândia,Francisco Beltrão,21.933,"G-114, G-143, G-372, Scintrex",1
+05,Toledo,Francisco Beltrão,9.615,"G-114, G-143, G-372, Scintrex",1
+06,Toledo,Guaíra,2.21,"G-114, G-143, G-372, Scintrex",1
+07,Goio-erê,Toledo,53.677,"G-114, G-143, G-372, Scintrex",1
+08,Toledo,Foz do Iguaçu,,"G-114, G-143, G-372, Scintrex",1
+09,Laranjeiras do Sul,Toledo,93.522,"G-114, G-143, G-372, Scintrex",1
+10,Guarapuava,Laranjeiras do Sul,25.529,"G-114, G-143, G-372, Scintrex",1
+11,Guarapuava,Bituruna,100.271,"G-114, G-143, G-372, Scintrex",1
+12,Guarapuava,Ponta Grossa,39.367,"G-114, G-143, G-372, Scintrex",1
+13,Ponta Grossa,Curitiba,41.797,"G-114, G-143, G-372, Scintrex",1
+14ª,Ortigueira,Ponta Grossa,39.807,"G-114, G-143, G-372, Scintrex",1
+14b,Londrina,Ortigueira,41.935,"G-114, G-143, G-372, Scintrex",1
+15ª,Jaguariaíva,Ponta Grossa,66.403,"G-114, G-143, G-372, Scintrex",1
+15b,Jaguariaíva,Joaquim Távora,17.962,"G-114, G-143, G-372, Scintrex",1
+16,Londrina,Joaquim Távora,33.301,"G-114, G-143, G-372, Scintrex",1
+17,Londrina,Maringá,29.996,"G-114, G-143, G-372, Scintrex",1
+18ª,Maringá,Iretama,48.451,"G-114, G-143, G-372, Scintrex",1
+18b,Guarapuava,Iretama,36.072,"G-114, G-143, G-372, Scintrex",1
+19ª,Maringá,Paranavaí,11.026,"G-114, G-143, G-372, Scintrex",1
+19b,Paranavaí,Querência do Norte,,"G-114, G-143, G-372, Scintrex",1
+20,Paranavaí,Goio-erê,66.727,"G-114, G-143, G-372, Scintrex",1
+21,Goio-erê,Guaíra,55.887,"G-114, G-143, G-372, Scintrex",1
+22,Curitiba,Pontal do Paraná,,"G-114, G-143, G-372, Scintrex",1
+23ª,Jaguariaíva,Curitiba,108.2,"G-114, G-143, G-372, Scintrex",1
+23b,Valinhos,Jaguariaíva,88.409,"G-114, G-143, G-372, Scintrex",1

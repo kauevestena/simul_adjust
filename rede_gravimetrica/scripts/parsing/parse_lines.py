@@ -1,6 +1,6 @@
 import fitz
 
-doc = fitz.open('rede_gravimetrica/tese_embasamento.pdf')
+doc = fitz.open('../../source_info/tese_embasamento.pdf')
 
 # On page 39, we have equations of the form "l1 + Curitiba = São Mateus do Sul;"
 # Also equations: "l2 = Bituruna - São Mateus do Sul;" etc.
@@ -11,7 +11,7 @@ doc = fitz.open('rede_gravimetrica/tese_embasamento.pdf')
 import csv
 
 lines = []
-with open('rede_gravimetrica/gravimetric_lines.csv', 'r', encoding='utf-8') as f:
+with open('../../data/gravimetric_lines.csv', 'r', encoding='utf-8') as f:
     reader = csv.reader(f)
     header = next(reader)
     for row in reader:

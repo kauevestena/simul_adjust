@@ -1,6 +1,6 @@
 import fitz
 
-doc = fitz.open('rede_gravimetrica/tese_embasamento.pdf')
+doc = fitz.open('../../source_info/tese_embasamento.pdf')
 
 for i in range(120, 130):
     page = doc[i]

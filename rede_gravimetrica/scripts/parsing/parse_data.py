@@ -11,7 +11,7 @@ def get_coords(city_name):
         return location.latitude, location.longitude
     return "", ""
 
-doc = fitz.open('rede_gravimetrica/tese_embasamento.pdf')
+doc = fitz.open('../../source_info/tese_embasamento.pdf')
 
 # Table 1.1 - Estações da RENEGA (page 3)
 page3_tabs = doc[2].find_tables()

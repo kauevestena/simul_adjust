@@ -3,7 +3,7 @@ import csv
 from geopy.geocoders import Nominatim
 import time
 
-doc = fitz.open('rede_gravimetrica/tese_embasamento.pdf')
+doc = fitz.open('../../source_info/tese_embasamento.pdf')
 geolocator = Nominatim(user_agent="gravity_app")
 
 def get_coords(city_name):
@@ -94,7 +94,7 @@ for tab in page121_tabs:
 
 
 # Write CSV 1: Cities
-with open('rede_gravimetrica/cities.csv', 'w', newline='', encoding='utf-8') as f:
+with open('../../data/cities.csv', 'w', newline='', encoding='utf-8') as f:
     writer = csv.writer(f)
     writer.writerow(['City Name', 'Latitude', 'Longitude'])
     for city in sorted(all_cities):
@@ -104,7 +104,7 @@ with open('rede_gravimetrica/cities.csv', 'w', newline='', encoding='utf-8') as 
 
 # Write CSV 2: Absolute Gravity
 # Known absolute gravities: RENEGA and AJUSTAMENTOINTEGRADO
-with open('rede_gravimetrica/absolute_gravity.csv', 'w', newline='', encoding='utf-8') as f:
+with open('../../data/absolute_gravity.csv', 'w', newline='', encoding='utf-8') as f:
     writer = csv.writer(f)
     writer.writerow(['City Name', 'Latitude', 'Longitude', 'Absolute Gravimetric Value'])
 
@@ -128,7 +128,7 @@ with open('rede_gravimetrica/absolute_gravity.csv', 'w', newline='', encoding='u
 # On page 48-49 there are tables with "∇l0i" but those are estimated gross errors.
 # The goals say: "The gravimetric value column should contain the value of the gravimetric line between the two cities. If there's no information about the gravimetric value, you leave it blank."
 
-with open('rede_gravimetrica/gravimetric_lines.csv', 'w', newline='', encoding='utf-8') as f:
+with open('../../data/gravimetric_lines.csv', 'w', newline='', encoding='utf-8') as f:
     writer = csv.writer(f)
     writer.writerow(['line name', 'city from', 'city to', 'relative gravimetric value'])
     for linha, orig, dest in lines:
