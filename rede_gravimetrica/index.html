@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rede Gravimétrica - MMQ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://unpkg.com/maplibre-gl@4.0.0/dist/maplibre-gl.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body class="text-stone-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-stone-900 text-stone-50 py-4 shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 flex justify-between items-center">
+            <div>
+                <h1 class="text-xl md:text-2xl font-bold tracking-tight">Rede Gravimétrica</h1>
+                <p class="text-stone-400 text-xs md:text-sm mt-1">Simulação de Ajustamento pelo Método dos Mínimos Quadrados</p>
+            </div>
+
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex-grow w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Left Panel: Controls -->
+        <div class="lg:col-span-3 space-y-6">
+            <!-- Point Insertion Panel -->
+            <div class="bg-white p-5 rounded-xl border border-stone-200 shadow-sm">
+                <h2 class="text-sm font-bold text-stone-500 uppercase tracking-wider mb-4 border-b pb-2">Controle da
+                    Rede</h2>
+
+                <div class="space-y-3">
+                    <button onclick="app.generateNetwork()"
+                        class="btn w-full py-2 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-sm font-semibold flex items-center justify-center gap-2">
+                        <span>&#8635;</span> Gerar Nova Rede
+                    </button>
+
+                    <button onclick="app.injectOutlier()"
+                        class="btn w-full py-2 bg-rose-50 text-rose-700 border border-rose-200 rounded hover:bg-rose-100 text-sm font-semibold flex items-center justify-center gap-2">
+                        <span>&#9888;</span> Simular Erro Grosseiro
+                    </button>
+
+                    <button onclick="app.runAdjustment()"
+                        class="btn w-full py-3 bg-teal-600 text-white rounded shadow hover:bg-teal-700 text-sm font-bold flex items-center justify-center gap-2 mt-4">
+                        <span>&#9654;</span> Executar Ajustamento
+                    </button>
+                </div>
+
+                <div class="mt-4 pt-4 border-t border-stone-100 space-y-3">
+                    <h3 class="text-xs font-semibold text-stone-600">&sigma; ru&#237;do aleat&#243;rio <span
+                            class="font-normal text-stone-400">(re-amostrado a cada execu&#231;&#227;o)</span></h3>
+                    <div>
+                        <div class="flex justify-between text-xs text-stone-500 mb-1">
+                            <label for="simSigLin">&sigma; (mGal / &radic;km)</label>
+                            <span id="simSigLinVal" class="font-mono font-semibold text-stone-700">0.0</span>
+                        </div>
+                        <input id="simSigLin" type="range" min="0" max="10" step="0.5" value="0" class="w-full"
+                            oninput="document.getElementById('simSigLinVal').textContent=parseFloat(this.value).toFixed(1)">
+                    </div>
+                    <p class="text-[10px] text-stone-400 leading-tight">Gaussian(0, &sigma; &middot; &radic;d) adicionado a cada
+                        execu&#231;&#227;o. Se &sigma;&#61;0, nenhum ru&#237;do &#233; inserido.</p>
+                </div>
+
+                <div class="mt-6 pt-4 border-t border-stone-100 space-y-3">
+                    <h3 class="text-xs font-semibold text-stone-600 mb-2">Modelo Estocástico Usado:</h3>
+                    <div class="flex flex-col gap-2 mb-4 text-xs text-stone-600">
+                        <label class="flex items-center gap-2">
+                            <input type="radio" name="stochastic_model" value="variance" checked onchange="app.updateApriori()">
+                            Variância
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="radio" name="stochastic_model" value="heuristic" onchange="app.updateApriori()">
+                            Pesos Heurísticos
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="radio" name="stochastic_model" value="unit" onchange="app.updateApriori()">
+                            Peso Unitário
+                        </label>
+                    </div>
+
+                    <h3 class="text-xs font-semibold text-stone-600 mb-2 mt-4 pt-4 border-t border-stone-200">Parâmetros de Teste Estatístico:</h3>
+
+                    <div class="mt-3 pt-3">
+                        <div class="flex justify-between text-xs text-stone-500 mb-1">
+                            <label for="aprioriAlpha">Nível de Significância (&alpha;)</label>
+                            <span id="aprioriAlphaVal" class="font-mono font-semibold text-stone-700">5.0%</span>
+                        </div>
+                        <input id="aprioriAlpha" type="range" min="1" max="10" step="0.5" value="5" class="w-full"
+                            oninput="document.getElementById('aprioriAlphaVal').textContent=parseFloat(this.value).toFixed(1)+'%'; app.updateApriori()">
+                    </div>
+
+                    <div class="text-xs text-stone-500 space-y-1 font-mono mt-3 border-t border-stone-100 pt-3">
+                        <p>Fator de Variância (&sigma;&sup2;<sub>0</sub>): <span class="text-stone-800">1.0</span></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Global Test Results -->
+            <div class="bg-white p-5 rounded-xl border border-stone-200 shadow-sm" id="panelGlobalTest">
+                <h2 class="text-sm font-bold text-stone-500 uppercase tracking-wider mb-4 border-b pb-2">Teste Global
+                    (&chi;&sup2;)</h2>
+                <div class="text-center py-4">
+                    <p class="text-xs text-stone-400">Aguardando ajustamento...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center Panel: Canvas -->
+        <div class="lg:col-span-9 flex flex-col gap-6">
+
+            <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-sm">
+                <div class="flex justify-between items-center mb-3">
+                    <!-- Tab buttons -->
+                    <div class="flex gap-1 bg-stone-100 rounded-lg p-0.5">
+                        <button id="tabMapBtn" onclick="app.switchTab('map')"
+                            class="tab-btn tab-btn-active px-3 py-1.5 text-xs font-semibold rounded-md transition-all">
+                            &#9635; Vista de Mapa
+                        </button>
+                        <button id="tabTableBtn" onclick="app.switchTab('table')"
+                            class="tab-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all">
+                            &#9776; Tabela de Dados
+                        </button>
+                    </div>
+                    <div class="flex gap-3 items-center">
+                        <div class="flex gap-4 text-xs text-stone-500" id="mapLegend">
+                            <span class="flex items-center gap-1">
+                                <div class="w-3 h-3 bg-stone-800"></div> Ponto Fixo
+                            </span>
+                            <span class="flex items-center gap-1">
+                                <div class="w-3 h-3 rounded-full bg-teal-500 border border-white"></div> Ponto Calculado
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Map Tab Content -->
+                <div id="tabMapContent">
+                    <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;margin-bottom:.5rem">
+                        <button onclick="app.fitNetwork()"
+                            class="btn py-1 px-3 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-xs font-semibold">&#8982;
+                            Ajustar à janela</button>
+                        <label
+                            style="display:flex;align-items:center;gap:.5rem;font-size:.75rem;color:#57534e;margin:0">Escala
+                            barras de erro <input id="ellipseExag" type="range" min="1" max="50" step="1" value="10"
+                                style="width:100px"
+                                oninput="document.getElementById('ellipseExagVal').textContent=parseFloat(this.value).toFixed(1)+'\u00d7';app.drawNetwork()"><span
+                                id="ellipseExagVal" style="min-width:2.5rem">10.0×</span></label>
+                    </div>
+                    <div class="map-container" style="height: 500px; width: 100%; position: relative;">
+                        <div id="map" style="width: 100%; height: 100%; border-radius: 0.5rem; overflow: hidden; border: 1px solid #e7e5e4; z-index: 10;"></div>
+                        <!-- UI Overlay para as barras de erro -->
+                    </div>
+                    <div class="flex justify-between mt-2">
+                        <p class="text-xs text-stone-500 italic">Segure o botão Ctrl para rotacionar em 3D.</p>
+                        <p class="text-xs text-stone-400 text-right">As barras de erro verticais estão ampliadas para
+                            efeitos de visualização.</p>
+                    </div>
+                </div>
+
+                <!-- Data Table Tab Content -->
+                <div id="tabTableContent" style="display:none">
+                    <div class="flex justify-between items-center mb-3">
+                        <p class="text-xs text-stone-500">Apenas para visualização dos dados da rede gravimétrica.</p>
+                    </div>
+                    <div class="table-container" style="max-height:460px;overflow-y:auto">
+                        <table id="tableObsEdit">
+                            <thead>
+                                <tr>
+                                    <th>De</th>
+                                    <th>Para</th>
+                                    <th data-tooltip="Diferença de gravidade observada em mGal"
+                                        class="border-b border-dotted border-stone-400 cursor-help">&Delta;g (mGal)</th>
+                                    <th data-tooltip="Desvio padrão a priori em mGal"
+                                        class="border-b border-dotted border-stone-400 cursor-help">&sigma; (mGal)</th>
+                                    <th style="width:36px"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="obsEditBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Data Panels -->
+            <div class="grid grid-cols-1 gap-6">
+                <!-- Residuals Table -->
+                <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-sm">
+                    <h2 class="text-sm font-bold text-stone-500 uppercase tracking-wider mb-3">Resíduos & Data Snooping
+                        <span id="wTestLimitDisplay"
+                            class="text-[10px] font-normal normal-case text-stone-400 ml-1 tracking-normal"></span>
+                    </h2>
+                    <div class="table-container max-h-64">
+                        <table id="tableResiduals">
+                            <thead>
+                                <tr>
+                                    <th data-tooltip="Identificador da linha de gravimetria (De-Para)"
+                                        class="border-b border-dotted border-stone-400 cursor-help">Trecho</th>
+                                    <th data-tooltip="Diferença de gravidade simulado (com ruído e eventuais erros grosseiros)"
+                                        class="border-b border-dotted border-stone-400 cursor-help">&Delta;g Observado</th>
+                                    <th data-tooltip="Diferença entre o valor ajustado e o valor observado"
+                                        class="border-b border-dotted border-stone-400 cursor-help">v (Resíduo)</th>
+                                    <th data-tooltip="Desvio padrão a priori do resíduo e valor a posteriori entre parênteses"
+                                        class="border-b border-dotted border-stone-400 cursor-help">std(v) <span
+                                            class="text-[9px] font-normal text-stone-400">pri (pos)</span></th>
+                                    <th data-tooltip="Estatística de teste w (Resíduo padronizado). Se |w| > limite crítico, a observação é considerada um possível erro grosseiro."
+                                        class="border-b border-dotted border-stone-400 cursor-help">w-test (Baarda)</th>
+                                    <th data-tooltip="Resultado do Data Snooping (OK ou OUTLIER)"
+                                        class="border-b border-dotted border-stone-400 cursor-help">Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="6" class="text-center text-stone-400 py-4">Aguardando ajustamento...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Reliability Table -->
+                <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-sm">
+                    <h2 class="text-sm font-bold text-stone-500 uppercase tracking-wider mb-3">Confiabilidade Interna
+                        (Sensibilidade)</h2>
+                    <div class="table-container max-h-64">
+                        <table id="tableReliability">
+                            <thead>
+                                <tr>
+                                    <th data-tooltip="Identificador da observação"
+                                        class="border-b border-dotted border-stone-400 cursor-help">Obs.</th>
+                                    <th data-tooltip="Número de redundância local (0 a 1). Mede a contribuição da observação para a redundância do sistema."
+                                        class="border-b border-dotted border-stone-400 cursor-help">r (Redundância)</th>
+                                    <th data-tooltip="O menor erro grosseiro que o sistema consegue detectar estatisticamente (Viés Mínimo Detectável)"
+                                        class="border-b border-dotted border-stone-400 cursor-help">&nabla;<sub>0</sub>l
+                                        (Viés Mín. Detectável)</th>
+                                    <th data-tooltip="Classificação da redundância local (Boa se r > 0.3, Crítica se r < 0.1)"
+                                        class="border-b border-dotted border-stone-400 cursor-help">Qualidade</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="4" class="text-center text-stone-400 py-4">Aguardando ajustamento...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="text-[10px] text-stone-400 mt-2 mt-2 leading-tight">
+                        <strong>r (0 a 1):</strong> Contribuição da observação para a redundância do sistema. <br>
+                        <strong>&nabla;<sub>0</sub>l:</strong> O menor erro grosseiro que o sistema consegue detectar
+                        estatisticamente com 80% de probabilidade.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Coordinates Table -->
+            <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-sm">
+                <h2 class="text-sm font-bold text-stone-500 uppercase tracking-wider mb-3">Gravidades Ajustadas &amp;
+                    Confiabilidade Externa</h2>
+                <div class="table-container">
+                    <table id="tableCoords">
+                        <thead>
+                            <tr>
+                                <th data-tooltip="Identificador do ponto ajustado"
+                                    class="border-b border-dotted border-stone-400 cursor-help">Ponto
+                                </th>
+                                <th data-tooltip="Gravidade ajustada final"
+                                    class="border-b border-dotted border-stone-400 cursor-help">g<sub>adj</sub> (mGal)</th>
+                                <th data-tooltip="Desvio padrão da gravidade a priori e (a posteriori)"
+                                    class="border-b border-dotted border-stone-400 cursor-help">std g (mGal) <span
+                                        class="text-[9px] font-normal text-stone-400">pri (pos)</span></th>
+                                <th data-tooltip="Maior deslocamento de posição causado pelo erro mínimo detectável de qualquer observação"
+                                    class="border-b border-dotted border-stone-400 cursor-help">Conf. ext. m&aacute;x.
+                                    (mGal)</th>
+                                <th data-tooltip="Observação que gerou o deslocamento máximo (pior caso de confiabilidade externa)"
+                                    class="border-b border-dotted border-stone-400 cursor-help">Origem</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="5" class="text-center text-stone-400 py-4">Aguardando ajustamento...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="text-[10px] text-stone-400 mt-2 leading-tight">
+                    <strong>Conf. ext. m&aacute;x.:</strong> maior deslocamento da gravidade causado pelo
+                    erro m&iacute;nimo detect&aacute;vel (&nabla;<sub>0</sub>) de qualquer observa&ccedil;&atilde;o
+                    &mdash; confiabilidade externa da rede.
+                </p>
+            </div>
+
+            <!-- Matrices Visualization -->
+            <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-sm mt-4">
+                <h2 class="text-sm font-bold text-stone-500 uppercase tracking-wider mb-3">Matrizes do Ajustamento</h2>
+                <div class="flex flex-wrap gap-1 bg-stone-100 rounded-lg p-0.5 mb-3">
+                    <button onclick="app.switchMatrixTab('A')" id="matTab-A" class="mat-tab-btn mat-tab-active px-3 py-1.5 text-xs font-semibold rounded-md transition-all bg-white shadow-sm text-teal-700">A</button>
+                    <button onclick="app.switchMatrixTab('P')" id="matTab-P" class="mat-tab-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all text-stone-600 hover:bg-stone-200">P</button>
+                    <button onclick="app.switchMatrixTab('L')" id="matTab-L" class="mat-tab-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all text-stone-600 hover:bg-stone-200">L</button>
+                    <button onclick="app.switchMatrixTab('X')" id="matTab-X" class="mat-tab-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all text-stone-600 hover:bg-stone-200">X (dx)</button>
+                    <button onclick="app.switchMatrixTab('V')" id="matTab-V" class="mat-tab-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all text-stone-600 hover:bg-stone-200">V</button>
+                    <button onclick="app.switchMatrixTab('N')" id="matTab-N" class="mat-tab-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all text-stone-600 hover:bg-stone-200">N</button>
+                    <button onclick="app.switchMatrixTab('SigmaXa')" id="matTab-SigmaXa" class="mat-tab-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all text-stone-600 hover:bg-stone-200">&Sigma;<sub>Xa</sub></button>
+                </div>
+                <div id="matrixContent" class="overflow-auto p-2 flex justify-center items-start bg-stone-50 rounded border border-stone-100 min-h-[150px]" style="font-size:0.72rem">
+                    <p class="text-xs text-stone-400">Aguardando ajustamento...</p>
+                </div>
+                <details class="mt-2">
+                    <sumGalary class="text-[10px] text-stone-400 cursor-pointer select-none">Descrição</sumGalary>
+                    <p id="matDesc" class="text-[10px] text-stone-400 mt-1 leading-tight"></p>
+                </details>
+            </div>
+
+            <!-- Monte Carlo Simulation -->
+            <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-sm mt-4">
+                <h2 class="text-sm font-bold text-stone-500 uppercase tracking-wider mb-3">Simulação de Monte Carlo</h2>
+                <div class="flex flex-col xl:flex-row gap-6">
+                    <div class="xl:w-1/3 flex flex-col gap-4">
+                        <p class="text-xs text-stone-500 text-justify">
+                            Simula milhares de observações adicionando ruído gaussiano (baseado nos desvios a priori) ao
+                            valor perfeitamente ajustado, recalculando a rede a cada vez para validar o modelo
+                            estocástico.
+                        </p>
+                        <div>
+                            <label class="block text-xs font-semibold text-stone-600 mb-1">Número de Ensaios (N)</label>
+                            <input type="number" id="mcN" value="500" min="10" max="100000"
+                                class="w-full border border-stone-300 rounded px-2 py-1 text-sm font-mono focus:outline-none focus:border-teal-500">
+                        </div>
+                        <button onclick="app.runMonteCarlo()"
+                            class="btn w-full py-2 bg-indigo-600 text-white rounded shadow hover:bg-indigo-700 text-sm font-bold mt-2">
+                            Executar Monte Carlo
+                        </button>
+                        <div id="mcGlobalStatus" class="text-xs mt-2 font-mono space-y-1"></div>
+                    </div>
+                    <div class="xl:w-2/3 flex flex-col gap-2">
+                        <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;">
+                            <button onclick="app.fitMcNetwork()"
+                                class="btn py-1 px-3 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-xs font-semibold">&#8982;
+                                Ajustar à janela</button>
+                            <label
+                                style="display:flex;align-items:center;gap:.5rem;font-size:.75rem;color:#57534e;margin:0">Escala
+                                dispersão <input id="mcExag" type="range" min="1" max="100" step="1" value="5"
+                                    style="width:100px"
+                                    oninput="document.getElementById('mcExagVal').textContent=this.value+'\u00d7';app.drawMonteCarlo()"><span
+                                    id="mcExagVal" style="min-width:3rem">5×</span></label>
+                        </div>
+                        <div class="canvas-container" style="height: 350px;">
+                            <canvas id="mcCanvas" style="height: 100%;"></canvas>
+                        </div>
+                        <div class="table-container max-h-48 mt-2" id="mcTableContainer" style="display: none;">
+                            <table id="tableMC">
+                                <thead>
+                                    <tr>
+                                        <th>Ponto</th>
+                                        <th data-tooltip="Viés Empírico (Média Amostral - Nominal)"
+                                            class="border-b border-dotted border-stone-400 cursor-help">Bias g (mGal)</th>
+                                        <th data-tooltip="Desvio Padrão Amostral"
+                                            class="border-b border-dotted border-stone-400 cursor-help normal-case">σ H
+                                            amostral
+                                            (mGal)</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                            <div
+                                class="mt-4 text-[11px] text-stone-500 space-y-2 text-justify border-t border-stone-200 pt-3">
+                                <p><strong class="text-stone-700">Viés Empírico (Bias g):</strong> Indica a tendência
+                                    sistemática intrínseca da rede simulada. É a diferença entre a média de todos os
+                                    ensaios de Monte Carlo e o valor nominal (sem ruído). Valores próximos a zero
+                                    validam a imparcialidade do estimador de Mínimos Quadrados perante o modelo
+                                    estocástico utilizado.</p>
+                                <p><strong class="text-stone-700">Desvio Padrão Amostral (&sigma; g):</strong> Medida
+                                    da dispersão (incerteza) prática e real das gravidades geradas ao longo das
+                                    simulações. Serve para confirmar se a qualidade formal (teórica <em>a priori</em>)
+                                    das variâncias condiz com o comportamento físico da rede sujeita a ruídos
+                                    aleatórios.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Blunder Simulation Modal -->
+    <div id="blunderModal" class="fixed inset-0 z-50 bg-black/50 items-center justify-center p-4" style="display:none">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg border border-stone-200">
+            <div class="flex justify-between items-center px-5 py-4 border-b border-stone-100">
+                <h3 class="font-bold text-stone-700 text-sm uppercase tracking-wider">&#9888; Simular Erro Grosseiro
+                </h3>
+                <button onclick="app.closeBlunderModal()"
+                    class="text-stone-400 hover:text-stone-600 text-xl leading-none">&times;</button>
+            </div>
+            <div class="px-5 py-4 space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-stone-600 mb-2">Magnitude do erro (Múltiplo do desvio
+                        padrão do trecho)</label>
+                    <div class="flex items-center gap-3">
+                        <input id="blunderPct" type="range" min="3" max="50" step="1" value="10" class="flex-1"
+                            oninput="document.getElementById('blunderPctVal').textContent=this.value+'&sigma;'">
+                        <span id="blunderPctVal"
+                            class="font-mono text-sm font-bold text-rose-600 min-w-[3rem] text-right">10&sigma;</span>
+                    </div>
+                    <p class="text-[10px] text-stone-400 mt-1">Todas as observações selecionadas receberão um erro
+                        grosseiro de ±X vezes o seu desvio padrão a priori.</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-stone-600 mb-2">Observações candidatas <span
+                            class="font-normal text-stone-400">(selecione uma ou mais)</span></label>
+                    <div id="blunderObsList"
+                        class="space-y-1 max-h-64 overflow-y-auto border border-stone-100 rounded p-2 bg-stone-50">
+                    </div>
+                </div>
+            </div>
+            <div class="px-5 py-4 border-t border-stone-100 flex justify-end gap-2">
+                <button onclick="app.closeBlunderModal()"
+                    class="btn px-4 py-2 text-sm text-stone-600 bg-stone-100 border border-stone-200 rounded hover:bg-stone-200">Cancelar</button>
+                <button onclick="app.confirmBlunder()"
+                    class="btn px-4 py-2 text-sm text-white bg-rose-600 rounded shadow hover:bg-rose-700 font-semibold">&#9888;
+                    Injetar Erro</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Math.js, MapLibre, KaTeX -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.min.js"></script>
+    <script src="https://unpkg.com/maplibre-gl@4.0.0/dist/maplibre-gl.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="default_network.js"></script>
+    <script src="app.js"></script>
+
+</body>
+
+</html>
