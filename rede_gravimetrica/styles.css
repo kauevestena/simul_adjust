@@ -1,0 +1,148 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
+body { font-family: 'Inter', sans-serif; background-color: #f5f5f4; }
+.font-mono { font-family: 'JetBrains Mono', monospace; }
+
+.canvas-container {
+    position: relative;
+    width: 100%;
+    background-color: #ffffff;
+    border-radius: 0.75rem;
+    box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+    border: 1px solid #e7e5e4;
+    overflow: hidden;
+}
+
+canvas {
+    display: block;
+    width: 100%;
+    height: 500px;
+}
+
+.table-container {
+    overflow-x: auto;
+}
+
+table { width: 100%; text-align: left; border-collapse: collapse; }
+th, td { padding: 0.5rem 0.75rem; border-bottom: 1px solid #e7e5e4; }
+th { font-size: 0.75rem; text-transform: uppercase; color: #57534e; background-color: #f5f5f4; }
+td { font-size: 0.875rem; color: #292524; }
+
+.btn { transition: all 0.2s; }
+.btn:active { transform: scale(0.98); }
+
+/* Custom Scrollbar for tables */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #f5f5f4; }
+::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #a8a29e; }
+#pointModal { display: none; }
+#pointModal.active { display: flex; }
+.insert-btn-active { background-color: #0f766e !important; color: #fff !important; border-color: #0f766e !important; }
+
+/* Tab buttons */
+.tab-btn { color: #78716c; cursor: pointer; background: transparent; border: none; }
+.tab-btn:hover { color: #292524; }
+.tab-btn-active { background: #fff !important; color: #292524 !important; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+
+/* Editable observation table */
+#tableObsEdit input[type="number"],
+#tableObsEdit select {
+    width: 100%;
+    border: 1px solid #e7e5e4;
+    border-radius: 0.25rem;
+    padding: 0.3rem 0.4rem;
+    font-size: 0.8rem;
+    font-family: 'JetBrains Mono', monospace;
+    background: #fafaf9;
+    color: #292524;
+    transition: border-color 0.15s;
+}
+#tableObsEdit input[type="number"]:focus,
+#tableObsEdit select:focus {
+    outline: none;
+    border-color: #14b8a6;
+    background: #fff;
+}
+#tableObsEdit select {
+    appearance: auto;
+    cursor: pointer;
+}
+.obs-delete-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px;
+    border: none; border-radius: 0.25rem;
+    background: rgba(244, 63, 94, 0.08);
+    color: #e11d48; cursor: pointer;
+    font-size: 0.85rem;
+    transition: background 0.15s, transform 0.1s;
+}
+.obs-delete-btn:hover { background: rgba(244, 63, 94, 0.2); transform: scale(1.1); }
+.obs-delete-btn:active { transform: scale(0.95); }
+
+/* Custom Tooltip */
+[data-tooltip] { position: relative; }
+[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #1c1917;
+    color: #fff;
+    padding: 0.4rem 0.6rem;
+    border-radius: 0.25rem;
+    font-size: 0.7rem;
+    white-space: normal;
+    width: max-content;
+    max-width: 180px;
+    z-index: 50;
+    pointer-events: none;
+    margin-top: 0.35rem;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    text-transform: none;
+    font-weight: 500;
+    line-height: 1.3;
+    text-align: center;
+}
+[data-tooltip]:hover::before {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-bottom-color: #1c1917;
+    margin-top: -0.25rem;
+    z-index: 50;
+    pointer-events: none;
+}
+
+/* Trash button overlay on the canvas */
+#canvasTrashBtn {
+    display: none;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 10;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    font-size: 1.15rem;
+    background: rgba(244, 63, 94, 0.12);
+    border: 1px solid rgba(244, 63, 94, 0.35);
+    border-radius: 0.5rem;
+    color: #e11d48;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+    transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+#canvasTrashBtn:hover {
+    background: rgba(244, 63, 94, 0.25);
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(225,29,72,0.18);
+}
+#canvasTrashBtn:active {
+    transform: scale(0.95);
+}
