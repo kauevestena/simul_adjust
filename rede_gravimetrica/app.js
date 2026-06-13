@@ -169,6 +169,7 @@ const app = {
         this.adjResults = null;
         this.updateUI_Clear();
         this.drawNetwork();
+        this.renderObsTable();
     },
 
     resizeCanvas() {
@@ -210,16 +211,19 @@ const app = {
                 if (!pFrom || !pTo) return;
 
                 const dist = this.haversineDist(pFrom.x, pFrom.y, pTo.x, pTo.y);
+                const std = Math.sqrt(link.variance);
+                const initialNoise = this.randn_bm() * std;
+                const noisyDG = link.dg + initialNoise;
 
                 this.observations.push({
                     id: `\u0394g_${pFrom.id}-${pTo.id}`, type: 'dh',
                     from: pFrom.id, to: pTo.id,
-                    val: link.dg,
+                    val: noisyDG,
                     variance: link.variance,
                     heuristic_weight: link.heuristic_weight,
-                    std: Math.sqrt(link.variance), // store for compatibility with existing display logic
+                    std: std, // store for compatibility with existing display logic
                     hasError: false,
-                    _baseVal: link.dg, _blunderOffset: 0, _simNoise: 0,
+                    _baseVal: noisyDG, _blunderOffset: 0, _simNoise: 0,
                     idx: this.observations.length,
                     distance: dist
                 });
