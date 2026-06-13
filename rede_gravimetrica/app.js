@@ -233,6 +233,7 @@ const app = {
         this.updateUI_Clear();
         this.drawNetwork();
         this.fitNetwork();
+        this.renderObsTable();
     },
 
     haversineDist(lon1, lat1, lon2, lat2) {
@@ -458,6 +459,7 @@ const app = {
         this.adjResults = null;
         this.updateUI_Clear();
         this.drawNetwork();
+        this.renderObsTable();
         this.closeBlunderModal();
         alert(`Erros grosseiros injetados (${k}σ):\n${injected.join('\n')}\n\nExecute o ajustamento para detectar os outliers.`);
     },
@@ -621,6 +623,7 @@ const app = {
         };
         this.updateUI_Results();
         this.drawNetwork();
+        this.renderObsTable();
     },
 
     // --- Drawing / MapLibre Logic ---
