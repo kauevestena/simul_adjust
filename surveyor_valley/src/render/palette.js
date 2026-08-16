@@ -1,0 +1,141 @@
+// The colours of the valley.
+//
+// One place, because a palette only works if it is small and shared. Every
+// material is a three-step `ramp()` — shadow, midtone, highlight — with the hue
+// rotating as the value moves, and sprites are painted from those three steps
+// and nothing else. Limiting the vocabulary is most of what makes a set of
+// independently drawn sprites look like they belong in the same world.
+//
+// The tuning target is Stardew's spring: saturated grass, warm earth, strong
+// value contrast. The Phase 1 palette was olive and grey and read as a survey
+// diagram rather than a place worth walking around.
+
+import { ramp } from './pixbuf.js';
+
+/** Three steps unless noted: [shadow, mid, light]. */
+export const P = {
+  grass: ramp('#5fa03c', 3),
+  grassDry: ramp('#8a9a3f', 3),
+  grassDeep: ramp('#3f7a2c', 3),
+
+  leaf: [ramp('#4f9c33', 3), ramp('#5fae3a', 3), ramp('#3f8a2e', 3), ramp('#6fb845', 3)],
+  leafAutumn: ramp('#c98a2e', 3),
+  trunk: ramp('#8a5f34', 3),
+  branch: ramp('#6e4a28', 3),
+
+  soil: ramp('#a8763e', 3),
+  soilWet: ramp('#7a5730', 3),
+  sand: ramp('#dcc98f', 3),
+
+  rock: ramp('#96958d', 3),
+  rockMoss: ramp('#6f8455', 3),
+
+  water: ramp('#3f92c4', 3),
+  waterDeep: ramp('#2c6f9e', 3),
+  foam: ramp('#cfe9f5', 3),
+
+  wood: ramp('#a8763e', 3),
+  woodDark: ramp('#7a5227', 3),
+  concrete: ramp('#cfc9ba', 3),
+  metal: ramp('#adb6bd', 3),
+  iron: ramp('#5d6a72', 3),
+
+  // The surveyor. A hi-vis vest is what a field surveyor actually wears, and it
+  // conveniently makes the player the most saturated thing on screen.
+  //
+  // Skin gets a much smaller hue rotation than everything else. The house
+  // default swings orange toward red on the shadow step, which on a face reads
+  // as a wound rather than as shading.
+  skin: ramp('#e0a878', 3, { hueShift: 0.012, spread: 0.115, satBoost: 0.03 }),
+  shirt: ramp('#4a7fb5', 3),
+  vest: ramp('#f2a71b', 3),
+  trousers: ramp('#40506b', 3),
+  boots: ramp('#5a3f2a', 3),
+  hat: ramp('#e8d9b0', 3),
+  hatBand: ramp('#8a5a2b', 3),
+  hair: ramp('#4a3324', 3),
+
+  instrument: ramp('#3a4650', 3),
+  instrumentTrim: ramp('#f2c14e', 3),
+  lens: ramp('#7fd0f0', 3),
+  prism: ramp('#3fb0e0', 3),
+
+  roof: ramp('#b8503a', 3),
+  roofZinc: ramp('#7d8f9c', 3),
+  wall: ramp('#e8dcc0', 3),
+  wallShade: ramp('#c4b494', 3),
+
+  // No pure white: a two-pixel white dot on green does not read as a flower,
+  // it reads as a dead pixel. Cream is as light as this palette goes.
+  flower: [ramp('#e0607a', 3), ramp('#efc850', 3), ramp('#b47fd0', 3), ramp('#f0e0a8', 3)],
+
+  shadow: '#1e2a18',
+};
+
+/**
+ * Ground colours per soil class, keyed by the ids in `world/terrain.js`.
+ *
+ * Two separate vocabularies, and the distinction matters:
+ *
+ *   `grain`  sprinkled per pixel at low density and DELIBERATELY close in value
+ *            to the base. Grain is meant to be felt, not seen. Using the full
+ *            three-step ramp here — which the first attempt did — turns a
+ *            pasture into television static.
+ *   `patch`  larger, lower-frequency mottling that gives a big field some
+ *            regional variation instead of one even tone to the horizon.
+ */
+const grainOf = (base, spread = 0.075) => {
+  const r = ramp(base, 5, { spread, hueShift: 0.15, satBoost: 0.04 });
+  return [r[0], r[4]]; // one step down, one step up — symmetric about the base
+};
+
+export const GROUND = {
+  PASTO: { base: P.grass[1], grain: grainOf('#5fa03c'), patch: [P.grass[0], P.grassDeep[2]] },
+  CAMPO_SUJO: { base: P.grassDry[1], grain: grainOf('#8a9a3f'), patch: [P.grassDry[0], P.grass[1]] },
+  SOLO_EXPOSTO: { base: P.soil[1], grain: grainOf('#a8763e'), patch: [P.soil[0], P.soil[2]] },
+  // Furrow tones come from `patch`, and they stay close to the field's own
+  // colour on purpose: high-contrast furrows turn a crop field into corduroy
+  // visible from orbit, which is what the first pass looked like.
+  LAVOURA: { base: P.soil[1], grain: grainOf('#a8763e'), patch: [P.soilWet[2], P.soil[1]] },
+  AREIA: { base: P.sand[1], grain: grainOf('#dcc98f'), patch: [P.sand[0], P.sand[2]] },
+  ROCHA: { base: P.rock[1], grain: grainOf('#96958d'), patch: [P.rock[0], P.rockMoss[0]] },
+  BREJO: { base: P.grassDeep[1], grain: grainOf('#3f7a2c'), patch: [P.grassDeep[0], P.waterDeep[0]] },
+  // Water is a smooth surface, and grain that reads as pleasant texture on
+  // grass reads as television static on it. Tighter tones, and half as often.
+  AGUA: { base: P.water[1], grain: grainOf('#3f92c4', 0.028), grainRate: 0.5, patch: [P.waterDeep[1], P.water[2]] },
+};
+
+/**
+ * Light through the working day, as a multiply tint plus an additive warmth.
+ * The service clock drives this, which is what turns "elapsed time" from a
+ * number in the corner into something the player can feel.
+ */
+export const DAYLIGHT = [
+  { t: 0.0, tint: [0.72, 0.74, 0.92], warm: [0.10, 0.05, 0.0] }, // 07:00 cool dawn
+  { t: 0.18, tint: [0.96, 0.94, 0.92], warm: [0.05, 0.03, 0.0] }, // 09:00
+  { t: 0.42, tint: [1.0, 1.0, 1.0], warm: [0.0, 0.0, 0.0] }, // midday, neutral
+  { t: 0.72, tint: [1.0, 0.94, 0.82], warm: [0.06, 0.02, 0.0] }, // 15:30 warm
+  { t: 0.9, tint: [0.94, 0.78, 0.66], warm: [0.12, 0.04, 0.0] }, // golden hour
+  { t: 1.0, tint: [0.66, 0.62, 0.80], warm: [0.06, 0.0, 0.04] }, // 18:00 dusk
+];
+
+/** Interpolate the daylight table. `t` is 0 at 07:00, 1 at 18:00. */
+export function lightAt(t) {
+  t = Math.max(0, Math.min(1, t));
+  let a = DAYLIGHT[0];
+  let b = DAYLIGHT[DAYLIGHT.length - 1];
+  for (let i = 0; i + 1 < DAYLIGHT.length; i++) {
+    if (t >= DAYLIGHT[i].t && t <= DAYLIGHT[i + 1].t) {
+      a = DAYLIGHT[i];
+      b = DAYLIGHT[i + 1];
+      break;
+    }
+  }
+  const span = b.t - a.t || 1;
+  const k = (t - a.t) / span;
+  const mix = (u, v) => u + (v - u) * k;
+  return {
+    tint: [mix(a.tint[0], b.tint[0]), mix(a.tint[1], b.tint[1]), mix(a.tint[2], b.tint[2])],
+    warm: [mix(a.warm[0], b.warm[0]), mix(a.warm[1], b.warm[1]), mix(a.warm[2], b.warm[2])],
+  };
+}

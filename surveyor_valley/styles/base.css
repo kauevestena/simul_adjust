@@ -1,0 +1,419 @@
+/* Tokens and the shared widgets.
+
+   Retargeted from the Phase 1 white-dashboard look. Panels are parchment inside
+   a chunky wooden frame, type is bigger and heavier, and every control has a
+   solid bottom edge that compresses when pressed. None of it needs an image:
+   the frame is layered inset box-shadows, which scales cleanly and costs one
+   property.
+
+   The one deliberate exception is `report.css`. A planta and a memorial
+   descritivo must look like documents, not like a game — so they keep clean
+   white paper and stay well away from all of this. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Any `display` set by a class beats the `hidden` attribute's default
+   `display: none`, so a flex or grid element toggled with `node.hidden = true`
+   stays stubbornly visible. Several panels here are toggled that way, and the
+   symptom — a control appearing before it is usable — looks like a state bug
+   rather than a stylesheet one. This settles it once for everything. */
+[hidden] {
+  display: none !important;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+:root {
+  /* Parchment and wood. */
+  --bg: #f2e3c3;
+  --panel: #f7ead0;
+  --panel-alt: #ecdab6;
+  --panel-sunk: #e0c99e;
+
+  --wood: #8b5a2b;
+  --wood-light: #c69a5e;
+  --wood-dark: #5c3a1a;
+  --wood-shadow: #43290f;
+
+  --ink: #3b2a16;
+  --ink-soft: #6b5334;
+  --ink-faint: #96805c;
+  --line: #d3ba91;
+  --line-strong: #b1926a;
+
+  --accent: #d9622b;
+  --accent-dark: #a8461c;
+  --accent-soft: #f8dcc4;
+  --gold: #f2b93c;
+  --green: #4a8f36;
+  --green-soft: #dff0cf;
+  --amber: #e0a52e;
+  --red: #c4402f;
+  --red-soft: #f8dcd6;
+  --blue: #35709e;
+
+  --radius: 10px;
+  --radius-sm: 7px;
+
+  /* The house frame: dark rim, light bevel, wood body, and a solid drop that
+     makes a panel look like an object sitting on the world rather than a div. */
+  --frame:
+    inset 0 0 0 3px var(--wood-light),
+    inset 0 0 0 6px var(--wood),
+    0 4px 0 var(--wood-shadow),
+    0 8px 20px rgba(40, 24, 8, 0.35);
+  --frame-sm:
+    inset 0 0 0 2px var(--wood-light),
+    inset 0 0 0 4px var(--wood),
+    0 3px 0 var(--wood-shadow);
+
+  --font: ui-rounded, "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
+  --mono: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, monospace;
+}
+
+body {
+  font-family: var(--font);
+  color: var(--ink);
+  background: var(--bg);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+body.modal-open {
+  overflow: hidden;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5 {
+  margin: 0 0 0.4em;
+  line-height: 1.22;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+p {
+  margin: 0 0 0.7em;
+}
+
+/* ------------------------------------------------------------- buttons -- */
+
+.btn {
+  appearance: none;
+  border: 3px solid var(--wood-dark);
+  background: linear-gradient(#fbf3e2, var(--panel-alt));
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  padding: 0.5rem 1.1rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  box-shadow: 0 3px 0 var(--wood-shadow);
+  transition: filter 0.12s ease, transform 0.06s ease, box-shadow 0.06s ease;
+}
+
+.btn:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+/* Presses down onto its own shadow, so the click has weight. */
+.btn:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 0 0 var(--wood-shadow);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: 0 3px 0 var(--wood-shadow);
+}
+
+.btn-primary {
+  background: linear-gradient(#e87f45, var(--accent));
+  border-color: var(--accent-dark);
+  color: #fff;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.28);
+}
+
+.btn-ghost {
+  background: var(--panel-sunk);
+}
+
+.chip {
+  display: inline-block;
+  border: 2px solid var(--line-strong);
+  background: var(--panel-alt);
+  border-radius: 999px;
+  padding: 0.22rem 0.8rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 0 rgba(92, 58, 26, 0.4);
+}
+
+.chip.is-active {
+  background: var(--accent);
+  border-color: var(--accent-dark);
+  color: #fff;
+}
+
+.select,
+.seed-input {
+  font: inherit;
+  padding: 0.45rem 0.6rem;
+  border: 2px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--panel-sunk);
+  color: var(--ink);
+  width: 100%;
+  box-shadow: inset 0 2px 3px rgba(92, 58, 26, 0.22);
+}
+
+.seed-input {
+  font-family: var(--mono);
+  font-weight: 600;
+}
+
+/* -------------------------------------------------------------- modals -- */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(30, 20, 8, 0.55);
+  backdrop-filter: blur(3px);
+  z-index: 900;
+}
+
+.modal {
+  position: fixed;
+  z-index: 901;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(560px, calc(100vw - 2rem));
+  max-height: calc(100vh - 2.5rem);
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border: 3px solid var(--wood-dark);
+  border-radius: var(--radius);
+  box-shadow: var(--frame);
+  overflow: hidden;
+}
+
+.modal-wide {
+  width: min(1020px, calc(100vw - 2rem));
+}
+
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1.2rem;
+  margin: 6px 6px 0;
+  border-radius: 5px 5px 0 0;
+  background: linear-gradient(var(--wood-light), var(--wood));
+  color: #fff5e2;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+}
+
+.modal-title {
+  margin: 0;
+  font-size: 1.08rem;
+}
+
+.modal-close {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: rgba(255, 245, 226, 0.75);
+  cursor: pointer;
+  padding: 0 0.25rem;
+}
+
+.modal-close:hover {
+  color: #fff;
+}
+
+.modal-body {
+  padding: 1.1rem 1.3rem;
+  margin: 0 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  padding: 0.85rem 1.2rem;
+  margin: 0 6px 6px;
+  border-top: 2px solid var(--line);
+  background: var(--panel-alt);
+  border-radius: 0 0 5px 5px;
+}
+
+/* -------------------------------------------------------------- tables -- */
+
+.tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.tbl th,
+.tbl td {
+  padding: 0.34rem 0.55rem;
+  text-align: right;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.tbl th:first-child,
+.tbl td:first-child {
+  text-align: left;
+}
+
+.tbl th {
+  font-weight: 800;
+  color: #fff5e2;
+  background: var(--wood);
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+}
+
+.tbl th:first-child {
+  border-radius: 5px 0 0 0;
+}
+.tbl th:last-child {
+  border-radius: 0 5px 0 0;
+}
+
+.tbl tbody tr:nth-child(even) {
+  background: rgba(176, 146, 106, 0.12);
+}
+
+.tbl tbody tr:hover {
+  background: var(--accent-soft);
+}
+
+/* Wide tables scroll inside their own box; the page never scrolls sideways. */
+.doc-table-wrap,
+.caderneta-group,
+.calc-section {
+  overflow-x: auto;
+}
+
+/* --------------------------------------------------------------- stats -- */
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.5rem 0.8rem;
+  margin: 0.6rem 0 1rem;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.5rem 0.7rem;
+  background: var(--panel-sunk);
+  border: 2px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: inset 0 2px 3px rgba(92, 58, 26, 0.16);
+}
+
+.stat-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.stat-value {
+  font-family: var(--mono);
+  font-size: 0.98rem;
+  font-weight: 700;
+}
+
+.stat.is-good {
+  background: var(--green-soft);
+  border-color: #9cc47e;
+}
+
+.stat.is-bad {
+  background: var(--red-soft);
+  border-color: #dd9c8f;
+}
+
+.verdict {
+  font-weight: 800;
+  margin: 0;
+}
+
+.verdict.is-good {
+  color: #2f6b22;
+}
+
+.verdict.is-bad {
+  color: var(--red);
+}
+
+.hint,
+.muted {
+  color: var(--ink-soft);
+  font-size: 0.87rem;
+}
+
+.notice {
+  background: var(--accent-soft);
+  border: 2px solid #e0a97f;
+  border-left-width: 5px;
+  padding: 0.55rem 0.8rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.89rem;
+}
+
+.notice-muted {
+  background: var(--panel-alt);
+  border-color: var(--line-strong);
+  color: var(--ink-soft);
+}
+
+.formula {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  background: var(--panel-sunk);
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-strong);
+}
+
+.disclaimer {
+  font-size: 0.79rem;
+  color: var(--red);
+  font-weight: 700;
+  margin-top: 1rem;
+}

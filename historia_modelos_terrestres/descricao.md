@@ -1,0 +1,8 @@
+- Quero um simulador didático que mostre os diferentes modelos para a Terra
+- Deverá ter um painel lateral do lado esquerdo com os diferentes modelos, "Histórico" deverá ser uma das opções com ilustrações de idéias imaginadas antigamente, como a tartaruga
+- Cada opção deverá conter uma parte do processo histórico, os principais nomes por trás da teoria e uma forma de interagir com o modelo
+- Dentro da parte de "Como funciona" do modelo, deverá ter uma animação que mostre o modelo em funcionamento
+- A animação deverá usar ThreeJS. O modelo deve ser baseado em esferas e retângulos em 3D para representar a Terra e os corpos celestes. Não use sprites e não use imagens para representar os corpos celestes. Faça tudo em 3D.
+- Modelos obrigatórios de ali estarem: esfera; elipsóide; geóide; teluróide
+- Conexão com Projeções Cartográficas ao fim
+- Tudo deve estar contido na pasta "historia_modelos_terrestres", os demais projetos desse monorepo devem ser completamente ignorados

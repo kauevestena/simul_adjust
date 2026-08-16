@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Surveyor Valley — Simulador de Topografia</title>
+    <meta
+      name="description"
+      content="Jogo didático de levantamento planimétrico com estação total, para a disciplina de Topografia 1."
+    />
+    <meta name="theme-color" content="#3f7a2c" />
+
+    <!-- Relative paths throughout: GitHub Pages serves this from a subdirectory. -->
+    <link rel="stylesheet" href="./styles/base.css" />
+    <link rel="stylesheet" href="./styles/game.css" />
+    <link rel="stylesheet" href="./styles/report.css" />
+
+    <!--
+      PixiJS, pinned to an exact version with a Subresource Integrity hash.
+
+      This preload is the ONLY place SRI can be applied: a dynamic `import()`
+      takes no integrity attribute, but it reuses this already-verified
+      response. `src/render/pixi.js` then imports the same URL.
+
+      A service worker caches it on first success, so only the very first visit
+      needs a network.
+    -->
+    <link
+      rel="modulepreload"
+      href="https://cdn.jsdelivr.net/npm/pixi.js@8.19.0/dist/pixi.min.mjs"
+      integrity="sha384-tzOF3u3ENZL6upupKzzwDX4ZejjfFAIk3YWjgqGaOhyGL5lgC0i4AYng0reLPTwu"
+      crossorigin="anonymous"
+    />
+
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%235fa03c'/%3E%3Cpath d='M16 6 L20 22 H12 Z' fill='%23f2c14e'/%3E%3Crect x='6' y='23' width='20' height='3' rx='1.5' fill='%23e8dcc0'/%3E%3C/svg%3E"
+    />
+  </head>
+  <body>
+    <div id="app">
+      <!-- The pixel world. -->
+      <canvas id="world" aria-label="Terreno" role="img"></canvas>
+      <!-- Survey instrumentation, at full device resolution. -->
+      <canvas id="overlay" aria-hidden="true"></canvas>
+    </div>
+
+    <noscript>
+      <p style="padding: 2rem; font-family: system-ui, sans-serif">
+        Surveyor Valley precisa de JavaScript habilitado para funcionar.
+      </p>
+    </noscript>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
