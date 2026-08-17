@@ -68,6 +68,46 @@ export function dealCast(rng, count) {
   return { owners, properties, municipio, uf: UF, exteriors };
 }
 
+/**
+ * The player's own name.
+ *
+ * A different joke from the landowners', and deliberately so: they are
+ * nostalgic and grandiose, the surveyor is a sporting hero with the wrong
+ * surname. First names and surnames are drawn from Brazilian athletes and then
+ * dealt independently, so what comes out is "Ayrton Fittipaldi" or "Marta
+ * Kuerten" — recognisable halves that never belonged together.
+ *
+ * It matters beyond the joke. `state.player.name` is what signs the planta and
+ * the memorial descritivo, and it was never set at all — every document a
+ * student produced came out signed "Surveyor Valley". A generated name means
+ * the field is never empty, and the player can overwrite it with their own.
+ */
+const FIRST_NAMES = {
+  m: [
+    'Ayrton', 'Romário', 'Rivaldo', 'Cafu', 'Emerson', 'Nélson', 'Gustavo',
+    'Oscar', 'Éder', 'Dunga', 'Djalma', 'Zico', 'Falcão', 'Serginho',
+  ],
+  f: [
+    'Marta', 'Rayssa', 'Hortência', 'Daiane', 'Fabiana', 'Adriana', 'Maurine',
+    'Formiga', 'Bia', 'Jaqueline', 'Sheilla', 'Joanna', 'Ketleyn', 'Rosamaria',
+  ],
+};
+
+const SURNAMES = [
+  'Senna', 'Fittipaldi', 'Piquet', 'Kuerten', 'Massa', 'Barrichello',
+  'Marcari', 'Guimarães', 'dos Santos', 'Nascimento', 'Bueno', 'Sobral',
+  'Cielo', 'Menezes', 'Peçanha', 'Vieira',
+];
+
+/**
+ * @param {object} rng   any seeded stream, or `makeRng` of the moment
+ * @param {'m'|'f'} body which pool of first names to draw from
+ */
+export function randomSurveyorName(rng, body = 'm') {
+  const firsts = FIRST_NAMES[body] || FIRST_NAMES.m;
+  return `${rng.pick(firsts)} ${rng.pick(SURNAMES)}`;
+}
+
 /** How a neighbouring parcel is named in a memorial descritivo. */
 export function confrontanteLabel(parcel, lang = 'pt') {
   if (!parcel) return '';

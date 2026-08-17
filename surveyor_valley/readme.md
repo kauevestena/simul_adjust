@@ -53,6 +53,10 @@ memorial descritivo, without a browser.
 - `tests/movement.test.mjs` — walking: the speed ramps, the turn, and the slide along a
   fence, a tree and the water line. Also that being stopped by something stops the legs,
   which is the difference between a walk cycle and a sprite scrubbing in place.
+- `tests/assistant.test.mjs` — Ligeirinho. Mostly the ways an errand can FAIL, because a
+  reading now waits for him: a corner he cannot reach gives up rather than never arriving,
+  a merely long run is not mistaken for a stuck one, and a 45 m/s dash does not step over
+  a fence.
 - `tests/readout.test.mjs` — the live instrument face. That the circle reading inverts the
   reduction, that the angle from the ré is zero when aimed at the ré whatever the circle
   reads, that a free station reports no ré at all, and that the readout agrees with a real
@@ -122,6 +126,15 @@ tests/
   metres.** The producer counts rows northward; a painter that counts them the other way
   mirrors the chunk, which is exactly what happened. The grid's orientation now has a
   test.
+- **There is one collision solver, and both people use it.** `player.js#slideStep` takes a
+  radius; Ligeirinho passes a smaller one and sub-steps it, because at 45 m/s a fixed step
+  is 0.75 m and `canStand` tests a position rather than a swept path. A second
+  implementation would drift, and the drift would look like the assistant wading through
+  water the player was just stopped from crossing.
+- **The player's appearance is baked into the atlas sheet**, so `atlas.build(look)` is
+  re-callable and `SKIN_TONES`/`HAIR_TONES`/`HAT_STYLES` in `render/palette.js` are a
+  **save format** — a look is stored as indices into them. Append only; inserting a tone
+  in the middle repaints every existing player's face.
 - **Documents are not part of the game skin.** `styles/report.css` stays clean white
   paper on purpose; a planta that looks like a game UI is a worse teaching artefact.
 
@@ -155,10 +168,55 @@ fit with no matrix library.
 ## Status
 
 The full loop runs across all six properties: pick a job from the board, survey it,
-close the traverse, deliver the planta and the memorial, get paid, and spend it on a
-better instrument. Control left in the ground carries across to neighbouring jobs, and
-the board shows how much of it each property can reuse. Progress is saved continuously
-and the game offers to resume it.
+close the traverse, deliver the planta and the memorial, walk to the farmhouse to be paid,
+and spend it on a better instrument. Control left in the ground carries across to
+neighbouring jobs, and the board shows how much of it each property can reuse. Progress is
+saved continuously and the game offers to resume it.
+
+**You survey with a crew of two.** A reading can only be taken from the instrument — you
+have to be within a metre of the monument the tripod stands on — and the reason that is
+not merely a restriction is **Ligeirinho**, the auxiliar de topografia, who carries the
+prism. Click a corner and he sprints to it at 45 m/s; the reading lands when he arrives,
+not when you click. A total station is not a one-person tool, and the game used to pretend
+otherwise: you set the tripod up once and then measured the whole parcel from wherever you
+had wandered off to.
+
+He moves through the player's own collision solver, so he goes round fences and stops at
+water exactly as you do, and the dash is sub-stepped because at 45 m/s a fixed step is
+0.75 m and would clear a fence without ever occupying an illegal position. He gives up
+when he stops **getting closer**, not when the errand has merely taken a while — that
+distinction matters, because a flat time budget expired on long batch sights while he was
+still running perfectly well, and the reading was then quietly taken from wherever he had
+got to. If a corner is genuinely unreachable — in a marsh, hard against a building — he
+plants the pole as close as he can and the reading is taken anyway, which is what a real
+prism man does and what stops an unreachable corner softlocking a sight.
+
+Standing at the instrument would be a cage rather than a rule if the corners you must
+click could be off screen, so **the camera lets go while you are set up and still**: the
+right-drag pan sticks instead of being yanked back, and setting up frames the whole figure
+(which is what `camera.fit` was written for, and had never once been called).
+
+**"Medir todos os visíveis" exists only on fácil.** The manual-sight quota is a tutorial
+gate that opens; this one never does, so the button is hidden rather than shown locked.
+On fácil the batch is a tour — Ligeirinho visits every target in turn, because each one is
+a real sight with the prism actually on the point.
+
+**The owner pays at the sede.** Delivering produces the planta and the memorial wherever
+you are standing and banks nothing; a waypoint then points at the farmhouse — with an
+arrow pinned to the edge of the screen when it is off view — and the money is settled when
+you get there. The homestead was always in the world as scenery, but the paddock fence
+closed completely around it: measured by flood fill from the spawn, **only 54 of 72
+farmhouses could be reached on foot at all**. Leaving one side open as a gate takes that to
+108/108, and it does so without moving a single entity, so `world.hash()` is unchanged and
+saves written before the gate still line up with their valley. A sealed paddock could
+already trap a station site inside it, and a paddock without a gate was wrong anyway.
+
+At the opening dialog you **choose your surveyor** — body, skin tone, hair colour and hat,
+with a live sprite preview — and get a name shuffled out of famous Brazilian athletes'
+first names and surnames, so you start as Ayrton Fittipaldi or Marta Kuerten unless you
+type your own. That name is not decoration: it signs the planta and the memorial
+descritivo, and it was initialised empty and never assigned, so every document a student
+produced came out signed "Surveyor Valley".
 
 **Every parcel is guaranteed to admit a closable traverse**, on every difficulty. World
 generation ends by siting a ring of stations the way a surveyor would — spread around the
@@ -203,12 +261,19 @@ The origin is still an arbitrary local (1000, 1000), which costs nothing: azimut
 While the instrument is set up, the **ré is drawn as a dashed blue line** and a live
 instrument face in the lower right shows the circle reading, the angle turned from the ré,
 the azimuth and the distance to whatever you are aiming at — over a drawing of the
-horizontal circle itself, with the ré where the circle reads it, the target ray, the swept
-angle shaded between them, and a tick where azimuth zero falls. Zeroing on the ré visibly
-puts it at twelve o'clock and pushes north round by θ₀, which is `Az = Hz + θ₀` in one
-picture. Swinging the telescope and
-watching `Az = Hz + θ0` move is the point: `src/survey/readout.js` is the noiseless twin of
-`sightTarget`, and `tests/readout.test.mjs` asserts the two agree.
+horizontal circle itself, with the ré ray, the target ray and the swept angle shaded
+between them.
+
+**The dial is drawn north-up**, always: it is oriented exactly like the map above it, so
+the dashed ré on the diagram points the same way as the dashed ré on the ground, and the
+two can be compared without rotating either in your head. It was first drawn on the
+instrument's own face, which put the ré at twelve o'clock whenever the circle was zeroed on
+it and pushed north round by θ₀ — truthful about the instrument, and confusing on screen,
+because the picture and the map then disagreed about which way was up. Rotating both rays
+by θ₀ leaves the angle between them untouched, so nothing didactic was lost; `Az = Hz + θ₀`
+is still there as the two numbers in the rows below. Swinging the telescope and watching
+them move is the point: `src/survey/readout.js` is the noiseless twin of `sightTarget`, and
+`tests/readout.test.mjs` asserts the two agree.
 
 **SPACE acts with the current tool, where you stand** — drive the monument at your feet,
 set up over the monument you occupy, or sight the target under the cursor. It shares one

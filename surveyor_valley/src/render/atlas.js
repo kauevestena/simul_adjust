@@ -38,12 +38,31 @@ export function makeAtlas() {
 
   /**
    * Paint every sprite, shelf-pack it, and upload.
+   *
    * Synchronous apart from the texture upload — no data-URI round trip, no
    * image decode, nothing to await. Phase 1 waited on 75 `<img>` loads at boot.
+   *
+   * Callable more than once, which it had to become the moment the player got
+   * to choose a face: the sheet is baked with that choice in it, so a second
+   * campaign started with a different look would otherwise keep the first one's
+   * sprites forever. The old sheet is destroyed first — leaving it uploaded
+   * would leak a texture per new game.
+   *
+   * @param {object} [look]  the player's appearance.
    */
-  function build() {
+  function build(look = null) {
     const PIXI = pixi();
-    const sprites = buildSprites();
+    if (built) {
+      sheetSource?.destroy();
+      sheetSource = null;
+      // Dynamic entries live outside the sheet and are re-added by the world
+      // build that follows, so they go too.
+      for (const { source } of dynamic.values()) source.destroy();
+      dynamic.clear();
+      frames.clear();
+      built = false;
+    }
+    const sprites = buildSprites(look);
 
     // Tallest first, so shelves pack tightly.
     const order = [...sprites].sort((a, b) => b.pix.h - a.pix.h);

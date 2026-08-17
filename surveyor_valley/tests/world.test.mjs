@@ -17,6 +17,7 @@ import { makeSpatialIndex } from '../src/world/spatial.js';
 import { lineOfSight } from '../src/world/los.js';
 import { makeTree, makeEntity, KIND } from '../src/world/entities.js';
 import { DIFFICULTY } from '../src/core/state.js';
+import { canStand } from '../src/game/player.js';
 
 const SEEDS = ['sv-000001', 'sv-a1b2c3', 'sv-ffffff', 'sv-teste', 'sv-42'];
 
@@ -431,4 +432,72 @@ test('every parcel, on every difficulty, admits a closable ring of stations', ()
   }
 
   assert.deepEqual(failures, [], `parcels with no closable traverse:\n  ${failures.join('\n  ')}`);
+});
+
+/**
+ * The owner pays you at the sede, so the sede has to be somewhere you can walk.
+ *
+ * This is a real flood fill over `canStand`, which is expensive — about 700 ms
+ * for six parcels against the 42 ms the whole world takes to generate. That
+ * ratio is exactly why the guarantee is STRUCTURAL rather than a search at
+ * generation time: the paddock fence is built with a gate in it, and this test
+ * is what checks the gate is enough.
+ *
+ * It caught the original: a closed paddock ring sealed the farmhouse in, and
+ * only 54 of 72 parcels had a homestead the player could reach at all.
+ */
+test('the sede can be reached on foot from where the job starts', () => {
+  const STEP = 0.35;
+  const failures = [];
+
+  for (const seed of ['sv-sede-1', 'sv-sede-2', 'sv-sede-3']) {
+    for (const [name, difficulty] of Object.entries(DIFFICULTY)) {
+      const world = buildWorld(seed, difficulty);
+      for (const parcel of world.parcels) {
+        const sede = world.sedeFor(parcel.id);
+        assert.ok(sede, `${seed}/${name}/${parcel.id}: no sede at all`);
+
+        const start = world.spawnPointFor(parcel);
+        // Wide enough to contain both ends and room to route around scenery.
+        // Bounding this at a flat 45 m clipped the fill before it left the
+        // spawn on the one parcel where the two were 47 m apart, which looked
+        // exactly like an unreachable sede.
+        const reach = Math.hypot(start.e - sede.door.e, start.n - sede.door.n) + 25;
+        const seen = new Set();
+        const key = (i, j) => `${i},${j}`;
+        const stack = [[Math.round(start.e / STEP), Math.round(start.n / STEP)]];
+        seen.add(key(stack[0][0], stack[0][1]));
+
+        let arrived = false;
+        let guard = 0;
+        while (stack.length && guard++ < 200000 && !arrived) {
+          const [i, j] = stack.pop();
+          const e = i * STEP;
+          const n = j * STEP;
+          if (Math.hypot(e - sede.door.e, n - sede.door.n) <= 2.5) {
+            arrived = true;
+            break;
+          }
+          for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+            const ni = i + di;
+            const nj = j + dj;
+            const k = key(ni, nj);
+            if (seen.has(k)) continue;
+            const ee = ni * STEP;
+            const nn = nj * STEP;
+            // Bounded to the neighbourhood: this is a reachability question,
+            // not a tour of the valley.
+            if (Math.hypot(ee - sede.door.e, nn - sede.door.n) > reach) continue;
+            if (!canStand(world, ee, nn)) continue;
+            seen.add(k);
+            stack.push([ni, nj]);
+          }
+        }
+
+        if (!arrived) failures.push(`${seed}/${name}/${parcel.id} (${parcel.propertyName})`);
+      }
+    }
+  }
+
+  assert.deepEqual(failures, [], `sedes the player cannot walk to:\n  ${failures.join('\n  ')}`);
 });

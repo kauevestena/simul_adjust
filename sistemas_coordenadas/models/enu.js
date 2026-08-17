@@ -78,8 +78,11 @@ export function setup(scene, camera, controls) {
 
     let originPhi = 30;
     let originLambda = 30;
+    let originH = 1000; // altitude in meters
     let targetPhi = 45;
     let targetLambda = 60;
+    let targetH = 3000; // altitude in meters
+    let hExag = 50.0; // visual exaggeration for altitude
 
     let showEllipsoid = true;
     let showENUAxes = true;
@@ -89,15 +92,20 @@ export function setup(scene, camera, controls) {
     function getB() { return a * (1 - f * fExag); }
     function getEcc2() { const b = getB(); return 1 - (b * b) / (a * a); }
 
-    function computeECEF(latDeg, lonDeg, h = 0) {
+    function computeECEF(latDeg, lonDeg, hMeters = 0) {
         const phiRad = THREE.MathUtils.degToRad(latDeg);
         const lamRad = THREE.MathUtils.degToRad(lonDeg);
         const e2 = getEcc2();
+
+        // hMeters to scene units (with exaggeration to be visible)
+        // Earth radius a = 6378137m -> 2.0 units
+        const hScene = (hMeters / 6378137) * a * hExag;
+
         const N = a / Math.sqrt(1 - e2 * Math.sin(phiRad) * Math.sin(phiRad));
         return new THREE.Vector3(
-            (N + h) * Math.cos(phiRad) * Math.cos(lamRad),
-            (N * (1 - e2) + h) * Math.sin(phiRad),
-            (N + h) * Math.cos(phiRad) * Math.sin(lamRad)
+            (N + hScene) * Math.cos(phiRad) * Math.cos(lamRad),
+            (N * (1 - e2) + hScene) * Math.sin(phiRad),
+            (N + hScene) * Math.cos(phiRad) * Math.sin(lamRad)
         );
     }
 
@@ -195,7 +203,7 @@ export function setup(scene, camera, controls) {
         }
 
         // --- Origin point ---
-        const originPos = computeECEF(originPhi, originLambda);
+        const originPos = computeECEF(originPhi, originLambda, originH);
         const originMesh = new THREE.Mesh(
             new THREE.SphereGeometry(0.1, 16, 16),
             new THREE.MeshBasicMaterial({ color: 0x38bdf8 })
@@ -251,7 +259,7 @@ export function setup(scene, camera, controls) {
         }
 
         // --- Target point Q ---
-        const targetPos = computeECEF(targetPhi, targetLambda);
+        const targetPos = computeECEF(targetPhi, targetLambda, targetH);
         const targetMesh = new THREE.Mesh(
             new THREE.SphereGeometry(0.08, 16, 16),
             new THREE.MeshBasicMaterial({ color: 0xff4444 })
@@ -328,8 +336,8 @@ export function setup(scene, camera, controls) {
 
     function updateReadout() {
         const readout = document.getElementById('coord-readout');
-        const originPos = computeECEF(originPhi, originLambda);
-        const targetPos = computeECEF(targetPhi, targetLambda);
+        const originPos = computeECEF(originPhi, originLambda, originH);
+        const targetPos = computeECEF(targetPhi, targetLambda, targetH);
         const enuCoords = ecefToENU(originPos, targetPos, originPhi, originLambda);
         const dist = originPos.distanceTo(targetPos);
         const az = THREE.MathUtils.radToDeg(Math.atan2(enuCoords.dE, enuCoords.dN));
@@ -392,12 +400,24 @@ export function setup(scene, camera, controls) {
                     <input type="range" id="ctrl-olam" min="-180" max="180" step="1" value="${originLambda}">
                 </div>
                 <div class="control-group">
+                    <label>Origem — h: <span class="value-display" id="oh-val">${originH} m</span></label>
+                    <input type="range" id="ctrl-oh" min="100" max="8000" step="100" value="${originH}">
+                </div>
+                <div class="control-group">
                     <label>Ponto Q — φ: <span class="value-display" id="tphi-val">${targetPhi.toFixed(1)}°</span></label>
                     <input type="range" id="ctrl-tphi" min="-90" max="90" step="1" value="${targetPhi}">
                 </div>
                 <div class="control-group">
                     <label>Ponto Q — λ: <span class="value-display" id="tlam-val">${targetLambda.toFixed(1)}°</span></label>
                     <input type="range" id="ctrl-tlam" min="-180" max="180" step="1" value="${targetLambda}">
+                </div>
+                <div class="control-group">
+                    <label>Ponto Q — h: <span class="value-display" id="th-val">${targetH} m</span></label>
+                    <input type="range" id="ctrl-th" min="100" max="8000" step="100" value="${targetH}">
+                </div>
+                <div class="control-group">
+                    <label>Exagero Visual (h): <span class="value-display" id="exag-val">${hExag.toFixed(0)}x</span></label>
+                    <input type="range" id="ctrl-exag" min="1" max="200" step="1" value="${hExag}">
                 </div>
                 <div class="control-group" style="flex-direction: row; flex-wrap: wrap; gap: 14px;">
                     <label class="toggle-switch">
@@ -434,6 +454,11 @@ export function setup(scene, camera, controls) {
             container.querySelector('#olam-val').textContent = originLambda.toFixed(1) + '°';
             buildScene();
         });
+        container.querySelector('#ctrl-oh').addEventListener('input', e => {
+            originH = parseFloat(e.target.value);
+            container.querySelector('#oh-val').textContent = originH + ' m';
+            buildScene();
+        });
         container.querySelector('#ctrl-tphi').addEventListener('input', e => {
             targetPhi = parseFloat(e.target.value);
             container.querySelector('#tphi-val').textContent = targetPhi.toFixed(1) + '°';
@@ -442,6 +467,16 @@ export function setup(scene, camera, controls) {
         container.querySelector('#ctrl-tlam').addEventListener('input', e => {
             targetLambda = parseFloat(e.target.value);
             container.querySelector('#tlam-val').textContent = targetLambda.toFixed(1) + '°';
+            buildScene();
+        });
+        container.querySelector('#ctrl-th').addEventListener('input', e => {
+            targetH = parseFloat(e.target.value);
+            container.querySelector('#th-val').textContent = targetH + ' m';
+            buildScene();
+        });
+        container.querySelector('#ctrl-exag').addEventListener('input', e => {
+            hExag = parseFloat(e.target.value);
+            container.querySelector('#exag-val').textContent = hExag.toFixed(0) + 'x';
             buildScene();
         });
         container.querySelector('#ctrl-enu').addEventListener('change', e => {

@@ -29,10 +29,28 @@ import { MARCOS } from '../survey/instrument.js';
 
 /** Minimum separation between two monuments, metres. */
 const MARCO_MIN_SEPARATION = 1.0;
-/** How close the player must stand to occupy a monument. */
+/**
+ * How close the player must stand to occupy a monument — and, since this round,
+ * to take a reading from the instrument standing on it.
+ *
+ * One constant for one idea: "you are at this point". Sighting used to check
+ * nothing at all, so a player set the tripod up once and then measured the
+ * whole parcel from wherever they had wandered off to. That is the one thing a
+ * total station cannot do, and it is why Ligeirinho exists: somebody has to
+ * carry the prism, and it is not the person behind the eyepiece.
+ */
 const OCCUPY_RADIUS = 1.0;
 
-export function makeService({ store, getWorld, bus, EV }) {
+/**
+ * @param {() => ({e:number,n:number}|null)} [p.getPlayerPos]
+ *        Where the surveyor is standing. Defaulting to `null` means UNCHECKED,
+ *        which is what lets the DOM-free tests drive a whole survey without
+ *        modelling a body — `tests/pipeline.test.mjs` supplies a real one and
+ *        asserts the rule. The check lives here rather than in the click
+ *        handler so that `api.sight`, `measureAll` and the SPACE key cannot each
+ *        forget it in their own way.
+ */
+export function makeService({ store, getWorld, bus, EV, getPlayerPos = () => null }) {
   /** Observation noise stream, re-created per service so replays are exact. */
   let rng = null;
   /** targetId -> {id, label, E, N, sights} */
@@ -144,6 +162,22 @@ export function makeService({ store, getWorld, bus, EV }) {
     const s = surveyed.get(id);
     if (s) return { id, E: s.E, N: s.N, label: s.label };
     return null;
+  }
+
+  /**
+   * Is the surveyor standing at the instrument?
+   *
+   * Measured against the setup's TRUE position, which carries the centring
+   * error — a couple of millimetres against a one-metre radius, so it makes no
+   * practical difference and keeps the frames from being mixed.
+   *
+   * @returns {{ok:boolean, distance:number}}
+   */
+  function atInstrument(setup) {
+    const pos = getPlayerPos();
+    if (!setup || !pos) return { ok: true, distance: 0 };
+    const d = Math.hypot(setup.trueE - pos.e, setup.trueN - pos.n);
+    return { ok: d <= OCCUPY_RADIUS, distance: d };
   }
 
   function canOccupy(marcoId, playerPos) {
@@ -334,6 +368,12 @@ export function makeService({ store, getWorld, bus, EV }) {
   function sight(targetId, { manual = true, twoFace = null } = {}) {
     const setup = currentSetup();
     if (!setup) return { ok: false, reason: 'noStation' };
+
+    // You have to be behind the eyepiece. Ligeirinho carries the prism to the
+    // point; the reading is taken from the instrument, by you.
+    const here = atInstrument(setup);
+    if (!here.ok) return { ok: false, reason: 'notAtInstrument', detail: { dist: here.distance.toFixed(1) } };
+
     const world = getWorld();
     const target = truePositionOf(targetId);
     if (!target) return { ok: false, reason: 'unknownTarget' };
@@ -804,8 +844,47 @@ export function makeService({ store, getWorld, bus, EV }) {
     return clockState(svc.elapsedMs, budgetFor(parcel, store.difficulty()));
   }
 
-  /** Deliver the job: score it, pay for it, and hand back the report payload. */
-  function finish() {
+  /**
+   * Draw up the documents and score the job — WITHOUT paying for it.
+   *
+   * Delivery and payment are two moments now, because the owner is a person who
+   * lives somewhere: you finish the paperwork wherever you are standing, and
+   * then you walk to the sede and he settles up. So this produces everything and
+   * changes no money; `collectPayment` is the other half.
+   *
+   * Deterministic, and deliberately re-runnable: a save records only that the
+   * job was delivered, and this rebuilds the identical result from the stored
+   * observations on reload rather than persisting a whole report.
+   */
+  function deliver() {
+    const result = scoreJob();
+    if (!result.ok) return result;
+    const svc = service();
+    svc.delivered = true;
+    return result;
+  }
+
+  /**
+   * The owner pays. Only once, and only for a job that was actually delivered.
+   */
+  function collectPayment() {
+    const svc = service();
+    if (!svc) return { ok: false, reason: 'noService' };
+    if (!svc.delivered) return { ok: false, reason: 'notDelivered' };
+    if (svc.completed) return { ok: false, reason: 'alreadyPaid' };
+
+    const result = scoreJob();
+    if (!result.ok) return result;
+    store.finishService(result);
+    return result;
+  }
+
+  /**
+   * Score the job and build the report payload. Pure: it banks nothing and
+   * completes nothing, so it can be called for the delivery screen and again
+   * for the payment screen and give the same answer both times.
+   */
+  function scoreJob() {
     const svc = service();
     const parcel = activeParcel();
     if (!svc || !parcel) return { ok: false, reason: 'noService' };
@@ -848,7 +927,6 @@ export function makeService({ store, getWorld, bus, EV }) {
       report,
     };
 
-    store.finishService(result);
     return result;
   }
 
@@ -862,6 +940,8 @@ export function makeService({ store, getWorld, bus, EV }) {
     sight,
     measureAll,
     visibleTargets,
+    /** Exposed so the tool rail and the click handler judge by the same rule. */
+    atInstrument: () => atInstrument(currentSetup()),
     surveyedRing,
     surveyedPoints: () => [...surveyed.values()],
     parcelProgress,
@@ -871,7 +951,10 @@ export function makeService({ store, getWorld, bus, EV }) {
     runTraverse,
     parcelReport,
     debrief,
-    finish,
+    deliver,
+    collectPayment,
+    /** The score and the documents, banking nothing. Safe to call twice. */
+    scoreJob,
     knownPositionOf,
     truePositionOf,
     /** Restore the reduction cache after a save is reloaded. */
@@ -882,6 +965,22 @@ export function makeService({ store, getWorld, bus, EV }) {
       surveyed = new Map();
       for (const p of reducedPoints(svc.observations)) {
         surveyed.set(p.id, { id: p.id, label: p.label, E: p.E, N: p.N, sights: p.sights });
+      }
+
+      // Put the player's own monuments back INTO the world.
+      //
+      // A save stores the seed, not the valley, so the world is regenerated
+      // from scratch — and a regenerated valley has no marcos in it, because
+      // the player planted those. The control points came back above and so did
+      // their labels, which is why this went unnoticed: the network panel and
+      // the plan view looked right while the monuments themselves had no entity
+      // at all. No sprite on the ground, and nothing to point the instrument at,
+      // so reloading mid-job quietly cost you every station you had set.
+      const world = getWorld();
+      if (!world) return;
+      for (const cp of state().network) {
+        if (cp.kind !== 'marco' || world.entity(`marco-${cp.id}`)) continue;
+        world.addMarco(cp.trueE, cp.trueN, cp.id);
       }
     },
     notify,

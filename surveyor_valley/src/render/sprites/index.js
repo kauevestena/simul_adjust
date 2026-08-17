@@ -11,6 +11,7 @@
 import { makeRng } from '../../core/rng.js';
 import { tree, bush, rock, SIZES } from './nature.js';
 import { surveyor } from './character.js';
+import { resolveLook, LIGEIRINHO_LOOK } from '../palette.js';
 import { playerMarco, boundaryMark, totalStation, prism, fencePost } from './survey.js';
 import { grassTuft, tussock, flower, pebble, stone, reed, clod, crop } from './ground.js';
 
@@ -22,11 +23,16 @@ const ART_SEED = 'surveyor-valley-art-v1';
 
 /**
  * Paint every atlas sprite.
+ *
+ * @param {object} [look]  the player's chosen appearance. The only thing in the
+ *        roster that is not a fixed archetype — everything else must stay
+ *        identical between sessions, which is why the art seed is a constant.
  * @returns {Array<{key:string, pix:object, anchorX:number, anchorY:number}>}
  */
-export function buildSprites() {
+export function buildSprites(look = null) {
   const out = [];
   const add = (key, made) => out.push({ key, ...made });
+  const playerLook = resolveLook(look || {});
 
   // ---- vegetation and stone ----------------------------------------------
   // Three painted sizes each, because pixel art cannot be scaled at draw time.
@@ -42,25 +48,33 @@ export function buildSprites() {
     }
   }
 
-  // ---- the surveyor -------------------------------------------------------
-  for (const dir of ['S', 'N', 'E']) {
-    for (let frame = 0; frame < 4; frame++) {
-      add(`char-${dir}-${frame}`, surveyor({ dir, frame }));
+  // ---- the crew -----------------------------------------------------------
+  // Two characters, one roster loop. The player's look is chosen at the intro;
+  // Ligeirinho's is fixed. Painting them through the same code is what keeps
+  // his stride and hers identical — two copies of a walk cycle drift, and a
+  // drifted walk cycle is the kind of thing nobody notices for months.
+  for (const [prefix, look] of [['char', playerLook], ['aux', LIGEIRINHO_LOOK]]) {
+    for (const dir of ['S', 'N', 'E']) {
+      for (let frame = 0; frame < 4; frame++) {
+        add(`${prefix}-${dir}-${frame}`, surveyor({ dir, frame, look }));
+      }
+      // The top of a breath. Walk frame 0 is the bottom of it, so standing
+      // still alternates between the two and only this one has to be painted.
+      add(`${prefix}-${dir}-idle`, surveyor({ dir, pose: 'idle', look }));
     }
-    // The top of a breath. Walk frame 0 is the bottom of it, so standing still
-    // alternates between the two and only this one has to be painted.
-    add(`char-${dir}-idle`, surveyor({ dir, pose: 'idle' }));
+    // West is east mirrored: cheaper, and the two can never drift apart.
+    for (let frame = 0; frame < 4; frame++) {
+      const east = surveyor({ dir: 'E', frame, look });
+      add(`${prefix}-W-${frame}`, { pix: east.pix.mirrorX(), anchorX: 0.5, anchorY: east.anchorY });
+    }
+    const eastIdle = surveyor({ dir: 'E', pose: 'idle', look });
+    add(`${prefix}-W-idle`, { pix: eastIdle.pix.mirrorX(), anchorX: 0.5, anchorY: eastIdle.anchorY });
   }
-  // West is east mirrored: cheaper, and the two can never drift apart.
-  for (let frame = 0; frame < 4; frame++) {
-    const east = surveyor({ dir: 'E', frame });
-    add(`char-W-${frame}`, { pix: east.pix.mirrorX(), anchorX: 0.5, anchorY: east.anchorY });
-  }
-  const eastIdle = surveyor({ dir: 'E', pose: 'idle' });
-  add('char-W-idle', { pix: eastIdle.pix.mirrorX(), anchorX: 0.5, anchorY: eastIdle.anchorY });
 
-  add('char-kneel', surveyor({ pose: 'kneel' }));
-  add('char-kneel-idle', surveyor({ pose: 'kneel-idle' }));
+  // Only the player kneels: the tribrach is hers, and Ligeirinho is at the
+  // other end of the sight holding the pole.
+  add('char-kneel', surveyor({ pose: 'kneel', look: playerLook }));
+  add('char-kneel-idle', surveyor({ pose: 'kneel-idle', look: playerLook }));
 
   // ---- the kit ------------------------------------------------------------
   add('marco', playerMarco());

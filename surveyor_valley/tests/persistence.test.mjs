@@ -172,3 +172,77 @@ test('language and settings survive a save wipe', () => {
   // and having the game come back in a language they cannot read, is worse.
   assert.equal(storage.getLang(), 'en', 'the language lives under its own key on purpose');
 });
+
+/**
+ * A save written before the player could choose a face, or before delivery and
+ * payment came apart.
+ *
+ * Neither change bumped `SAVE_VERSION`, because neither makes an old save WRONG
+ * — they only leave fields absent, and absent has an honest default. Bumping
+ * would have cost every player their unfinished job for nothing, which is what
+ * the v1 migration had to do and this one does not.
+ */
+test('a save from before the character choice loads and plays', () => {
+  const store = makeStore(makeInitialState({ seed: SEED, difficulty: 'facil' }));
+  const s = store.get();
+  // Exactly the old shape: a name that was never assigned, and no look at all.
+  delete s.player.look;
+  delete s.player.metLigeirinho;
+  s.player.name = '';
+
+  const storage = makeStorage(memoryBackend());
+  storage.saveNow(s);
+  const back = storage.loadSave();
+
+  assert.ok(back, 'the save still loads');
+  assert.equal(back.version, SAVE_VERSION, 'and needs no migration');
+  assert.equal(back.player.look ?? null, null, 'a missing look stays missing rather than becoming junk');
+  assert.equal(back.player.money, 0);
+});
+
+test('a delivered job resumes still owing the money', () => {
+  // The gap between "documents done" and "owner paid" is a state a player can
+  // close the tab in. Reloading must not skip the walk to the sede, and must
+  // certainly not pay twice.
+  const world = buildWorld(SEED, DIFFICULTY.facil);
+  const store = makeStore(makeInitialState({ seed: SEED, difficulty: 'facil' }));
+  const service = makeService({ store, getWorld: () => world, bus, EV });
+  const parcel = world.parcels[0];
+  service.start(parcel.id);
+  surveySome(store, world, service, parcel);
+
+  const progress = service.parcelProgress();
+  if (!progress.complete) return; // this seed did not finish; nothing to assert
+
+  const delivered = service.deliver();
+  assert.equal(delivered.ok, true, `deliver: ${delivered.reason ?? ''}`);
+  assert.equal(store.get().player.money, 0, 'delivering the documents pays nothing');
+  assert.equal(store.get().activeService.delivered, true, 'and the state records it');
+
+  // Round-trip through storage.
+  const storage = makeStorage(memoryBackend());
+  storage.saveNow(store.snapshot());
+  const back = storage.loadSave();
+  assert.equal(back.activeService.delivered, true, 'the delivered flag survives a reload');
+  assert.equal(back.activeService.completed, false, 'and the job is still unpaid');
+  assert.equal(back.player.money, 0);
+
+  // Collecting banks it, once.
+  const paid = service.collectPayment();
+  assert.equal(paid.ok, true, `collect: ${paid.reason ?? ''}`);
+  assert.ok(store.get().player.money > 0, `paid R$ ${store.get().player.money}`);
+
+  const again = service.collectPayment();
+  assert.equal(again.ok, false, 'and refuses to pay a second time');
+  assert.equal(again.reason, 'alreadyPaid');
+});
+
+/** A storage backend with no browser behind it. */
+function memoryBackend() {
+  const map = new Map();
+  return {
+    getItem: (k) => (map.has(k) ? map.get(k) : null),
+    setItem: (k, v) => map.set(k, String(v)),
+    removeItem: (k) => map.delete(k),
+  };
+}

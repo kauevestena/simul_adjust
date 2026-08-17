@@ -21,11 +21,22 @@ import { makeDisplay } from './render/display.js';
 import { makePlanView } from './render/planview.js';
 import { makeEffects } from './render/effects.js';
 import { building } from './render/sprites/index.js';
-import { lightAt } from './render/palette.js';
+import { surveyor } from './render/sprites/character.js';
+import { lightAt, LIGEIRINHO_LOOK } from './render/palette.js';
 import { pixi } from './render/pixi.js';
 import { makeAudio } from './audio/audio.js';
 
 import { makePlayer, updatePlayer, interpolated, fastTravel, halt, canStand, nearestStandable } from './game/player.js';
+import {
+  makeAssistant,
+  updateAssistant,
+  interpolatedAssistant,
+  haltAssistant,
+  sendTo,
+  recall,
+  placeBeside,
+  MODE as AUX_MODE,
+} from './game/assistant.js';
 import { makeInput } from './game/input.js';
 import { makeTools, TOOL, PANEL_TOOLS } from './game/tools.js';
 import { makeTutorial } from './game/tutorial.js';
@@ -73,14 +84,26 @@ let display = null;
 let scene = null;
 let effects = null;
 let player = makePlayer();
+let assistant = makeAssistant();
 let input = null;
 let hoverTarget = null;
 let running = false;
+/** The look the atlas sheet was painted with, so a changed one repaints it. */
+let builtLook = null;
 
 const modals = makeModalHost(root);
 const notifier = makeNotifier(root);
 
-const service = makeService({ store, getWorld: () => world, bus, EV });
+const service = makeService({
+  store,
+  getWorld: () => world,
+  bus,
+  EV,
+  // The service enforces "you must be at the instrument" itself, so every
+  // caller — the click, the SPACE key, the batch button and `api.sight` — is
+  // judged by one rule instead of four copies of it.
+  getPlayerPos: () => (running ? { e: player.e, n: player.n } : null),
+});
 
 const tools = makeTools({
   bus,
@@ -94,6 +117,7 @@ const tools = makeTools({
       inventory: s.inventory,
       knownOrPlacedMarcos: s.network.length,
       station: service.currentSetup(),
+      atInstrument: service.atInstrument(),
       observationCount: svc?.observations.length ?? 0,
       setupCount: new Set((svc?.setups ?? []).map((x) => x.overId).filter(Boolean)).size,
       parcelSurveyed: service.parcelProgress().complete,
@@ -158,6 +182,7 @@ function buildView(alpha = 1) {
   return {
     world,
     player: drawPlayer,
+    assistant: interpolatedAssistant(assistant, alpha),
     activeParcelId: svc?.parcelId ?? null,
     station: setup,
     setups: svc?.setups ?? [],
@@ -167,6 +192,9 @@ function buildView(alpha = 1) {
     tripodCheck,
     lang: lang(),
     showCornerLabels: tools.active === TOOL.VISADA,
+    // Only once the documents are done and before the owner has paid: any
+    // earlier and it is a distraction, any later and it points at nothing.
+    sede: svc?.delivered && !svc.completed && world ? world.sedeFor(svc.parcelId) : null,
     light: lightAt(dayFraction(svc)),
   };
 }
@@ -201,14 +229,27 @@ const loop = makeLoop({
       // across a dialog is spent the moment it closes, and a station dialog
       // that reads the player's position wants that position to hold still.
       halt(player);
+      haltAssistant(assistant);
       return;
     }
 
     const intent = input.intent();
     const wasPhase = player.walkPhase;
     updatePlayer(player, intent, world, dt);
-    camera.follow(player, dt);
+    updateCrew(dt);
+
+    // The camera lets go while you are standing at the instrument.
+    //
+    // Sighting is the one thing done at a distance, and now that a reading
+    // requires standing on the monument, corners past the edge of the screen
+    // would otherwise be unreachable — the right-drag pan already existed but
+    // `follow` yanked it straight back past the dead zone every frame. So it
+    // stops following while you are set up and still, and resumes the moment
+    // you walk. This is the difference between "you must stand here" being a
+    // rule and being a cage.
+    if (!lookingAround()) camera.follow(player, dt);
     store.tickService(dt);
+    checkSedeArrival();
 
     // One footstep per half stride, from the same phase that drives the walk
     // animation — so what you hear and what you see are the same motion.
@@ -242,11 +283,43 @@ const loop = makeLoop({
   },
 });
 
+/**
+ * Advance Ligeirinho, and take the reading the moment the prism is on the point.
+ *
+ * `arrived` and `gaveUp` are both worth acting on: a corner in a marsh or hard
+ * against a building is one `canStand` refuses outright, and a sight that waited
+ * for an arrival that can never happen would hang with nothing on screen to say
+ * why. He plants the pole as close as he got, and the reading is taken.
+ */
+function updateCrew(dt) {
+  const { arrived, gaveUp } = updateAssistant(assistant, world, dt, { player });
+
+  // Walking away mid-errand calls it off. The rule is the same one that governs
+  // the reading itself, so it cannot be sidestepped by clicking and then
+  // strolling off while he runs.
+  if (sightQueue.length && !service.atInstrument().ok) {
+    cancelSights('sight.leftInstrument');
+    return;
+  }
+
+  if (arrived || gaveUp) takeQueuedSight();
+}
+
+/** Standing at the instrument with nothing in motion: the camera lets go. */
+function lookingAround() {
+  const setup = service.currentSetup();
+  return Boolean(setup) && !player.moving && player.speed === 0 && service.atInstrument().ok;
+}
+
 // ------------------------------------------------------------- interaction --
 
 function selectTool(tool) {
   const verdict = tools.activate(tool);
   if (!verdict.ok) return verdict;
+
+  // Leaving the sighting tool calls Ligeirinho back in. Escape is bound to the
+  // walk tool, so this is also how a mistaken batch is cancelled.
+  if (tool !== TOOL.VISADA && !PANEL_TOOLS.has(tool)) cancelSights();
 
   if (tool === TOOL.CADERNETA) openCaderneta();
   else if (tool === TOOL.CALCULOS) openCalculos();
@@ -254,6 +327,10 @@ function selectTool(tool) {
   else if (tool === TOOL.MAPA) openMap();
 
   toolbar.refresh();
+  // The batch bar is shown by `refreshUI` and only for the sighting tool, so
+  // without this it appeared one state change late — pressing 4 left it stale
+  // until something else happened to redraw the HUD.
+  if (!PANEL_TOOLS.has(tool)) refreshUI();
   return verdict;
 }
 
@@ -420,6 +497,7 @@ function doSetupStation() {
       }
       notifier.key('station.installed', { id: over, backsight }, 'success');
       selectTool(TOOL.VISADA);
+      frameTheFigure(r.setup);
       refreshUI();
     },
   });
@@ -439,7 +517,28 @@ function doFreeStation() {
   );
   if (r.resection.scaleSuspect) notifier.key('station.scaleSuspect', {}, 'warn');
   selectTool(TOOL.VISADA);
+  frameTheFigure(r.setup);
   refreshUI();
+}
+
+/**
+ * Pull back far enough to see what is about to be measured.
+ *
+ * Now that a reading has to be taken from the instrument, a corner off the edge
+ * of the screen is a corner that cannot be clicked. `camera.fit` was written
+ * for exactly this — its docstring has always said "used when a station is set
+ * up, so the whole figure being measured comes into view" — and had never once
+ * been called. Only zooms OUT: a player who has deliberately zoomed in on a
+ * corner should not be yanked back out by setting up next to it.
+ */
+function frameTheFigure(setup) {
+  const parcel = service.activeParcel();
+  if (!parcel || !setup) return;
+  const before = camera.zoom;
+  const points = [...parcel.vertices, { e: setup.trueE, n: setup.trueN }];
+  camera.fit(points, { padding: 10 });
+  if (camera.zoom > before) camera.setZoom(before);
+  camera.snapTo(player);
 }
 
 /**
@@ -462,55 +561,187 @@ function toggleSetting(key) {
   refreshUI();
 }
 
-/** How many sights must be taken by hand before batch measuring unlocks. */
-const MANUAL_SIGHTS_TO_UNLOCK = 4;
-
-const batchUnlocked = () => (store.get().activeService?.manualSights ?? 0) >= MANUAL_SIGHTS_TO_UNLOCK;
-
 /**
  * Measure every visible target from the current setup in one go.
  *
- * Gated on having taken a handful of sights by hand, which is the brief's own
- * requirement and a sound one: the point of the first few is to learn what a
- * sight *is*, and handing over the batch button immediately would let a student
- * finish a parcel without ever aiming at anything.
+ * Two gates, and they are different in kind. The manual-sight quota is a
+ * TUTORIAL gate — the point of the first few sights is to learn what a sight
+ * *is*, and handing the button over immediately would let a student finish a
+ * parcel without ever aiming at anything. The difficulty gate is a DESIGN one:
+ * batch measuring is a convenience, and on médio and difícil the work is meant
+ * to be done target by target.
+ *
+ * Both live in `tutorial.batchMeasureUnlocked()`, which used to have a second,
+ * subtly different copy here that ignored whether this was the first service.
  */
 function doMeasureAll() {
   if (!service.currentSetup()) {
     notifier.key('sight.noStation', {}, 'warn');
-    return;
+    return { ok: false, reason: 'noStation' };
   }
-  if (!batchUnlocked()) {
+  if (!store.difficulty().batchMeasure) {
+    notifier.key('sight.measureAllFacilOnly', {}, 'warn');
+    return { ok: false, reason: 'facilOnly' };
+  }
+  if (!tutorial.batchMeasureUnlocked()) {
     notifier.key('sight.measureAllLocked', {}, 'warn');
-    return;
+    return { ok: false, reason: 'locked' };
+  }
+  if (!service.atInstrument().ok) {
+    notifier.key('sight.notAtInstrument', {}, 'warn');
+    return { ok: false, reason: 'notAtInstrument' };
   }
 
-  const r = service.measureAll({});
-  notifier.key('sight.measureAllDone', { n: r.measured, blocked: r.blocked }, r.measured ? 'success' : 'warn');
-  if (r.measured) audio.chime();
+  // Ligeirinho tours them one by one, because every one of these is a real
+  // sight taken with the prism actually standing on the point. A batch that
+  // teleported the readings in would undo the thing the crew exists to show.
+  const targets = service.visibleTargets({}).filter((v) => v.clear);
+  if (!targets.length) {
+    notifier.key('sight.measureAllDone', { n: 0, blocked: 0 }, 'warn');
+    return { ok: false, reason: 'nothingVisible' };
+  }
+  return enqueueSights(targets.map((v) => v.entity.id), { batch: true });
+}
+
+// ------------------------------------------------------- the deferred sight --
+
+/**
+ * Targets waiting on Ligeirinho, and what to say when the run is over.
+ *
+ * A reading lands when the prism reaches the point, not when you click. That is
+ * the whole reason the assistant exists, so the deferral is modelled here
+ * rather than inside `service.sight` — the survey core stays synchronous and
+ * DOM-free, and every test that drives it keeps working unchanged.
+ */
+let sightQueue = [];
+let sightBatch = null;
+/** Settled when the queue drains, so `api.sight` can be awaited. */
+let sightDone = null;
+
+function enqueueSights(ids, { batch = false } = {}) {
+  sightQueue = [...ids];
+  sightBatch = batch ? { measured: 0, blocked: 0 } : null;
+  const promise = new Promise((resolve) => {
+    sightDone = resolve;
+  });
+  dispatchNextSight();
+  return promise;
+}
+
+/** Finish the errand and release anything waiting on it. */
+function settleSights(result) {
+  const done = sightDone;
+  sightDone = null;
+  done?.(result);
+}
+
+/** Send him to the head of the queue, or wind the errand up. */
+function dispatchNextSight() {
+  if (!sightQueue.length) {
+    if (sightBatch) {
+      notifier.key(
+        'sight.measureAllDone',
+        { n: sightBatch.measured, blocked: sightBatch.blocked },
+        sightBatch.measured ? 'success' : 'warn',
+      );
+      if (sightBatch.measured) audio.chime();
+      sightBatch = null;
+      refreshUI();
+    }
+    recall(assistant);
+    settleSights(lastSightResult);
+    return;
+  }
+  const target = world?.entity(sightQueue[0]);
+  if (!target) {
+    sightQueue.shift();
+    dispatchNextSight();
+    return;
+  }
+  sendTo(assistant, target.e, target.n);
+}
+
+/** Abandon whatever he was doing, and say why. */
+function cancelSights(reasonKey = null) {
+  if (!sightQueue.length && !sightBatch) return;
+  sightQueue = [];
+  sightBatch = null;
+  recall(assistant);
+  if (reasonKey) notifier.key(reasonKey, {}, 'warn');
+  settleSights({ ok: false, reason: reasonKey || 'cancelled' });
   refreshUI();
 }
 
-function doSight(targetId) {
+/** The verdict on the last reading, for anything awaiting the queue. */
+let lastSightResult = null;
+
+/** The prism is on the point: take the reading. */
+function takeQueuedSight() {
+  const targetId = sightQueue.shift();
+  if (!targetId) return;
+
   const r = service.sight(targetId);
-  if (!r.ok) {
-    if (r.blocked) {
-      notifier.key('sight.blocked', { obj: t(`obstacle.${r.kind}`) }, 'warn');
-    } else {
-      notifier.key(`sight.${r.reason}`, {}, 'warn');
+  lastSightResult = r;
+  if (r.ok) {
+    if (sightBatch) sightBatch.measured++;
+    else {
+      notifier.key(
+        'sight.recorded',
+        { label: r.observation.label, dist: r.distance.toFixed(3), hz: r.hz.toFixed(4) },
+        'info',
+      );
     }
-    return;
+  } else if (sightBatch) {
+    sightBatch.blocked++;
+  } else if (r.blocked) {
+    notifier.key('sight.blocked', { obj: t(`obstacle.${r.kind}`) }, 'warn');
+  } else {
+    notifier.key(`sight.${r.reason}`, {}, 'warn');
   }
-  notifier.key(
-    'sight.recorded',
-    {
-      label: r.observation.label,
-      dist: r.distance.toFixed(3),
-      hz: r.hz.toFixed(4),
-    },
-    'info',
+
+  if (!sightBatch) refreshUI();
+  dispatchNextSight();
+}
+
+/**
+ * Aim at one target.
+ *
+ * The line of sight is checked HERE, before he sets off, and deliberately so:
+ * the line between the instrument and the corner does not change while he runs,
+ * so making the player wait a second to be told it was never possible would be
+ * worse feedback than the instant refusal they get today. What waits is the
+ * reading, not the verdict on whether it can be taken at all.
+ */
+function doSight(targetId) {
+  const setup = service.currentSetup();
+  if (!setup) {
+    notifier.key('sight.noStation', {}, 'warn');
+    return { ok: false, reason: 'noStation' };
+  }
+  if (!service.atInstrument().ok) {
+    notifier.key('sight.notAtInstrument', {}, 'warn');
+    return { ok: false, reason: 'notAtInstrument' };
+  }
+
+  const target = service.truePositionOf(targetId);
+  if (!target) {
+    notifier.key('sight.unknownTarget', {}, 'warn');
+    return { ok: false, reason: 'unknownTarget' };
+  }
+
+  const los = world.lineOfSight(
+    { e: setup.trueE, n: setup.trueN },
+    { e: target.trueE, n: target.trueN },
+    { targetId },
   );
-  refreshUI();
+  if (!los.clear) {
+    const blocker = los.blockers[0];
+    bus.emit(EV.LOS_BLOCKED, { from: { e: setup.trueE, n: setup.trueN }, to: { e: target.trueE, n: target.trueN }, at: blocker.at, kind: blocker.kind });
+    notifier.key('sight.blocked', { obj: t(`obstacle.${blocker.kind}`) }, 'warn');
+    return { ok: false, reason: 'blocked', blocked: true, kind: blocker.kind };
+  }
+
+  return enqueueSights([targetId]);
 }
 
 // ----------------------------------------------------------------- panels ---
@@ -580,7 +811,9 @@ function openDelivery() {
     return;
   }
 
-  const result = service.finish();
+  // Draws up the documents and scores the job; banks nothing. The owner is a
+  // person who lives somewhere, and he settles up at his own kitchen table.
+  const result = service.deliver();
   if (!result.ok) {
     notifier.key('delivery.incomplete', { n: result.progress?.missing.length ?? 0 }, 'warn');
     return;
@@ -631,8 +864,8 @@ function openDelivery() {
         },
       },
       {
-        labelKey: 'pay.total',
-        onClick: () => showPayment(result),
+        labelKey: 'delivery.toSede',
+        onClick: () => announceSede(),
       },
     ],
   });
@@ -646,6 +879,54 @@ function openDelivery() {
 }
 
 let lastReport = null;
+
+// ------------------------------------------------------------- getting paid --
+
+/**
+ * Point the player at the farmhouse.
+ *
+ * The documents are done; the money is at the sede. Said once, by name, because
+ * "go and get paid" with no indication of where is the kind of instruction that
+ * turns into wandering — the waypoint in `overlays.js` does the rest.
+ */
+function announceSede() {
+  const svc = store.get().activeService;
+  const sede = svc && world?.sedeFor(svc.parcelId);
+  if (!sede) {
+    // No homestead on this parcel at all: pay on the spot rather than send the
+    // player to look for a building that does not exist.
+    collectPayment();
+    return;
+  }
+  const parcel = service.activeParcel();
+  notifier.key('delivery.goToSede', { owner: parcel?.owner ?? '', property: parcel?.propertyName ?? '' }, 'info');
+}
+
+/** Close enough to the door to be knocking on it. */
+const SEDE_RADIUS = 3.0;
+
+/**
+ * Have we arrived to be paid?
+ *
+ * Checked from the fixed step rather than hung off a click, because arriving is
+ * the action — the owner comes out to meet you. Fires once: `collectPayment`
+ * refuses a job already paid.
+ */
+function checkSedeArrival() {
+  const svc = store.get().activeService;
+  if (!svc?.delivered || svc.completed || modals.isOpen()) return;
+  const sede = world?.sedeFor(svc.parcelId);
+  if (!sede) return;
+  if (Math.hypot(player.e - sede.door.e, player.n - sede.door.n) > SEDE_RADIUS) return;
+  collectPayment();
+}
+
+function collectPayment() {
+  const result = service.collectPayment();
+  if (!result.ok) return;
+  showPayment(result);
+  refreshUI();
+}
 
 /**
  * The payment screen, itemised.
@@ -725,7 +1006,7 @@ function nextJob() {
       parcels: world.parcels,
       onRestart: () => {
         modals.closeAll();
-        showIntro({ modals, onStart: ({ seed, difficulty }) => boot({ seed, difficulty }), initial: bootOptions });
+        showIntro({ modals, onStart: (opts) => boot(opts), initial: bootOptions });
       },
     });
   }
@@ -751,6 +1032,7 @@ function startParcel(parcelId) {
   service.start(parcelId);
   const spawn = world.spawnPointFor(parcel);
   player = makePlayer(spawn);
+  assistant = placeBeside(world, spawn);
   camera.snapTo(spawn);
   tools.reset();
 
@@ -784,7 +1066,9 @@ function refreshUI() {
   });
   hud.setBatch({
     visible: Boolean(service.currentSetup()) && tools.active === TOOL.VISADA,
-    unlocked: batchUnlocked(),
+    // Fácil only. Hidden rather than disabled off it — see `DIFFICULTY`.
+    batch: store.difficulty().batchMeasure,
+    unlocked: tutorial.batchMeasureUnlocked(),
     twoFace: Boolean(s.settings.twoFace),
     gon: s.settings.angleFormat === 'gon',
   });
@@ -796,14 +1080,11 @@ function refreshUI() {
 
 // ------------------------------------------------------------------ start ---
 
-async function startGame({ seed, difficulty }) {
-  store.replace(
-    makeInitialState({
-      seed,
-      difficulty,
-      lang: lang(),
-    }),
-  );
+async function startGame({ seed, difficulty, name = '', look = null }) {
+  const fresh = makeInitialState({ seed, difficulty, lang: lang() });
+  fresh.player.name = name;
+  fresh.player.look = look;
+  store.replace(fresh);
 
   await prepareWorld(seed, difficulty);
 
@@ -815,10 +1096,61 @@ async function startGame({ seed, difficulty }) {
 
   const spawn = world.spawnPointFor(parcel);
   player = makePlayer(spawn);
+  assistant = placeBeside(world, spawn);
   camera.snapTo(spawn);
   bakeAround(spawn);
 
   begin();
+  meetLigeirinho();
+}
+
+/**
+ * Introduce the auxiliar, once.
+ *
+ * He needs introducing because he is not scenery: he is the reason a reading
+ * can only be taken from the instrument, and a player who has not been told
+ * that will read the refusal as the game being broken. So the rule and the man
+ * who makes it reasonable arrive in the same breath.
+ *
+ * Once per campaign, recorded in the save — a second dialog on every reload
+ * would turn a joke into a nuisance.
+ */
+function meetLigeirinho() {
+  const s = store.get();
+  if (s.player.metLigeirinho) return;
+  s.player.metLigeirinho = true;
+
+  const portrait = el('canvas.char-portrait', { width: 24 * 5, height: 34 * 5 });
+  const { pix } = surveyor({ dir: 'S', pose: 'idle', look: LIGEIRINHO_LOOK });
+  const off = document.createElement('canvas');
+  off.width = pix.w;
+  off.height = pix.h;
+  off.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(pix.data), pix.w, pix.h), 0, 0);
+  const ctx = portrait.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(off, 0, 0, portrait.width, portrait.height);
+
+  modals.open({
+    titleKey: 'ligeirinho.title',
+    body: el(
+      'div.meet-aux',
+      {},
+      portrait,
+      // Resolved now, not marked with `data-i18n`: that attribute is only ever
+      // read by `applyI18n`, which runs over the document at boot and on a
+      // language change — never over a modal body built afterwards. A dialog
+      // that opens once, mid-game, has to translate itself.
+      el(
+        'div.meet-aux-text',
+        {},
+        el('p.meet-aux-lead', { text: t('ligeirinho.lead') }),
+        el('p', { text: t('ligeirinho.body') }),
+        el('p.hint', { text: t('ligeirinho.hint') }),
+      ),
+    ),
+    dismissible: false,
+    actions: [{ labelKey: 'ligeirinho.ok', primary: true }],
+  });
 }
 
 /**
@@ -836,7 +1168,16 @@ async function prepareWorld(seed, difficulty) {
   if (!display) display = await makeDisplay({ worldCanvas: canvas, overlayCanvas, camera });
   display.resize();
 
-  if (!atlas.ready) atlas.build();
+  // The player's face is baked into the sheet, so a campaign started with a
+  // different look has to repaint it. Keyed on the look itself rather than on
+  // "is this a new game", because resuming a save is also a way to arrive here
+  // wanting a different face from the one currently uploaded.
+  const look = store.get().player.look;
+  const lookKey = JSON.stringify(look ?? null);
+  if (!atlas.ready || builtLook !== lookKey) {
+    atlas.build(look);
+    builtLook = lookKey;
+  }
 
   // Buildings are sized by the world generator, so their sprites are painted
   // here rather than in the shared sheet. Six of them; the cost is nothing.
@@ -927,6 +1268,7 @@ async function restoreGame(saved) {
     spot = parcel ? world.spawnPointFor(parcel) : { e: world.bounds.maxE / 2, n: world.bounds.maxN / 2 };
   }
   player = makePlayer(spot);
+  assistant = placeBeside(world, spot);
   player.facing = s.player.facing || 'S';
   camera.snapTo(spot);
   if (s.settings?.zoom) camera.setZoom(s.settings.zoom);
@@ -1119,7 +1461,7 @@ if (params.get('start') === '1') {
   const entry = resumableSave();
   showIntro({
     modals,
-    onStart: ({ seed, difficulty }) => boot({ seed, difficulty }),
+    onStart: (opts) => boot(opts),
     onContinue: entry ? () => { audio.start(); return resume(entry); } : null,
     saved: entry,
     initial: entry ? { seed: entry.saved.seed, difficulty: entry.saved.difficulty } : bootOptions,
@@ -1141,6 +1483,9 @@ window.game = {
   },
   get player() {
     return player;
+  },
+  get assistant() {
+    return assistant;
   },
   camera,
   bus,
@@ -1178,6 +1523,7 @@ window.game = {
       service.start(id);
       const spawn = world.spawnPointFor(parcel);
       player = makePlayer(spawn);
+      assistant = placeBeside(world, spawn);
       camera.snapTo(spawn);
       refreshUI();
       return { ok: true, id };
@@ -1222,14 +1568,25 @@ window.game = {
       return r;
     },
 
-    sight(targetId) {
-      const r = service.sight(targetId);
+    /**
+     * Aim at a target, exactly the way a click does — so this WAITS for
+     * Ligeirinho to reach the point. Resolves with the reading, or with the
+     * immediate refusal if the line is blocked or you are not at the
+     * instrument.
+     *
+     * Deliberately not a shortcut to `service.sight`. This handle exists so a
+     * probe exercises production paths; one that skipped the crew would be
+     * testing a game nobody plays.
+     */
+    async sight(targetId) {
+      const verdict = doSight(targetId);
+      const r = verdict?.then ? await verdict : verdict;
       refreshUI();
       return r;
     },
 
     measureAll: (opts) => {
-      const r = service.measureAll(opts);
+      const r = doMeasureAll(opts);
       refreshUI();
       return r;
     },
@@ -1248,8 +1605,12 @@ window.game = {
     getReport: () => service.parcelReport(lang()),
     debrief: () => service.debrief(),
 
+    /**
+     * Draw up the documents. Produces the planta and the memorial and scores
+     * the job; the owner has not paid yet — see `collectPayment`.
+     */
     finishService() {
-      const result = service.finish();
+      const result = service.deliver();
       if (!result.ok) return result;
       const s = store.get();
       const planta = buildPlanta({ report: result.report, state: s, lang: lang(), playerName: s.player.name });
@@ -1260,6 +1621,38 @@ window.game = {
         planta: { items: planta.drawList.items, scaleDen: planta.scaleDen },
         memorial: memorial.text,
       };
+    },
+
+    /** Where the owner is waiting, and how far the player is from him. */
+    sede() {
+      const svc = store.get().activeService;
+      const sede = svc && world?.sedeFor(svc.parcelId);
+      if (!sede) return null;
+      return {
+        door: sede.door,
+        owner: sede.owner,
+        distance: Math.hypot(player.e - sede.door.e, player.n - sede.door.n),
+        radius: SEDE_RADIUS,
+      };
+    },
+
+    /**
+     * Walk to the sede and take the money, in one call. The walk is charged at
+     * the real pace, exactly as double-clicking a monument is.
+     */
+    goCollect() {
+      const svc = store.get().activeService;
+      const sede = svc && world?.sedeFor(svc.parcelId);
+      if (!sede) return { ok: false, reason: 'noSede' };
+      const r = fastTravel(player, world, sede.door, store);
+      if (!r.ok) return { ok: false, reason: r.reason };
+      camera.snapTo(player);
+      const result = service.collectPayment();
+      if (result.ok) {
+        showPayment(result);
+        refreshUI();
+      }
+      return result;
     },
 
     openDelivery,

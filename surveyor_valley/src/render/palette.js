@@ -55,6 +55,14 @@ export const P = {
   hatBand: ramp('#8a5a2b', 3),
   hair: ramp('#4a3324', 3),
 
+  // Ligeirinho. A checked shirt and straw, against the player's hi-vis and
+  // canvas: at 24 pixels tall the two have to be told apart by COLOUR before
+  // anything else, because nobody is going to read a silhouette that size.
+  plaid: ramp('#c4553d', 3),
+  plaidDark: ramp('#7d3126', 3),
+  straw: ramp('#e3c069', 3),
+  denim: ramp('#5b6b86', 3),
+
   instrument: ramp('#3a4650', 3),
   instrumentTrim: ramp('#f2c14e', 3),
   lens: ramp('#7fd0f0', 3),
@@ -70,6 +78,102 @@ export const P = {
   flower: [ramp('#e0607a', 3), ramp('#efc850', 3), ramp('#b47fd0', 3), ramp('#f0e0a8', 3)],
 
   shadow: '#1e2a18',
+};
+
+/**
+ * Skin tones the player can choose between.
+ *
+ * Every one is built with the same reduced hue rotation `P.skin` uses, and for
+ * the same reason: the house default swings orange toward red on the shadow
+ * step, which on a face reads as a wound rather than as shading. The deeper
+ * tones need it even more, because a big hue swing on a dark base goes purple.
+ *
+ * Ordered light to deep. The index is what gets saved, so the ORDER IS A SAVE
+ * FORMAT — inserting a tone in the middle would repaint every existing
+ * player's face. Append only.
+ */
+const skinRamp = (hex) => ramp(hex, 3, { hueShift: 0.012, spread: 0.115, satBoost: 0.03 });
+
+export const SKIN_TONES = [
+  { id: 'clara', base: '#f0c9a4', ramp: skinRamp('#f0c9a4'), hair: 2 },
+  { id: 'morena-clara', base: '#e0a878', ramp: skinRamp('#e0a878'), hair: 0 },
+  { id: 'morena', base: '#c08553', ramp: skinRamp('#c08553'), hair: 0 },
+  { id: 'parda', base: '#9c6238', ramp: skinRamp('#9c6238'), hair: 1 },
+  { id: 'negra', base: '#6b4026', ramp: skinRamp('#6b4026'), hair: 1 },
+];
+
+/**
+ * Hair colours. `hair` on a skin tone is the one picked by default when that
+ * tone is chosen, so the first thing a player sees is always a plausible
+ * pairing — they can then set it to whatever they like.
+ */
+export const HAIR_TONES = [
+  { id: 'castanho', ramp: ramp('#4a3324', 3) },
+  { id: 'preto', ramp: ramp('#2b2320', 3) },
+  { id: 'louro', ramp: ramp('#c9a25c', 3) },
+  { id: 'ruivo', ramp: ramp('#9c4a24', 3) },
+  { id: 'grisalho', ramp: ramp('#9a958e', 3) },
+];
+
+/**
+ * Hats. Nobody surveys a pasture bare-headed, so there is no "none" — the sun
+ * in this valley is not optional and the brim is half the silhouette.
+ *
+ * `brim` and `crown` are read by the painter in `sprites/character.js`;
+ * `band` is the ribbon. Same append-only rule as the skin tones.
+ */
+export const HAT_STYLES = [
+  { id: 'abaLarga', brim: 6.2, crown: 2.3, ramp: P.hat, band: P.hatBand },
+  { id: 'palha', brim: 7.0, crown: 2.0, ramp: P.straw, band: P.woodDark },
+  { id: 'bone', brim: 4.4, crown: 2.6, ramp: P.shirt, band: P.iron, cap: true },
+  { id: 'sol', brim: 6.6, crown: 2.8, ramp: P.concrete, band: P.grassDeep },
+];
+
+/** What a fresh player looks like before they touch anything. */
+export const DEFAULT_LOOK = { body: 'm', skin: 1, hair: 0, hat: 0 };
+
+/**
+ * Resolve a saved look into the actual colour ramps the painter needs.
+ *
+ * Every index is clamped rather than trusted: a look comes out of a save file,
+ * and a save from a build with more tones than this one must degrade to a
+ * plausible surveyor instead of painting `undefined` into the face.
+ */
+export function resolveLook(look = {}) {
+  const pick = (arr, i, fallback) => arr[Math.min(arr.length - 1, Math.max(0, i ?? fallback))];
+  const skin = pick(SKIN_TONES, look.skin, DEFAULT_LOOK.skin);
+  const hair = pick(HAIR_TONES, look.hair ?? skin.hair, DEFAULT_LOOK.hair);
+  const hat = pick(HAT_STYLES, look.hat, DEFAULT_LOOK.hat);
+  return {
+    body: look.body === 'f' ? 'f' : 'm',
+    skin: skin.ramp,
+    hair: hair.ramp,
+    hat,
+    shirt: P.shirt,
+    vest: P.vest,
+    trousers: P.trousers,
+    boots: P.boots,
+    /** The hi-vis vest is the player's; Ligeirinho wears a shirt and nothing else. */
+    wearsVest: true,
+    carriesPole: false,
+  };
+}
+
+/**
+ * Ligeirinho, fixed. Checked shirt, denim, straw hat, prism pole — and no
+ * hi-vis, so the eye can tell in one frame which of the two is the player.
+ */
+export const LIGEIRINHO_LOOK = {
+  body: 'm',
+  skin: SKIN_TONES[3].ramp,
+  hair: HAIR_TONES[1].ramp,
+  hat: HAT_STYLES[1],
+  shirt: P.plaid,
+  vest: P.plaidDark,
+  trousers: P.denim,
+  boots: P.boots,
+  wearsVest: false,
+  carriesPole: true,
 };
 
 /**

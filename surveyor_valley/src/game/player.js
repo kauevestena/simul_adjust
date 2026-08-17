@@ -173,7 +173,7 @@ export function updatePlayer(player, intent, world, dt) {
 
   // ---- move ----------------------------------------------------------------
   if (player.vE !== 0 || player.vN !== 0) {
-    stepWithSliding(world, player, player.vE * dt, player.vN * dt);
+    slideStep(world, player, player.vE * dt, player.vN * dt);
   }
 
   // ---- animation -----------------------------------------------------------
@@ -214,7 +214,7 @@ export function updatePlayer(player, intent, world, dt) {
 /**
  * Apply one step, sliding along whatever is in the way.
  *
- * Contact displaces the player and deliberately does NOT touch the velocity.
+ * Contact displaces the actor and deliberately does NOT touch the velocity.
  * Velocity is what the player is asking for; where they end up is geometry. Two
  * things fall out of keeping those separate: a slide is re-derived from the full
  * velocity every step, so it does not decay while the key is still held — the
@@ -222,11 +222,19 @@ export function updatePlayer(player, intent, world, dt) {
  * appeared and stall the player against the fence — and walking off the end of
  * a wall resumes the original heading immediately, with no re-acceleration.
  * There is nothing to accumulate, because the ramp already caps the speed.
+ *
+ * Exported because Ligeirinho moves through it too. He is a different size and
+ * a great deal faster, but "what happens when a body meets a fence" is one
+ * question with one answer, and two implementations of it would drift — the
+ * assistant would end up wading through the water the player was just stopped
+ * from crossing. `radius` is the only thing that varies.
+ *
+ * @param {{e:number, n:number}} actor  moved in place
  */
-function stepWithSliding(world, player, stepE, stepN) {
-  if (place(world, player, player.e + stepE, player.n + stepN)) return;
+export function slideStep(world, actor, stepE, stepN, radius = PLAYER_RADIUS) {
+  if (place(world, actor, actor.e + stepE, actor.n + stepN, radius)) return;
 
-  const nrm = contactNormal(world, player.e + stepE, player.n + stepN);
+  const nrm = contactNormal(world, actor.e + stepE, actor.n + stepN, radius);
   if (nrm) {
     const into = stepE * nrm.x + stepN * nrm.y;
     if (into < 0) {
@@ -243,7 +251,7 @@ function stepWithSliding(world, player, stepE, stepN) {
       // 3 mm off the wall every step and set the legs walking on the spot.
       if (
         Math.hypot(slideE, slideN) > 1e-6 &&
-        place(world, player, player.e + slideE + nrm.x * SURFACE_BIAS, player.n + slideN + nrm.y * SURFACE_BIAS)
+        place(world, actor, actor.e + slideE + nrm.x * SURFACE_BIAS, actor.n + slideN + nrm.y * SURFACE_BIAS, radius)
       ) {
         return;
       }
@@ -251,15 +259,15 @@ function stepWithSliding(world, player, stepE, stepN) {
   }
 
   // Wedged, or stopped by something with no usable normal. Fall back to one
-  // axis at a time, which still gets the player out of a corner.
-  if (stepE !== 0 && place(world, player, player.e + stepE, player.n)) return;
-  if (stepN !== 0) place(world, player, player.e, player.n + stepN);
+  // axis at a time, which still gets the actor out of a corner.
+  if (stepE !== 0 && place(world, actor, actor.e + stepE, actor.n, radius)) return;
+  if (stepN !== 0) place(world, actor, actor.e, actor.n + stepN, radius);
 }
 
-function place(world, player, e, n) {
-  if (!canStand(world, e, n)) return false;
-  player.e = e;
-  player.n = n;
+function place(world, actor, e, n, radius = PLAYER_RADIUS) {
+  if (!canStand(world, e, n, radius)) return false;
+  actor.e = e;
+  actor.n = n;
   return true;
 }
 

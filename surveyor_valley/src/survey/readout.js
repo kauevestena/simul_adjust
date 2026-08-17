@@ -67,12 +67,24 @@ export function aimReadout(setup, tE, tN) {
 /**
  * The horizontal circle, as a diagram.
  *
- * Everything is in CIRCLE-READING space, with zero at the top and increasing
- * clockwise — which is the instrument's own face, not the map's. That is the
- * point of drawing it: zeroing on the ré visibly puts the ré at twelve
- * o'clock, and north then sits wherever θ0 has pushed it. A student who can
- * see those two facts at once has understood `Az = Hz + θ0`, which is the
- * single hardest idea in a first surveying course.
+ * Everything is in AZIMUTH space: zero at the top, increasing clockwise, with
+ * **north always at twelve o'clock**. So the diagram is oriented the same way
+ * as the map above it, and every angle in it can be read straight off against
+ * the ground — the ré ray points where the ré physically lies, the target ray
+ * points at what the telescope is pointed at, and the shaded wedge between them
+ * is the angle you would see standing over the tripod looking down.
+ *
+ * It used to be drawn in CIRCLE-READING space, which put the ré at twelve
+ * o'clock whenever the circle was zeroed on it and pushed north round by θ0.
+ * That is a truthful picture of the instrument's face and a confusing one on
+ * screen: the diagram and the map disagreed about which way was up, so a
+ * student had to mentally rotate one to compare it with the other. Since round
+ * six every azimuth in this game is referred to the map's north, and this is the
+ * same decision applied to the picture. `Az = Hz + θ0` is still on the panel, as
+ * the two numbers beside it.
+ *
+ * The swept ANGLE is unaffected — rotating both rays by θ0 leaves the wedge
+ * between them exactly where it was, which is why this costs nothing didactic.
  *
  * Pure geometry, deliberately: the canvas code that renders this cannot be
  * tested, and the claim it makes about angles is worth testing.
@@ -81,26 +93,33 @@ export function aimReadout(setup, tE, tN) {
  * @param {object} r  the matching `aimReadout`
  * @returns {{target:number, backsight:number|null, north:number,
  *            sweepFrom:number|null, sweepTo:number|null, sweep:number|null}}
- *          all bearings on the circle, in degrees
+ *          all bearings on the dial, in degrees, clockwise from north
  */
 export function circleDial(setup, r) {
-  // Where azimuth zero falls on the circle: `Az = Hz + θ0`, so Hz = −θ0.
-  const north = normalize360(-setup.theta0);
+  /** A circle reading, as the azimuth it reduces to. */
+  const toAzimuth = (hz) => normalize360(hz + setup.theta0);
+
+  // North is the top of the dial, by construction. Kept in the return value
+  // rather than left implicit so the renderer draws the tick from the same
+  // source of truth as everything else, and so the test can state it.
+  const north = 0;
 
   if (r.backsightReading == null) {
     // A free station has no ré, so there is no angle to sweep and nothing
     // honest to draw between two rays. The target and north still stand.
-    return { target: r.hz, backsight: null, north, sweepFrom: null, sweepTo: null, sweep: null };
+    return { target: r.azimuth, backsight: null, north, sweepFrom: null, sweepTo: null, sweep: null };
   }
 
+  const backsight = toAzimuth(r.backsightReading);
   return {
-    target: r.hz,
-    backsight: r.backsightReading,
+    target: r.azimuth,
+    backsight,
     north,
     // Clockwise from the ré to the target — the angle to the right, which is
-    // the one the field book tabulates.
-    sweepFrom: r.backsightReading,
-    sweepTo: r.hz,
+    // the one the field book tabulates. Both ends rotate together, so this is
+    // still exactly `fromBacksight`.
+    sweepFrom: backsight,
+    sweepTo: r.azimuth,
     sweep: r.fromBacksight,
   };
 }

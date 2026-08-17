@@ -32,6 +32,16 @@ import { bus, EV } from './bus.js';
  * Missing the requirement costs quality and therefore pay; it never blocks
  * delivery.
  */
+/**
+ * `batchMeasure` is a design gate rather than a tutorial one.
+ *
+ * "Medir todos os visíveis" measures every corner in view from one setup, which
+ * is a convenience and not a skill — on médio and difícil the work is meant to
+ * be done target by target, with the prism carried to each one. It is therefore
+ * a property of the difficulty and not something the player earns, and the
+ * button is hidden entirely rather than shown locked: a lock that can never
+ * open is noise.
+ */
 export const DIFFICULTY = {
   facil: {
     id: 'facil',
@@ -39,6 +49,7 @@ export const DIFFICULTY = {
     cornerHiding: 0,
     timeLimit: false,
     requiredPrecision: 1 / 1000,
+    batchMeasure: true,
     payMult: 0.8,
   },
   medio: {
@@ -47,6 +58,7 @@ export const DIFFICULTY = {
     cornerHiding: 0.15,
     timeLimit: false,
     requiredPrecision: 1 / 1500,
+    batchMeasure: false,
     payMult: 1.0,
   },
   dificil: {
@@ -55,6 +67,7 @@ export const DIFFICULTY = {
     cornerHiding: 0.4,
     timeLimit: true,
     requiredPrecision: 1 / 2000,
+    batchMeasure: false,
     payMult: 1.5,
   },
 };
@@ -72,7 +85,17 @@ export function makeInitialState(overrides = {}) {
     seed: 'sv-000000',
     lang: 'pt',
     difficulty: 'medio',
-    player: { name: '', money: 0, e: 0, n: 0, facing: 'S' },
+    /**
+     * `name` signs the planta and the memorial descritivo. It was initialised
+     * empty and never assigned by anything, so every document a student
+     * produced came out signed "Surveyor Valley"; the intro now generates one
+     * and lets them replace it.
+     *
+     * `look` is indices into the tables in `render/palette.js`, so the ORDER OF
+     * THOSE TABLES IS A SAVE FORMAT — see the note there. A save without a
+     * `look` predates the choice and resolves to the default.
+     */
+    player: { name: '', look: null, metLigeirinho: false, money: 0, e: 0, n: 0, facing: 'S' },
     inventory: {
       instrument: 'et10',
       tripod: 'tri-mad',

@@ -96,7 +96,7 @@ test('the readout is what a sight would record, without the noise', () => {
   assert.ok(Math.abs(live.distance - obs.distance) < 0.05, `distance differs by ${live.distance - obs.distance}`);
 });
 
-test('the dial puts the ré where the circle reads it, and sweeps to the right', () => {
+test('the dial is drawn north-up, and sweeps from the ré to the right', () => {
   const setup = station();
   const { backsight } = twoPoints();
   const target = { trueE: 200, trueN: 300 }; // due north of the station
@@ -104,21 +104,38 @@ test('the dial puts the ré where the circle reads it, and sweeps to the right',
   const r = aimReadout(setup, target.trueE, target.trueN);
   const d = circleDial(setup, r);
 
-  // Zeroed on the ré, so the ré sits at the top of the circle.
-  assert.ok(Math.min(d.backsight, 360 - d.backsight) < 0.01, `ré at 0, got ${d.backsight}`);
-  assert.ok(Math.abs(d.target - r.hz) < 1e-9, 'the target ray is the circle reading');
+  // The whole point: the diagram is oriented like the map above it, so north is
+  // at twelve o'clock whatever the circle happens to read.
+  assert.equal(d.north, 0, 'north is always the top of the dial');
 
-  // The sweep runs FROM the ré TO the target, and is the angle to the right.
-  assert.equal(d.sweepFrom, r.backsightReading);
-  assert.equal(d.sweepTo, r.hz);
-  assert.ok(Math.abs(d.sweep - r.fromBacksight) < 1e-9);
+  // Each ray points where the thing it represents physically lies.
+  assert.ok(Math.abs(d.target - r.azimuth) < 1e-9, 'the target ray is the azimuth of the target');
+  // M2 is due east of the station, so the ré ray must point at azimuth 90.
+  assert.ok(Math.abs(normalize360(d.backsight - 90)) < 0.02, `ré should lie due east, got ${d.backsight}`);
 
-  // North is wherever theta0 has pushed it — and Hz there must reduce to Az 0.
-  assert.ok(Math.abs(normalize360(d.north + setup.theta0)) < 1e-9, 'north on the circle reduces to azimuth 0');
+  // Aimed due north, the target ray coincides with the north tick.
+  assert.ok(Math.min(Math.abs(d.target - d.north), 360 - Math.abs(d.target - d.north)) < 0.02);
 
-  // Aimed due north, the target ray and the north tick must coincide.
-  assert.ok(Math.min(Math.abs(d.target - d.north), 360 - Math.abs(d.target - d.north)) < 0.01);
+  // Rotating both rays by theta0 leaves the angle between them untouched: the
+  // sweep is still exactly the angle the field book tabulates.
+  assert.equal(d.sweepFrom, d.backsight);
+  assert.equal(d.sweepTo, d.target);
+  assert.ok(Math.abs(d.sweep - r.fromBacksight) < 1e-9, 'the swept angle survives the rotation');
+  assert.ok(Math.abs(normalize360(d.sweepTo - d.sweepFrom) - d.sweep) < 1e-9, 'and it is the wedge actually drawn');
+
   void backsight;
+});
+
+test('the dial stays north-up even when the circle is not zeroed on the ré', () => {
+  // ARBITRARY leaves the circle wherever it sits, which is what used to swing
+  // the whole diagram round. Under azimuth space it cannot.
+  const setup = station(ORIENT.ARBITRARY, 'dial-arb');
+  const r = aimReadout(setup, 200, 300); // due north
+  const d = circleDial(setup, r);
+
+  assert.equal(d.north, 0);
+  assert.ok(Math.min(d.target, 360 - d.target) < 0.02, `aimed north, the ray must point up, got ${d.target}`);
+  assert.ok(Math.abs(normalize360(d.backsight - 90)) < 0.02, 'and the ré still lies due east');
 });
 
 test('a free station gets a dial with no ré and no sweep', () => {

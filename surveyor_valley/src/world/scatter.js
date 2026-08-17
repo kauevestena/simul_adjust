@@ -122,7 +122,16 @@ export function scatterWorld(rng, terrain, bounds, parcels, difficulty) {
       ];
       entities.push(makeBuilding(ring, { id: `casa-${parcel.id}`, label: `Sede ${parcel.id}`, parcelId: parcel.id }));
 
-      // The paddock, as a fraction of the holding rather than a fixed ring.
+      // The paddock, as a fraction of the holding rather than a fixed ring —
+      // and with a GATE in it.
+      //
+      // It used to close completely around the farmhouse, which meant the sede
+      // could not be reached on foot at all: measured by flood fill from the
+      // spawn, only 54 of 72 parcels had a reachable homestead. That mattered
+      // little while the building was scenery and became a blocker the moment
+      // the owner started paying you at it — and it could already seal a
+      // station site inside the paddock, which no amount of walking would fix.
+      // A paddock without a gate is wrong anyway.
       const fenceR = rng.range(0.09, 0.14) * span;
       const pts = [];
       const sides = rng.int(4, 6);
@@ -131,7 +140,12 @@ export function scatterWorld(rng, terrain, bounds, parcels, difficulty) {
         pts.push([spot.e + Math.cos(a) * fenceR, spot.n + Math.sin(a) * fenceR * 0.8]);
       }
       pts.push(pts[0]);
-      const { line, posts } = makeFence(pts, { id: `cerca-${parcel.id}`, label: `C${parcel.index + 1}`, parcelId: parcel.id });
+      const { line, posts } = makeFence(pts, {
+        id: `cerca-${parcel.id}`,
+        label: `C${parcel.index + 1}`,
+        parcelId: parcel.id,
+        gate: true,
+      });
       entities.push(line, ...posts);
     }
   }

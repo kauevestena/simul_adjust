@@ -173,11 +173,17 @@ export function makeHud(root, { onShop, onJobs, onBatch, onToggleSetting, audio 
 
     /**
      * Show or hide the batch-measure button.
+     *
      * Locked (rather than hidden) once a station is up but the manual-sight
      * quota is unmet, so the player can see the reward for doing it by hand.
+     * Hidden outright when the difficulty has no batch measuring at all: that
+     * lock can never open, and showing it would only promise something that is
+     * never coming. The two toggles beside it stay either way — they are survey
+     * practice, not a convenience.
      */
-    setBatch({ visible = false, unlocked = false, twoFace = false, gon = false } = {}) {
+    setBatch({ visible = false, batch = true, unlocked = false, twoFace = false, gon = false } = {}) {
       batchBar.hidden = !visible;
+      batchBtn.hidden = !batch;
       batchBtn.disabled = !unlocked;
       batchBtn.title = unlocked ? t('sight.measureAll') : t('sight.measureAllLocked');
       batchBtn.textContent = t('sight.measureAll');

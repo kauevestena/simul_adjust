@@ -91,6 +91,51 @@ export function buildWorld(seed, difficulty) {
 
     lineOfSight: (from, to, opts) => lineOfSight(spatial, from, to, opts),
 
+    /**
+     * The homestead of a parcel — its "sede" — and the doorstep you meet the
+     * owner on.
+     *
+     * The building has always been there, as scenery. It became load-bearing
+     * when the owner started paying you at it, and a single definition of
+     * "close enough to the sede" is what stops the waypoint, the toast and the
+     * gate that opens the payment from drifting apart. `door` is a spot on
+     * walkable ground beside the house; the payment radius is measured to it.
+     *
+     * Cached on the parcel: the search is a couple of hundred `isPassable`
+     * probes and the answer never changes.
+     */
+    sedeFor(parcelId) {
+      const parcel = world.parcelById.get(parcelId);
+      if (!parcel) return null;
+      if (parcel.sede !== undefined) return parcel.sede;
+
+      const house = byId.get(`casa-${parcelId}`);
+      if (!house) {
+        parcel.sede = null;
+        return null;
+      }
+
+      // Walk outward from the house until the ground is standable. Starting
+      // just past its own footprint, because inside it is never valid.
+      const r0 = (house.r || 4) + 0.8;
+      let door = null;
+      for (let r = r0; r <= r0 + 14 && !door; r += 0.5) {
+        const steps = Math.max(16, Math.round(r * 4));
+        for (let i = 0; i < steps; i++) {
+          const a = (i / steps) * Math.PI * 2;
+          const e = house.e + Math.cos(a) * r;
+          const n = house.n + Math.sin(a) * r;
+          if (world.isPassable(e, n)) {
+            door = { e, n };
+            break;
+          }
+        }
+      }
+
+      parcel.sede = { entity: house, door: door || { e: house.e, n: house.n }, owner: parcel.owner };
+      return parcel.sede;
+    },
+
     /** Can the player stand here? Water and solid obstacles say no. */
     isPassable(e, n, radius = 0.35) {
       if (e < bounds.minE || e > bounds.maxE || n < bounds.minN || n > bounds.maxN) return false;

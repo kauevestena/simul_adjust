@@ -60,6 +60,19 @@ export function makeTutorial({ getContext, bus, EV }) {
   /** Only the first service is hand-held; later ones just show the checklist. */
   const isTutorialService = () => (getContext().servicesDone ?? 0) === 0;
 
+  /**
+   * Has the player earned the batch-measure convenience?
+   *
+   * The TUTORIAL half of the gate only: the point of the first few sights is to
+   * learn what a sight is, and handing the button over immediately would let a
+   * student finish a parcel without ever aiming at anything. Whether the
+   * convenience exists at all on this difficulty is a separate question, and it
+   * is answered by `DIFFICULTY.batchMeasure`.
+   *
+   * `main.js` used to carry its own copy of this that omitted the
+   * `isTutorialService` clause, so the two disagreed on every service after the
+   * first. There is one now.
+   */
   function batchMeasureUnlocked() {
     const c = getContext();
     if (!isTutorialService()) return true;

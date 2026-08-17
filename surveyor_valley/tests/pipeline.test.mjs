@@ -283,10 +283,58 @@ test('a partly surveyed parcel is refused rather than quietly completed', () => 
   assert.deepEqual(service.surveyedRing(), [], 'no partial ring is offered');
   assert.equal(service.parcelReport('pt'), null, 'and no report is produced');
 
-  const finish = service.finish();
+  const finish = service.deliver();
   assert.equal(finish.ok, false, 'delivery is refused');
   assert.equal(finish.reason, 'parcelIncomplete');
   assert.equal(store.get().player.money, 0, 'and nobody gets paid');
+});
+
+test('a reading can only be taken from behind the eyepiece', () => {
+  // The rule the two-person crew rests on. A total station is not a one-person
+  // instrument: somebody carries the prism to the point, and it is not the
+  // person reading the circle. Until this existed you set the tripod up once
+  // and then measured the whole parcel from wherever you had wandered off to.
+  const store = makeStore(makeInitialState({ seed: 'sv-atinst', difficulty: 'facil' }));
+  const world = buildWorld('sv-atinst', DIFFICULTY.facil);
+
+  // The service asks where the surveyor is standing; this is that body.
+  let at = null;
+  const service = makeService({ store, getWorld: () => world, bus, EV, getPlayerPos: () => at });
+
+  const parcel = world.parcels[0];
+  service.start(parcel.id);
+
+  const a = findMarcoSpot(world, store, parcel.centroid);
+  const m1 = service.placeMarco(a.e, a.n);
+  const b = findMarcoSpot(world, store, { e: parcel.centroid.e + 18, n: parcel.centroid.n });
+  const m2 = service.placeMarco(b.e, b.n);
+  assert.ok(m1.ok && m2.ok, 'two monuments planted');
+
+  at = a;
+  const setup = service.setupStation({ over: m1.id, backsight: m2.id, playerPos: a });
+  assert.equal(setup.ok, true, `setup: ${setup.reason ?? ''}`);
+
+  // A target this station can actually see, so the refusal below is about
+  // WHERE THE PLAYER IS and not about the line of sight.
+  const visible = service.visibleTargets().find((v) => v.clear && v.entity.id !== `marco-${m1.id}`);
+  assert.ok(visible, 'something is in view from here');
+
+  // Walk five metres away and try to take the reading anyway.
+  at = { e: a.e + 5, n: a.n };
+  const away = service.sight(visible.entity.id);
+  assert.equal(away.ok, false, 'a sight from five metres off the instrument must be refused');
+  assert.equal(away.reason, 'notAtInstrument');
+  assert.equal(store.get().activeService.observations.length, 0, 'and nothing is recorded');
+
+  // Batch measuring runs through the same door, so it cannot be the way round.
+  const batch = service.measureAll({});
+  assert.equal(batch.measured, 0, 'measureAll cannot bypass the rule either');
+
+  // Back on the monument, the same sight works.
+  at = a;
+  const there = service.sight(visible.entity.id);
+  assert.equal(there.ok, true, `from the instrument it must succeed: ${there.reason ?? ''}`);
+  assert.equal(store.get().activeService.observations.length, 1, 'and is recorded');
 });
 
 test('the closed traverse computes, closes and reports a relative precision', () => {
@@ -306,7 +354,8 @@ test('delivery pays, scores and hands back a complete report', () => {
   const { service, store } = runFullSurvey();
   service.runTraverse();
 
-  const result = service.finish();
+  service.deliver();
+  const result = service.collectPayment();
   assert.equal(result.ok, true, `finish: ${result.reason ?? ''}`);
   assert.ok(result.payment > 0, `paid R$ ${result.payment}`);
   assert.ok(result.quality > 0 && result.quality <= 1, `quality ${result.quality}`);
@@ -336,7 +385,8 @@ test('every side of the report knows its confrontante', () => {
 test('the memorial descritivo reads as a proper metes-and-bounds description', () => {
   const { service, store, parcel } = runFullSurvey();
   service.runTraverse();
-  const result = service.finish();
+  service.deliver();
+  const result = service.collectPayment();
 
   const memorial = buildMemorial({
     report: result.report,
@@ -365,7 +415,8 @@ test('the memorial descritivo reads as a proper metes-and-bounds description', (
 
 test('the planta composes into a drawable, correctly scaled sheet', () => {
   const { service, store } = runFullSurvey();
-  const result = service.finish();
+  service.deliver();
+  const result = service.collectPayment();
 
   const planta = buildPlanta({
     report: result.report,
@@ -406,7 +457,8 @@ test('stroke widths are pen-sized, never confused with a shape dimension', () =>
   // 277 mm and flooded the whole plan solid black, in the preview and in the
   // PDF alike. Line width now lives on `lw` for every primitive.
   const { service, store } = runFullSurvey();
-  const result = service.finish();
+  service.deliver();
+  const result = service.collectPayment();
   const planta = buildPlanta({ report: result.report, state: store.get(), lang: 'pt' });
 
   for (const it of planta.drawList.items) {
@@ -508,7 +560,7 @@ test('the surveyed ring is empty until every corner is measured', () => {
 
   assert.deepEqual(service.surveyedRing(), [], 'nothing surveyed yet');
   assert.equal(service.parcelProgress().complete, false);
-  assert.equal(service.finish().ok, false, 'and delivery is refused');
+  assert.equal(service.deliver().ok, false, 'and delivery is refused');
 });
 
 test('the same seed replays the same measurements exactly', () => {

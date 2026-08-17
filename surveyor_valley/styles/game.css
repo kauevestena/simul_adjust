@@ -405,6 +405,107 @@
   gap: 1.15rem;
 }
 
+/* ---- who you are ------------------------------------------------------- */
+
+.char-panel {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+/* The sprite is pixel art: nearest-neighbour, or the whole point is lost. */
+.char-preview,
+.char-portrait {
+  image-rendering: pixelated;
+  background: var(--panel-alt);
+  border: 2px solid var(--wood-dark);
+  border-radius: var(--radius-sm);
+  flex: none;
+}
+
+.char-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.name-row {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.name-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  font: inherit;
+  padding: 0.35rem 0.5rem;
+  border: 2px solid var(--wood-dark);
+  border-radius: var(--radius-sm);
+  background: var(--panel-alt);
+  color: inherit;
+}
+
+.body-choice {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.body-btn.is-active {
+  background: var(--accent);
+  border-color: var(--accent-dark);
+  color: #fff;
+}
+
+.swatch-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+  margin-top: 0.15rem;
+}
+
+.swatch-row {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+.swatch {
+  width: 1.7rem;
+  height: 1.7rem;
+  padding: 0;
+  border: 2px solid var(--wood-dark);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  box-shadow: 0 2px 0 var(--wood-shadow);
+}
+
+/* An outline rather than a colour, since the fill IS the choice. */
+.swatch.is-active {
+  outline: 3px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.meet-aux {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.meet-aux-lead {
+  font-size: 1.1rem;
+  font-weight: 750;
+  margin: 0 0 0.5rem;
+}
+
+@media (max-width: 560px) {
+  .char-panel,
+  .meet-aux {
+    flex-direction: column;
+  }
+}
+
 .lang-switch {
   display: flex;
   gap: 0.35rem;

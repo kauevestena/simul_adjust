@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 
 import { makePix, ramp, rgba, rgbToHsl, hash2, PX_PER_M } from '../src/render/pixbuf.js';
 import { buildSprites, buildGroundSprites } from '../src/render/sprites/index.js';
+import { SKIN_TONES, HAIR_TONES, HAT_STYLES } from '../src/render/palette.js';
 import { classGrid, paintBase, paintDetail, shadeField } from '../src/render/groundpaint.js';
 import { makeTerrain } from '../src/world/terrain.js';
 import { makeCamera, ZOOM_LADDER, ZOOM_DEFAULT } from '../src/render/camera.js';
@@ -130,6 +131,80 @@ test('sprite keys the scene asks for all exist', () => {
   for (const k of ['char-kneel', 'char-kneel-idle', 'marco', 'station', 'prism', 'poste', 'divisa-0']) {
     assert.ok(keys.has(k), `${k} missing`);
   }
+  // Ligeirinho carries the same roster minus the kneel: the tribrach is at the
+  // player's end of the sight and he is at the other, holding the pole.
+  for (const dir of ['S', 'N', 'E', 'W']) {
+    for (let f = 0; f < 4; f++) assert.ok(keys.has(`aux-${dir}-${f}`), `aux-${dir}-${f} missing`);
+    assert.ok(keys.has(`aux-${dir}-idle`), `aux-${dir}-idle missing`);
+  }
+});
+
+test('the two of the crew can be told apart at a glance', () => {
+  // At 24 pixels across, a silhouette is not enough — hi-vis orange against a
+  // checked shirt is what actually distinguishes them, and a player who cannot
+  // tell which one they are driving is a player who has lost the plot.
+  const byKey = new Map(buildSprites().map((s) => [s.key, s]));
+  for (const dir of ['S', 'N', 'E', 'W']) {
+    const me = byKey.get(`char-${dir}-0`);
+    const him = byKey.get(`aux-${dir}-0`);
+    assert.notEqual(him.pix.hash(), me.pix.hash(), `aux-${dir}-0 paints identically to the player`);
+    assert.equal(him.anchorY, me.anchorY, 'and stands on the same ground line');
+  }
+});
+
+test('every look is distinct, deterministic, and keeps its feet on the ground', () => {
+  // The choice is saved as indices, so these tables are a save format: a look
+  // that painted nothing, or painted the same face for two different tones,
+  // would be a silent disappointment rather than an error.
+  const reference = buildSprites({ body: 'm', skin: 1, hair: 0, hat: 0 });
+  const base = reference.find((s) => s.key === 'char-S-0');
+  const seen = new Map([[base.pix.hash(), 'skin 1']]);
+
+  for (let i = 0; i < SKIN_TONES.length; i++) {
+    const made = buildSprites({ body: 'm', skin: i, hair: 0, hat: 0 });
+    const s = made.find((x) => x.key === 'char-S-0');
+    assert.ok(s.pix.bounds(), `skin ${i} painted nothing`);
+    assert.equal(s.anchorY, base.anchorY, `skin ${i} moved the ground line`);
+    if (i !== 1) assert.ok(!seen.has(s.pix.hash()), `skin ${i} is identical to ${seen.get(s.pix.hash())}`);
+    seen.set(s.pix.hash(), `skin ${i}`);
+    // Painting it again must give the same pixels, or the world changes under
+    // the player between sessions.
+    const again = buildSprites({ body: 'm', skin: i, hair: 0, hat: 0 }).find((x) => x.key === 'char-S-0');
+    assert.equal(again.pix.hash(), s.pix.hash(), `skin ${i} is not deterministic`);
+  }
+
+  const hats = new Set();
+  for (let i = 0; i < HAT_STYLES.length; i++) {
+    const s = buildSprites({ body: 'm', skin: 1, hair: 0, hat: i }).find((x) => x.key === 'char-S-0');
+    assert.ok(!hats.has(s.pix.hash()), `hat ${i} is identical to another`);
+    assert.equal(s.anchorY, base.anchorY, `hat ${i} lifted the surveyor off the ground`);
+    hats.add(s.pix.hash());
+  }
+
+  const hairs = new Set();
+  for (let i = 0; i < HAIR_TONES.length; i++) {
+    const s = buildSprites({ body: 'm', skin: 1, hair: i, hat: 0 }).find((x) => x.key === 'char-S-0');
+    assert.ok(!hairs.has(s.pix.hash()), `hair ${i} is identical to another`);
+    hairs.add(s.pix.hash());
+  }
+
+  // The two bodies must differ from every direction, including from behind,
+  // where there is no face to go on at all.
+  for (const dir of ['S', 'N', 'E']) {
+    const m = buildSprites({ body: 'm', skin: 1, hair: 0, hat: 0 }).find((x) => x.key === `char-${dir}-0`);
+    const f = buildSprites({ body: 'f', skin: 1, hair: 0, hat: 0 }).find((x) => x.key === `char-${dir}-0`);
+    assert.notEqual(f.pix.hash(), m.pix.hash(), `the two bodies paint identically facing ${dir}`);
+    assert.equal(f.anchorY, m.anchorY);
+  }
+});
+
+test('a look out of a newer save degrades instead of painting undefined', () => {
+  // Indices come out of a save file. One from a build with more tones than this
+  // one must clamp to a plausible surveyor rather than throwing, or painting a
+  // face out of `undefined` ramps.
+  const wild = buildSprites({ body: 'x', skin: 99, hair: -3, hat: 42 });
+  const s = wild.find((x) => x.key === 'char-S-0');
+  assert.ok(s && s.pix.bounds(), 'an out-of-range look still paints a surveyor');
 });
 
 test('the idle pose actually differs from standing still', () => {

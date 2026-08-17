@@ -91,17 +91,28 @@ export function makeBuilding(ring, o = {}) {
   return makeEntity(KIND.BENFEITORIA, cx, cy, { seg: ring, r, losR: r, targetKind: 'benfeitoria', ...o });
 }
 
-/** A run of fence: a polyline plus a post entity at each vertex. */
+/**
+ * A run of fence: a polyline plus a post entity at each vertex.
+ *
+ * `gate` drops the LAST segment of the line while keeping every post, so a ring
+ * of points becomes an enclosure you can walk into. Doing it this way rather
+ * than by shortening `points` is deliberate: the posts, their auto-generated
+ * ids and their positions are all untouched, so `world.hash()` does not move
+ * and a save written before the gate existed still lines up with its valley.
+ * The two posts either side of the opening stay standing, which is what a farm
+ * gate looks like anyway.
+ */
 export function makeFence(points, o = {}) {
+  const { gate = false, ...rest } = o;
   const posts = points.map((p, i) =>
     makePost(p[0], p[1], { targetKind: 'cerca', label: o.label ? `${o.label}-${i + 1}` : null }),
   );
   const line = makeEntity(KIND.CERCA, points[0][0], points[0][1], {
-    seg: points,
+    seg: gate && points.length > 2 ? points.slice(0, -1) : points,
     blocksWalk: true,
     blocksLOS: false,
     targetable: false,
-    ...o,
+    ...rest,
   });
   return { line, posts };
 }

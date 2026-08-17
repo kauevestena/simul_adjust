@@ -22,6 +22,8 @@ const COL = {
   panelEdge: '#5c3a1a',
   ink: '#3b2a16',
   inkSoft: '#6b5334',
+  /** The sede waypoint. The one thing on screen asking to be walked to. */
+  accent: '#d9622b',
 };
 
 /** Angles here honour the player's unit choice, exactly like every panel does. */
@@ -345,18 +347,24 @@ export function makeOverlays({ camera }) {
   /**
    * The horizontal circle, drawn.
    *
-   * Zero at the top, clockwise — the instrument's own face rather than the map,
-   * which is the whole reason it is worth drawing. The ré sits where the circle
-   * actually reads it, so zeroing on the ré visibly puts it at twelve o'clock;
-   * north sits wherever θ0 has pushed it. Seeing those two at once is seeing
-   * `Az = Hz + θ0`.
+   * **North is always straight up**, so the dial is oriented exactly like the
+   * map above it and the two can be compared without rotating either in your
+   * head. The ré ray points where the ré physically lies, the target ray at
+   * whatever the telescope is on, and the shaded wedge between them is the
+   * angle to the right — the number the field book tabulates.
+   *
+   * It used to be drawn on the instrument's own face, where zeroing on the ré
+   * put the ré at twelve o'clock and pushed north round by θ0. Truthful, and
+   * confusing on screen: the picture and the map disagreed about which way was
+   * up. `Az = Hz + θ0` is still there, as the two numbers in the rows above.
    *
    * `circleDial` in `survey/readout.js` decides every bearing here; this
    * function only turns degrees into pixels.
    */
   function drawDial(ctx, cx, cy, r, dial, blocked) {
-    // Bearing to canvas radians. Screen-up is always north because the camera
-    // never rotates, so a dial drawn this way turns the same way as the map.
+    // Bearing to canvas radians. Screen-up is north on the map and on this dial
+    // alike, because the camera never rotates and `circleDial` works in
+    // azimuths — so the two pictures agree by construction.
     const rad = (deg) => (deg - 90) * DEG;
     const ray = (deg, len) => ({ x: cx + Math.cos(rad(deg)) * len, y: cy + Math.sin(rad(deg)) * len });
 
@@ -532,8 +540,72 @@ export function makeOverlays({ camera }) {
     ctx.restore();
   }
 
+  /**
+   * Where to go and get paid.
+   *
+   * A waypoint over the farmhouse once the documents are done, and an arrow
+   * pinned to the edge of the screen when the farmhouse is not on it. The
+   * off-screen case is the one that matters: the sede can be most of a parcel
+   * away, and "walk to the sede" with nothing on screen pointing at it is an
+   * instruction to wander.
+   */
+  function drawSedeWaypoint(ctx, sede) {
+    if (!sede) return;
+    const { x, y } = camera.worldToScreen(sede.door.e, sede.door.n);
+    const m = 46;
+    const inside = x > m && x < camera.vw - m && y > m && y < camera.vh - m;
+
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    if (inside) {
+      // A pin over the door, bobbing is not needed — it is the only one.
+      const top = y - 34;
+      ctx.beginPath();
+      ctx.moveTo(x, y - 8);
+      ctx.lineTo(x - 9, top);
+      ctx.lineTo(x + 9, top);
+      ctx.closePath();
+      ctx.fillStyle = COL.accent;
+      ctx.fill();
+      ctx.strokeStyle = COL.ink;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      label(ctx, t('sede.here'), x, top - 12, { size: 12, bold: true });
+      ctx.restore();
+      return;
+    }
+
+    // Clamped to the frame, pointing the way.
+    const cx = camera.vw / 2;
+    const cy = camera.vh / 2;
+    const ang = Math.atan2(y - cy, x - cx);
+    const px = Math.max(m, Math.min(camera.vw - m, cx + Math.cos(ang) * camera.vw));
+    const py = Math.max(m, Math.min(camera.vh - m, cy + Math.sin(ang) * camera.vh));
+
+    ctx.translate(px, py);
+    ctx.rotate(ang);
+    ctx.beginPath();
+    ctx.moveTo(14, 0);
+    ctx.lineTo(-8, -9);
+    ctx.lineTo(-8, 9);
+    ctx.closePath();
+    ctx.fillStyle = COL.accent;
+    ctx.fill();
+    ctx.strokeStyle = COL.ink;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    const metres = Math.round(Math.hypot(sede.door.e - camera.e, sede.door.n - camera.n));
+    label(ctx, `${t('sede.here')} ${metres} m`, px, py + 24, { size: 12, bold: true });
+    ctx.restore();
+  }
+
   function draw(ctx, view) {
-    const { world, station, observations = [], setups = [], aim, tripodCheck, player, network = [], lang, showCornerLabels } = view;
+    const { world, station, observations = [], setups = [], aim, tripodCheck, player, network = [], lang, showCornerLabels, sede } = view;
     if (!world) return;
 
     if (tripodCheck) drawTripodDisc(ctx, tripodCheck.check, tripodCheck.e, tripodCheck.n);
@@ -544,6 +616,7 @@ export function makeOverlays({ camera }) {
     drawFlashes(ctx);
     if (aim) drawAim(ctx, station, aim.target, aim.los, lang);
     drawPointLabels(ctx, world, network, showCornerLabels);
+    drawSedeWaypoint(ctx, sede);
     drawCompassAndScale(ctx);
     if (aim) drawAimPanel(ctx, station, aim.target, aim.los, lang);
     void player;

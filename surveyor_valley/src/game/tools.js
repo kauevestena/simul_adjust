@@ -74,6 +74,9 @@ export function makeTools({ getContext, bus, EV }) {
 
       case TOOL.VISADA:
         if (!c.station) return no('tip.needStation');
+        // A reading is taken from behind the eyepiece. The rail says so rather
+        // than letting the click find out, which is this file's whole premise.
+        if (c.atInstrument && !c.atInstrument.ok) return no('tip.notAtInstrument');
         return ok;
 
       case TOOL.CADERNETA:

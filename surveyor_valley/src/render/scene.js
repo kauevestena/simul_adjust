@@ -228,7 +228,20 @@ export function makeScene({ app, camera, atlas, ground }) {
     return p.idleFrame ? `char-${p.facing}-idle` : `char-${p.facing}-0`;
   }
 
-  function drawEntities(w, playerState, station) {
+  /**
+   * Which frame of Ligeirinho to draw.
+   *
+   * The same rule as the player's minus the kneel, which is hers alone: the
+   * tribrach is at her end of the sight and he is at the other, holding the
+   * pole. He carries it in every frame, so there is no separate planted pose to
+   * paint — standing still with the prism up IS the idle.
+   */
+  function assistantKey(a) {
+    if (a.moving) return `aux-${a.facing}-${a.frame % 4}`;
+    return a.idleFrame ? `aux-${a.facing}-idle` : `aux-${a.facing}-0`;
+  }
+
+  function drawEntities(w, playerState, station, assistantState) {
     const detail = camera.zoom >= DETAIL_ZOOM;
     const view = camera.viewRect(12);
     visible.length = 0;
@@ -263,6 +276,11 @@ export function makeScene({ app, camera, atlas, ground }) {
     const cf = atlas.get(characterKey(playerState, station)) || atlas.get('char-S-0');
     if (cf) place(takeEntitySprite(), cf, playerState.e, playerState.n);
 
+    if (assistantState) {
+      const af = atlas.get(assistantKey(assistantState)) || atlas.get('aux-S-0');
+      if (af) place(takeEntitySprite(), af, assistantState.e, assistantState.n);
+    }
+
     // Park the leftovers rather than destroying them; next frame may want them.
     for (let i = entityUsed; i < entityPool.length; i++) entityPool[i].visible = false;
   }
@@ -283,7 +301,7 @@ export function makeScene({ app, camera, atlas, ground }) {
 
   // ---- frame --------------------------------------------------------------
   function render(view) {
-    const { world: w, player, activeParcelId, station, light: lightState } = view;
+    const { world: w, player, assistant, activeParcelId, station, light: lightState } = view;
 
     if (!w) {
       world.visible = false;
@@ -309,7 +327,7 @@ export function makeScene({ app, camera, atlas, ground }) {
 
     drawGround(w);
     drawLines(w, activeParcelId);
-    drawEntities(w, player, station);
+    drawEntities(w, player, station, assistant);
 
     // Light pass, in screen space.
     tint.width = camera.vw;
@@ -353,6 +371,7 @@ export function makeScene({ app, camera, atlas, ground }) {
      * would have been wrong in exactly the same way.
      */
     characterKey,
+    assistantKey,
   };
 }
 
