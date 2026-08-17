@@ -12,7 +12,7 @@
 // resolves first.
 
 import { PX_PER_M } from './pixbuf.js';
-import { classGrid, paintBase, paintDetail, paintFurrows, shadeField, detailRows, CLASS_IDS } from './groundpaint.js';
+import { classGrid, paintBase, paintDetail, paintFurrows, shadeField, edgeField, detailRows, CLASS_IDS } from './groundpaint.js';
 import { buildGroundSprites } from './sprites/index.js';
 import { GROUND } from './palette.js';
 import { pixi } from './pixi.js';
@@ -21,7 +21,7 @@ const CHUNK_M = 32;
 const MAX_CHUNKS = 64;
 
 /** Work stages, in order. */
-const STAGE = { BASE: 0, FURROWS: 1, DETAIL: 2, UPLOAD: 3, DONE: 4 };
+const STAGE = { GRID: 0, BASE: 1, FURROWS: 2, DETAIL: 3, UPLOAD: 4, DONE: 5 };
 
 export function makeGroundBaker(terrain, { chunkMetres = CHUNK_M, pxPerM = PX_PER_M } = {}) {
   const sprites = buildGroundSprites();
@@ -38,7 +38,8 @@ export function makeGroundBaker(terrain, { chunkMetres = CHUNK_M, pxPerM = PX_PE
   function startJob(cx, cy) {
     const originE = cx * chunkMetres;
     const originN = cy * chunkMetres;
-    const { grid, size: gridSize } = classGrid(terrain, originE, originN, chunkMetres);
+    // The grid is allocated here but filled in slices, like everything else.
+    const { grid, size: gridSize, cell } = classGrid(terrain, originE, originN, chunkMetres, null, 0, 0);
     return {
       cx,
       cy,
@@ -46,9 +47,13 @@ export function makeGroundBaker(terrain, { chunkMetres = CHUNK_M, pxPerM = PX_PE
       originN,
       grid,
       gridSize,
+      cell,
+      /** Computed once the grid is complete, then reused by every base slice. */
+      edges: null,
       shade: shadeField(originE, originN, chunkMetres),
       buf: new Uint8ClampedArray(size * size * 4),
-      stage: STAGE.BASE,
+      stage: STAGE.GRID,
+      gridRow: 0,
       row: 0,
       detailRow: -1,
       detailEnd: detailRows(chunkMetres) - 2,
@@ -66,11 +71,24 @@ export function makeGroundBaker(terrain, { chunkMetres = CHUNK_M, pxPerM = PX_PE
   function advance(job, deadline) {
     do {
       switch (job.stage) {
+        case STAGE.GRID: {
+          const end = job.gridRow + 32;
+          const r = classGrid(terrain, job.originE, job.originN, chunkMetres, job.grid, job.gridRow, end);
+          job.gridRow = end;
+          if (r.done) {
+            // Once, not once per slice: the shore field used to be rebuilt
+            // inside every one of the eleven base slices because `paintBase`
+            // was called without it.
+            job.edges = edgeField(job.grid, job.gridSize, job.cell);
+            job.stage = STAGE.BASE;
+          }
+          break;
+        }
         case STAGE.BASE: {
           const end = Math.min(size, job.row + 48);
           paintBase(
             job.buf, job.grid, job.gridSize, job.originE, job.originN,
-            chunkMetres, pxPerM, job.row, end, job.shade,
+            chunkMetres, pxPerM, job.row, end, job.shade, job.edges,
           );
           job.row = end;
           if (job.row >= size) job.stage = STAGE.FURROWS;

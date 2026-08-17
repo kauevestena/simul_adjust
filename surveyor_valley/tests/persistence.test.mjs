@@ -57,7 +57,6 @@ function surveySome(store, world, service, parcel) {
       const st = service.setupStation({
         over: over.id,
         backsight: back.id,
-        datumMode: 'compass',
         playerPos: { e: over.e, n: over.n },
       });
       if (st.ok) {

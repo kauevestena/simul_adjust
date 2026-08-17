@@ -18,11 +18,19 @@ import { bus, EV } from './bus.js';
  * proportion to the figure — shrinking a parcel to a third of its area makes a
  * fixed 1:X requirement about 1.7x harder to meet, not easier.
  *
- * Measured over 35 completed surveys with the starter 10" instrument at the new
- * size: median 1:5288, worst 1:1403. These three are set to reproduce the pass
- * rates the game shipped with (roughly 0%, 1% and 13% of honest surveys falling
- * short) rather than to quietly raise the bar. Missing the requirement costs
- * quality and therefore pay; it never blocks delivery.
+ * These numbers look loose for cadastral work, and they are — honestly so. A
+ * 30-50 m parcel closed with a 10" instrument, 2.5 mm of centring and a 10 mm
+ * EDM constant cannot do better; that relative precision falls with the size of
+ * the figure is a real surveying fact and one worth a student meeting.
+ *
+ * Measured over 36 completed surveys with the starter instrument at the current
+ * block size: median 1:3787, worst 1:1235. Against these three that is 0%, 8%
+ * and 22% of honest surveys falling short — fácil free, difícil demanding either
+ * care or a better instrument, which is what the shop is for. The best survey
+ * observed closed at 1:38266, so the ceiling is the kit, not the ground.
+ *
+ * Missing the requirement costs quality and therefore pay; it never blocks
+ * delivery.
  */
 export const DIFFICULTY = {
   facil: {
@@ -30,7 +38,7 @@ export const DIFFICULTY = {
     obstacleDensity: 0.4,
     cornerHiding: 0,
     timeLimit: false,
-    requiredPrecision: 1 / 1500,
+    requiredPrecision: 1 / 1000,
     payMult: 0.8,
   },
   medio: {
@@ -38,7 +46,7 @@ export const DIFFICULTY = {
     obstacleDensity: 0.85,
     cornerHiding: 0.15,
     timeLimit: false,
-    requiredPrecision: 1 / 2000,
+    requiredPrecision: 1 / 1500,
     payMult: 1.0,
   },
   dificil: {
@@ -46,7 +54,7 @@ export const DIFFICULTY = {
     obstacleDensity: 1.35,
     cornerHiding: 0.4,
     timeLimit: true,
-    requiredPrecision: 1 / 3000,
+    requiredPrecision: 1 / 2000,
     payMult: 1.5,
   },
 };

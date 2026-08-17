@@ -23,7 +23,7 @@ import { pointInPolygon } from '../core/math2d.js';
  * came down to 280 would have made the valley four fifths empty scenery, and
  * every metre of it still gets terrain-classified and ground-baked.
  */
-export const WORLD_SIZE = 380;
+export const WORLD_SIZE = 220;
 
 /**
  * @param {string} seed
@@ -138,6 +138,19 @@ export function buildWorld(seed, difficulty) {
         if (!world.isPassable(e, n)) continue;
         if (!world.canSetupTripod(e, n).ok) continue;
         return { e, n };
+      }
+      // Last resort. The centroid is not checked for anything, so spiral out
+      // from it until the ground is at least walkable — dropping the player
+      // into the middle of a lake is a worse first impression than standing
+      // them a few metres off centre.
+      for (let r = 0; r <= 30; r += 1.5) {
+        const steps = r === 0 ? 1 : Math.max(8, Math.round(r * 2));
+        for (let i = 0; i < steps; i++) {
+          const a = (i / steps) * Math.PI * 2;
+          const e = c.e + Math.cos(a) * r;
+          const n = c.n + Math.sin(a) * r;
+          if (world.isPassable(e, n)) return { e, n };
+        }
       }
       return { e: c.e, n: c.n };
     },

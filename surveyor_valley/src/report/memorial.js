@@ -39,12 +39,7 @@ export function buildMemorial({ report, state, lang = 'pt', playerName = '' }) {
     [t('memorial.perimeter'), `${num(perimeter, 2)} m`],
     [
       t('memorial.referenceSystem'),
-      t('memorial.referenceSystemValue', {
-        vertex: vertices[0].label || vertices[0].id,
-        orientation: t(
-          datum?.northLabel === 'magnetico' ? 'memorial.orientationCompass' : 'memorial.orientationArbitrary',
-        ),
-      }),
+      t('memorial.referenceSystemValue', { vertex: vertices[0].label || vertices[0].id }),
     ],
   ]);
 

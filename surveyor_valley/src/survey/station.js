@@ -18,9 +18,6 @@ export const ORIENT = {
   ARBITRARY: 'arbitrary', // leave the circle wherever it sits and compute θ0
 };
 
-/** Compass (declinatória) precision, in degrees: 0°30'. */
-export const COMPASS_SIGMA_DEG = 0.5;
-
 let setupCounter = 0;
 
 /**
@@ -187,43 +184,31 @@ export function sightTarget({ setup, target, kit, rng, label = null, twoFace = f
 }
 
 /**
- * Establish the arbitrary local datum for the very first setup of the campaign,
- * when no coordinate exists anywhere yet. The player chooses which flavour in
- * the setup dialog; the planta labels its north arrow accordingly.
+ * Establish the local datum for the very first setup of the campaign, when no
+ * coordinate exists anywhere yet.
  *
- * @param {object} p
- * @param {'compass'|'arbitrary'} p.mode
+ * There used to be a choice here — a compass bearing good to 30', or declaring
+ * the line to the ré to be north — and both rotated the surveyed frame away
+ * from the world. That is defensible surveying and indefensible teaching: the
+ * north arrow on the map pointed one way, every azimuth in the memorial was
+ * measured from another, and nothing on screen said so. A student learning what
+ * an azimuth IS should not be quietly handed two norths.
+ *
+ * So there is one datum now and its north is the canvas's north. The origin is
+ * still an arbitrary local (1000, 1000), which keeps the coordinates reading
+ * like a local grid — and costs nothing, because azimuth is `atan2(dE, dN)` and
+ * is exactly invariant under translation.
+ *
  * @param {{trueE:number, trueN:number}} p.m1
  * @param {{trueE:number, trueN:number}} p.m2
  * @param {number} p.originE @param {number} p.originN
  */
-export function establishDatum({ mode, m1, m2, rng, originE = 1000, originN = 1000 }) {
-  const trueAz = azimuth(m1.trueE, m1.trueN, m2.trueE, m2.trueN);
-
-  if (mode === 'compass') {
-    // A magnetic bearing read off the declinatória: honest, but only to ~30'.
-    const observed = normalize360(trueAz + rng.gauss() * COMPASS_SIGMA_DEG);
-    return {
-      mode,
-      originE,
-      originN,
-      azimuthM1M2: observed,
-      trueAzimuthM1M2: trueAz,
-      northLabel: 'magnetico',
-      sigmaDeg: COMPASS_SIGMA_DEG,
-    };
-  }
-
-  // Arbitrary: declare M1->M2 to be due north. The whole system is then rotated
-  // with respect to the world, which is fine — area and distances are preserved.
+export function establishDatum({ m1, m2, originE = 1000, originN = 1000 }) {
   return {
-    mode: 'arbitrary',
     originE,
     originN,
-    azimuthM1M2: 0,
-    trueAzimuthM1M2: trueAz,
-    northLabel: 'arbitrario',
-    sigmaDeg: 0,
+    /** Identical to the world azimuth: the frame is a pure translation. */
+    azimuthM1M2: azimuth(m1.trueE, m1.trueN, m2.trueE, m2.trueN),
   };
 }
 

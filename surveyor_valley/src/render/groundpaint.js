@@ -24,6 +24,7 @@
 
 import { rgba, hash2 } from './pixbuf.js';
 import { GROUND, P } from './palette.js';
+import { CELLS_PER_M } from '../world/terrain.js';
 
 /**
  * Detail population per soil class, in items per square metre.
@@ -56,16 +57,22 @@ const CLASS_INDEX = new Map(CLASS_IDS.map((id, i) => [id, i]));
  *
  * @returns {{grid:Uint8Array, size:number}} `size` includes the border.
  */
-export function classGrid(terrain, originE, originN, metres) {
-  const size = metres + 2;
-  const grid = new Uint8Array(size * size);
-  for (let j = 0; j < size; j++) {
+export function classGrid(terrain, originE, originN, metres, into = null, jStart = 0, jEnd = Infinity) {
+  const cell = 1 / CELLS_PER_M;
+  const size = metres * CELLS_PER_M + 2;
+  const grid = into || new Uint8Array(size * size);
+  // Sliceable by row, like every other stage of a bake: classifying a chunk's
+  // worth of soil is the expensive half now that cells are 25 cm, and doing it
+  // in one go would put back exactly the hitch the budgeted baker exists to
+  // prevent.
+  const j1 = Math.min(size, jEnd);
+  for (let j = jStart; j < j1; j++) {
     for (let i = 0; i < size; i++) {
-      const soil = terrain.soilAt(originE + i - 1 + 0.5, originN + j - 1 + 0.5);
+      const soil = terrain.soilAt(originE + (i - 1 + 0.5) * cell, originN + (j - 1 + 0.5) * cell);
       grid[j * size + i] = CLASS_INDEX.get(soil.id) ?? 0;
     }
   }
-  return { grid, size };
+  return { grid, size, cell, done: j1 >= size };
 }
 
 const WATER = CLASS_INDEX.get('AGUA');
@@ -84,43 +91,50 @@ const SHALLOW = rgba(P.water[2]);
  *
  * The grid is 34x34, so the whole thing costs nothing.
  */
-export function edgeField(grid, gridSize) {
+export function edgeField(grid, gridSize, cell = 1 / CELLS_PER_M) {
   const FAR = 1e6;
-  const d = new Float32Array(gridSize * gridSize);
+  const n = gridSize;
+  const d = new Float32Array(n * n);
 
-  for (let i = 0; i < d.length; i++) {
-    const wet = grid[i] === WATER;
-    // Seed the boundary: a cell touching the other medium is half a metre away.
-    let boundary = false;
-    const x = i % gridSize;
-    const y = (i / gridSize) | 0;
-    for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
-      const nx = x + ox;
-      const ny = y + oy;
-      if (nx < 0 || ny < 0 || nx >= gridSize || ny >= gridSize) continue;
-      if ((grid[ny * gridSize + nx] === WATER) !== wet) boundary = true;
+  // Seed the boundary: a cell touching the other medium is half a cell away, in
+  // METRES, so the shore bands stay the widths they are described as however
+  // fine the grid gets.
+  const half = cell * 0.5;
+  for (let y = 0; y < n; y++) {
+    for (let x = 0; x < n; x++) {
+      const i = y * n + x;
+      const wet = grid[i] === WATER;
+      const edge =
+        (x > 0 && (grid[i - 1] === WATER) !== wet) ||
+        (x < n - 1 && (grid[i + 1] === WATER) !== wet) ||
+        (y > 0 && (grid[i - n] === WATER) !== wet) ||
+        (y < n - 1 && (grid[i + n] === WATER) !== wet);
+      d[i] = edge ? half : FAR;
     }
-    d[i] = boundary ? 0.5 : FAR;
   }
 
-  const relax = (order) => {
-    for (const i of order) {
-      const x = i % gridSize;
-      const y = (i / gridSize) | 0;
+  // Two sequential raster passes — the textbook chamfer. This used to walk an
+  // index array built with `[...d.keys()]` and allocate a fresh array of
+  // neighbour offsets for every cell, which cost nothing on the old 34x34 grid
+  // and twenty milliseconds a chunk on a finer one. Same answer, no allocation.
+  for (let y = 0; y < n; y++) {
+    for (let x = 0; x < n; x++) {
+      const i = y * n + x;
       let best = d[i];
-      for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
-        const nx = x + ox;
-        const ny = y + oy;
-        if (nx < 0 || ny < 0 || nx >= gridSize || ny >= gridSize) continue;
-        const v = d[ny * gridSize + nx] + 1;
-        if (v < best) best = v;
-      }
+      if (x > 0 && d[i - 1] + cell < best) best = d[i - 1] + cell;
+      if (y > 0 && d[i - n] + cell < best) best = d[i - n] + cell;
       d[i] = best;
     }
-  };
-  const fwd = [...d.keys()];
-  relax(fwd);
-  relax(fwd.reverse());
+  }
+  for (let y = n - 1; y >= 0; y--) {
+    for (let x = n - 1; x >= 0; x--) {
+      const i = y * n + x;
+      let best = d[i];
+      if (x < n - 1 && d[i + 1] + cell < best) best = d[i + 1] + cell;
+      if (y < n - 1 && d[i + n] + cell < best) best = d[i + n] + cell;
+      d[i] = best;
+    }
+  }
 
   // Sign it: negative in the water.
   for (let i = 0; i < d.length; i++) if (grid[i] === WATER) d[i] = -d[i];
@@ -198,8 +212,13 @@ export function paintBase(out, grid, gridSize, originE, originN, metres, pxPerM,
       const jx = (hash2(px, py, 11) - 0.5) * 0.85;
       const jy = (hash2(px, py, 23) - 0.5) * 0.85;
 
-      let gi = Math.floor(localE + jx) + 1;
-      let gj = Math.floor(metres - (localN + jy)) + 1;
+      // `classGrid` fills row j northward from the border cell, so `localN` —
+      // already a world-N offset — indexes it directly once scaled to cells.
+      // Subtracting it from `metres` here, which is what this line used to do,
+      // flipped every chunk about its own centre line and painted half the
+      // valley as the wrong soil.
+      let gi = Math.floor((localE + jx) * CELLS_PER_M) + 1;
+      let gj = Math.floor((localN + jy) * CELLS_PER_M) + 1;
       if (gi < 0) gi = 0;
       else if (gi >= gridSize) gi = gridSize - 1;
       if (gj < 0) gj = 0;
@@ -311,8 +330,14 @@ export function paintDetail(out, grid, gridSize, originE, originN, metres, pxPer
       const we = originE + (i + hash2(i, j, 101)) * STEP;
       const wn = originN + (j + hash2(i, j, 103)) * STEP;
 
-      const gi = Math.max(0, Math.min(gridSize - 1, Math.floor(we - originE) + 1));
-      const gj = Math.max(0, Math.min(gridSize - 1, Math.floor(metres - (wn - originN)) + 1));
+      // Same north-for-south rule as `paintBase`: `wn - originN` is already a
+      // world-N offset and indexes the grid directly. Jittered the same way
+      // too — without it, tufts and stones stopped dead on a perfectly straight
+      // metre line while the ground colour under them was already ragged.
+      const jx = (hash2(i, j, 131) - 0.5) * 0.85;
+      const jy = (hash2(i, j, 137) - 0.5) * 0.85;
+      const gi = Math.max(0, Math.min(gridSize - 1, Math.floor((we - originE + jx) * CELLS_PER_M) + 1));
+      const gj = Math.max(0, Math.min(gridSize - 1, Math.floor((wn - originN + jy) * CELLS_PER_M) + 1));
       const cls = CLASS_IDS[grid[gj * gridSize + gi]];
       const wants = DETAIL[cls];
       if (!wants) continue;
@@ -373,8 +398,17 @@ export function paintFurrows(out, grid, gridSize, originE, originN, metres, pxPe
   const spacingPx = Math.round(0.8 * pxPerM);
 
   const isField = (px, py) => {
-    const gi = Math.max(0, Math.min(gridSize - 1, Math.floor(px / pxPerM) + 1));
-    const gj = Math.max(0, Math.min(gridSize - 1, Math.floor(py / pxPerM) + 1));
+    // `py` is a CANVAS row, counting south from the top, while the grid counts
+    // north. Converting is the whole of it — reading `py` straight into `gj`
+    // ploughed the mirror image of every field.
+    //
+    // Jittered like everything else. The edge of a ploughed field was the
+    // hardest straight line left in the game: furrows simply stopped, dead
+    // square, on a metre boundary.
+    const jx = (hash2(px, py, 149) - 0.5) * 0.85;
+    const jy = (hash2(px, py, 151) - 0.5) * 0.85;
+    const gi = Math.max(0, Math.min(gridSize - 1, Math.floor((px / pxPerM + jx) * CELLS_PER_M) + 1));
+    const gj = Math.max(0, Math.min(gridSize - 1, Math.floor((metres - py / pxPerM + jy) * CELLS_PER_M) + 1));
     return grid[gj * gridSize + gi] === lavoura;
   };
 

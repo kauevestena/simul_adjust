@@ -63,3 +63,44 @@ export function aimReadout(setup, tE, tN) {
     backsightReading: hasBacksight ? setup.backsightReading : null,
   };
 }
+
+/**
+ * The horizontal circle, as a diagram.
+ *
+ * Everything is in CIRCLE-READING space, with zero at the top and increasing
+ * clockwise — which is the instrument's own face, not the map's. That is the
+ * point of drawing it: zeroing on the ré visibly puts the ré at twelve
+ * o'clock, and north then sits wherever θ0 has pushed it. A student who can
+ * see those two facts at once has understood `Az = Hz + θ0`, which is the
+ * single hardest idea in a first surveying course.
+ *
+ * Pure geometry, deliberately: the canvas code that renders this cannot be
+ * tested, and the claim it makes about angles is worth testing.
+ *
+ * @param {object} setup
+ * @param {object} r  the matching `aimReadout`
+ * @returns {{target:number, backsight:number|null, north:number,
+ *            sweepFrom:number|null, sweepTo:number|null, sweep:number|null}}
+ *          all bearings on the circle, in degrees
+ */
+export function circleDial(setup, r) {
+  // Where azimuth zero falls on the circle: `Az = Hz + θ0`, so Hz = −θ0.
+  const north = normalize360(-setup.theta0);
+
+  if (r.backsightReading == null) {
+    // A free station has no ré, so there is no angle to sweep and nothing
+    // honest to draw between two rays. The target and north still stand.
+    return { target: r.hz, backsight: null, north, sweepFrom: null, sweepTo: null, sweep: null };
+  }
+
+  return {
+    target: r.hz,
+    backsight: r.backsightReading,
+    north,
+    // Clockwise from the ré to the target — the angle to the right, which is
+    // the one the field book tabulates.
+    sweepFrom: r.backsightReading,
+    sweepTo: r.hz,
+    sweep: r.fromBacksight,
+  };
+}

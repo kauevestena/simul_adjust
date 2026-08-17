@@ -12,7 +12,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { aimReadout } from '../src/survey/readout.js';
+import { aimReadout, circleDial } from '../src/survey/readout.js';
 import { setupOverKnownPoint, setupFreeStation, sightTarget, ORIENT } from '../src/survey/station.js';
 import { resolveKit } from '../src/survey/instrument.js';
 import { makeRng } from '../src/core/rng.js';
@@ -94,6 +94,42 @@ test('the readout is what a sight would record, without the noise', () => {
   const dHz = Math.abs(normalize360(live.hz - obs.hz + 180) - 180);
   assert.ok(dHz < 0.02, `Hz differs by ${(dHz * 3600).toFixed(0)}", more than pointing noise`);
   assert.ok(Math.abs(live.distance - obs.distance) < 0.05, `distance differs by ${live.distance - obs.distance}`);
+});
+
+test('the dial puts the ré where the circle reads it, and sweeps to the right', () => {
+  const setup = station();
+  const { backsight } = twoPoints();
+  const target = { trueE: 200, trueN: 300 }; // due north of the station
+
+  const r = aimReadout(setup, target.trueE, target.trueN);
+  const d = circleDial(setup, r);
+
+  // Zeroed on the ré, so the ré sits at the top of the circle.
+  assert.ok(Math.min(d.backsight, 360 - d.backsight) < 0.01, `ré at 0, got ${d.backsight}`);
+  assert.ok(Math.abs(d.target - r.hz) < 1e-9, 'the target ray is the circle reading');
+
+  // The sweep runs FROM the ré TO the target, and is the angle to the right.
+  assert.equal(d.sweepFrom, r.backsightReading);
+  assert.equal(d.sweepTo, r.hz);
+  assert.ok(Math.abs(d.sweep - r.fromBacksight) < 1e-9);
+
+  // North is wherever theta0 has pushed it — and Hz there must reduce to Az 0.
+  assert.ok(Math.abs(normalize360(d.north + setup.theta0)) < 1e-9, 'north on the circle reduces to azimuth 0');
+
+  // Aimed due north, the target ray and the north tick must coincide.
+  assert.ok(Math.min(Math.abs(d.target - d.north), 360 - Math.abs(d.target - d.north)) < 0.01);
+  void backsight;
+});
+
+test('a free station gets a dial with no ré and no sweep', () => {
+  const solution = { E: 1000, N: 1000, trueE: 200, trueN: 200, theta0: 137.5 };
+  const setup = setupFreeStation({ solution, kit: kit(), rng: makeRng('readout', 'dial'), circleOffset: 42 });
+  const r = aimReadout(setup, 250, 250);
+  const d = circleDial(setup, r);
+
+  assert.equal(d.backsight, null, 'nothing to draw a ré ray from');
+  assert.equal(d.sweep, null, 'and no angle between two rays that do not both exist');
+  assert.ok(Number.isFinite(d.target) && Number.isFinite(d.north), 'but the target and north still stand');
 });
 
 test('a free station reports no ré at all', () => {

@@ -48,11 +48,11 @@ const AREA_WEIGHTS = [0.55, 0.75, 1.0, 1.15, 1.5, 2.05];
  * truer picture: a rural boundary runs straight from one marco to the next
  * unless it is following a river or a road.
  *
- * Measured over eight seeds, these give 0.35–1.50 ha and 4–9 corners, against
- * 1.05–4.68 ha and 7–16 before — and take the worst job from about 109 minutes
- * of estimated field time down to 65.
+ * Measured over eight seeds, these give 0.11–0.47 ha and 4–8 corners, against
+ * 1.05–4.68 ha and 7–16 when the game shipped — a lap of about 200 m rather
+ * than 830, and roughly 40 minutes of estimated field time rather than 109.
  */
-const BLOCK_SIZE = 280;
+const BLOCK_SIZE = 160;
 const HULL_POINTS = [7, 10];
 const EDGE_CUTS = [140, 75];
 
@@ -162,7 +162,10 @@ const ekey = (a, b) => (a < b ? `${a}::${b}` : `${b}::${a}`);
  */
 export function generateParcels(
   rng,
-  { cx = 320, cy = 320, size = BLOCK_SIZE, count = 6, hullPoints = HULL_POINTS, edgeCuts = EDGE_CUTS } = {},
+  // The centre defaults to the block's own middle rather than a fixed 320,
+  // which was the centre of a 640 m valley three shrinks ago and had quietly
+  // become a point outside the world. `buildWorld` always passes the real one.
+  { size = BLOCK_SIZE, cx = size / 2, cy = size / 2, count = 6, hullPoints = HULL_POINTS, edgeCuts = EDGE_CUTS } = {},
 ) {
   const block = asCCW(makeBlockPolygon(rng, { cx, cy, size, hullPoints }));
   const blockArea = Math.abs(signedArea(block));

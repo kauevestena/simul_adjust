@@ -162,12 +162,12 @@ export function makeService({ store, getWorld, bus, EV }) {
    * Set the instrument up over a monument and orient on a backsight.
    *
    * For the very first setup of the campaign nothing has coordinates yet, so
-   * this is also where the arbitrary local datum is born: the station takes the
-   * origin, and the direction to the backsight is fixed either by the compass
-   * (honest, good to about 30') or by declaring it due north (simpler, and the
-   * planta then says "Norte arbitrário"). The player chooses in the dialog.
+   * this is also where the local datum is born: the station takes an arbitrary
+   * origin and north is the map's north. There used to be a choice of two
+   * flavours here, both of which rotated the surveyed frame away from the world
+   * — see `establishDatum`.
    */
-  function setupStation({ over, backsight, orientMode = ORIENT.ZERO_BACKSIGHT, datumMode = 'compass', playerPos }) {
+  function setupStation({ over, backsight, orientMode = ORIENT.ZERO_BACKSIGHT, playerPos }) {
     const svc = service();
     if (!svc) return { ok: false, reason: 'noService' };
 
@@ -196,14 +196,7 @@ export function makeService({ store, getWorld, bus, EV }) {
       const sigmaD = Math.hypot(k.instrument.distA_mm / 1000, k.instrument.distPPM * 1e-6 * trueDist);
       const measured = trueDist + rng.gauss() * sigmaD;
 
-      datum = establishDatum({
-        mode: datumMode,
-        m1: stationCp,
-        m2: backCp,
-        rng,
-        originE: 1000,
-        originN: 1000,
-      });
+      datum = establishDatum({ m1: stationCp, m2: backCp, originE: 1000, originN: 1000 });
       svc.datum = datum;
 
       assignCoordinates(stationCp, { E: datum.originE, N: datum.originN, source: SOURCE.ARBITRARY });
@@ -233,10 +226,9 @@ export function makeService({ store, getWorld, bus, EV }) {
    * Free station: stand anywhere sensible, sight two or more known points, and
    * let the Helmert fit tell you where you are.
    */
-  function setupFreeStation({ targets, playerPos, datumMode }) {
+  function setupFreeStation({ targets, playerPos }) {
     const svc = service();
     if (!svc) return { ok: false, reason: 'noService' };
-    void datumMode;
 
     const world = getWorld();
     const tripod = world.canSetupTripod(playerPos.e, playerPos.n);

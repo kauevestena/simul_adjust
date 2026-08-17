@@ -93,30 +93,21 @@ export function showStationDialog({ modals, candidates, backsights, needsDatum, 
     ORIENT.ZERO_BACKSIGHT,
   );
 
-  const datum = needsDatum
-    ? radioGroup(
-        'datum',
-        [
-          { id: 'compass', label: t('station.datumCompass'), help: t('station.datumCompassHelp') },
-          { id: 'arbitrary', label: t('station.datumArbitrary'), help: t('station.datumArbitraryHelp') },
-        ],
-        'compass',
-      )
-    : null;
-
   const body = el(
     'div.station-dialog',
     {},
     el('div.field', {}, el('label', { text: t('station.over') }), overSelect),
     el('div.field', {}, el('label', { text: t('station.backsight') }), backsightSelect),
     el('div.field', {}, el('label', { text: t('station.orientMode') }), orient.node),
+    // The first setup of a campaign births the datum. There is nothing to
+    // choose about it any more — north is the map's north — but saying so is
+    // worth a line, because it is the moment the coordinate system begins.
     needsDatum
       ? el(
           'section.datum-block',
           {},
           el('h4', { text: t('station.datumTitle') }),
           el('p.hint', { text: t('station.datumHelp') }),
-          datum.node,
         )
       : null,
     canFreeStation
@@ -150,7 +141,6 @@ export function showStationDialog({ modals, candidates, backsights, needsDatum, 
             over,
             backsight,
             orientMode: orient.value,
-            datumMode: datum ? datum.value : 'compass',
           }),
       },
     ],

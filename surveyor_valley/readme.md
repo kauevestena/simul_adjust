@@ -66,7 +66,10 @@ memorial descritivo, without a browser.
 - `tests/render.test.mjs` — the art pipeline. Sprite painters are deterministic and
   outlined, the shading ramp shifts hue in the right direction for every base colour,
   ground chunks bake identically in slices as in one pass, and the camera never leaves
-  the pixel grid. All DOM-free, because a sprite is a plain `{w, h, data}`.
+  the pixel grid. All DOM-free, because a sprite is a plain `{w, h, data}`. It also
+  asserts that **the ground is painted where the terrain actually is** — the test whose
+  absence let the whole soil map ship mirrored north-for-south inside every chunk, and
+  which only works because it is asserted on a chunk whose halves differ.
 
 ## How it is put together
 
@@ -113,7 +116,12 @@ tests/
   `render/effects.js`, which is budgeted at about eighty sprites.
 - **Chunk baking is sliced and time-budgeted.** A chunk costs 15–30 ms; `pump()` spends
   at most 4 ms per frame on it. Never make the bake atomic — that was the original
-  stutter.
+  stutter, and every stage including the soil classification is sliced for the same
+  reason.
+- **Soil is classified at 4 samples per metre and the painters index that grid, not
+  metres.** The producer counts rows northward; a painter that counts them the other way
+  mirrors the chunk, which is exactly what happened. The grid's orientation now has a
+  test.
 - **Documents are not part of the game skin.** `styles/report.css` stays clean white
   paper on purpose; a planta that looks like a game UI is a worse teaching artefact.
 
@@ -165,24 +173,40 @@ documents are still produced and the fee is reduced on its own line in the payme
 breakdown. Forty minutes of careful work destroyed by a timer punishes without teaching
 anything.
 
-Properties run **0.3–1.5 ha with 4 to 9 corners**, and a job is about 45–65 minutes of
-estimated field time. They used to be three times the area with up to sixteen corners,
-which is a long afternoon for one exercise. Corner count is what actually sets the length
-— the estimator charges 3.5 minutes a vertex against roughly 1.3 per 60 m walked — so the
-boundaries were straightened as well as shortened, which is also the truer picture: a
-rural boundary runs straight from one marco to the next unless it is following a river.
+Properties run **0.11–0.47 ha with 4 to 8 corners** — about a 50 m square, a 200 m lap,
+roughly 40 minutes of estimated field time. They started out at up to 4.7 ha and sixteen
+corners, which is a long afternoon for one exercise. Corner count is what actually sets
+the length — the estimator charges 3.5 minutes a vertex against roughly 1.3 per 60 m
+walked — so the boundaries were straightened as well as shortened, which is also the
+truer picture: a rural boundary runs straight from one marco to the next unless it is
+following a river.
 
-Shrinking a parcel makes closure **harder**, not easier, and the tolerances moved with it.
-Linear closure error is built from things that do not shrink — 2.5 mm of instrument
-centring, 5.0 mm of target centring, the EDM's 10 mm constant — while relative precision
-is perimeter over that error. The required 1:1500 / 1:2000 / 1:3000 are set from 35
-measured surveys with the starter instrument so that the same proportion of honest work
-passes as before, rather than quietly raising the bar. Missing the requirement costs
+Shrinking a parcel makes closure **harder**, not easier, and the tolerances moved with it
+each time. Linear closure error is built from things that do not shrink — 2.5 mm of
+instrument centring, 5.0 mm of target centring, the EDM's 10 mm constant — while relative
+precision is perimeter over that error. The required **1:1000 / 1:1500 / 1:2000** look
+loose for cadastral work and honestly are: a 40 m figure closed with a 10" instrument
+cannot do better, and that relative precision falls with the size of the figure is a real
+surveying fact worth meeting. They are set from 36 measured surveys with the starter kit
+(median 1:3787, worst 1:1235) so that fácil is free, médio costs care and difícil wants a
+better instrument — which is what the shop is for. The best survey observed closed at
+1:38,266, so the ceiling is the kit, not the ground. Missing the requirement costs
 quality, and therefore pay; it never blocks delivery.
+
+**Every azimuth is measured from the map's north.** There used to be a choice at the first
+setup — a compass bearing good to 30', or declaring the line to the ré to be north — and
+both rotated the surveyed frame away from the world, so the arrow on screen pointed one
+way and every azimuth in the memorial was measured from another, with nothing saying so.
+The origin is still an arbitrary local (1000, 1000), which costs nothing: azimuth is
+`atan2(dE, dN)` and is exactly invariant under translation.
 
 While the instrument is set up, the **ré is drawn as a dashed blue line** and a live
 instrument face in the lower right shows the circle reading, the angle turned from the ré,
-the azimuth and the distance to whatever you are aiming at. Swinging the telescope and
+the azimuth and the distance to whatever you are aiming at — over a drawing of the
+horizontal circle itself, with the ré where the circle reads it, the target ray, the swept
+angle shaded between them, and a tick where azimuth zero falls. Zeroing on the ré visibly
+puts it at twelve o'clock and pushes north round by θ₀, which is `Az = Hz + θ₀` in one
+picture. Swinging the telescope and
 watching `Az = Hz + θ0` move is the point: `src/survey/readout.js` is the noiseless twin of
 `sightTarget`, and `tests/readout.test.mjs` asserts the two agree.
 

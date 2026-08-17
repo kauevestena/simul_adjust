@@ -17,21 +17,25 @@
 //   * the walk cycle is driven by ground COVERED, so walking into a tree stops
 //     the legs too instead of moonwalking against it.
 
-export const WALK_SPEED = 3.0;
-export const RUN_SPEED = 5.0;
+export const WALK_SPEED = 4.5;
+export const RUN_SPEED = 7.0;
 export const REAL_SPEED = 1.4; // what the clock is charged at
 export const PLAYER_RADIUS = 0.35;
 
 /**
  * Ramp rates, written as the time to reach walking pace so they can be read as
- * feel rather than as m/s². Getting up to speed takes about a third of a stride
- * (~0.20 m); stopping is deliberately quicker than starting, because a walker
- * who coasts to a halt reads as ice, not as weight.
+ * feel rather than as m/s².
+ *
+ * These were three times longer, which gave the movement its weight but also
+ * cost a noticeable beat on every one of the dozens of short hops a survey is
+ * actually made of — walk five metres, stop, sight a corner, walk five metres.
+ * At a twentieth of a second the ramp is still there, still smoothing the
+ * start and the stop, but it no longer reads as lag.
  */
-const ACCEL = WALK_SPEED / 0.13;
-const BRAKE = WALK_SPEED / 0.09;
+const ACCEL = WALK_SPEED / 0.05;
+const BRAKE = WALK_SPEED / 0.05;
 /** Sideways velocity is shed faster still, so a change of direction is crisp. */
-const TURN_BRAKE = WALK_SPEED / 0.07;
+const TURN_BRAKE = WALK_SPEED / 0.045;
 
 /** Below this the player is standing, not creeping. Exponential tails never reach zero. */
 const STOP_SPEED = 0.06;
@@ -131,7 +135,9 @@ export function updatePlayer(player, intent, world, dt) {
 
   // ---- velocity ------------------------------------------------------------
   const base = intent.run ? RUN_SPEED : WALK_SPEED;
-  const terrainFactor = world.terrain.soilAt(player.e, player.n).speedFactor || 1;
+  // `?? 1`, not `|| 1`: water's speed factor is 0, and `0 || 1` is 1 — so the
+  // one soil that should stop you dead granted full speed instead.
+  const terrainFactor = world.terrain.soilAt(player.e, player.n).speedFactor ?? 1;
   const wantSpeed = wants ? base * terrainFactor : 0;
 
   if (wants) {
@@ -328,7 +334,22 @@ function contactNormal(world, e, n, radius = PLAYER_RADIUS) {
 export function canStand(world, e, n, radius = PLAYER_RADIUS) {
   const b = world.bounds;
   if (e < b.minE + radius || e > b.maxE - radius || n < b.minN + radius || n > b.maxN - radius) return false;
+
+  // The BODY, not the centre point. Every obstacle below is tested against the
+  // player's radius; the ground was tested as a dimensionless dot, so half the
+  // surveyor could stand out over the water they had walked up to. Four points
+  // on the rim plus the middle is enough at this radius — the smallest water
+  // feature in the world is far larger than the gaps between them.
   if (!world.terrain.soilAt(e, n).walkable) return false;
+  const r = radius * 0.8;
+  if (
+    !world.terrain.soilAt(e + r, n).walkable ||
+    !world.terrain.soilAt(e - r, n).walkable ||
+    !world.terrain.soilAt(e, n + r).walkable ||
+    !world.terrain.soilAt(e, n - r).walkable
+  ) {
+    return false;
+  }
 
   for (const ent of world.spatial.queryCircle(e, n, radius + 6)) {
     if (!ent.blocksWalk) continue;
@@ -422,7 +443,8 @@ export function fastTravel(player, world, target, store) {
   return { ok: true, seconds, metres };
 }
 
-function nearestStandable(world, e, n) {
+/** The closest spot to (e, n) the player could actually occupy, or null. */
+export function nearestStandable(world, e, n) {
   for (let r = 0.6; r <= 4; r += 0.4) {
     for (let i = 0; i < 12; i++) {
       const a = (i / 12) * Math.PI * 2;

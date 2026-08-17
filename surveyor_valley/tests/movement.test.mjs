@@ -157,8 +157,13 @@ test('running is faster, and shift is a ramp not a switch', () => {
   const world = makeWorld();
   const p = walk(makePlayer({ e: 50, n: 20 }), world, { e: 0, n: 1, run: false }, 1);
 
+  // Still a ramp, just a short one. The rate was tripled deliberately — a
+  // survey is dozens of five-metre hops and the old ramp cost a beat on every
+  // one — so "the first step is near walking pace" is no longer the right
+  // statement of it. What must stay true is that shift is not a switch.
   updatePlayer(p, { e: 0, n: 1, run: true }, world, DT);
-  assert.ok(p.speed < WALK_SPEED + 0.5, 'the first running step is still near walking pace');
+  assert.ok(p.speed < RUN_SPEED, `the first running step is not already full pace (${p.speed.toFixed(2)})`);
+  assert.ok(p.speed > WALK_SPEED, 'but it is already faster than walking');
 
   walk(p, world, { e: 0, n: 1, run: true }, 0.4);
   assert.ok(Math.abs(p.speed - RUN_SPEED) < 0.02, `reaches running pace, got ${p.speed.toFixed(3)}`);

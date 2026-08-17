@@ -1,0 +1,8 @@
+- Simulador didático de Sistemas de Coordenadas fundamentais para Geodésia
+- Sistemas: Coordenadas Geodésicas (φ, λ, h), Esféricas/Geocêntricas (φ', λ, r), Astronômicas (Φ, Λ), ECEF (X, Y, Z), ENU (E, N, U), Plano Topográfico Local (x, y, z)
+- Importante: sistemas de coordenadas ≠ Sistemas Geodésicos de Referência
+- Usa Three.js para visualizações 3D interativas
+- Usa KaTeX para renderização de fórmulas matemáticas
+- Cada sistema tem: conceito, como funciona (com fórmulas), e controles interativos
+- Interface e conteúdo em português
+- Baseado na mesma arquitetura do projeto "historia_modelos_terrestres"

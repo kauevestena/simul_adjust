@@ -11,7 +11,7 @@ export const KEYS = {
   SETTINGS: 'sv.settings',
 };
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 function memoryBackend() {
   const map = new Map();
@@ -63,9 +63,23 @@ export function makeStorage(backend = defaultBackend()) {
 
   /**
    * Chain of version migrations. Each entry takes a save at version N and
-   * returns one at N+1. Empty today; the hook is here so v2 is a two-line change.
+   * returns one at N+1.
    */
-  const migrations = {};
+  const migrations = {
+    /**
+     * v1 -> v2: one north.
+     *
+     * A v1 job could be surveyed in a frame ROTATED away from the map — by half
+     * a degree under the compass datum, by the whole bearing to the first ré
+     * under the arbitrary one. Azimuths are now referred to the map's north, so
+     * a job in flight carries coordinates the new documents would caption
+     * wrongly. There is no honest way to rotate it back, so the job is dropped
+     * and the campaign kept: money, equipment, finished properties and every
+     * monument already in the ground all survive, and only the unfinished
+     * survey has to be started again in the frame that now exists.
+     */
+    1: (save) => ({ ...save, version: 2, activeService: null }),
+  };
 
   function migrate(saved) {
     // A save from a NEWER build than this one cannot be understood, and there

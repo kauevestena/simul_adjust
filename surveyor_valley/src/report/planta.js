@@ -211,8 +211,11 @@ function drawNorthArrow(dl, draw, datum, lang) {
     { fill: '#fff', colour: '#111', w: 0.2 },
   );
   dl.text(x, y - 10.6, 'N', { size: 3, align: 'center', bold: true });
-  const key = datum?.northLabel === 'magnetico' ? 'planta.northMagnetic' : 'planta.northArbitrary';
-  dl.text(x, y + 5, t(key), { size: 1.7, align: 'center', colour: '#444' });
+  // One north now, and it is the map's. The arrow used to be captioned from the
+  // datum the player picked, which meant the plan could say "Norte magnético"
+  // while pointing straight up a page whose grid was rotated away from it.
+  dl.text(x, y + 5, t('planta.north'), { size: 1.7, align: 'center', colour: '#444' });
+  void datum;
   void lang;
 }
 

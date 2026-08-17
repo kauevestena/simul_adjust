@@ -25,7 +25,7 @@ import { lightAt } from './render/palette.js';
 import { pixi } from './render/pixi.js';
 import { makeAudio } from './audio/audio.js';
 
-import { makePlayer, updatePlayer, interpolated, fastTravel, halt } from './game/player.js';
+import { makePlayer, updatePlayer, interpolated, fastTravel, halt, canStand, nearestStandable } from './game/player.js';
 import { makeInput } from './game/input.js';
 import { makeTools, TOOL, PANEL_TOOLS } from './game/tools.js';
 import { makeTutorial } from './game/tutorial.js';
@@ -407,12 +407,11 @@ function doSetupStation() {
     needsDatum,
     canFreeStation: knownCount >= 2,
     onFreeStation: doFreeStation,
-    onConfirm: ({ over, backsight, orientMode, datumMode }) => {
+    onConfirm: ({ over, backsight, orientMode }) => {
       const r = service.setupStation({
         over,
         backsight,
         orientMode,
-        datumMode,
         playerPos: { e: player.e, n: player.n },
       });
       if (!r.ok) {
@@ -1185,6 +1184,14 @@ window.game = {
     },
 
     teleportPlayer(e, n) {
+      // Land somewhere the player could have walked to. This is the one path
+      // that set the position directly, so a test or a probe could drop the
+      // surveyor into a lake and every walkability guarantee downstream would
+      // be reasoning about a position the game says is impossible.
+      if (!canStand(world, e, n)) {
+        const spot = nearestStandable(world, e, n);
+        if (spot) ({ e, n } = spot);
+      }
       player.e = e;
       player.n = n;
       player.prevE = e;

@@ -5,8 +5,8 @@
 // traverse you have built so far is always visible as a figure rather than a
 // list of numbers in a panel.
 
-import { formatAngle, fmtMetres } from '../survey/units.js';
-import { aimReadout } from '../survey/readout.js';
+import { formatAngle, fmtMetres, DEG } from '../survey/units.js';
+import { aimReadout, circleDial } from '../survey/readout.js';
 import { t, angleFormat } from '../ui/i18n.js';
 
 const COL = {
@@ -285,7 +285,13 @@ export function makeOverlays({ camera }) {
     if (blocked) textW = Math.max(textW, ctx.measureText(t('readout.blocked')).width);
 
     const w = Math.min(Math.max(textW + padX * 2, 190), Math.max(160, camera.vw - 28));
-    const h = titleH + rows.length * rowH + noteH + padY * 2;
+    // The dial grows the panel UPWARD, because the panel is anchored by its
+    // bottom edge — so it can never push down into the batch bar. On a short
+    // window it is dropped rather than allowed to reach the checklist.
+    const dial = circleDial(station, r);
+    const dialR = Math.min(46, (w - padX * 2) / 2 - 16);
+    const dialH = camera.vh > 470 ? dialR * 2 + 22 : 0;
+    const h = titleH + dialH + rows.length * rowH + noteH + padY * 2;
     // Anchored to the corner. Bottom-centre already holds the batch bar and the
     // toasts, and bottom-left the scale bar; this corner is the free one — on a
     // wide screen. The batch bar is centred and roughly 420 px across, so on a
@@ -310,6 +316,10 @@ export function makeOverlays({ camera }) {
     ctx.fillText(t('readout.title'), x + padX, y + padY + titleH / 2);
 
     let ry = y + padY + titleH;
+    if (dialH) {
+      drawDial(ctx, x + w / 2, ry + dialH / 2 - 4, dialR, dial, blocked);
+      ry += dialH;
+    }
     for (const [k, v] of rows) {
       ctx.font = '600 11px "Inter", system-ui, sans-serif';
       ctx.fillStyle = COL.inkSoft;
@@ -329,6 +339,101 @@ export function makeOverlays({ camera }) {
       ctx.textAlign = 'left';
       ctx.fillText(t('readout.blocked'), x + padX, ry + noteH / 2);
     }
+    ctx.restore();
+  }
+
+  /**
+   * The horizontal circle, drawn.
+   *
+   * Zero at the top, clockwise — the instrument's own face rather than the map,
+   * which is the whole reason it is worth drawing. The ré sits where the circle
+   * actually reads it, so zeroing on the ré visibly puts it at twelve o'clock;
+   * north sits wherever θ0 has pushed it. Seeing those two at once is seeing
+   * `Az = Hz + θ0`.
+   *
+   * `circleDial` in `survey/readout.js` decides every bearing here; this
+   * function only turns degrees into pixels.
+   */
+  function drawDial(ctx, cx, cy, r, dial, blocked) {
+    // Bearing to canvas radians. Screen-up is always north because the camera
+    // never rotates, so a dial drawn this way turns the same way as the map.
+    const rad = (deg) => (deg - 90) * DEG;
+    const ray = (deg, len) => ({ x: cx + Math.cos(rad(deg)) * len, y: cy + Math.sin(rad(deg)) * len });
+
+    ctx.save();
+
+    // The swept angle, shaded — the number the field book tabulates.
+    if (dial.sweep != null) {
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, r, rad(dial.sweepFrom), rad(dial.sweepFrom + dial.sweep));
+      ctx.closePath();
+      ctx.fillStyle = blocked ? 'rgba(207,63,52,0.16)' : 'rgba(47,111,181,0.18)';
+      ctx.fill();
+    }
+
+    // The circle, with a graduation every 30 degrees.
+    ctx.strokeStyle = COL.inkSoft;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.lineWidth = 1;
+    ctx.globalAlpha = 0.45;
+    ctx.beginPath();
+    for (let a = 0; a < 360; a += 30) {
+      const p0 = ray(a, r - (a % 90 === 0 ? 6 : 3));
+      const p1 = ray(a, r);
+      ctx.moveTo(p0.x, p0.y);
+      ctx.lineTo(p1.x, p1.y);
+    }
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // North, as the same arrowhead the map uses, just smaller.
+    const nOut = ray(dial.north, r);
+    const nIn = ray(dial.north, r - 9);
+    ctx.strokeStyle = COL.ink;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(nIn.x, nIn.y);
+    ctx.lineTo(nOut.x, nOut.y);
+    ctx.stroke();
+    const nLabel = ray(dial.north, r + 9);
+    ctx.fillStyle = COL.ink;
+    ctx.font = '700 10px "Inter", system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('N', nLabel.x, nLabel.y);
+
+    // The ré: dashed, like the line to it on the map.
+    if (dial.backsight != null) {
+      const b = ray(dial.backsight, r);
+      ctx.strokeStyle = COL.sight;
+      ctx.lineWidth = 1.8;
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // The target: solid, and red when the sight is obstructed, exactly as the
+    // line on the map behaves.
+    const tp = ray(dial.target, r);
+    ctx.strokeStyle = blocked ? COL.blocked : COL.sight;
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(tp.x, tp.y);
+    ctx.stroke();
+
+    ctx.fillStyle = COL.panelEdge;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 2.4, 0, Math.PI * 2);
+    ctx.fill();
     ctx.restore();
   }
 

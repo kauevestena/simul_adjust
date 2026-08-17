@@ -38,7 +38,10 @@ test('six parcels are generated for every seed, none degenerate', () => {
     for (const p of parcels) {
       assert.ok(p.vertices.length >= 4, `${seed}/${p.id}: enough vertices`);
       assert.ok(!isSelfIntersecting(p.ring), `${seed}/${p.id}: ring does not cross itself`);
-      assert.ok(p.area > 3000, `${seed}/${p.id}: not a sliver (${p.area} m²)`);
+      // 900 m² is a 30 m square: small for a holding, but a real one, and far
+      // more than the ~1 m of tripod room and few metres of sight the survey
+      // needs. The floor came down with the block, deliberately.
+      assert.ok(p.area > 900, `${seed}/${p.id}: not a sliver (${p.area} m²)`);
       assert.ok(signedArea(p.ring) > 0, `${seed}/${p.id}: counter-clockwise`);
     }
   }
@@ -112,11 +115,11 @@ test('parcel sizes differ meaningfully and land in a plausible rural range', () 
   for (const seed of SEEDS) {
     const { parcels } = generateParcels(makeRng(seed, 'parcels'));
     const ha = parcels.map((p) => p.hectares).sort((a, b) => a - b);
-    // The floor came down from 0.4 ha when the block shrank to a third of its
-    // area, so a job is a job rather than an afternoon. 0.25 ha is a 50 m
-    // square: small for a rural holding, still a real one, and still far more
-    // than the ~1 m of tripod room and ~5 m of sight length the survey needs.
-    assert.ok(ha[0] > 0.25, `${seed}: smallest parcel ${ha[0].toFixed(2)} ha is workable`);
+    // The floor has come down twice now, as the block went 480 -> 280 -> 160,
+    // so that a job is a job rather than an afternoon. 0.09 ha is a 30 m
+    // square — small for a rural holding, still a real one, and still far more
+    // than the ~1 m of tripod room and few metres of sight the survey needs.
+    assert.ok(ha[0] > 0.09, `${seed}: smallest parcel ${ha[0].toFixed(2)} ha is workable`);
     assert.ok(ha[5] < 8, `${seed}: largest parcel ${ha[5].toFixed(2)} ha is not the whole valley`);
     assert.ok(ha[5] / ha[0] > 1.8, `${seed}: sizes should genuinely differ (ratio ${(ha[5] / ha[0]).toFixed(2)})`);
   }

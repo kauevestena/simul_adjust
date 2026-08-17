@@ -14,16 +14,22 @@ import { overtimePenalty } from './timer.js';
 /**
  * Reais per hectare before any multiplier.
  *
- * The fee is computed from area alone, so it fell as the SQUARE of the parcel
- * shrink: at 950 the whole six-property campaign paid about R$7 000, and the
- * first instrument upgrade costs R$9 000 — the shop was unreachable, which
- * quietly removes the progression the campaign is built on. Raised to keep the
- * campaign total, and therefore the upgrade path, where it already was.
+ * The fee is computed from area, so it falls as the SQUARE of every parcel
+ * shrink — and the parcels have now shrunk twice. Left alone, the six-property
+ * campaign paid about R$6 700 against a R$9 000 first instrument, so the shop
+ * was unreachable and the progression the campaign is built on quietly stopped
+ * existing. Both constants are set to hold the campaign total near R$15 500,
+ * which is where it has been since the game shipped.
  */
-export const BASE_PAY_PER_HA = 2700;
+export const BASE_PAY_PER_HA = 4500;
 
-/** A callout fee, so a tiny parcel is still worth the drive. */
-export const CALLOUT = 380;
+/**
+ * A callout fee, so a tiny parcel is still worth the drive — and now the larger
+ * half of a typical fee. That is the right shape for holdings of a third of a
+ * hectare: what a surveyor charges for one of those is mostly turning up with
+ * the instrument, not the ground covered once there.
+ */
+export const CALLOUT = 1400;
 
 /**
  * How good the survey was, 0..1, from the achieved relative precision against

@@ -181,6 +181,89 @@ test('a chunk bakes identically every time, and slices only touch their rows', (
   assert.ok(!rowOpaque(200), 'rows after the slice must be untouched');
 });
 
+test('the ground is painted where the terrain actually is', () => {
+  // The test that was missing, and its absence let the whole ground map ship
+  // MIRRORED north-for-south inside every chunk: the class grid is built with
+  // row j increasing northward while all three painters indexed it as if row 0
+  // were the north edge. Half the valley was painted as the wrong soil, most of
+  // the visible water was not water, and most of the real water was painted as
+  // pasture — which is how a surveyor walks across a lake and is stopped dead
+  // in an empty field.
+  //
+  // Water is the probe because it is the one class nothing else looks like.
+  const terrain = makeTerrain('render-test', BOUNDS);
+  const M = 32;
+  const W = M * PX_PER_M;
+  const wet = (e, n) => terrain.soilAt(e, n).id === 'AGUA';
+
+  // A chunk with water in it, and with the water LOPSIDED north to south — a
+  // chunk whose halves match cannot catch a mirror at all.
+  let origin = null;
+  for (let oe = 0; oe < BOUNDS.width - M && !origin; oe += M) {
+    for (let on = 0; on < BOUNDS.height - M && !origin; on += M) {
+      let north = 0;
+      let south = 0;
+      for (let j = 0; j < M; j++) {
+        for (let i = 0; i < M; i++) {
+          if (!wet(oe + i + 0.5, on + j + 0.5)) continue;
+          if (j >= M / 2) north++;
+          else south++;
+        }
+      }
+      const total = north + south;
+      if (total > M * M * 0.08 && Math.abs(north - south) > total * 0.35) origin = { oe, on };
+    }
+  }
+  assert.ok(origin, 'found a chunk with lopsided water to test against');
+
+  const { oe, on } = origin;
+  const { grid, size } = classGrid(terrain, oe, on, M);
+  const buf = new Uint8ClampedArray(W * W * 4);
+  paintBase(buf, grid, size, oe, on, M, PX_PER_M, 0, W, shadeField(oe, on, M));
+
+  // Water and its shallows are the only blue-dominant tones in the palette.
+  const paintedWet = (px, py) => {
+    const o = (py * W + px) * 4;
+    return buf[o + 2] > buf[o] + 8 && buf[o + 2] > buf[o + 1] + 8;
+  };
+
+  let agree = 0;
+  let total = 0;
+  let paintedN = 0;
+  let paintedCount = 0;
+  let trueN = 0;
+  let trueCount = 0;
+  for (let py = 0; py < W; py += 2) {
+    for (let px = 0; px < W; px += 2) {
+      // Canvas rows run north to south; the world's N axis runs the other way.
+      const e = oe + (px + 0.5) / PX_PER_M;
+      const n = on + M - (py + 0.5) / PX_PER_M;
+      const p = paintedWet(px, py);
+      const t = wet(e, n);
+      if (p === t) agree++;
+      total++;
+      if (p) {
+        paintedN += n;
+        paintedCount++;
+      }
+      if (t) {
+        trueN += n;
+        trueCount++;
+      }
+    }
+  }
+
+  // Not 100%: the shore deliberately blurs half a metre of foam and two metres
+  // of shallows outward, and the class lookup is jittered to ragged the edges.
+  const ratio = agree / total;
+  assert.ok(ratio > 0.9, `painted soil should match the terrain (${(ratio * 100).toFixed(1)}% agreed)`);
+
+  // The sharpest statement of the same thing: a mirror moves the water to the
+  // other side of the chunk, so its centre of mass flips about the mid-line.
+  const dN = Math.abs(paintedN / paintedCount - trueN / trueCount);
+  assert.ok(dN < 2, `painted water should sit where the water is (centroid off by ${dN.toFixed(1)} m)`);
+});
+
 test('ground detail is placed from world position, so chunks tile seamlessly', () => {
   const terrain = makeTerrain('render-test', BOUNDS);
   const sprites = buildGroundSprites();

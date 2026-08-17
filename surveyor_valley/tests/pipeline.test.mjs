@@ -128,7 +128,6 @@ function runFullSurvey({ seed = SEED, difficulty = 'facil', parcelIndex = 0, sta
   const first = service.setupStation({
     over: marcos[0].id,
     backsight: marcos[1].id,
-    datumMode: 'compass',
     playerPos: { e: marcos[0].e, n: marcos[0].n },
   });
   assert.equal(first.ok, true, `first setup: ${first.reason ?? ''}`);
@@ -273,7 +272,7 @@ test('a partly surveyed parcel is refused rather than quietly completed', () => 
   const m2 = service.placeMarco(b.e, b.n);
   assert.ok(m1.ok && m2.ok, 'two monuments planted');
 
-  service.setupStation({ over: m1.id, backsight: m2.id, datumMode: 'compass', playerPos: a });
+  service.setupStation({ over: m1.id, backsight: m2.id, playerPos: a });
 
   // Sight every corner but the last one.
   for (const id of parcel.markIds.slice(0, -1)) service.sight(id);
@@ -579,7 +578,6 @@ test('a traverse closes by dropping stations that never saw each other', () => {
       const st = service.setupStation({
         over: over.id,
         backsight: back.id,
-        datumMode: 'compass',
         playerPos: { e: over.e, n: over.n },
       });
       if (st.ok) {
