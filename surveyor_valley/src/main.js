@@ -25,7 +25,7 @@ import { lightAt } from './render/palette.js';
 import { pixi } from './render/pixi.js';
 import { makeAudio } from './audio/audio.js';
 
-import { makePlayer, updatePlayer, interpolated, fastTravel } from './game/player.js';
+import { makePlayer, updatePlayer, interpolated, fastTravel, halt } from './game/player.js';
 import { makeInput } from './game/input.js';
 import { makeTools, TOOL, PANEL_TOOLS } from './game/tools.js';
 import { makeTutorial } from './game/tutorial.js';
@@ -196,7 +196,13 @@ let clockAcc = 0;
 const loop = makeLoop({
   update(dt) {
     if (!world || !running) return;
-    if (modals.isOpen()) return;
+    if (modals.isOpen()) {
+      // Park the surveyor rather than freezing them mid-stride: momentum kept
+      // across a dialog is spent the moment it closes, and a station dialog
+      // that reads the player's position wants that position to hold still.
+      halt(player);
+      return;
+    }
 
     const intent = input.intent();
     const wasPhase = player.walkPhase;
@@ -251,11 +257,9 @@ function selectTool(tool) {
   return verdict;
 }
 
-function onHover(worldPos) {
-  if (!world || !worldPos || tools.active !== TOOL.VISADA) {
-    hoverTarget = null;
-    return;
-  }
+/** The sightable thing nearest a world position, within the cursor's pick radius. */
+function targetAt(worldPos) {
+  if (!world || !worldPos) return null;
   const pick = Math.max(1.5, 16 / camera.zoom);
   let best = null;
   let bestD = Infinity;
@@ -267,10 +271,35 @@ function onHover(worldPos) {
       best = ent;
     }
   }
-  hoverTarget = best;
+  return best;
 }
 
-function onClick(worldPos) {
+function onHover(worldPos) {
+  hoverTarget = tools.active === TOOL.VISADA ? targetAt(worldPos) : null;
+}
+
+/**
+ * Do whatever the active tool does, here.
+ *
+ * Shared by the left click and by SPACE, deliberately: every action in this
+ * game already happens where the PLAYER stands, not where the cursor points —
+ * you drive the stake at your feet, and the tripod goes over a marco you are
+ * standing on. A click has never used its own coordinates. Space is therefore
+ * not a second code path with its own rules but the same one under a key that
+ * does not need the mouse, and routing both through here is what stops the two
+ * drifting apart later.
+ *
+ * VISADA is the one that reads the cursor, because aiming is the one thing you
+ * genuinely do at a distance: mouse to aim, space to shoot.
+ *
+ * Every branch that declines to act says why. This function used to fall
+ * through in silence whenever the active tool had nothing to do — and since
+ * every job STARTS on the walk tool, the first press of the key a player has
+ * just been taught did nothing whatsoever, which is indistinguishable from a
+ * feature that was never built. Every sibling action here toasts on refusal;
+ * this was the one path that did not.
+ */
+function doActiveToolAction() {
   if (!world || !running) return;
 
   switch (tools.active) {
@@ -280,13 +309,27 @@ function onClick(worldPos) {
     case TOOL.ESTACAO:
       doSetupStation();
       break;
-    case TOOL.VISADA:
-      if (hoverTarget) doSight(hoverTarget.id);
+    case TOOL.VISADA: {
+      // Resolved from where the cursor is NOW, rather than from whatever the
+      // last pointermove happened to leave behind. Selecting this tool with the
+      // 4 key — or letting the game select it for you after a station goes up —
+      // fires no pointer event at all, so a cursor already resting on a corner
+      // used to leave the key dead until the mouse was physically nudged.
+      const target = hoverTarget || targetAt(input?.worldPointer);
+      if (target) doSight(target.id);
+      else notifier.key('tip.noTarget', {}, 'warn');
       break;
+    }
     default:
+      // Walking, or a panel tool. There is nothing to do at your feet, and
+      // saying so is the whole point.
+      notifier.key('tip.pickATool', {}, 'warn');
       break;
   }
-  void worldPos;
+}
+
+function onClick() {
+  doActiveToolAction();
 }
 
 function onDoubleClick(worldPos) {
@@ -847,7 +890,8 @@ function begin() {
       onDoubleClick,
       onHover,
       onToolKey: (tool) => selectTool(tool),
-    onBatchKey: () => doMeasureAll(),
+      onBatchKey: () => doMeasureAll(),
+      onAct: () => doActiveToolAction(),
       isModalOpen: () => modals.isOpen(),
     });
   }
@@ -997,6 +1041,26 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
       /* Offline support is a bonus; its absence must never break the game. */
     });
   });
+
+  /**
+   * Take a new build the moment it is ready.
+   *
+   * The worker serves cache-first and refreshes in the background, so without
+   * this a changed file lands one reload LATE — you edit something, reload, and
+   * are still looking at the previous build. That is indistinguishable from the
+   * change not working, and it cost a round of confusion over a keybinding that
+   * was in fact already implemented.
+   *
+   * The campaign survives it: state is autosaved on every change and flushed on
+   * `pagehide`. The flag is what stops a reload from re-triggering the event and
+   * spinning.
+   */
+  let reloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (reloading) return;
+    reloading = true;
+    location.reload();
+  });
 }
 
 /**
@@ -1125,6 +1189,7 @@ window.game = {
       player.n = n;
       player.prevE = e;
       player.prevN = n;
+      halt(player); // arrive at rest, like fast travel does
       camera.snapTo(player);
       return { e, n };
     },
@@ -1229,6 +1294,8 @@ window.game = {
     },
     ground: () => ground?.stats ?? null,
     scene: () => scene?.stats ?? null,
+    /** The surveyor sprite the scene would draw right now. */
+    charKey: () => scene?.characterKey(player, service.currentSetup()) ?? null,
     fps: () => loop.fps,
     frames: () => loop.frameStats(),
     resetFrames: () => loop.resetStats(),

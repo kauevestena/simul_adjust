@@ -11,8 +11,16 @@
 import { TIERS, TRIPODS, TARGETS, MARCOS } from '../survey/instrument.js';
 import { overtimePenalty } from './timer.js';
 
-/** Reais per hectare before any multiplier. */
-export const BASE_PAY_PER_HA = 950;
+/**
+ * Reais per hectare before any multiplier.
+ *
+ * The fee is computed from area alone, so it fell as the SQUARE of the parcel
+ * shrink: at 950 the whole six-property campaign paid about R$7 000, and the
+ * first instrument upgrade costs R$9 000 — the shop was unreachable, which
+ * quietly removes the progression the campaign is built on. Raised to keep the
+ * campaign total, and therefore the upgrade path, where it already was.
+ */
+export const BASE_PAY_PER_HA = 2700;
 
 /** A callout fee, so a tiny parcel is still worth the drive. */
 export const CALLOUT = 380;

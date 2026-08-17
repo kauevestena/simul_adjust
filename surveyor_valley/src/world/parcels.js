@@ -27,8 +27,34 @@ import { dealCast, confrontanteLabel, exteriorLabel } from './names.js';
 
 export const EXTERIOR = '__exterior__';
 
-/** Relative sizes; scaled to the block, they land roughly between 1.1 and 4.2 ha. */
+/** Relative sizes; scaled to the block, they land roughly between 0.4 and 1.5 ha. */
 const AREA_WEIGHTS = [0.55, 0.75, 1.0, 1.15, 1.5, 2.05];
+
+/**
+ * The width of the whole gleba, in metres, and the two knobs that decide how
+ * many corners a parcel ends up with.
+ *
+ * These belong together because they are one decision: how long a job is. Area
+ * scales as `BLOCK_SIZE²` and perimeter as `BLOCK_SIZE`, but the time a service
+ * takes is dominated by the CORNER COUNT — `estimateTimeLimit` charges 3.5 min
+ * a vertex against about 1.3 min per 60 m walked. So shrinking the block alone
+ * barely shortens a job: the cut thresholds below are in absolute metres, and
+ * on shorter edges they simply keep producing the same number of vertices.
+ *
+ * `EDGE_CUTS` reads as [longThreshold, shortThreshold] in metres. An edge
+ * longer than the first is broken into 2–3 pieces, one longer than the second
+ * into 2, and anything shorter is left alone — so raising them is what actually
+ * removes corners. Only the longest boundaries wander now, which is also the
+ * truer picture: a rural boundary runs straight from one marco to the next
+ * unless it is following a river or a road.
+ *
+ * Measured over eight seeds, these give 0.35–1.50 ha and 4–9 corners, against
+ * 1.05–4.68 ha and 7–16 before — and take the worst job from about 109 minutes
+ * of estimated field time down to 65.
+ */
+const BLOCK_SIZE = 280;
+const HULL_POINTS = [7, 10];
+const EDGE_CUTS = [140, 75];
 
 /**
  * The outer boundary of the whole gleba.
@@ -39,9 +65,9 @@ const AREA_WEIGHTS = [0.55, 0.75, 1.0, 1.15, 1.5, 2.05];
  * spurious connecting edges. The parcels get their irregular, un-geometric look
  * later, from the shared-edge displacement.
  */
-function makeBlockPolygon(rng, { cx, cy, size }) {
+function makeBlockPolygon(rng, { cx, cy, size, hullPoints = HULL_POINTS }) {
   const pts = [];
-  const n = rng.int(9, 13);
+  const n = rng.int(hullPoints[0], hullPoints[1]);
   for (let i = 0; i < n; i++) {
     const a = (i / n) * Math.PI * 2 + rng.range(-0.12, 0.12);
     const rx = (size / 2) * rng.range(0.86, 1.0);
@@ -134,8 +160,11 @@ const ekey = (a, b) => (a < b ? `${a}::${b}` : `${b}::${a}`);
  * @param {object} opts  {cx, cy, size, count}
  * @returns {{parcels:Array, vertices:Map, edges:Map, block:Array, cast:object}}
  */
-export function generateParcels(rng, { cx = 320, cy = 320, size = 480, count = 6 } = {}) {
-  const block = asCCW(makeBlockPolygon(rng, { cx, cy, size }));
+export function generateParcels(
+  rng,
+  { cx = 320, cy = 320, size = BLOCK_SIZE, count = 6, hullPoints = HULL_POINTS, edgeCuts = EDGE_CUTS } = {},
+) {
+  const block = asCCW(makeBlockPolygon(rng, { cx, cy, size, hullPoints }));
   const blockArea = Math.abs(signedArea(block));
 
   // --- 1. Sites, stratified so they never clump into a corner ---------------
@@ -226,7 +255,7 @@ export function generateParcels(rng, { cx = 320, cy = 320, size = 480, count = 6
     const nx = dy / len;
     const ny = -dx / len;
 
-    const cuts = len > 60 ? rng.int(2, 4) : len > 25 ? 2 : 1;
+    const cuts = len > edgeCuts[0] ? rng.int(2, 4) : len > edgeCuts[1] ? 2 : 1;
     const interior = [];
     for (let k = 1; k < cuts; k++) {
       const t = k / cuts;

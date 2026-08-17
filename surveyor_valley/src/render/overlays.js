@@ -5,8 +5,9 @@
 // traverse you have built so far is always visible as a figure rather than a
 // list of numbers in a panel.
 
-import { formatDMS } from '../survey/units.js';
-import { azimuth, distance } from '../survey/geometry.js';
+import { formatAngle, fmtMetres } from '../survey/units.js';
+import { aimReadout } from '../survey/readout.js';
+import { t, angleFormat } from '../ui/i18n.js';
 
 const COL = {
   ok: '#3f9d52',
@@ -17,7 +18,14 @@ const COL = {
   traverse: '#d9622b',
   label: '#1f2a33',
   labelBg: 'rgba(255,255,255,0.86)',
+  panel: 'rgba(247,234,208,0.94)',
+  panelEdge: '#5c3a1a',
+  ink: '#3b2a16',
+  inkSoft: '#6b5334',
 };
+
+/** Angles here honour the player's unit choice, exactly like every panel does. */
+const fmtAngle = (deg) => formatAngle(deg, angleFormat());
 
 export function makeOverlays({ camera }) {
   /** Transient red flashes for blocked sights: {from, to, at, until}. */
@@ -76,6 +84,21 @@ export function makeOverlays({ camera }) {
     ctx.restore();
   }
 
+  /**
+   * Where a thing is on the MAP.
+   *
+   * The camera works in world metres, but every surveyed coordinate — a
+   * setup's `E/N`, an observation's reduced position — lives in the surveyed
+   * datum, which is born at an arbitrary (1000, 1000) and therefore sits about
+   * a kilometre from the valley. Feeding surveyed coordinates straight to
+   * `worldToScreen` draws them far off the edge of the screen, which is exactly
+   * what the traverse, the recorded sights and the aim line all used to do:
+   * they were never wrong, they were never visible.
+   *
+   * Anything drawn on this canvas goes through here first.
+   */
+  const onMap = (o) => camera.worldToScreen(o.trueE ?? o.e, o.trueN ?? o.n);
+
   /** The traverse built so far, drawn as the closed figure it is trying to be. */
   function drawTraverse(ctx, setups) {
     if (setups.length < 2) return;
@@ -85,7 +108,7 @@ export function makeOverlays({ camera }) {
     ctx.setLineDash([8, 5]);
     ctx.beginPath();
     setups.forEach((s, i) => {
-      const p = camera.worldToScreen(s.E ?? s.e, s.N ?? s.n);
+      const p = onMap(s);
       if (i === 0) ctx.moveTo(p.x, p.y);
       else ctx.lineTo(p.x, p.y);
     });
@@ -93,7 +116,7 @@ export function makeOverlays({ camera }) {
     ctx.setLineDash([]);
 
     for (const s of setups) {
-      const p = camera.worldToScreen(s.E ?? s.e, s.N ?? s.n);
+      const p = onMap(s);
       ctx.beginPath();
       ctx.moveTo(p.x, p.y - 7);
       ctx.lineTo(p.x + 6, p.y + 5);
@@ -108,16 +131,65 @@ export function makeOverlays({ camera }) {
     ctx.restore();
   }
 
-  /** Sight lines already recorded from the current setup. */
-  function drawSights(ctx, station, observations) {
+  /**
+   * The line to the ré.
+   *
+   * Every angle taken from this setup is measured FROM this direction, and
+   * until now it was the only part of the geometry the game never showed — the
+   * student could see the sights fanning out but not the thing they fan out
+   * from. Dashed to say "this is a reference, not a measurement", and in the
+   * same blue as the sights because it is the same instrument pointing.
+   *
+   * A free station is oriented by resection and has no ré at all, so there is
+   * deliberately nothing to draw.
+   */
+  function drawBacksight(ctx, station, world, network) {
+    if (!station || station.backsightId == null) return;
+
+    const cp = network.find((p) => p.id === station.backsightId);
+    const ent = world.entity(`marco-${station.backsightId}`);
+    const be = ent ? ent.e : cp?.trueE;
+    const bn = ent ? ent.n : cp?.trueN;
+    if (be == null || bn == null) return;
+
+    const a = onMap(station);
+    const b = camera.worldToScreen(be, bn);
+
+    ctx.save();
+    ctx.strokeStyle = COL.sight;
+    ctx.globalAlpha = 0.85;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([10, 6]);
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+
+    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    label(ctx, `${t('readout.re')} ${station.backsightId}`, mid.x, mid.y, { size: 11, bold: true });
+  }
+
+  /**
+   * Sight lines already recorded from the current setup.
+   *
+   * Drawn to the target that was actually sighted rather than to the
+   * observation's reduced `E/N`, which is a surveyed coordinate and so belongs
+   * to the other datum. The reduced value is the right number for the field
+   * book; it is not a place on this map.
+   */
+  function drawSights(ctx, station, observations, world) {
     if (!station) return;
-    const from = camera.worldToScreen(station.E, station.N);
+    const from = onMap(station);
     ctx.save();
     ctx.strokeStyle = COL.sight;
     ctx.globalAlpha = 0.5;
     ctx.lineWidth = 1.4;
     for (const o of observations) {
-      const p = camera.worldToScreen(o.E, o.N);
+      const ent = world.entity(o.targetId);
+      if (!ent) continue;
+      const p = camera.worldToScreen(ent.e, ent.n);
       ctx.beginPath();
       ctx.moveTo(from.x, from.y);
       ctx.lineTo(p.x, p.y);
@@ -129,7 +201,7 @@ export function makeOverlays({ camera }) {
   /** The live sight to whatever the cursor is over, with its numbers. */
   function drawAim(ctx, station, target, los, lang) {
     if (!station || !target) return;
-    const a = camera.worldToScreen(station.E, station.N);
+    const a = onMap(station);
     const b = camera.worldToScreen(target.e, target.n);
     const clear = los?.clear !== false;
 
@@ -168,13 +240,96 @@ export function makeOverlays({ camera }) {
     ctx.restore();
 
     // Live readout: the numbers the instrument would give, before committing.
-    const d = distance(station.E, station.N, target.e, target.n);
-    const az = azimuth(station.E, station.N, target.e, target.n);
+    // Through `formatAngle` and `fmtMetres`, not their raw equivalents — this
+    // line used to call `formatDMS` and `toFixed(2)` directly, which left it
+    // the one place in the game that ignored the gon toggle and printed a
+    // decimal point at a pt-BR reader.
+    const r = aimReadout(station, target.e, target.n);
     const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-    const txt = `${d.toFixed(2)} m · ${formatDMS(az)}`;
-    label(ctx, txt, mid.x, mid.y - 14, { size: 12, bold: true });
+    label(ctx, `${fmtMetres(r.distance, lang)} · ${fmtAngle(r.azimuth)}`, mid.x, mid.y - 14, { size: 12, bold: true });
     if (target.label) label(ctx, target.label, b.x, b.y - 26, { size: 12 });
-    void lang;
+  }
+
+  /**
+   * The instrument face, lower right.
+   *
+   * Shown only while actually aiming, which is the point: swinging the
+   * telescope and watching the circle move is what turns `Az = Hz + θ0` from a
+   * formula into one thing you can see. The angle from the ré is the row that
+   * matters most — it is the number a student tabulates by hand, and it is
+   * measured from the dashed line on screen.
+   */
+  function drawAimPanel(ctx, station, target, los, lang) {
+    if (!station || !target) return;
+    const r = aimReadout(station, target.e, target.n);
+    const blocked = los?.clear === false;
+
+    const rows = [];
+    if (r.backsightId) rows.push([t('readout.backsight'), `${r.backsightId} · ${fmtAngle(r.backsightReading)}`]);
+    rows.push([t('readout.target'), target.label || target.id]);
+    rows.push([t('readout.hz'), fmtAngle(r.hz)]);
+    if (r.fromBacksight != null) rows.push([t('readout.fromBacksight'), fmtAngle(r.fromBacksight)]);
+    rows.push([t('readout.azimuth'), fmtAngle(r.azimuth)]);
+    rows.push([t('readout.distance'), fmtMetres(r.distance, lang)]);
+
+    const padX = 11;
+    const padY = 9;
+    const rowH = 17;
+    const titleH = 19;
+    const noteH = blocked ? 17 : 0;
+
+    ctx.save();
+    ctx.font = '600 11px "Inter", system-ui, sans-serif';
+    let textW = 0;
+    for (const [k, v] of rows) textW = Math.max(textW, ctx.measureText(k).width + ctx.measureText(v).width + 26);
+    if (blocked) textW = Math.max(textW, ctx.measureText(t('readout.blocked')).width);
+
+    const w = Math.min(Math.max(textW + padX * 2, 190), Math.max(160, camera.vw - 28));
+    const h = titleH + rows.length * rowH + noteH + padY * 2;
+    // Anchored to the corner. Bottom-centre already holds the batch bar and the
+    // toasts, and bottom-left the scale bar; this corner is the free one — on a
+    // wide screen. The batch bar is centred and roughly 420 px across, so on a
+    // narrow one the panel has to step up over it rather than sit on top of it.
+    const x = camera.vw - 14 - w;
+    const barHalfWidth = 215;
+    const clearsBar = x > camera.vw / 2 + barHalfWidth;
+    const y = camera.vh - 14 - h - (clearsBar ? 0 : 58);
+
+    ctx.fillStyle = COL.panel;
+    ctx.strokeStyle = COL.panelEdge;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = blocked ? COL.blocked : COL.sight;
+    ctx.font = '700 11px "Inter", system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(t('readout.title'), x + padX, y + padY + titleH / 2);
+
+    let ry = y + padY + titleH;
+    for (const [k, v] of rows) {
+      ctx.font = '600 11px "Inter", system-ui, sans-serif';
+      ctx.fillStyle = COL.inkSoft;
+      ctx.textAlign = 'left';
+      ctx.fillText(k, x + padX, ry + rowH / 2);
+
+      ctx.font = '700 12px ui-monospace, "SFMono-Regular", Menlo, monospace';
+      ctx.fillStyle = COL.ink;
+      ctx.textAlign = 'right';
+      ctx.fillText(v, x + w - padX, ry + rowH / 2);
+      ry += rowH;
+    }
+
+    if (blocked) {
+      ctx.font = '700 11px "Inter", system-ui, sans-serif';
+      ctx.fillStyle = COL.blocked;
+      ctx.textAlign = 'left';
+      ctx.fillText(t('readout.blocked'), x + padX, ry + noteH / 2);
+    }
+    ctx.restore();
   }
 
   /** Marks worth naming on screen: player monuments and surveyed corners. */
@@ -278,11 +433,14 @@ export function makeOverlays({ camera }) {
 
     if (tripodCheck) drawTripodDisc(ctx, tripodCheck.check, tripodCheck.e, tripodCheck.n);
     drawTraverse(ctx, setups);
-    drawSights(ctx, station, observations);
+    // Before the sights, so recorded measurements layer over the reference.
+    drawBacksight(ctx, station, world, network);
+    drawSights(ctx, station, observations, world);
     drawFlashes(ctx);
     if (aim) drawAim(ctx, station, aim.target, aim.los, lang);
     drawPointLabels(ctx, world, network, showCornerLabels);
     drawCompassAndScale(ctx);
+    if (aim) drawAimPanel(ctx, station, aim.target, aim.los, lang);
     void player;
   }
 

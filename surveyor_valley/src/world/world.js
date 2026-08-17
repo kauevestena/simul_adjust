@@ -14,7 +14,16 @@ import { resetIds, makePlayerMarco } from './entities.js';
 import { canSetupTripod, lineOfSight } from './los.js';
 import { pointInPolygon } from '../core/math2d.js';
 
-export const WORLD_SIZE = 640;
+/**
+ * The valley, in metres.
+ *
+ * Held in proportion to the gleba inside it (`parcels.js#BLOCK_SIZE`): the
+ * block occupies about three quarters of the width, and the rest is the collar
+ * of unowned land the player walks in from. Leaving this at 640 when the block
+ * came down to 280 would have made the valley four fifths empty scenery, and
+ * every metre of it still gets terrain-classified and ground-baked.
+ */
+export const WORLD_SIZE = 380;
 
 /**
  * @param {string} seed
@@ -104,19 +113,27 @@ export function buildWorld(seed, difficulty) {
       const rng = makeRng(seed, `spawn:${parcel.id}`);
       const homestead = byId.get(`casa-${parcel.id}`);
 
+      // Both against the parcel, not in fixed metres: a 34 m exclusion disc on
+      // a holding only ~110 m across rules out most of it, and the search then
+      // drops through to the bare-centroid fallback — which is very often
+      // inside the paddock fence, the one place the player must not start.
+      const span = Math.min(parcel.bbox.w, parcel.bbox.h);
+      const reach = span * 0.31;
+      const clearHouse = span * 0.19;
+
       for (let i = 0; i < 600; i++) {
-        const e = c.e + rng.range(-55, 55);
-        const n = c.n + rng.range(-55, 55);
+        const e = c.e + rng.range(-reach, reach);
+        const n = c.n + rng.range(-reach, reach);
         if (!pointInPolygon(e, n, parcel.ring)) continue;
-        if (homestead && Math.hypot(homestead.e - e, homestead.n - n) < 34) continue;
+        if (homestead && Math.hypot(homestead.e - e, homestead.n - n) < clearHouse) continue;
         if (!world.isPassable(e, n)) continue;
         if (!world.canSetupTripod(e, n).ok) continue;
         return { e, n };
       }
       // Fall back with the homestead clearance relaxed rather than fail.
       for (let i = 0; i < 400; i++) {
-        const e = c.e + rng.range(-55, 55);
-        const n = c.n + rng.range(-55, 55);
+        const e = c.e + rng.range(-reach, reach);
+        const n = c.n + rng.range(-reach, reach);
         if (!pointInPolygon(e, n, parcel.ring)) continue;
         if (!world.isPassable(e, n)) continue;
         if (!world.canSetupTripod(e, n).ok) continue;
@@ -165,7 +182,7 @@ export function buildWorld(seed, difficulty) {
 /** How many stations the guaranteed ring is built from. */
 const RING_STATIONS = 5;
 /** Alternative sites per station, so the ring can route around a fence post. */
-const CANDIDATES_PER_SLOT = 4;
+const CANDIDATES_PER_SLOT = 6;
 
 /**
  * Guarantee that every parcel admits at least one closable traverse.
@@ -270,19 +287,35 @@ export function closableRing(world, parcel) {
       let fallback = null;
       let fallbackIds = [];
 
+      // The last station carries two constraints, not one: it has to see the
+      // station before it AND the one the ring closes back onto. Judging it by
+      // the incoming leg alone is what left rings that walk beautifully for
+      // four legs and then cannot close — the one failure mode the greedy walk
+      // could not see, because by then the first station is long since fixed.
+      const isLast = i === slots.length - 1 && ring.length >= 2;
+
       for (const cand of candidates) {
         if (!prev) {
           chosen = cand;
           break;
         }
         const { hard, ids } = legCost(prev, cand);
-        if (!hard && !ids.length) {
+        if (hard) continue;
+
+        let closeIds = [];
+        if (isLast) {
+          const close = legCost(cand, ring[0]);
+          if (close.hard) continue;
+          closeIds = close.ids;
+        }
+
+        if (!ids.length && !closeIds.length) {
           chosen = cand;
           break;
         }
-        if (!hard && !fallback) {
+        if (!fallback) {
           fallback = cand;
-          fallbackIds = ids;
+          fallbackIds = [...ids, ...closeIds];
         }
       }
 
@@ -324,6 +357,7 @@ export function closableRing(world, parcel) {
 function siteRing(world, parcel) {
   const rx = parcel.bbox.w * 0.5;
   const ry = parcel.bbox.h * 0.5;
+  const minSep = Math.max(2.5, Math.min(rx, ry) * 0.07);
   const slots = [];
 
   for (let k = 0; k < RING_STATIONS; k++) {
@@ -340,8 +374,11 @@ function siteRing(world, parcel) {
         const n = parcel.centroid.n + Math.sin(a) * ry * f;
         if (!pointInPolygon(e, n, parcel.ring)) continue;
         if (!world.canSetupTripod(e, n).ok) continue;
-        // Spread them out, or the "alternatives" are all the same spot.
-        if (found.some((p) => Math.hypot(p.e - e, p.n - n) < 6)) continue;
+        // Spread them out, or the "alternatives" are all the same spot. As a
+        // fraction of the parcel, not a fixed 6 m: on a small holding a fixed
+        // spacing prunes away the very alternatives this loop exists to find,
+        // and the ring then fails for want of anywhere to stand.
+        if (found.some((p) => Math.hypot(p.e - e, p.n - n) < minSep)) continue;
         found.push({ e, n });
       }
     }

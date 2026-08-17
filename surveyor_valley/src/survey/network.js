@@ -82,9 +82,13 @@ export const trueDistance = (a, b) => Math.hypot(b.trueE - a.trueE, b.trueN - a.
  * from one job worth something on the next one.
  * @param {Array} network
  * @param {{centroid:{e:number,n:number}}} parcel
- * @param {number} radius metres
+ * @param {number} [radius] metres; by default a little over the parcel's own
+ *        half-width, so "close enough to be worth reusing" means near THIS
+ *        property. A fixed radius stops meaning anything once it is wide enough
+ *        to sweep up the monuments of two or three neighbours as well.
  */
-export function reusableFor(network, parcel, radius = 150) {
+export function reusableFor(network, parcel, radius = null) {
+  radius = radius ?? Math.max(60, Math.min(parcel.bbox.w, parcel.bbox.h) * 0.9);
   const { e, n } = parcel.centroid;
   return knownPoints(network)
     .map((p) => ({ point: p, d: Math.hypot(p.trueE - e, p.trueN - n) }))

@@ -85,9 +85,13 @@ export function scatterWorld(rng, terrain, bounds, parcels, difficulty) {
       // On the harder settings, plant cover right where it will hurt most.
       if (difficulty.cornerHiding > 0) {
         const bushes = Math.round(rng.range(0, 5) * difficulty.cornerHiding * 2);
+        // Scrub hugs the corner it hides, so its spread follows the parcel too:
+        // a 9 m skirt on a small holding reaches most of the way to the next
+        // corner and hides two marks instead of one.
+        const spread = Math.max(4, Math.min(9, parcelSpan(parcel) * 0.05));
         for (let k = 0; k < bushes; k++) {
           const a = rng.range(0, Math.PI * 2);
-          const d = rng.range(2.5, 9);
+          const d = rng.range(2.5, spread);
           const be = v.e + Math.cos(a) * d;
           const bn = v.n + Math.sin(a) * d;
           if (!terrain.soilAt(be, bn).walkable) continue;
@@ -103,8 +107,13 @@ export function scatterWorld(rng, terrain, bounds, parcels, difficulty) {
     const c = parcel.centroid;
     const spot = findBuildableSpot(rng, terrain, parcel, c);
     if (spot) {
-      const w = rng.range(7, 12);
-      const h = rng.range(6, 10);
+      const span = parcelSpan(parcel);
+      // A farmhouse does not really shrink because the holding is smaller, so
+      // this keeps a floor and only caps it against very small parcels — where
+      // an unscaled one would be a building sitting on a whole field.
+      const cap = Math.max(6, span * 0.09);
+      const w = Math.min(rng.range(7, 12), cap);
+      const h = Math.min(rng.range(6, 10), cap * 0.85);
       const ring = [
         [spot.e - w / 2, spot.n - h / 2],
         [spot.e + w / 2, spot.n - h / 2],
@@ -113,7 +122,8 @@ export function scatterWorld(rng, terrain, bounds, parcels, difficulty) {
       ];
       entities.push(makeBuilding(ring, { id: `casa-${parcel.id}`, label: `Sede ${parcel.id}`, parcelId: parcel.id }));
 
-      const fenceR = rng.range(16, 24);
+      // The paddock, as a fraction of the holding rather than a fixed ring.
+      const fenceR = rng.range(0.09, 0.14) * span;
       const pts = [];
       const sides = rng.int(4, 6);
       for (let i = 0; i < sides; i++) {
@@ -182,11 +192,27 @@ function makePlant(kind, e, n, rng) {
   return makeBush(e, n, { ...opts, scale: s, blocksLOS: tall, losR: tall ? 0.9 * s : 0 });
 }
 
+/**
+ * A parcel's own working scale, in metres: its narrow dimension.
+ *
+ * Everything a parcel contains — its farmhouse, its paddock, the scrub around
+ * its corners, where the player is put down — used to be sized in absolute
+ * metres chosen against the parcels of the time. Those numbers are fine until
+ * the parcels change size, and then they are quietly catastrophic: a paddock
+ * fence covering 9% of a holding covers 25% of one a third the area, and since
+ * fences and farmhouses are the two things the traverse guarantee is not
+ * allowed to bulldoze, that is how a property ends up with no closable route
+ * around it. Deriving from the parcel keeps the *proportions* the game was
+ * tuned with, whatever the parcels are.
+ */
+const parcelSpan = (parcel) => Math.min(parcel.bbox.w, parcel.bbox.h);
+
 /** Somewhere inside the parcel, on firm ground, not on top of a boundary. */
 function findBuildableSpot(rng, terrain, parcel, near) {
+  const reach = parcelSpan(parcel) * 0.22;
   for (let attempt = 0; attempt < 40; attempt++) {
-    const e = near.e + rng.range(-40, 40);
-    const n = near.n + rng.range(-40, 40);
+    const e = near.e + rng.range(-reach, reach);
+    const n = near.n + rng.range(-reach, reach);
     if (!pointInPolygon(e, n, parcel.ring)) continue;
     const soil = terrain.soilAt(e, n);
     if (!soil.walkable || !soil.tripodOk) continue;

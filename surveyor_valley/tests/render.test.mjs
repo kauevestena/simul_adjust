@@ -125,10 +125,29 @@ test('sprite keys the scene asks for all exist', () => {
   for (let v = 0; v < 8; v++) for (let s = 0; s < 3; s++) assert.ok(keys.has(`tree-${v}-${s}`));
   for (const dir of ['S', 'N', 'E', 'W']) {
     for (let f = 0; f < 4; f++) assert.ok(keys.has(`char-${dir}-${f}`), `char-${dir}-${f} missing`);
+    assert.ok(keys.has(`char-${dir}-idle`), `char-${dir}-idle missing`);
   }
-  for (const k of ['char-kneel', 'marco', 'station', 'prism', 'poste', 'divisa-0']) {
+  for (const k of ['char-kneel', 'char-kneel-idle', 'marco', 'station', 'prism', 'poste', 'divisa-0']) {
     assert.ok(keys.has(k), `${k} missing`);
   }
+});
+
+test('the idle pose actually differs from standing still', () => {
+  // A breath that changes no pixels is not a breath. The two frames the game
+  // alternates between while standing are walk frame 0 and the idle pose, so if
+  // those ever paint identically the surveyor is a photograph again — which is
+  // exactly the complaint this animation exists to answer.
+  const byKey = new Map(buildSprites().map((s) => [s.key, s]));
+  for (const dir of ['S', 'N', 'E', 'W']) {
+    const rest = byKey.get(`char-${dir}-0`);
+    const idle = byKey.get(`char-${dir}-idle`);
+    assert.notEqual(idle.pix.hash(), rest.pix.hash(), `char-${dir}-idle is identical to the rest pose`);
+    assert.equal(idle.anchorY, rest.anchorY, `char-${dir}-idle must keep its feet on the ground`);
+  }
+  const kneel = byKey.get('char-kneel');
+  const kneelIdle = byKey.get('char-kneel-idle');
+  assert.notEqual(kneelIdle.pix.hash(), kneel.pix.hash(), 'the kneeling breath changes nothing');
+  assert.equal(kneelIdle.anchorY, kneel.anchorY);
 });
 
 // ------------------------------------------------------------- the ground ---

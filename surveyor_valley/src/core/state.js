@@ -9,13 +9,28 @@
 import { SAVE_VERSION } from './storage.js';
 import { bus, EV } from './bus.js';
 
+/**
+ * The required relative precisions came down with the parcels, and they had to.
+ *
+ * Linear closure error is built from things that do not shrink: 2.5 mm of
+ * instrument centring, 5.0 mm of target centring, the EDM's 10 mm constant.
+ * Relative precision is perimeter over that error, so it degrades in direct
+ * proportion to the figure — shrinking a parcel to a third of its area makes a
+ * fixed 1:X requirement about 1.7x harder to meet, not easier.
+ *
+ * Measured over 35 completed surveys with the starter 10" instrument at the new
+ * size: median 1:5288, worst 1:1403. These three are set to reproduce the pass
+ * rates the game shipped with (roughly 0%, 1% and 13% of honest surveys falling
+ * short) rather than to quietly raise the bar. Missing the requirement costs
+ * quality and therefore pay; it never blocks delivery.
+ */
 export const DIFFICULTY = {
   facil: {
     id: 'facil',
     obstacleDensity: 0.4,
     cornerHiding: 0,
     timeLimit: false,
-    requiredPrecision: 1 / 3000,
+    requiredPrecision: 1 / 1500,
     payMult: 0.8,
   },
   medio: {
@@ -23,7 +38,7 @@ export const DIFFICULTY = {
     obstacleDensity: 0.85,
     cornerHiding: 0.15,
     timeLimit: false,
-    requiredPrecision: 1 / 5000,
+    requiredPrecision: 1 / 2000,
     payMult: 1.0,
   },
   dificil: {
@@ -31,7 +46,7 @@ export const DIFFICULTY = {
     obstacleDensity: 1.35,
     cornerHiding: 0.4,
     timeLimit: true,
-    requiredPrecision: 1 / 8000,
+    requiredPrecision: 1 / 3000,
     payMult: 1.5,
   },
 };

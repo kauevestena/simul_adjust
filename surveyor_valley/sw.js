@@ -13,7 +13,7 @@
 // Bump CACHE_VERSION whenever the file list or the Pixi pin changes; old caches
 // are deleted on activate.
 
-const CACHE_VERSION = 'sv-v1';
+const CACHE_VERSION = 'sv-v2';
 const PIXI_URL = 'https://cdn.jsdelivr.net/npm/pixi.js@8.19.0/dist/pixi.min.mjs';
 
 /**
@@ -76,6 +76,7 @@ const CORE = [
   './src/survey/instrument.js',
   './src/survey/network.js',
   './src/survey/observations.js',
+  './src/survey/readout.js',
   './src/survey/resection.js',
   './src/survey/station.js',
   './src/survey/traverse.js',

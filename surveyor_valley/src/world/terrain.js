@@ -39,11 +39,14 @@ export function makeTerrain(seed, bounds) {
   const memo = new Uint8Array(w * h).fill(255);
 
   function classify(e, n) {
-    // Feature sizes chosen against a 640 m valley: big enough to read as
-    // landscape, small enough that a 4 ha parcel is not one flat colour.
-    const wet = moisture.fbm(e, n, { scale: 95, octaves: 4 });
-    const firm = firmness.fbm(e, n, { scale: 72, octaves: 4 });
-    const fine = grain.fbm(e, n, { scale: 22, octaves: 3 });
+    // Feature sizes are set against the PARCEL, not the valley: big enough to
+    // read as landscape, small enough that one property is never a single flat
+    // colour — because which ground a tripod can stand on is a decision the
+    // player makes inside one parcel. They came down with the parcels, in
+    // proportion, when a holding went from about 2.5 ha to about 0.8.
+    const wet = moisture.fbm(e, n, { scale: 54, octaves: 4 });
+    const firm = firmness.fbm(e, n, { scale: 41, octaves: 4 });
+    const fine = grain.fbm(e, n, { scale: 13, octaves: 3 });
 
     // Thresholds tuned so this reads as a working pasture valley: grazing land
     // dominates, and the ground a tripod cannot stand on — marsh, rock, loose

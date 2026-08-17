@@ -43,6 +43,10 @@ export default {
   'intro.rightDragDesc': 'Drag to look around',
   'intro.toolKeys': '1 – 7',
   'intro.toolDesc': 'Pick a tool from the side rail',
+  'intro.spaceKeys': 'Space',
+  'intro.spaceDesc': 'Act with the current tool, where you stand: drive the monument at your feet, set the instrument up over the monument you occupy, or sight the target under the cursor',
+  'intro.batchKeys': 'B',
+  'intro.batchDesc': 'Sight every visible target from the current setup at once (unlocked after four manual sights)',
   'intro.dblClickKeys': 'Double-click a monument',
   'intro.dblClickDesc': 'Fast travel (the job clock is charged at real walking pace)',
   'intro.escKeys': 'Esc',
@@ -86,6 +90,7 @@ export default {
   'tool.calculos': 'Computations',
   'tool.mapa': 'Valley map',
   'tool.entrega': 'Deliver the job',
+  'tool.spaceHint': 'Space to act',
 
   'tip.noService': 'No job in progress.',
   'tip.noMarcosLeft': 'You have no monuments left.',
@@ -95,6 +100,8 @@ export default {
   'tip.needThreeSetups': 'A traverse needs at least three occupied stations.',
   'tip.parcelIncomplete': 'Some corners of the property are still unsurveyed.',
   'tip.unknownTool': 'Unknown tool.',
+  'tip.pickATool': 'Pick a tool first: 2 monument, 3 station, 4 sight. Space acts with the active tool.',
+  'tip.noTarget': 'No target under the cursor — point the mouse at a corner, post or monument.',
 
   'marco.placed': 'Monument {id} set.',
   'marco.badGround': 'The ground here will not take a monument.',
@@ -140,6 +147,17 @@ export default {
 
   'sight.blocked': 'Line of sight blocked by: {obj}',
   'sight.recorded': '{label}: {dist} m, Hz {hz}',
+
+  // The live instrument face, lower right.
+  'readout.title': 'SIGHT',
+  'readout.re': 'BS',
+  'readout.backsight': 'Backsight',
+  'readout.target': 'Target',
+  'readout.hz': 'Hz reading',
+  'readout.fromBacksight': 'Angle from BS',
+  'readout.azimuth': 'Azimuth',
+  'readout.distance': 'Distance',
+  'readout.blocked': 'Sight obstructed',
   'sight.noStation': 'No station set up.',
   'sight.hint': 'Click a visible target to measure its angle and distance.',
   'sight.measureAll': 'Measure everything visible',

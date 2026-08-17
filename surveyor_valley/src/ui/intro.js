@@ -16,6 +16,8 @@ const CONTROLS = [
   ['intro.mouseKeys', 'intro.mouseDesc'],
   ['intro.rightDragKeys', 'intro.rightDragDesc'],
   ['intro.toolKeys', 'intro.toolDesc'],
+  ['intro.spaceKeys', 'intro.spaceDesc'],
+  ['intro.batchKeys', 'intro.batchDesc'],
   ['intro.dblClickKeys', 'intro.dblClickDesc'],
   ['intro.escKeys', 'intro.escDesc'],
 ];

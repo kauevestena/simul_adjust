@@ -202,6 +202,32 @@ export function makeScene({ app, camera, atlas, ground }) {
   // ---- everything that stands up ------------------------------------------
   const visible = [];
 
+  /** Close enough to the tripod to be the one crouched over it. */
+  const AT_INSTRUMENT = 2.0;
+
+  /**
+   * Which frame of the surveyor to draw.
+   *
+   * The kneel used to be chosen by "is a station set up at all", and a setup
+   * survives for the rest of the job — so from the first tripod onwards the
+   * surveyor slid around the entire valley permanently crouched, legs frozen
+   * mid-fold. Kneeling is a thing you do AT the instrument, so it is now
+   * decided by where the player actually is.
+   *
+   * Standing still resolves to the idle breath rather than to walk frame 0,
+   * which is what stopped the sprite looking like a photograph.
+   */
+  function characterKey(p, station) {
+    const atInstrument =
+      station &&
+      !p.moving &&
+      Math.hypot((station.trueE ?? station.E) - p.e, (station.trueN ?? station.N) - p.n) <= AT_INSTRUMENT;
+
+    if (atInstrument) return p.idleFrame ? 'char-kneel-idle' : 'char-kneel';
+    if (p.moving) return `char-${p.facing}-${p.frame % 4}`;
+    return p.idleFrame ? `char-${p.facing}-idle` : `char-${p.facing}-0`;
+  }
+
   function drawEntities(w, playerState, station) {
     const detail = camera.zoom >= DETAIL_ZOOM;
     const view = camera.viewRect(12);
@@ -234,10 +260,7 @@ export function makeScene({ app, camera, atlas, ground }) {
       if (f) place(takeEntitySprite(), f, station.trueE ?? station.E, station.trueN ?? station.N);
     }
 
-    const charKey = station
-      ? 'char-kneel'
-      : `char-${playerState.facing}-${playerState.moving ? playerState.frame % 4 : 0}`;
-    const cf = atlas.get(charKey) || atlas.get('char-S-0');
+    const cf = atlas.get(characterKey(playerState, station)) || atlas.get('char-S-0');
     if (cf) place(takeEntitySprite(), cf, playerState.e, playerState.n);
 
     // Park the leftovers rather than destroying them; next frame may want them.
@@ -321,6 +344,15 @@ export function makeScene({ app, camera, atlas, ground }) {
     get stats() {
       return { entities: visible.length, chunks: chunkSprites.size, pool: entityPool.length };
     },
+
+    /**
+     * Which frame of the surveyor is being drawn, for tests and probes.
+     *
+     * Exposed rather than re-derived by the caller: the rule about when the
+     * player kneels was wrong for a whole release, and a copy of it in a test
+     * would have been wrong in exactly the same way.
+     */
+    characterKey,
   };
 }
 

@@ -18,7 +18,7 @@ const MOVE_KEYS = {
   ArrowRight: [1, 0],
 };
 
-export function makeInput({ canvas, camera, bus, EV, onClick, onDoubleClick, onToolKey, onBatchKey, onHover, isModalOpen }) {
+export function makeInput({ canvas, camera, bus, EV, onClick, onDoubleClick, onToolKey, onBatchKey, onAct, onHover, isModalOpen }) {
   const held = new Set();
   let run = false;
   let pointer = { x: 0, y: 0, inside: false };
@@ -33,6 +33,16 @@ export function makeInput({ canvas, camera, bus, EV, onClick, onDoubleClick, onT
   on(window, 'keydown', (ev) => {
     if (ev.target instanceof HTMLInputElement || ev.target instanceof HTMLTextAreaElement) return;
 
+    // A modal owns the keyboard. Movement keys must not pile up behind it, or
+    // closing the dialog sets the player walking off in whatever direction they
+    // were last pressing — and the arrow keys are how you scroll a long table,
+    // so they are not even movement input at that point.
+    if (isModalOpen?.() && ev.key !== 'Escape') {
+      held.clear();
+      run = false;
+      return;
+    }
+
     if (MOVE_KEYS[ev.code]) {
       held.add(ev.code);
       ev.preventDefault();
@@ -42,7 +52,27 @@ export function makeInput({ canvas, camera, bus, EV, onClick, onDoubleClick, onT
       run = true;
       return;
     }
-    if (isModalOpen?.() && ev.key !== 'Escape') return;
+
+    /**
+     * Space does whatever the active tool does, where you stand. Every action
+     * in this game already happens at the player's feet, so this is the same
+     * thing a click does — without having to put the cursor anywhere.
+     *
+     * `preventDefault` twice over: Space scrolls the page, and it also
+     * re-activates a focused button. The toolbar and the HUD are real
+     * `<button>` elements which keep focus after a click, and the guard at the
+     * top of this handler only excludes inputs and textareas — so without the
+     * blur below, clicking a tool and then pressing Space would fire the button
+     * again AND take the action. That only shows up after a mouse click, never
+     * in a keyboard-only run, which is exactly the kind of bug that ships.
+     */
+    if (ev.key === ' ' || ev.code === 'Space') {
+      ev.preventDefault();
+      const focused = document.activeElement;
+      if (focused instanceof HTMLElement && focused !== document.body) focused.blur();
+      onAct?.(ev);
+      return;
+    }
 
     if (ev.key === 'Escape') {
       onToolKey?.('walk', ev);

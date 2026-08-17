@@ -15,14 +15,22 @@ const W = 24;
 const H = 34;
 
 /**
- * @param {{dir?:'S'|'N'|'E', frame?:number, pose?:'walk'|'kneel'}} opts
+ * @param {{dir?:'S'|'N'|'E', frame?:number, pose?:'walk'|'kneel'|'idle'}} opts
  *        West is produced by mirroring East in the roster.
+ *
+ *        `idle` is the top of a breath: the pose a standing surveyor alternates
+ *        with walk frame 0. A person at rest is never a photograph, and one
+ *        drawn as a photograph reads as a bug in the game rather than as
+ *        stillness.
  */
 export function surveyor({ dir = 'S', frame = 0, pose = 'walk' } = {}) {
   const pix = makePix(W, H);
   const cx = W / 2;
 
-  if (pose === 'kneel') return kneeling(pix, cx);
+  if (pose === 'kneel') return kneeling(pix, cx, false);
+  if (pose === 'kneel-idle') return kneeling(pix, cx, true);
+
+  const idle = pose === 'idle';
 
   // Frames 0 and 2 are the passing pose, 1 and 3 the strides.
   const phase = [0, 1, 0, -1][frame % 4];
@@ -30,10 +38,19 @@ export function surveyor({ dir = 'S', frame = 0, pose = 'walk' } = {}) {
   const swing = phase * 3;
 
   const baseY = 32;
+  // The breath lifts the chest and head but NOT the hips, so the torso
+  // lengthens by a pixel instead of the whole body hopping. `bob` moves all
+  // three together, which is right for a stride and wrong for breathing.
+  const lift = idle ? 1 : 0;
   const hipY = 23 + bob;
-  const shoulderY = 14 + bob;
-  const headCy = 8 + bob;
+  const shoulderY = 14 + bob - lift;
+  const headCy = 8 + bob - lift;
   const side = dir === 'E';
+
+  // Hands drift a little away from the body at the top of the breath. `drawArm`
+  // travels 70% of what it is given, so this is well under a pixel at the
+  // shoulder and about one at the hand — a settle, not a swing.
+  const armIdle = idle ? 1.4 : 0;
 
   contactShadow(pix, cx, baseY + 1, 7, 2.5);
 
@@ -45,7 +62,7 @@ export function surveyor({ dir = 'S', frame = 0, pose = 'walk' } = {}) {
   // ---- far arm -----------------------------------------------------------
   // Outside the torso silhouette, or it simply vanishes behind it.
   const armDx = side ? 2 : 6.5;
-  drawArm(pix, cx - armDx, shoulderY, -swing, P.shirt[0]);
+  drawArm(pix, cx - armDx, shoulderY, -swing - armIdle, P.shirt[0]);
 
   // ---- torso -------------------------------------------------------------
   const halfTop = side ? 3.5 : 5;
@@ -79,7 +96,7 @@ export function surveyor({ dir = 'S', frame = 0, pose = 'walk' } = {}) {
   pix.hline(cx - vw, cx + vw, bandY + 1, P.vest[0]);
 
   // ---- near arm ----------------------------------------------------------
-  drawArm(pix, cx + armDx, shoulderY, swing, P.shirt[2]);
+  drawArm(pix, cx + armDx, shoulderY, swing + armIdle, P.shirt[2]);
 
   // ---- head --------------------------------------------------------------
   const headX = side ? cx + 1 : cx;
@@ -146,32 +163,40 @@ function drawHat(pix, cx, brimY, side) {
  * Crouched at the tribrach. Shown while a station is being set up, because a
  * surveyor standing bolt upright next to a levelled instrument looks wrong to
  * anyone who has ever done it.
+ *
+ * @param {boolean} idle  the top of a breath. This is the pose the player looks
+ *        at for most of a job — every sight is taken from it — so it is the one
+ *        that most needed to stop being a photograph. The folded legs and the
+ *        hand on the screws stay put; only the back and head rise.
  */
-function kneeling(pix, cx) {
+function kneeling(pix, cx, idle = false) {
   const baseY = 32;
+  const lift = idle ? 1 : 0;
   contactShadow(pix, cx, baseY + 1, 8, 2.5);
 
-  // Folded legs.
+  // Folded legs. Planted: a breath does not move the knees.
   pix.fill(cx - 6, baseY - 6, 12, 5, P.trousers[1]);
   pix.hline(cx - 6, cx + 5, baseY - 6, P.trousers[2]);
   pix.ellipse(cx - 5, baseY - 1, 2.6, 1.8, P.boots[1]);
   pix.ellipse(cx + 4, baseY - 1, 2.6, 1.8, P.boots[0]);
 
-  // Leaning forward over the instrument.
-  for (let y = baseY - 16; y <= baseY - 6; y++) {
-    const k = (y - (baseY - 16)) / 10;
+  // Leaning forward over the instrument. The top of the back rises with the
+  // breath while the hips stay folded, so the spine straightens a little.
+  for (let y = baseY - 16 - lift; y <= baseY - 6; y++) {
+    const k = (y - (baseY - 16 - lift)) / (10 + lift);
     const hw = 4.5 + k * 1.5;
     pix.hline(Math.round(cx - hw + 1), Math.round(cx + hw + 1), y, P.shirt[1]);
     pix.px(Math.round(cx - hw + 1), y, P.shirt[2]);
   }
-  pix.fill(cx - 2, baseY - 15, 6, 7, P.vest[1]);
+  pix.fill(cx - 2, baseY - 15 - lift, 6, 7 + lift, P.vest[1]);
   pix.hline(cx - 2, cx + 3, baseY - 12, P.vest[2]);
 
-  // Arm reaching to the tribrach screws.
-  pix.line(cx + 3, baseY - 14, cx + 8, baseY - 9, P.shirt[2]);
+  // Arm reaching to the tribrach screws. The hand stays ON the screws — it is
+  // holding something — so only the shoulder end travels.
+  pix.line(cx + 3, baseY - 14 - lift, cx + 8, baseY - 9, P.shirt[2]);
   pix.disc(cx + 8, baseY - 9, 1.4, P.skin[1]);
 
-  const headCy = baseY - 20;
+  const headCy = baseY - 20 - lift;
   pix.disc(cx + 1, headCy, 4.6, P.skin[1]);
   pix.disc(cx, headCy - 1, 2.6, P.skin[2]);
   pix.px(cx + 3, headCy + 1, '#2b2b2b');

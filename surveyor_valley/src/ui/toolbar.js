@@ -6,7 +6,25 @@
 
 import { el, clear } from './dom.js';
 import { t } from './i18n.js';
-import { TOOL, TOOL_ORDER } from '../game/tools.js';
+import { TOOL, TOOL_ORDER, TOOL_KEYS } from '../game/tools.js';
+
+/**
+ * The key that actually selects a tool, read back out of the binding table.
+ *
+ * Derived, not counted. The chips used to be numbered by their position in the
+ * rail, which silently disagreed with the bindings the moment one tool took a
+ * letter instead of a digit: MAPA is on `m`, so everything after it was
+ * labelled one too high and the delivery button advertised a key that does
+ * nothing at all.
+ */
+const KEY_FOR = Object.fromEntries(
+  Object.entries(TOOL_KEYS)
+    .filter(([k]) => k === k.toUpperCase())
+    .map(([k, tool]) => [tool, k.toUpperCase()]),
+);
+
+/** Tools that SPACE can act with — the ones that do something where you stand. */
+const SPACE_TOOLS = new Set([TOOL.MARCO, TOOL.ESTACAO, TOOL.VISADA]);
 
 const ICONS = {
   [TOOL.WALK]:
@@ -39,7 +57,7 @@ export function makeToolbar({ root, tools, onSelect }) {
   function build() {
     clear(rail);
     buttons.clear();
-    TOOL_ORDER.forEach((tool, i) => {
+    for (const tool of TOOL_ORDER) {
       const btn = el('button.tool-btn', {
         type: 'button',
         dataset: { tool },
@@ -47,10 +65,11 @@ export function makeToolbar({ root, tools, onSelect }) {
       });
       btn.innerHTML = icon(tool);
       btn.append(el('span.tool-label', { text: t(`tool.${tool}`) }));
-      btn.append(el('kbd.tool-key', { text: tool === TOOL.MAPA ? 'M' : String(i + 1) }));
+      const key = KEY_FOR[tool];
+      if (key) btn.append(el('kbd.tool-key', { text: key }));
       rail.append(btn);
       buttons.set(tool, btn);
-    });
+    }
   }
 
   /** Refresh enabled state and tooltips from the single source of truth. */
@@ -61,7 +80,14 @@ export function makeToolbar({ root, tools, onSelect }) {
       btn.disabled = !ok;
       btn.classList.toggle('is-disabled', !ok);
       btn.classList.toggle('is-active', tools.active === tool);
-      btn.title = ok ? t(`tool.${tool}`) : t(reasonKey);
+      // The rail is the only place a player looks while playing, so it is where
+      // SPACE has to be advertised. The intro modal lists it once, and is
+      // dismissed before anyone presses a key.
+      btn.title = ok
+        ? SPACE_TOOLS.has(tool)
+          ? `${t(`tool.${tool}`)} — ${t('tool.spaceHint')}`
+          : t(`tool.${tool}`)
+        : t(reasonKey);
       btn.setAttribute('aria-disabled', String(!ok));
     }
   }

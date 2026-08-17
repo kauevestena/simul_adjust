@@ -98,7 +98,9 @@ export function makePlanView({ camera }) {
     if (setups.length >= 2) {
       ctx.beginPath();
       setups.forEach((s, i) => {
-        const p = camera.worldToScreen(s.E ?? s.e, s.N ?? s.n);
+        // `trueE/trueN`, not the surveyed `E/N`: the camera is in world metres
+        // and the surveyed datum is born a kilometre away at (1000, 1000).
+        const p = camera.worldToScreen(s.trueE ?? s.e, s.trueN ?? s.n);
         if (i === 0) ctx.moveTo(p.x, p.y);
         else ctx.lineTo(p.x, p.y);
       });

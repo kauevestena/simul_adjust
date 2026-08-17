@@ -47,13 +47,20 @@ export function buildSprites() {
     for (let frame = 0; frame < 4; frame++) {
       add(`char-${dir}-${frame}`, surveyor({ dir, frame }));
     }
+    // The top of a breath. Walk frame 0 is the bottom of it, so standing still
+    // alternates between the two and only this one has to be painted.
+    add(`char-${dir}-idle`, surveyor({ dir, pose: 'idle' }));
   }
   // West is east mirrored: cheaper, and the two can never drift apart.
   for (let frame = 0; frame < 4; frame++) {
     const east = surveyor({ dir: 'E', frame });
     add(`char-W-${frame}`, { pix: east.pix.mirrorX(), anchorX: 0.5, anchorY: east.anchorY });
   }
+  const eastIdle = surveyor({ dir: 'E', pose: 'idle' });
+  add('char-W-idle', { pix: eastIdle.pix.mirrorX(), anchorX: 0.5, anchorY: eastIdle.anchorY });
+
   add('char-kneel', surveyor({ pose: 'kneel' }));
+  add('char-kneel-idle', surveyor({ pose: 'kneel-idle' }));
 
   // ---- the kit ------------------------------------------------------------
   add('marco', playerMarco());

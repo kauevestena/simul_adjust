@@ -112,9 +112,31 @@ test('parcel sizes differ meaningfully and land in a plausible rural range', () 
   for (const seed of SEEDS) {
     const { parcels } = generateParcels(makeRng(seed, 'parcels'));
     const ha = parcels.map((p) => p.hectares).sort((a, b) => a - b);
-    assert.ok(ha[0] > 0.4, `${seed}: smallest parcel ${ha[0].toFixed(2)} ha is workable`);
+    // The floor came down from 0.4 ha when the block shrank to a third of its
+    // area, so a job is a job rather than an afternoon. 0.25 ha is a 50 m
+    // square: small for a rural holding, still a real one, and still far more
+    // than the ~1 m of tripod room and ~5 m of sight length the survey needs.
+    assert.ok(ha[0] > 0.25, `${seed}: smallest parcel ${ha[0].toFixed(2)} ha is workable`);
     assert.ok(ha[5] < 8, `${seed}: largest parcel ${ha[5].toFixed(2)} ha is not the whole valley`);
     assert.ok(ha[5] / ha[0] > 1.8, `${seed}: sizes should genuinely differ (ratio ${(ha[5] / ha[0]).toFixed(2)})`);
+  }
+});
+
+test('a job is short enough to finish in a class', () => {
+  // The corner count, not the area, is what makes a service long:
+  // `estimateTimeLimit` charges 3.5 min a vertex against about 1.3 min per
+  // 60 m walked. Shrinking the block without also cutting corners barely moves
+  // this number, which is the trap this test exists to hold shut.
+  for (const seed of SEEDS) {
+    const { parcels } = generateParcels(makeRng(seed, 'parcels'));
+    for (const p of parcels) {
+      assert.ok(
+        p.vertices.length >= 4 && p.vertices.length <= 10,
+        `${seed}/${p.id}: ${p.vertices.length} corners is outside the 4-10 band`,
+      );
+      const minutes = (1.35 * (p.perimeter / 45 + p.vertices.length * 3.5 + 6)) / 1;
+      assert.ok(minutes < 75, `${seed}/${p.id}: ~${minutes.toFixed(0)} min is too long for one sitting`);
+    }
   }
 });
 

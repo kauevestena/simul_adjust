@@ -41,6 +41,10 @@ export default {
   'intro.rightDragDesc': 'Arrastar para olhar em volta',
   'intro.toolKeys': '1 – 7',
   'intro.toolDesc': 'Selecionar ferramenta na barra lateral',
+  'intro.spaceKeys': 'Espaço',
+  'intro.spaceDesc': 'Agir com a ferramenta ativa, onde você está: implantar o marco aos seus pés, instalar a estação sobre o marco que você ocupa, ou visar o alvo sob o cursor',
+  'intro.batchKeys': 'B',
+  'intro.batchDesc': 'Visar de uma vez todos os alvos visíveis da instalação atual (liberado após quatro visadas manuais)',
   'intro.dblClickKeys': 'Duplo clique num marco',
   'intro.dblClickDesc': 'Deslocamento rápido (o tempo do serviço é debitado no ritmo real da caminhada)',
   'intro.escKeys': 'Esc',
@@ -86,6 +90,7 @@ export default {
   'tool.calculos': 'Cálculos',
   'tool.mapa': 'Mapa geral',
   'tool.entrega': 'Entregar serviço',
+  'tool.spaceHint': 'Espaço para agir',
 
   'tip.noService': 'Nenhum serviço em andamento.',
   'tip.noMarcosLeft': 'Você não tem mais marcos no estoque.',
@@ -95,6 +100,8 @@ export default {
   'tip.needThreeSetups': 'A poligonal precisa de pelo menos três estações ocupadas.',
   'tip.parcelIncomplete': 'Ainda faltam vértices da propriedade por levantar.',
   'tip.unknownTool': 'Ferramenta desconhecida.',
+  'tip.pickATool': 'Escolha uma ferramenta primeiro: 2 marco, 3 estação, 4 visada. Espaço age com a ferramenta ativa.',
+  'tip.noTarget': 'Nenhum alvo sob o cursor — aponte o mouse para um vértice, poste ou marco.',
 
   // ------------------------------------------------------------- marcos ----
   'marco.placed': 'Marco {id} implantado.',
@@ -144,6 +151,17 @@ export default {
   // -------------------------------------------------------------- visada ---
   'sight.blocked': 'Linha de visada obstruída por: {obj}',
   'sight.recorded': '{label}: {dist} m, Hz {hz}',
+
+  // The live instrument face, lower right.
+  'readout.title': 'VISADA',
+  'readout.re': 'RÉ',
+  'readout.backsight': 'Ré',
+  'readout.target': 'Alvo',
+  'readout.hz': 'Leitura Hz',
+  'readout.fromBacksight': 'Ângulo da ré',
+  'readout.azimuth': 'Azimute',
+  'readout.distance': 'Distância',
+  'readout.blocked': 'Visada obstruída',
   'sight.noStation': 'Nenhuma estação instalada.',
   'sight.hint': 'Clique num alvo visível para medir ângulo e distância.',
   'sight.measureAll': 'Medir todos os visíveis',

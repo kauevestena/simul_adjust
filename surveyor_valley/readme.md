@@ -50,6 +50,15 @@ memorial descritivo, without a browser.
 - `tests/world.test.mjs` — determinism, and the parcel topology that everything
   downstream depends on.
 - `tests/pipeline.test.mjs` — a whole service, end to end, plus the documents it produces.
+- `tests/movement.test.mjs` — walking: the speed ramps, the turn, and the slide along a
+  fence, a tree and the water line. Also that being stopped by something stops the legs,
+  which is the difference between a walk cycle and a sprite scrubbing in place.
+- `tests/readout.test.mjs` — the live instrument face. That the circle reading inverts the
+  reduction, that the angle from the ré is zero when aimed at the ré whatever the circle
+  reads, that a free station reports no ré at all, and that the readout agrees with a real
+  observation to within the instrument's own precision. It also pins the frame: surveyed
+  coordinates are born at an arbitrary (1000, 1000) while the valley sits at the origin,
+  so mixing the two gives a believable distance that is a kilometre wrong.
 - `tests/persistence.test.mjs` — saving and resuming a campaign, and refusing a
   corrupt or future-version save rather than trusting it.
 - `tests/offline.test.mjs` — the service worker's precache list matches the files on disk,
@@ -155,3 +164,36 @@ Only difícil runs a time limit. Running out **ends the job rather than voiding 
 documents are still produced and the fee is reduced on its own line in the payment
 breakdown. Forty minutes of careful work destroyed by a timer punishes without teaching
 anything.
+
+Properties run **0.3–1.5 ha with 4 to 9 corners**, and a job is about 45–65 minutes of
+estimated field time. They used to be three times the area with up to sixteen corners,
+which is a long afternoon for one exercise. Corner count is what actually sets the length
+— the estimator charges 3.5 minutes a vertex against roughly 1.3 per 60 m walked — so the
+boundaries were straightened as well as shortened, which is also the truer picture: a
+rural boundary runs straight from one marco to the next unless it is following a river.
+
+Shrinking a parcel makes closure **harder**, not easier, and the tolerances moved with it.
+Linear closure error is built from things that do not shrink — 2.5 mm of instrument
+centring, 5.0 mm of target centring, the EDM's 10 mm constant — while relative precision
+is perimeter over that error. The required 1:1500 / 1:2000 / 1:3000 are set from 35
+measured surveys with the starter instrument so that the same proportion of honest work
+passes as before, rather than quietly raising the bar. Missing the requirement costs
+quality, and therefore pay; it never blocks delivery.
+
+While the instrument is set up, the **ré is drawn as a dashed blue line** and a live
+instrument face in the lower right shows the circle reading, the angle turned from the ré,
+the azimuth and the distance to whatever you are aiming at. Swinging the telescope and
+watching `Az = Hz + θ0` move is the point: `src/survey/readout.js` is the noiseless twin of
+`sightTarget`, and `tests/readout.test.mjs` asserts the two agree.
+
+**SPACE acts with the current tool, where you stand** — drive the monument at your feet,
+set up over the monument you occupy, or sight the target under the cursor. It shares one
+dispatcher with the left click, which was always position-independent anyway, and it never
+declines in silence: every job starts on the walk tool, so a key that did nothing there was
+indistinguishable from a key that had never been implemented.
+
+The surveyor breathes while standing and while crouched at the instrument — a lopsided
+cycle that rests for two thirds of it, because an even alternation reads as a mechanical
+flicker rather than as lungs. The kneel is now chosen by *being at the tripod* rather than
+by a station existing at all, which until this round left the surveyor sliding around the
+whole valley permanently folded up.
