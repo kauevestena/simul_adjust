@@ -20,6 +20,7 @@ import { buildWorld } from '../src/world/world.js';
 import { makeService } from '../src/game/service.js';
 import { canStand } from '../src/game/player.js';
 import { bus, EV } from '../src/core/bus.js';
+import { revealMarksNear, applyRevealed } from '../src/game/discovery.js';
 
 const SEED = 'sv-persist';
 
@@ -246,3 +247,52 @@ function memoryBackend() {
     removeItem: (k) => map.delete(k),
   };
 }
+
+// ------------------------------------------ the corners you already found ----
+
+test('a save from before the discoveries existed still loads', () => {
+  // `revealedMarks` was added without bumping SAVE_VERSION, on purpose: the
+  // only migration in the chain drops the job in flight, and nobody should lose
+  // a half-surveyed parcel over an empty array. That makes "an old save has no
+  // list at all" a case the code has to survive rather than a hypothetical.
+  const backend = memoryBackend();
+  const storage = makeStorage(backend);
+
+  const s = makeInitialState({ seed: SEED, difficulty: 'medio' });
+  delete s.revealedMarks;
+  storage.saveNow(s);
+
+  const back = storage.loadSave();
+  assert.ok(back, 'a v2 save without the field is still a v2 save');
+  assert.equal(back.version, SAVE_VERSION, 'and needs no migration');
+
+  const world = buildWorld(SEED, DIFFICULTY.medio);
+  assert.equal(applyRevealed(world, back.revealedMarks), 0, 'nothing to put back, and no throw');
+});
+
+test('a corner found before a reload is still found after it', () => {
+  // The world comes back from the seed, so every mark comes back buried. This
+  // is the only thing standing between the player and walking the whole
+  // perimeter twice — which on difícil they would also be charged for.
+  const seed = 'sv-persist-found';
+  const backend = memoryBackend();
+  const storage = makeStorage(backend);
+
+  const before = buildWorld(seed, DIFFICULTY.dificil);
+  const parcel = before.parcels.find((p) => p.markIds.some((id) => before.entity(id).hidden));
+  assert.ok(parcel, 'difícil buries corners');
+  const buriedId = parcel.markIds.find((id) => before.entity(id).hidden);
+  const mark = before.entity(buriedId);
+
+  const s = makeInitialState({ seed, difficulty: 'dificil' });
+  s.revealedMarks.push(...revealMarksNear(before, [{ e: mark.e, n: mark.n }]));
+  assert.ok(s.revealedMarks.includes(buriedId));
+  storage.saveNow(s);
+
+  const restored = storage.loadSave();
+  const after = buildWorld(seed, DIFFICULTY.dificil);
+  assert.equal(after.entity(buriedId).hidden, true, 'a regenerated valley starts buried');
+
+  applyRevealed(after, restored.revealedMarks);
+  assert.equal(after.entity(buriedId).hidden, false, 'the walk has to be remembered');
+});

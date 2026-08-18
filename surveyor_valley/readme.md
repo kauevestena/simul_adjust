@@ -57,6 +57,11 @@ memorial descritivo, without a browser.
   reading now waits for him: a corner he cannot reach gives up rather than never arriving,
   a merely long run is not mistaken for a stuck one, and a 45 m/s dash does not step over
   a fence.
+- `tests/discovery.test.mjs` — finding the buried boundary corners, and the assertion the
+  whole file exists for: **no parcel is impossible to deliver**. Before it, a corner that
+  started hidden could be seen and never measured, so `parcelProgress` never completed —
+  67% of médio parcels and 90% of difícil ones could not be delivered at all, from the
+  first commit onwards. It is the cheapest test here and the most valuable.
 - `tests/readout.test.mjs` — the live instrument face. That the circle reading inverts the
   reduction, that the angle from the ré is zero when aimed at the ré whatever the circle
   reads, that a free station reports no ré at all, and that the readout agrees with a real
@@ -135,6 +140,22 @@ tests/
   re-callable and `SKIN_TONES`/`HAIR_TONES`/`HAT_STYLES` in `render/palette.js` are a
   **save format** — a look is stored as indices into them. Append only; inserting a tone
   in the middle repaints every existing player's face.
+- **`hidden` on an entity means NOT YET FOUND, not "far away".** A buried corner is
+  cleared for good by `game/discovery.js` once the crew has been within `revealRadius`,
+  and the ids are remembered in `state.revealedMarks` so a reload does not re-bury them.
+  Every path that decides what the instrument may be pointed at can therefore keep its
+  plain `if (ent.hidden) continue` — the flag carries the whole rule. Read as a draw
+  distance instead, it silently made two of the three difficulty settings unfinishable.
+- **A rule that depends on WHERE THE PLAYER IS needs the loop, not an event.** The tool
+  rail is refreshed by `refreshUI` on a couple of dozen discrete events; `atInstrument` is
+  the one verdict that changes by walking, so the loop watches it and refreshes the rail on
+  the flip. Without that, `toolbar.js` sets a real `disabled` attribute and walking back to
+  the instrument never cleared it — a dead button, not a stale tooltip.
+- **Ligeirinho's errands are one queue with two kinds**, `sight` and `marco`, in
+  `main.js`. They differ where they should: leaving the instrument cancels a sight and not
+  a marco, and a sight is taken even when he gives up short of the point while a monument
+  is not — a prism two metres out is a slightly worse reading, a monument two metres out
+  is simply in the wrong place.
 - **Documents are not part of the game skin.** `styles/report.css` stays clean white
   paper on purpose; a planta that looks like a game UI is a worse teaching artefact.
 
@@ -211,12 +232,49 @@ farmhouses could be reached on foot at all**. Leaving one side open as a gate ta
 saves written before the gate still line up with their valley. A sealed paddock could
 already trap a station site inside it, and a paddock without a gate was wrong anyway.
 
-At the opening dialog you **choose your surveyor** — body, skin tone, hair colour and hat,
-with a live sprite preview — and get a name shuffled out of famous Brazilian athletes'
-first names and surnames, so you start as Ayrton Fittipaldi or Marta Kuerten unless you
-type your own. That name is not decoration: it signs the planta and the memorial
-descritivo, and it was initialised empty and never assigned, so every document a student
-produced came out signed "Surveyor Valley".
+**Some corners have to be found before they can be measured.** On médio and difícil the
+generator buries a share of the boundary marks in scrub — 15% and 40% — so the job starts
+with a walk round the perimeter, which is how the owner shows you the evidence. Walking
+within 15 m of one clears it for good, Ligeirinho turns them up as readily as you do, and
+the discovery is remembered across a reload.
+
+That lever was written and never connected. `hidden` was honoured by the renderer and
+ignored nowhere else: every path deciding what the instrument may be pointed at skipped
+hidden marks outright and permanently, so a buried corner could be seen and never
+measured — which keeps `parcelProgress` incomplete, which keeps ENTREGA locked. Measured
+over five seeds, **67% of médio parcels and 90% of difícil parcels could not be delivered
+at all**, from the first commit onwards. `tests/discovery.test.mjs` now asserts the
+opposite over fifteen worlds.
+
+**A marco goes in at your feet, or wherever you point.** Space plants one where you stand;
+click firm ground further off and Ligeirinho runs out and plants it there. The ground is
+judged at the click rather than on arrival — the soil does not change while he runs, so
+being made to wait a second to be told the spot was never legal is worse feedback than an
+instant no — and the tripod preview follows the cursor for exactly that reason. If he
+cannot reach a spot that passed the check, nothing is planted: a monument in the wrong
+place is worse than no monument, which is the one place his errands differ from a sight.
+
+**Estação livre works where there is no monument**, which is the only place anybody wants
+it. The resection maths always allowed it and the dialog did not: it refused to open
+unless a marco was within a metre. Standing on open ground now opens it in its own right,
+with a live count of the coordinated points in sight from where you are — and the point
+under your own tripod is correctly not one of them.
+
+**There is one way to orient the circle**: zero on the ré. "Orientar pelo azimute" is
+gone, because you cannot do it — the limb reads what it reads when you point the
+telescope, and zero is the one value the instrument lets you force. Teaching a workflow
+the hardware does not have is worse than teaching one fewer.
+
+At the opening dialog you **choose your surveyor** — body, skin tone, hair colour and hat.
+Every option is a small portrait of the surveyor it would produce rather than a colour
+square, and each one paints the look you have now with only its own dimension varied, so
+picking a hat repaints the faces wearing it. Sixteen 24x34 sprites is about thirteen
+thousand pixels, which is nothing, and it buys the one thing a row of swatches cannot
+show: how the pieces sit together. You also get a name shuffled out of famous Brazilian
+athletes' first names and surnames, so you start as Ayrton Fittipaldi or Marta Kuerten
+unless you type your own. That name is not decoration: it signs the planta and the
+memorial descritivo, and it was initialised empty and never assigned, so every document a
+student produced came out signed "Surveyor Valley".
 
 **Every parcel is guaranteed to admit a closable traverse**, on every difficulty. World
 generation ends by siting a ring of stations the way a surveyor would — spread around the

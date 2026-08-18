@@ -448,3 +448,17 @@ test('zooming toward a point keeps that point under the cursor', () => {
   // achievable nor wanted.
   assert.ok(Math.hypot(after.e - before.e, after.n - before.n) < 1 / PX_PER_M + 1e-9);
 });
+
+test('Ligeirinho is still a different person from the look most like his', () => {
+  // His face is fixed and the player's is not, so the collision to worry about
+  // is the player who picks the same skin and the same straw hat. What actually
+  // separates them is the wardrobe — checked shirt and denim against hi-vis,
+  // and the prism pole — which is a claim worth pinning rather than assuming.
+  const twin = new Map(buildSprites({ body: 'm', skin: 0, hair: 3, hat: 1 }).map((s) => [s.key, s]));
+  for (const dir of ['S', 'N', 'E', 'W']) {
+    const me = twin.get(`char-${dir}-0`);
+    const him = twin.get(`aux-${dir}-0`);
+    assert.notEqual(him.pix.hash(), me.pix.hash(), `aux-${dir}-0 is indistinguishable from that player`);
+    assert.equal(him.anchorY, me.anchorY, 'and stands on the same ground line');
+  }
+});

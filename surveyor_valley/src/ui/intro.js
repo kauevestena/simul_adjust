@@ -51,26 +51,52 @@ export function showIntro({ modals, onStart, onContinue = null, saved = null, in
   // ---- who you are --------------------------------------------------------
 
   /**
-   * The sprite, painted at 4x.
+   * Paint a surveyor into a canvas at whole-number scale, optionally cropped.
    *
    * Straight from the painter rather than through the atlas: `surveyor()`
    * returns a plain `{pix}`, the atlas does not exist yet at this point in the
    * boot, and a canvas here needs no GPU. Nearest-neighbour, because the whole
    * game's art depends on never scaling pixel art by a fraction.
+   *
+   * `crop` is what turns the same call into a portrait: a head is the top of
+   * the frame, and a head is what a swatch should be showing.
    */
-  const preview = el('canvas.char-preview', { width: 24 * 4, height: 34 * 4 });
-
-  function paintPreview() {
-    const { pix } = surveyor({ dir: 'S', pose: 'idle', look });
-    const ctx = preview.getContext('2d');
+  function paintSurveyor(canvas, into, crop = null) {
+    const { pix } = surveyor({ dir: 'S', pose: 'idle', look: into });
+    const ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = false;
-    ctx.clearRect(0, 0, preview.width, preview.height);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
     const off = document.createElement('canvas');
     off.width = pix.w;
     off.height = pix.h;
     off.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(pix.data), pix.w, pix.h), 0, 0);
-    ctx.drawImage(off, 0, 0, preview.width, preview.height);
+
+    const c = crop || { x: 0, y: 0, w: pix.w, h: pix.h };
+    ctx.drawImage(off, c.x, c.y, c.w, c.h, 0, 0, canvas.width, canvas.height);
   }
+
+  /**
+   * The crops, in sprite pixels, measured off the frame rather than guessed:
+   * the hat crown starts at row 0, the brim spans rows 2-4 and x 5-19, the face
+   * runs to row 11 and the shoulders begin at row 13.
+   *
+   * HEAD is what skin, hair and hat are choices about, and it takes two rows of
+   * shoulder so the head has something to sit on instead of floating. BUST
+   * reaches the hips, because the body choice is a silhouette — the reversed
+   * shoulder-to-hip taper and the long hair under the brim — and neither of
+   * those reads in a crop that stops at the chin.
+   *
+   * `y: -1` buys a row of margin above the tallest crown. A source rectangle
+   * reaching outside the image is transparent, which is exactly what is wanted:
+   * without it the cap sits flush against the frame and looks cropped.
+   */
+  const HEAD = { x: 4, y: -1, w: 16, h: 16 };
+  const BUST = { x: 3, y: -1, w: 18, h: 23 };
+  const MINI = 3; // whole-number scale, or the pixel art stops being pixel art
+
+  const preview = el('canvas.char-preview', { width: 24 * 4, height: 34 * 4 });
+  const paintPreview = () => paintSurveyor(preview, look);
 
   const nameInput = el('input.name-input', {
     type: 'text',
@@ -93,79 +119,142 @@ export function showIntro({ modals, onStart, onContinue = null, saved = null, in
     nameInput.value = next;
   }
 
-  /** A row of swatch buttons over one of the palette tables. */
-  function swatches(className, items, key, colourOf) {
+  /**
+   * A row of choices over one of the palette tables, each drawn as the surveyor
+   * it would produce.
+   *
+   * Every miniature paints the CURRENT look with only its own dimension varied,
+   * so picking a hat repaints the skin and hair rows wearing it. That is what
+   * makes the panel a paper doll rather than a legend: a flat colour square
+   * answers "what colour is this" when the question is "what would I look
+   * like". Sixteen 24x34 paints is about thirteen thousand pixels, which is
+   * nothing, and it buys the one thing a row of squares cannot show — how the
+   * pieces sit together.
+   */
+  function chooser(className, items, key, crop) {
     const row = el('div.swatch-row', { role: 'radiogroup', 'aria-label': t(`intro.${key}Title`) });
+    const canvases = [];
+
     items.forEach((item, i) => {
+      const face = el('canvas.swatch-face', {
+        width: crop.w * MINI,
+        height: crop.h * MINI,
+        'aria-hidden': 'true',
+      });
+      canvases.push({ face, value: i });
       row.append(
-        el(`button.swatch.${className}${i === look[key] ? '.is-active' : ''}`, {
-          type: 'button',
-          role: 'radio',
-          'aria-checked': String(i === look[key]),
-          'aria-label': t(`look.${key}.${item.id}`),
-          title: t(`look.${key}.${item.id}`),
-          style: { background: colourOf(item) },
-          dataset: { index: String(i) },
-          onclick: () => {
-            look[key] = i;
-            // Choosing a skin tone also picks the hair that goes with it, so the
-            // first thing you see is always a plausible pairing. Only until you
-            // have set the hair yourself — after that it is yours.
-            if (key === 'skin' && !hairChosen) look.hair = item.hair;
-            if (key === 'hair') hairChosen = true;
-            for (const b of row.children) {
-              const on = Number(b.dataset.index) === look[key];
-              b.classList.toggle('is-active', on);
-              b.setAttribute('aria-checked', String(on));
-            }
-            if (key === 'skin') syncHairRow();
-            paintPreview();
+        el(
+          `button.swatch.${className}${i === look[key] ? '.is-active' : ''}`,
+          {
+            type: 'button',
+            role: 'radio',
+            'aria-checked': String(i === look[key]),
+            // A canvas has no accessible name of its own, so the label is the
+            // only thing a screen reader has left once the text is gone.
+            'aria-label': t(`look.${key}.${item.id}`),
+            title: t(`look.${key}.${item.id}`),
+            dataset: { index: String(i) },
+            onclick: () => {
+              look[key] = i;
+              // Choosing a skin tone also picks the hair that goes with it, so
+              // the first thing you see is always a plausible pairing. Only
+              // until you have set the hair yourself — after that it is yours.
+              if (key === 'skin' && !hairChosen) look.hair = item.hair;
+              if (key === 'hair') hairChosen = true;
+              repaintChoosers();
+              paintPreview();
+            },
           },
-        }),
+          face,
+        ),
       );
     });
-    return row;
+
+    /** Redraw every option in this row against the look as it now stands. */
+    function repaint() {
+      for (const { face, value } of canvases) {
+        paintSurveyor(face, { ...look, [key]: value }, crop);
+      }
+      for (const b of row.children) {
+        const on = Number(b.dataset.index) === look[key];
+        b.classList.toggle('is-active', on);
+        b.setAttribute('aria-checked', String(on));
+      }
+    }
+
+    return { row, repaint };
   }
 
   let hairChosen = false;
-  const skinRow = swatches('swatch-skin', SKIN_TONES, 'skin', (s) => s.base);
-  const hairRow = swatches('swatch-hair', HAIR_TONES, 'hair', (h) => h.ramp[1]);
-  const hatRow = swatches('swatch-hat', HAT_STYLES, 'hat', (h) => h.ramp[1]);
+  const skinChooser = chooser('swatch-skin', SKIN_TONES, 'skin', HEAD);
+  const hairChooser = chooser('swatch-hair', HAIR_TONES, 'hair', HEAD);
+  const hatChooser = chooser('swatch-hat', HAT_STYLES, 'hat', HEAD);
 
-  /** Keep the hair row's highlight honest when a skin tone moves it. */
-  function syncHairRow() {
-    for (const b of hairRow.children) {
-      const on = Number(b.dataset.index) === look.hair;
-      b.classList.toggle('is-active', on);
-      b.setAttribute('aria-checked', String(on));
+  /**
+   * The body choice, as two faces.
+   *
+   * It used to be the words "Homem" and "Mulher" on a pair of buttons, next to
+   * three rows of colour squares — a form, in a panel whose whole job is to
+   * show you somebody. The difference between the two is a silhouette, so it is
+   * the one choice here that genuinely has to be looked at rather than read,
+   * and the labels survive as the accessible name.
+   */
+  const bodyChooser = (() => {
+    const row = el('div.swatch-row.body-choice', { role: 'radiogroup', 'aria-label': t('intro.bodyTitle') });
+    const canvases = [];
+
+    for (const id of ['m', 'f']) {
+      const face = el('canvas.swatch-face', { width: BUST.w * MINI, height: BUST.h * MINI, 'aria-hidden': 'true' });
+      canvases.push({ face, value: id });
+      row.append(
+        el(
+          `button.swatch.swatch-body${id === look.body ? '.is-active' : ''}`,
+          {
+            type: 'button',
+            role: 'radio',
+            'aria-checked': String(id === look.body),
+            'aria-label': t(`look.body.${id}`),
+            title: t(`look.body.${id}`),
+            dataset: { body: id },
+            onclick: () => {
+              look.body = id;
+              // The name pool is gendered, so an untouched generated name
+              // follows the body. One the player typed is never overwritten.
+              if (!nameEdited) setName(rollName(id));
+              repaintChoosers();
+              paintPreview();
+            },
+          },
+          face,
+        ),
+      );
     }
-  }
 
-  const bodyButtons = el(
-    'div.body-choice',
-    { role: 'radiogroup', 'aria-label': t('intro.bodyTitle') },
-    ['m', 'f'].map((id) =>
-      el(`button.btn.body-btn${id === look.body ? '.is-active' : ''}`, {
-        type: 'button',
-        role: 'radio',
-        'aria-checked': String(id === look.body),
-        dataset: { body: id },
-        'data-i18n': `look.body.${id}`,
-        onclick: (ev) => {
-          look.body = id;
-          for (const b of ev.currentTarget.parentElement.children) {
-            const on = b.dataset.body === id;
-            b.classList.toggle('is-active', on);
-            b.setAttribute('aria-checked', String(on));
-          }
-          // The name pool is gendered, so an untouched generated name follows
-          // the body. One the player typed is never overwritten.
-          if (!nameEdited) setName(rollName(id));
-          paintPreview();
-        },
-      }),
-    ),
-  );
+    function repaint() {
+      for (const { face, value } of canvases) paintSurveyor(face, { ...look, body: value }, BUST);
+      for (const b of row.children) {
+        const on = b.dataset.body === look.body;
+        b.classList.toggle('is-active', on);
+        b.setAttribute('aria-checked', String(on));
+      }
+    }
+
+    return { row, repaint };
+  })();
+
+  const choosers = [bodyChooser, skinChooser, hairChooser, hatChooser];
+
+  /**
+   * Repaint every row, not just the one that was clicked.
+   *
+   * A skin tone changes what the hair rides on and a hat changes what shades
+   * the face, so a row left alone would be advertising a surveyor the player
+   * can no longer become. It also replaces the old hand-written highlight sync,
+   * which existed only because choosing a skin tone moves the hair selection.
+   */
+  function repaintChoosers() {
+    for (const c of choosers) c.repaint();
+  }
 
   const characterSection = el(
     'section.intro-section.intro-character',
@@ -192,13 +281,14 @@ export function showIntro({ modals, onStart, onContinue = null, saved = null, in
             },
           }),
         ),
-        bodyButtons,
+        el('label.swatch-label', { 'data-i18n': 'intro.bodyTitle' }),
+        bodyChooser.row,
         el('label.swatch-label', { 'data-i18n': 'intro.skinTitle' }),
-        skinRow,
+        skinChooser.row,
         el('label.swatch-label', { 'data-i18n': 'intro.hairTitle' }),
-        hairRow,
+        hairChooser.row,
         el('label.swatch-label', { 'data-i18n': 'intro.hatTitle' }),
-        hatRow,
+        hatChooser.row,
       ),
     ),
   );
@@ -372,6 +462,7 @@ export function showIntro({ modals, onStart, onContinue = null, saved = null, in
   }
 
   rerender();
+  repaintChoosers();
   paintPreview();
   return dialog;
 }

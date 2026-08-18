@@ -447,17 +447,6 @@
   color: inherit;
 }
 
-.body-choice {
-  display: flex;
-  gap: 0.35rem;
-}
-
-.body-btn.is-active {
-  background: var(--accent);
-  border-color: var(--accent-dark);
-  color: #fff;
-}
-
 .swatch-label {
   font-size: 0.78rem;
   font-weight: 700;
@@ -471,17 +460,28 @@
   flex-wrap: wrap;
 }
 
+/* Each option is a small portrait of the surveyor it would produce, so the
+   button is a frame around a canvas rather than a block of colour. */
 .swatch {
-  width: 1.7rem;
-  height: 1.7rem;
+  display: block;
   padding: 0;
+  line-height: 0;
   border: 2px solid var(--wood-dark);
   border-radius: var(--radius-sm);
+  background: var(--panel-alt);
   cursor: pointer;
   box-shadow: 0 2px 0 var(--wood-shadow);
+  overflow: hidden;
 }
 
-/* An outline rather than a colour, since the fill IS the choice. */
+.swatch-face {
+  display: block;
+  image-rendering: pixelated;
+  height: auto;
+  max-width: 100%;
+}
+
+/* An outline rather than a colour, since the portrait IS the choice. */
 .swatch.is-active {
   outline: 3px solid var(--accent);
   outline-offset: 1px;
@@ -628,6 +628,19 @@
 .datum-block h4,
 .free-station h4 {
   font-size: 0.86rem;
+}
+
+/* Nothing to occupy here, so the free station is the dialog rather than a
+   footnote to it: no rule above it, and no top margin to separate it from. */
+.free-station.is-lead {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.free-count {
+  font-weight: 700;
+  color: var(--ink);
 }
 
 /* ------------------------------------------------------------- caderneta - */

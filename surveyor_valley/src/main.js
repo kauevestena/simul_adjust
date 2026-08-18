@@ -37,10 +37,11 @@ import {
   placeBeside,
   MODE as AUX_MODE,
 } from './game/assistant.js';
+import { revealMarksNear, applyRevealed } from './game/discovery.js';
 import { makeInput } from './game/input.js';
 import { makeTools, TOOL, PANEL_TOOLS } from './game/tools.js';
 import { makeTutorial } from './game/tutorial.js';
-import { makeService } from './game/service.js';
+import { makeService, OCCUPY_RADIUS } from './game/service.js';
 
 import { initLanguage, applyI18n, t, setLanguage, lang, registerLanguage, setAngleFormat } from './ui/i18n.js';
 import { makeModalHost } from './ui/modal.js';
@@ -162,9 +163,18 @@ function buildView(alpha = 1) {
   const setup = service.currentSetup();
   const drawPlayer = interpolated(player, alpha);
 
+  // The soil disc, drawn where the thing would actually go. For the tripod that
+  // is always underfoot; for a marco it follows the cursor once the cursor is
+  // out of arm's reach, because that is now where the stake lands — choosing a
+  // spot across the field with the preview stuck to your boots would be picking
+  // blind.
   let tripodCheck = null;
   if (world && (tools.active === TOOL.MARCO || tools.active === TOOL.ESTACAO)) {
-    tripodCheck = { e: player.e, n: player.n, check: world.canSetupTripod(player.e, player.n) };
+    const at = input?.worldPointer;
+    const remote =
+      tools.active === TOOL.MARCO && at && Math.hypot(at.e - player.e, at.n - player.n) > OCCUPY_RADIUS;
+    const spot = remote ? at : player;
+    tripodCheck = { e: spot.e, n: spot.n, check: world.canSetupTripod(spot.e, spot.n) };
   }
 
   let aim = null;
@@ -220,6 +230,9 @@ function dayFraction(svc) {
 // ------------------------------------------------------------------- loop ---
 
 let clockAcc = 0;
+let discoveryAcc = 0;
+/** Last verdict on standing at the eyepiece, for spotting the flip. */
+let wasAtInstrument = null;
 
 const loop = makeLoop({
   update(dt) {
@@ -259,6 +272,26 @@ const loop = makeLoop({
 
     effects?.update(dt, { player, running: intent.run && player.moving });
 
+    discoveryAcc += dt;
+    if (discoveryAcc > 0.25) {
+      discoveryAcc = 0;
+      findBoundaryMarks();
+    }
+
+    // Whether you are standing at the eyepiece is the only tool verdict that
+    // depends on WHERE YOU ARE, and the rail is refreshed by `refreshUI` on two
+    // dozen discrete events and never by the loop. So walking off and placing a
+    // marco — which does refresh — set `disabled` on VISADA, and walking back
+    // never cleared it: `toolbar.js` sets the real attribute, so the button was
+    // dead rather than merely stale, and the session looked unresumable. Only
+    // the rail is redrawn, and only on the flip: `refreshUI` rebuilds the HUD,
+    // the checklist and the area, which is a lot of work for one boolean.
+    const here = service.atInstrument().ok;
+    if (here !== wasAtInstrument) {
+      wasAtInstrument = here;
+      toolbar.refresh();
+    }
+
     // The clock has to move on its own, not only when something else changes.
     clockAcc += dt;
     if (clockAcc > 0.25) {
@@ -294,15 +327,37 @@ const loop = makeLoop({
 function updateCrew(dt) {
   const { arrived, gaveUp } = updateAssistant(assistant, world, dt, { player });
 
-  // Walking away mid-errand calls it off. The rule is the same one that governs
-  // the reading itself, so it cannot be sidestepped by clicking and then
-  // strolling off while he runs.
-  if (sightQueue.length && !service.atInstrument().ok) {
-    cancelSights('sight.leftInstrument');
+  // Walking away mid-errand calls a SIGHT off — the same rule that governs the
+  // reading itself, so it cannot be sidestepped by clicking and then strolling
+  // off while he runs. A marco errand is untouched by it: nothing about driving
+  // a stake concerns the eyepiece, and you plant marcos before there is a
+  // station to stand at in the first place.
+  if (errandQueue[0]?.kind === 'sight' && !service.atInstrument().ok) {
+    cancelErrands('sight.leftInstrument');
     return;
   }
 
-  if (arrived || gaveUp) takeQueuedSight();
+  if (arrived || gaveUp) finishErrand({ arrived, gaveUp });
+}
+
+/**
+ * Turn up the boundary evidence the crew has walked into.
+ *
+ * On médio and difícil a share of the corners start buried in scrub, and until
+ * this ran they could be SEEN and never measured — which kept `parcelProgress`
+ * incomplete and ENTREGA locked, so two thirds of médio jobs and nine tenths of
+ * difícil ones could not be delivered at all. Finding one is worth announcing:
+ * it is the moment the harder settings are actually teaching something.
+ */
+function findBoundaryMarks() {
+  const found = revealMarksNear(world, [player, assistant]);
+  if (!found.length) return;
+  const s = store.get();
+  s.revealedMarks.push(...found);
+  for (const id of found) {
+    notifier.key('notify.markFound', { label: world.entity(id)?.label || id }, 'success');
+  }
+  refreshUI();
 }
 
 /** Standing at the instrument with nothing in motion: the camera lets go. */
@@ -317,9 +372,13 @@ function selectTool(tool) {
   const verdict = tools.activate(tool);
   if (!verdict.ok) return verdict;
 
-  // Leaving the sighting tool calls Ligeirinho back in. Escape is bound to the
-  // walk tool, so this is also how a mistaken batch is cancelled.
-  if (tool !== TOOL.VISADA && !PANEL_TOOLS.has(tool)) cancelSights();
+  // Picking up a different tool calls Ligeirinho back in — but only a tool that
+  // is not the one whose errand he is running, or selecting MARCO twice would
+  // cancel the marco he was sent to plant. Escape is bound to the walk tool, so
+  // this is also how a mistaken batch is cancelled. Panels cancel nothing:
+  // opening the field book to check a reading is not a change of mind.
+  const owner = TOOL_FOR_ERRAND[errandQueue[0]?.kind];
+  if (!PANEL_TOOLS.has(tool) && tool !== owner) cancelErrands();
 
   if (tool === TOOL.CADERNETA) openCaderneta();
   else if (tool === TOOL.CALCULOS) openCalculos();
@@ -356,18 +415,24 @@ function onHover(worldPos) {
 }
 
 /**
- * Do whatever the active tool does, here.
+ * Do whatever the active tool does.
  *
- * Shared by the left click and by SPACE, deliberately: every action in this
- * game already happens where the PLAYER stands, not where the cursor points —
- * you drive the stake at your feet, and the tripod goes over a marco you are
- * standing on. A click has never used its own coordinates. Space is therefore
- * not a second code path with its own rules but the same one under a key that
- * does not need the mouse, and routing both through here is what stops the two
- * drifting apart later.
+ * Shared by the left click and by SPACE, and the two now differ in exactly one
+ * respect: a click knows where the cursor is and SPACE does not. So `at` is the
+ * click's world position, or null for the key, and each branch decides what
+ * that is worth to it.
  *
- * VISADA is the one that reads the cursor, because aiming is the one thing you
- * genuinely do at a distance: mouse to aim, space to shoot.
+ * MARCO is where it matters. The stake goes in at your feet — from SPACE, or
+ * from a click on your own boots — and anywhere further off is Ligeirinho's
+ * errand. Until this round nothing in the game used the cursor's coordinates
+ * for anything but aiming, which is why this comment used to say a click never
+ * had its own; the auxiliar is what changed that, and it changed it for the
+ * one action where "over there" is a real instruction rather than a shortcut.
+ *
+ * ESTAÇÃO stays underfoot: a tripod goes where the surveyor is.
+ *
+ * VISADA reads the cursor because aiming is the one thing you genuinely do at a
+ * distance: mouse to aim, space to shoot.
  *
  * Every branch that declines to act says why. This function used to fall
  * through in silence whenever the active tool had nothing to do — and since
@@ -376,12 +441,12 @@ function onHover(worldPos) {
  * feature that was never built. Every sibling action here toasts on refusal;
  * this was the one path that did not.
  */
-function doActiveToolAction() {
+function doActiveToolAction(at = null) {
   if (!world || !running) return;
 
   switch (tools.active) {
     case TOOL.MARCO:
-      doPlaceMarco();
+      doPlaceMarco(at);
       break;
     case TOOL.ESTACAO:
       doSetupStation();
@@ -392,7 +457,7 @@ function doActiveToolAction() {
       // 4 key — or letting the game select it for you after a station goes up —
       // fires no pointer event at all, so a cursor already resting on a corner
       // used to leave the key dead until the mouse was physically nudged.
-      const target = hoverTarget || targetAt(input?.worldPointer);
+      const target = targetAt(at) || hoverTarget || targetAt(input?.worldPointer);
       if (target) doSight(target.id);
       else notifier.key('tip.noTarget', {}, 'warn');
       break;
@@ -405,8 +470,8 @@ function doActiveToolAction() {
   }
 }
 
-function onClick() {
-  doActiveToolAction();
+function onClick(worldPos) {
+  doActiveToolAction(worldPos);
 }
 
 function onDoubleClick(worldPos) {
@@ -433,63 +498,107 @@ function onDoubleClick(worldPos) {
   refreshUI();
 }
 
-/** The marco goes in where the player stands: you drive the stake at your feet. */
-function doPlaceMarco() {
-  const r = service.placeMarco(player.e, player.n);
-  if (!r.ok) {
-    const key =
-      r.reason === 'badSoil'
-        ? 'tripod.badSoil'
-        : r.reason === 'obstacle'
-          ? 'tripod.obstacle'
-          : r.reason === 'tooCloseToMarco'
-            ? 'marco.tooCloseToMarco'
-            : r.reason === 'noMarcosLeft'
-              ? 'marco.noMarcosLeft'
-              : 'marco.badGround';
-    notifier.key(
-      key,
-      {
-        soil: r.detail?.soil ? t(`soil.${r.detail.soil}`) : '',
-        obj: r.detail?.kind ? t(`obstacle.${r.detail.kind}`) : '',
-      },
-      'warn',
-    );
-    return;
+/** One description of why a monument was refused, wherever it was refused. */
+function notifyMarcoRefusal(r) {
+  const key =
+    r.reason === 'badSoil'
+      ? 'tripod.badSoil'
+      : r.reason === 'obstacle'
+        ? 'tripod.obstacle'
+        : r.reason === 'tooCloseToMarco'
+          ? 'marco.tooCloseToMarco'
+          : r.reason === 'noMarcosLeft'
+            ? 'marco.noMarcosLeft'
+            : 'marco.badGround';
+  notifier.key(
+    key,
+    {
+      soil: r.detail?.soil ? t(`soil.${r.detail.soil}`) : '',
+      obj: r.detail?.kind ? t(`obstacle.${r.detail.kind}`) : '',
+    },
+    'warn',
+  );
+}
+
+/**
+ * Drive a stake — yours, or his.
+ *
+ * A monument at your feet is one you plant yourself, and one across the field
+ * is what the auxiliar is for. So the split is by distance rather than by input
+ * device: SPACE and a click on your own boots do the same thing, and a click
+ * beyond arm's reach is an errand. `OCCUPY_RADIUS` is the same metre that
+ * decides whether you are standing on a monument and whether you are behind the
+ * eyepiece — one idea, said three ways.
+ *
+ * The refusal is worked out HERE, at the click, and not when he arrives: the
+ * soil under that spot does not change while he runs, so making the player wait
+ * a second to be told it was never legal is worse feedback than an instant no.
+ * Same argument as the line-of-sight check before a sight.
+ */
+function doPlaceMarco(at = null) {
+  const mine = !at || Math.hypot(at.e - player.e, at.n - player.n) <= OCCUPY_RADIUS;
+  if (mine) {
+    const r = service.placeMarco(player.e, player.n);
+    if (!r.ok) {
+      notifyMarcoRefusal(r);
+      return r;
+    }
+    notifier.key('marco.placed', { id: r.id }, 'success');
+    refreshUI();
+    return r;
   }
-  notifier.key('marco.placed', { id: r.id }, 'success');
-  refreshUI();
+
+  const verdict = service.canPlaceMarco(at.e, at.n);
+  if (!verdict.ok) {
+    notifyMarcoRefusal(verdict);
+    return verdict;
+  }
+  notifier.key('marco.auxSent', {}, 'info');
+  return enqueueErrands([{ kind: 'marco', e: at.e, n: at.n }]);
 }
 
 function doSetupStation() {
   const s = store.get();
+  const playerPos = { e: player.e, n: player.n };
 
   const candidates = s.network
     .map((cp) => ({ ...cp, distance: Math.hypot(cp.trueE - player.e, cp.trueN - player.n) }))
-    .filter((cp) => cp.distance <= 1.0)
+    .filter((cp) => cp.distance <= OCCUPY_RADIUS)
     .sort((a, b) => a.distance - b.distance);
 
-  if (!candidates.length) {
-    notifier.key('tripod.tooFarFromMarco', {}, 'warn');
+  // What a free station can actually be fixed on from where you are standing.
+  // Answered before the dialog opens rather than as a refusal after it, and by
+  // the same function `setupFreeStation` uses — so the count on screen and the
+  // requirement are one thing.
+  const visibleKnown = service.visibleKnownPoints(playerPos);
+  const freeOnly = candidates.length === 0;
+
+  // Standing on open ground with nothing to occupy used to end here, which made
+  // the free station reachable only from on top of a monument — the one place
+  // you have no need of it. Estação livre exists precisely for the spot with no
+  // marco under it, so that is now where it is offered.
+  if (freeOnly && visibleKnown.length < 2) {
+    notifier.key(candidates.length ? 'tripod.tooFarFromMarco' : 'station.noMarcoNoFix', {}, 'warn');
     return;
   }
 
   const needsDatum = s.network.every((cp) => cp.E == null);
-  const knownCount = s.network.filter((cp) => cp.E != null).length;
 
   showStationDialog({
     modals,
     candidates,
     backsights: s.network,
     needsDatum,
-    canFreeStation: knownCount >= 2,
+    freeOnly,
+    visibleKnown: visibleKnown.length,
+    canFreeStation: visibleKnown.length >= 2,
     onFreeStation: doFreeStation,
     onConfirm: ({ over, backsight, orientMode }) => {
       const r = service.setupStation({
         over,
         backsight,
         orientMode,
-        playerPos: { e: player.e, n: player.n },
+        playerPos,
       });
       if (!r.ok) {
         notifier.key(`station.${r.reason}`, r.detail || {}, 'warn');
@@ -504,8 +613,9 @@ function doSetupStation() {
 }
 
 function doFreeStation() {
-  const known = store.get().network.filter((cp) => cp.E != null).map((cp) => cp.id);
-  const r = service.setupFreeStation({ targets: known, playerPos: { e: player.e, n: player.n } });
+  // No `targets`: the service takes what is visible from here, which is the
+  // list the dialog counted.
+  const r = service.setupFreeStation({ playerPos: { e: player.e, n: player.n } });
   if (!r.ok) {
     notifier.key(`station.${r.reason}`, r.detail || {}, 'warn');
     return;
@@ -603,41 +713,67 @@ function doMeasureAll() {
   return enqueueSights(targets.map((v) => v.entity.id), { batch: true });
 }
 
-// ------------------------------------------------------- the deferred sight --
+// ----------------------------------------------------------- Ligeirinho's errands --
 
 /**
- * Targets waiting on Ligeirinho, and what to say when the run is over.
+ * Work waiting on Ligeirinho, and what to say when the run is over.
  *
- * A reading lands when the prism reaches the point, not when you click. That is
- * the whole reason the assistant exists, so the deferral is modelled here
- * rather than inside `service.sight` — the survey core stays synchronous and
- * DOM-free, and every test that drives it keeps working unchanged.
+ * Two kinds now, and one queue on purpose. A reading lands when the prism
+ * reaches the point and a monument goes in when he gets there with it, so both
+ * are the same shape: send him, wait, act on arrival. Two parallel queues would
+ * drift the moment one of them learned something about being cancelled that the
+ * other did not.
+ *
+ * The deferral lives here rather than inside `service.*` — the survey core
+ * stays synchronous and DOM-free, and every test that drives it keeps working.
+ *
+ *   {kind:'sight',  targetId}
+ *   {kind:'marco',  e, n}
  */
-let sightQueue = [];
+let errandQueue = [];
 let sightBatch = null;
 /** Settled when the queue drains, so `api.sight` can be awaited. */
-let sightDone = null;
+let errandDone = null;
 
-function enqueueSights(ids, { batch = false } = {}) {
-  sightQueue = [...ids];
+/** Which tool owns an errand, for deciding what a tool change cancels. */
+const TOOL_FOR_ERRAND = { sight: TOOL.VISADA, marco: TOOL.MARCO };
+
+function enqueueErrands(jobs, { batch = false } = {}) {
+  // A new errand replaces whatever he was doing — clicking a second spot is a
+  // change of mind, not a queue. Settling the outgoing promise first is what
+  // stops the replaced one hanging forever: `api.sight` and `api.placeMarcoAt`
+  // both await these, and an overwritten `errandDone` would never be called.
+  settleErrands({ ok: false, reason: 'superseded' });
+
+  errandQueue = [...jobs];
   sightBatch = batch ? { measured: 0, blocked: 0 } : null;
   const promise = new Promise((resolve) => {
-    sightDone = resolve;
+    errandDone = resolve;
   });
-  dispatchNextSight();
+  dispatchNextErrand();
   return promise;
 }
 
+const enqueueSights = (ids, opts) =>
+  enqueueErrands(ids.map((targetId) => ({ kind: 'sight', targetId })), opts);
+
 /** Finish the errand and release anything waiting on it. */
-function settleSights(result) {
-  const done = sightDone;
-  sightDone = null;
+function settleErrands(result) {
+  const done = errandDone;
+  errandDone = null;
   done?.(result);
 }
 
+/** Where an errand sends him. */
+function errandPoint(job) {
+  if (job.kind === 'marco') return { e: job.e, n: job.n };
+  const target = world?.entity(job.targetId);
+  return target ? { e: target.e, n: target.n } : null;
+}
+
 /** Send him to the head of the queue, or wind the errand up. */
-function dispatchNextSight() {
-  if (!sightQueue.length) {
+function dispatchNextErrand() {
+  if (!errandQueue.length) {
     if (sightBatch) {
       notifier.key(
         'sight.measureAllDone',
@@ -649,39 +785,61 @@ function dispatchNextSight() {
       refreshUI();
     }
     recall(assistant);
-    settleSights(lastSightResult);
+    settleErrands(lastErrandResult);
     return;
   }
-  const target = world?.entity(sightQueue[0]);
-  if (!target) {
-    sightQueue.shift();
-    dispatchNextSight();
+  const to = errandPoint(errandQueue[0]);
+  if (!to) {
+    errandQueue.shift();
+    dispatchNextErrand();
     return;
   }
-  sendTo(assistant, target.e, target.n);
+  sendTo(assistant, to.e, to.n);
 }
 
 /** Abandon whatever he was doing, and say why. */
-function cancelSights(reasonKey = null) {
-  if (!sightQueue.length && !sightBatch) return;
-  sightQueue = [];
+function cancelErrands(reasonKey = null) {
+  if (!errandQueue.length && !sightBatch) return;
+  errandQueue = [];
   sightBatch = null;
   recall(assistant);
   if (reasonKey) notifier.key(reasonKey, {}, 'warn');
-  settleSights({ ok: false, reason: reasonKey || 'cancelled' });
+  settleErrands({ ok: false, reason: reasonKey || 'cancelled' });
   refreshUI();
 }
 
-/** The verdict on the last reading, for anything awaiting the queue. */
-let lastSightResult = null;
+/** The verdict on the last errand, for anything awaiting the queue. */
+let lastErrandResult = null;
 
-/** The prism is on the point: take the reading. */
-function takeQueuedSight() {
-  const targetId = sightQueue.shift();
-  if (!targetId) return;
+/**
+ * He has stopped: do the thing he went there for.
+ *
+ * `arrived` and `gaveUp` part company here, and they should. A prism a couple
+ * of metres short of an unreachable corner is a slightly worse reading, which a
+ * real prism man calls anyway — but a monument planted somewhere along the way
+ * is simply a monument in the wrong place, and every coordinate derived from it
+ * afterwards would be wrong with no sign that anything went astray.
+ */
+function finishErrand({ arrived }) {
+  const job = errandQueue.shift();
+  if (!job) return;
 
-  const r = service.sight(targetId);
-  lastSightResult = r;
+  if (job.kind === 'marco') finishMarcoErrand(job, { arrived });
+  else finishSightErrand(job);
+
+  dispatchNextErrand();
+}
+
+/**
+ * Take the reading, whether he made it to the point or ran out of road.
+ *
+ * A prism a metre or two short of a corner in a marsh is what a real prism man
+ * calls anyway, so `gaveUp` is not a refusal here — which is exactly where a
+ * monument differs, and why the two are separate functions.
+ */
+function finishSightErrand(job) {
+  const r = service.sight(job.targetId);
+  lastErrandResult = r;
   if (r.ok) {
     if (sightBatch) sightBatch.measured++;
     else {
@@ -700,7 +858,24 @@ function takeQueuedSight() {
   }
 
   if (!sightBatch) refreshUI();
-  dispatchNextSight();
+}
+
+/** Plant it — but only if he actually got there. See `finishErrand`. */
+function finishMarcoErrand(job, { arrived }) {
+  if (!arrived) {
+    // He was sent to a spot that passed every check, so the ground is fine and
+    // the ROUTE is what failed. Planting it where he gave up would put a
+    // monument metres from where it was asked for, silently.
+    lastErrandResult = { ok: false, reason: 'auxCouldNotReach' };
+    notifier.key('marco.auxCouldNotReach', {}, 'warn');
+    refreshUI();
+    return;
+  }
+  const r = service.placeMarco(job.e, job.n);
+  lastErrandResult = r;
+  if (r.ok) notifier.key('marco.placedByAux', { id: r.id }, 'success');
+  else notifyMarcoRefusal(r);
+  refreshUI();
 }
 
 /**
@@ -1193,6 +1368,11 @@ async function prepareWorld(seed, difficulty) {
     atlas.addDynamic(`building-${ent.id}`, made.pix, made.anchorX, made.anchorY);
   }
 
+  // A save stores the seed, not the valley, so the world comes back with every
+  // corner buried again. Put the crew's discoveries back before anybody looks
+  // at it — the same reason `service.rehydrate` replants the player's marcos.
+  applyRevealed(world, store.get().revealedMarks);
+
   ground?.invalidateAll();
   ground = makeGroundBaker(world.terrain);
   scene?.reset();
@@ -1254,6 +1434,12 @@ async function restoreGame(saved) {
   store.replace(saved, 'restore');
   const s = store.get();
   if (s.lang) setLanguage(s.lang);
+
+  // Added this round, and additive — a v2 save simply has no list yet. Filling
+  // it in here rather than bumping `SAVE_VERSION` is the point: a bump would
+  // run the migration chain, and the only migration that exists drops the job
+  // in flight. Nobody should lose a half-surveyed parcel over an empty array.
+  if (!Array.isArray(s.revealedMarks)) s.revealedMarks = [];
 
   await prepareWorld(s.seed, s.difficulty);
   service.rehydrate();
@@ -1552,6 +1738,22 @@ window.game = {
     placeMarco(e, n, label) {
       if (e != null) window.game.api.teleportPlayer(e, n);
       const r = service.placeMarco(player.e, player.n, label);
+      refreshUI();
+      return r;
+    },
+
+    /**
+     * Exactly what a click beyond arm's reach does: Ligeirinho runs there and
+     * plants it, so this WAITS for him. Resolves with the monument, or with the
+     * immediate refusal if the ground was never legal.
+     *
+     * Deliberately not a shortcut past the crew — `placeMarco` above is the
+     * at-your-feet path, and a probe that skipped the errand would be testing a
+     * game nobody plays.
+     */
+    async placeMarcoAt(e, n) {
+      const verdict = doPlaceMarco({ e, n });
+      const r = verdict?.then ? await verdict : verdict;
       refreshUI();
       return r;
     },

@@ -20,6 +20,7 @@ import { buildMemorial } from '../src/report/memorial.js';
 import { buildPlanta } from '../src/report/planta.js';
 import { areaOf } from '../src/survey/geometry.js';
 import { pointInPolygon } from '../src/core/math2d.js';
+import { revealMarksNear } from '../src/game/discovery.js';
 
 const SEED = 'sv-pipeline';
 
@@ -645,4 +646,151 @@ test('a traverse closes by dropping stations that never saw each other', () => {
   assert.ok(tr.nStations >= 3, 'a closed traverse needs at least three stations');
   // Beating 1:1000 is a low bar; the point is that it computed at all.
   assert.ok(tr.relDenominator > 1000, `relative precision 1:${Math.round(tr.relDenominator)} is implausibly poor`);
+});
+
+// ------------------------------------------- the corners you have to find ----
+
+test('a buried corner is unmeasurable until it is found, and measurable after', () => {
+  // The chain that was broken from the first commit: `visibleTargets` skips a
+  // hidden mark, so it never reaches `surveyed`, so `parcelProgress` never
+  // completes, so ENTREGA never unlocks. That is the whole of médio and difícil
+  // being undeliverable, and it turns on this one flag.
+  const seed = 'sv-buried';
+  const store = makeStore(makeInitialState({ seed, difficulty: 'dificil' }));
+  const world = buildWorld(seed, DIFFICULTY.dificil);
+  const service = makeService({ store, getWorld: () => world, bus, EV });
+
+  const parcel = world.parcels.find((p) => p.markIds.some((id) => world.entity(id).hidden));
+  assert.ok(parcel, 'difícil buries corners — that is the setting');
+  service.start(parcel.id);
+
+  const buriedId = parcel.markIds.find((id) => world.entity(id).hidden);
+  const buried = world.entity(buriedId);
+
+  // A station close enough to see it, so visibility is never the thing failing.
+  const a = findMarcoSpot(world, store, { e: buried.e + 6, n: buried.n });
+  const b = findMarcoSpot(world, store, { e: buried.e - 6, n: buried.n + 5 });
+  assert.ok(a && b, 'somewhere to stand near the corner');
+  const m1 = service.placeMarco(a.e, a.n);
+  const m2 = service.placeMarco(b.e, b.n);
+  const st = service.setupStation({ over: m1.id, backsight: m2.id, playerPos: a });
+  assert.equal(st.ok, true, `station: ${st.reason}`);
+
+  const listed = () => service.visibleTargets({}).some((v) => v.entity.id === buriedId);
+  assert.equal(listed(), false, 'a buried corner is not something the instrument offers');
+  assert.equal(service.parcelProgress().missing.includes(buriedId), true);
+
+  // Found on foot — which is exactly what the scrub is there to make you do.
+  revealMarksNear(world, [{ e: buried.e, n: buried.n }]);
+
+  assert.equal(listed(), true, 'once found it must be sightable, or the job is impossible');
+  const shot = service.sight(buriedId);
+  assert.equal(shot.ok, true, `sighting a found corner: ${shot.reason}`);
+  assert.equal(service.parcelProgress().missing.includes(buriedId), false, 'and it must count');
+});
+
+// --------------------------------------------------- marcos at a distance ----
+
+test('canPlaceMarco gives the same verdict placeMarco does', () => {
+  // They are one rule with two callers now: the click refuses instantly at the
+  // cursor, and Ligeirinho plants when he arrives. If the two ever disagree the
+  // player is told yes and then told no a second later, for no visible reason.
+  const seed = 'sv-canplace';
+  const store = makeStore(makeInitialState({ seed, difficulty: 'facil' }));
+  const world = buildWorld(seed, DIFFICULTY.facil);
+  const service = makeService({ store, getWorld: () => world, bus, EV });
+  const parcel = world.parcels[0];
+  service.start(parcel.id);
+
+  const spot = findMarcoSpot(world, store, parcel.centroid);
+  assert.deepEqual(service.canPlaceMarco(spot.e, spot.n), { ok: true });
+  assert.equal(service.placeMarco(spot.e, spot.n).ok, true);
+
+  // Now the same spot is taken, and both must say so identically.
+  const taken = service.canPlaceMarco(spot.e + 0.3, spot.n);
+  const tried = service.placeMarco(spot.e + 0.3, spot.n);
+  assert.equal(taken.ok, false);
+  assert.equal(tried.ok, false);
+  assert.equal(taken.reason, tried.reason, 'the preview and the act must give the same reason');
+
+  // Out of stock is a refusal the preview has to know about too, or the player
+  // watches him run 40 m to plant a monument that was never in the bag.
+  store.get().inventory.marcos = 0;
+  const empty = findMarcoSpot(world, store, parcel.centroid);
+  assert.equal(service.canPlaceMarco(empty.e, empty.n).reason, 'noMarcosLeft');
+  assert.equal(service.placeMarco(empty.e, empty.n).reason, 'noMarcosLeft');
+});
+
+// -------------------------------------------------- a station off a marco ----
+
+test('a free station can be fixed from open ground with two points in sight', () => {
+  // The case estação livre exists for. Until this round the dialog would not
+  // open unless a monument was within a metre, so the one place it was offered
+  // was the one place it is not needed.
+  const seed = 'sv-freeground';
+  const store = makeStore(makeInitialState({ seed, difficulty: 'facil' }));
+  const world = buildWorld(seed, DIFFICULTY.facil);
+  const service = makeService({ store, getWorld: () => world, bus, EV });
+  const parcel = world.parcels[0];
+  service.start(parcel.id);
+
+  const a = findMarcoSpot(world, store, parcel.centroid);
+  const b = findMarcoSpot(world, store, { e: parcel.centroid.e + 30, n: parcel.centroid.n + 8 });
+  const m1 = service.placeMarco(a.e, a.n);
+  const m2 = service.placeMarco(b.e, b.n);
+  assert.equal(service.setupStation({ over: m1.id, backsight: m2.id, playerPos: a }).ok, true);
+
+  // A third, so that standing anywhere still leaves two others in view: a point
+  // you are standing on is not one you can resect off.
+  const c = findMarcoSpot(world, store, { e: parcel.centroid.e + 10, n: parcel.centroid.n - 28 });
+  const m3 = service.placeMarco(c.e, c.n);
+  service.sight(`marco-${m3.id}`);
+
+  // Somewhere off every monument that can see at least two of them.
+  let stand = null;
+  for (let r = 8; r <= 40 && !stand; r += 2) {
+    for (let i = 0; i < 24; i++) {
+      const th = (i / 24) * Math.PI * 2;
+      const e = parcel.centroid.e + Math.cos(th) * r;
+      const n = parcel.centroid.n + Math.sin(th) * r;
+      if (!world.canSetupTripod(e, n).ok) continue;
+      if (store.get().network.some((cp) => Math.hypot(cp.trueE - e, cp.trueN - n) < 5)) continue;
+      if (service.visibleKnownPoints({ e, n }).length >= 2) {
+        stand = { e, n };
+        break;
+      }
+    }
+  }
+  assert.ok(stand, 'this world has somewhere to stand with two monuments in view');
+
+  const free = service.setupFreeStation({ playerPos: stand });
+  assert.equal(free.ok, true, `free station: ${free.reason}`);
+  assert.equal(free.setup.mode, 'free');
+  assert.ok(free.resection.n >= 2, 'fixed on at least two points');
+  // It solved for where the tripod actually is, so the fit is not just internally
+  // consistent — it landed on the ground the player is standing on.
+  const slip = Math.hypot(free.setup.trueE - stand.e, free.setup.trueN - stand.n);
+  assert.ok(slip < 0.01, `the setup moved ${slip.toFixed(3)} m from where it was put down`);
+});
+
+test('a point you are standing on cannot fix you', () => {
+  // The old gate counted every coordinated monument, including the one under
+  // the tripod, which is not an observation anybody can take.
+  const seed = 'sv-freeground';
+  const store = makeStore(makeInitialState({ seed, difficulty: 'facil' }));
+  const world = buildWorld(seed, DIFFICULTY.facil);
+  const service = makeService({ store, getWorld: () => world, bus, EV });
+  const parcel = world.parcels[0];
+  service.start(parcel.id);
+
+  const a = findMarcoSpot(world, store, parcel.centroid);
+  const b = findMarcoSpot(world, store, { e: parcel.centroid.e + 30, n: parcel.centroid.n + 8 });
+  const m1 = service.placeMarco(a.e, a.n);
+  const m2 = service.placeMarco(b.e, b.n);
+  service.setupStation({ over: m1.id, backsight: m2.id, playerPos: a });
+
+  const here = service.visibleKnownPoints(a);
+  assert.ok(!here.some((p) => p.id === m1.id), 'the monument under your feet is not a sight');
+  assert.equal(service.setupFreeStation({ playerPos: a }).reason, 'needTwoKnownPoints');
+  void m2;
 });

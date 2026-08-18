@@ -251,10 +251,10 @@ export function makeScene({ app, camera, atlas, ground }) {
     for (const ent of w.spatial.queryRect(view.minE, view.minN, view.maxE, view.maxN)) {
       if (ent.kind === KIND.CERCA) continue; // drawn as lines
       if (!detail && (ent.kind === KIND.ARBUSTO || ent.kind === KIND.ROCHA)) continue;
-      if (ent.hidden) {
-        const d = Math.hypot(ent.e - playerState.e, ent.n - playerState.n);
-        if (d > ent.revealRadius) continue;
-      }
+      // Not yet found: buried in the scrub, and drawn only once the crew has
+      // turned it up. `game/discovery.js` clears the flag on the same radius
+      // this used to test for itself, so the two cannot disagree any more.
+      if (ent.hidden) continue;
       visible.push(ent);
     }
 

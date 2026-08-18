@@ -36,7 +36,7 @@ export default {
   'intro.runKeys': 'Shift',
   'intro.runDesc': 'Correr',
   'intro.mouseKeys': 'Mouse',
-  'intro.mouseDesc': 'Apontar e clicar alvos; roda do mouse aproxima e afasta',
+  'intro.mouseDesc': 'Apontar e clicar alvos; com a ferramenta de marco, clicar longe manda o Ligeirinho implantar lá; roda do mouse aproxima e afasta',
   'intro.rightDragKeys': 'Botão direito',
   'intro.rightDragDesc': 'Arrastar para olhar em volta',
   'intro.toolKeys': '1 – 7',
@@ -53,7 +53,7 @@ export default {
   'ligeirinho.title': 'Sua equipe',
   'ligeirinho.lead': 'Esse é o Ligeirinho, seu Auxiliar de Topografia!',
   'ligeirinho.body':
-    'Levantamento com estação total é serviço de dois. Você fica na luneta; ele leva o prisma até o ponto — e leva correndo. Clique num alvo e veja.',
+    'Levantamento com estação total é serviço de dois. Você fica na luneta; ele leva o prisma até o ponto — e leva correndo. Clique num alvo e veja. Ele também implanta marcos: clique longe de você e ele vai lá cravar.',
   'ligeirinho.hint':
     'Por isso a leitura só sai com você na estação: quem anda até o vértice é o Ligeirinho, não você.',
   'ligeirinho.ok': 'Bora trabalhar',
@@ -139,11 +139,14 @@ export default {
   'tip.noTarget': 'Nenhum alvo sob o cursor — aponte o mouse para um vértice, poste ou marco.',
 
   // ------------------------------------------------------------- marcos ----
+  'marco.placedByAux': 'Marco {id} implantado pelo Ligeirinho.',
+  'marco.auxSent': 'Ligeirinho foi implantar o marco.',
+  'marco.auxCouldNotReach': 'O Ligeirinho não conseguiu chegar até lá — o caminho está bloqueado.',
   'marco.placed': 'Marco {id} implantado.',
   'marco.badGround': 'Terreno inadequado para implantar um marco aqui.',
   'marco.tooCloseToMarco': 'Muito perto de outro marco — mantenha ao menos 1 m de distância.',
   'marco.noMarcosLeft': 'Estoque de marcos esgotado.',
-  'marco.hint': 'Clique num ponto de solo firme para implantar um marco.',
+  'marco.hint': 'Espaço implanta um marco aos seus pés; clique num ponto de solo firme mais longe e o Ligeirinho vai implantá-lo lá.',
 
   // ------------------------------------------------------------- tripé -----
   'tripod.ok': 'Terreno adequado para o tripé.',
@@ -160,14 +163,15 @@ export default {
   'station.orientMode': 'Modo de orientação',
   'station.zeroBacksight': 'Zerar na ré',
   'station.zeroBacksightHelp': 'A leitura na ré é forçada a 0°00\'00". O azimute sai da constante de orientação.',
-  'station.byAzimuth': 'Orientar pelo azimute',
-  'station.byAzimuthHelp': 'O limbo é ajustado para ler diretamente o azimute da ré.',
   'station.datumTitle': 'Este é o primeiro serviço: nasce aqui o sistema de coordenadas',
   'station.datumHelp': 'Origem local arbitrária neste marco; o Norte é o Norte do mapa, e todos os azimutes são medidos a partir dele.',
   'station.origin': 'Coordenadas de partida',
   'station.installed': 'Estação instalada sobre {id}, orientada em {backsight}.',
   'station.theta0': 'Constante de orientação θ₀',
   'station.freeStation': 'Estação livre',
+  'station.freeOnlyHere': 'Não há marco ao seu alcance aqui — mas dá para fixar a estação por interseção.',
+  'station.visibleKnown': 'Pontos de coordenadas conhecidas visíveis daqui: {n} (mínimo 2).',
+  'station.noMarcoNoFix': 'Aproxime-se de um marco para instalar sobre ele, ou vá até um ponto de onde enxergue ao menos dois pontos conhecidos.',
   'station.freeStationHelp': 'Instale onde quiser e vise dois ou mais pontos conhecidos.',
   'station.needTwoKnownPoints': 'A estação livre exige ao menos dois pontos de coordenadas conhecidas.',
   'station.notEnoughVisible': 'Não há pontos conhecidos suficientes visíveis daqui.',
@@ -376,6 +380,7 @@ export default {
   'tutorial.deliver': 'Entregue a planta e o memorial descritivo',
 
   // ------------------------------------------------------------ avisos -----
+  'notify.markFound': 'Vértice {label} encontrado no mato — agora dá para visá-lo.',
   'notify.saved': 'Progresso salvo.',
   'notify.saveCorrupt': 'O jogo salvo estava corrompido e foi arquivado. Começando de novo.',
   'notify.travelled': 'Deslocamento rápido: {dist} m, {time} de caminhada debitados.',

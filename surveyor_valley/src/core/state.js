@@ -106,6 +106,17 @@ export function makeInitialState(overrides = {}) {
     network: [],
     /** Per-parcel campaign progress, keyed by parcel id. */
     parcels: {},
+    /**
+     * Boundary marks the crew has found, by entity id.
+     *
+     * Campaign-scoped rather than per-service, and deliberately: a vertex
+     * shared by two neighbouring parcels is ONE entity (`scatter.js` dedupes by
+     * `v.key`), so having dug it out of the scrub while surveying one holding
+     * must still count when you take the job next door.
+     *
+     * Additive, so a save written before this existed loads unchanged.
+     */
+    revealedMarks: [],
     activeService: null,
     settings: {
       /** Screen pixels per metre; must be a rung of the camera's zoom ladder. */

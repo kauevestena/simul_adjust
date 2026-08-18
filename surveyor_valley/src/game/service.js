@@ -38,8 +38,12 @@ const MARCO_MIN_SEPARATION = 1.0;
  * whole parcel from wherever they had wandered off to. That is the one thing a
  * total station cannot do, and it is why Ligeirinho exists: somebody has to
  * carry the prism, and it is not the person behind the eyepiece.
+ *
+ * Exported because it now carries a third phrasing of the same idea: a click
+ * inside this radius is a click on your own boots, which you deal with
+ * yourself, and one outside it is an errand for the assistant.
  */
-const OCCUPY_RADIUS = 1.0;
+export const OCCUPY_RADIUS = 1.0;
 
 /**
  * @param {() => ({e:number,n:number}|null)} [p.getPlayerPos]
@@ -109,10 +113,22 @@ export function makeService({ store, getWorld, bus, EV, getPlayerPos = () => nul
    * Materialize a monument. It gets TRUE coordinates immediately (that is where
    * it physically is) but no surveyed coordinates until something measures it.
    */
-  function placeMarco(e, n, label = null) {
+  /**
+   * May a monument go in here?
+   *
+   * Split out because a marco is no longer always planted at the player's feet:
+   * a click beyond arm's reach sends Ligeirinho, and the refusal has to arrive
+   * at the CLICK rather than a second later when he gets there. Same reasoning
+   * as the line-of-sight check before a sight — the ground does not change
+   * while he runs, so making the player wait to be told the spot was never
+   * legal is worse feedback than an instant no.
+   *
+   * `placeMarco` calls this, so the two cannot drift: one description of the
+   * rule, which is the invariant `game/tools.js` states about itself.
+   */
+  function canPlaceMarco(e, n) {
     const world = getWorld();
-    const svc = service();
-    if (!svc) return { ok: false, reason: 'noService' };
+    if (!service()) return { ok: false, reason: 'noService' };
     if (state().inventory.marcos <= 0) return { ok: false, reason: 'noMarcosLeft' };
 
     if (!canStand(world, e, n)) return { ok: false, reason: 'badGround' };
@@ -124,6 +140,14 @@ export function makeService({ store, getWorld, bus, EV, getPlayerPos = () => nul
         return { ok: false, reason: 'tooCloseToMarco' };
       }
     }
+    return { ok: true };
+  }
+
+  function placeMarco(e, n, label = null) {
+    const world = getWorld();
+    const svc = service();
+    const verdict = canPlaceMarco(e, n);
+    if (!verdict.ok) return verdict;
 
     const id = label || `M${state().network.length + 1}`;
     const cp = makeControlPoint({
@@ -257,6 +281,32 @@ export function makeService({ store, getWorld, bus, EV, getPlayerPos = () => nul
   }
 
   /**
+   * Which coordinated points could be sighted from a spot on open ground.
+   *
+   * The free station's whole precondition, answerable BEFORE the tripod goes
+   * down — so the dialog can say "3 pontos conhecidos visíveis daqui" instead of
+   * letting the player commit and then refusing. `setupFreeStation` uses it too,
+   * so what the dialog promises and what the setup requires are the same list.
+   */
+  function visibleKnownPoints(playerPos, { maxDist = 320 } = {}) {
+    const world = getWorld();
+    if (!playerPos || !world) return [];
+    const from = { e: playerPos.e, n: playerPos.n };
+    const out = [];
+    for (const cp of state().network) {
+      if (cp.E == null) continue;
+      const target = truePositionOf(cp.id);
+      if (!target) continue;
+      const d = Math.hypot(target.trueE - from.e, target.trueN - from.n);
+      if (d > maxDist || d < 0.5) continue;
+      const los = world.lineOfSight(from, { e: target.trueE, n: target.trueN }, { targetId: cp.id });
+      if (!los.clear) continue;
+      out.push({ id: cp.id, label: cp.label, distance: d });
+    }
+    return out.sort((a, b) => a.distance - b.distance);
+  }
+
+  /**
    * Free station: stand anywhere sensible, sight two or more known points, and
    * let the Helmert fit tell you where you are.
    */
@@ -268,9 +318,13 @@ export function makeService({ store, getWorld, bus, EV, getPlayerPos = () => nul
     const tripod = world.canSetupTripod(playerPos.e, playerPos.n);
     if (!tripod.ok) return { ok: false, reason: tripod.reason, detail: tripod.detail };
 
+    // Default to what can actually be seen from here, which is the same list
+    // the dialog counted. An explicit `targets` stays possible for the probe.
+    const ids = targets ?? visibleKnownPoints(playerPos).map((p) => p.id);
+
     const known = {};
     const usable = [];
-    for (const id of targets) {
+    for (const id of ids) {
       const k = knownPositionOf(id);
       if (!k) continue;
       known[id] = { E: k.E, N: k.N };
@@ -934,7 +988,9 @@ export function makeService({ store, getWorld, bus, EV, getPlayerPos = () => nul
     clock,
     start,
     placeMarco,
+    canPlaceMarco,
     canOccupy,
+    visibleKnownPoints,
     setupStation,
     setupFreeStation,
     sight,

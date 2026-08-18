@@ -162,11 +162,16 @@ export function resolveLook(look = {}) {
 /**
  * Ligeirinho, fixed. Checked shirt, denim, straw hat, prism pole — and no
  * hi-vis, so the eye can tell in one frame which of the two is the player.
+ *
+ * The clothes are what distinguish him, not the face: the player may pick any
+ * of the five tones, so a look that leaned on skin alone would collide with
+ * whichever one they chose. Ruivo under straw is the caipira, and it also keeps
+ * him off a fair player's default pairing, which is louro.
  */
 export const LIGEIRINHO_LOOK = {
   body: 'm',
-  skin: SKIN_TONES[3].ramp,
-  hair: HAIR_TONES[1].ramp,
+  skin: SKIN_TONES[0].ramp,
+  hair: HAIR_TONES[3].ramp,
   hat: HAT_STYLES[1],
   shirt: P.plaid,
   vest: P.plaidDark,

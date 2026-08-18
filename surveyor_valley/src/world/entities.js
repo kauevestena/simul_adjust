@@ -63,7 +63,17 @@ export function makeEntity(kind, e, n, extra = {}) {
     scale: extra.scale ?? 1,
     rot: extra.rot ?? 0,
     label: extra.label || null,
-    /** Overgrown corners only become visible from close by, on `dificil`. */
+    /**
+     * NOT YET FOUND. An overgrown corner starts buried and is cleared for good
+     * by `game/discovery.js` once the crew has been within `revealRadius` — it
+     * is a discovery, not a draw distance, which is why nothing sets it back.
+     *
+     * It used to be read as a pure render rule while every path deciding what
+     * the instrument may be pointed at skipped hidden marks outright, so a
+     * buried corner could be seen and never measured. That left `parcelProgress`
+     * permanently incomplete: 67% of médio and 90% of difícil parcels could not
+     * be delivered at all.
+     */
     hidden: extra.hidden ?? false,
     revealRadius: extra.revealRadius ?? 15,
     ...(extra.parcelId ? { parcelId: extra.parcelId } : {}),
@@ -115,18 +125,4 @@ export function makeFence(points, o = {}) {
     ...rest,
   });
   return { line, posts };
-}
-
-/** Entities the instrument may be pointed at right now. */
-export function targetablesNear(entities, e, n, radius, difficultyHiding = 0) {
-  const out = [];
-  for (const ent of entities) {
-    if (!ent.targetable) continue;
-    const d = Math.hypot(ent.e - e, ent.n - n);
-    if (d > radius) continue;
-    // An overgrown corner has to be found on foot before it can be sighted.
-    if (ent.hidden && difficultyHiding > 0 && d > ent.revealRadius) continue;
-    out.push(ent);
-  }
-  return out;
 }

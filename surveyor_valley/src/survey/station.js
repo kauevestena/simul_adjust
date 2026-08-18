@@ -11,10 +11,17 @@ import { normalize360, normalize180, toDeg, secToDeg } from './units.js';
 import { azimuth, distance, polarPoint } from './geometry.js';
 import { drawCentring, observeDirection, observeDistance, distanceSigma, directionSigma, collimationFor, FACE } from './instrument.js';
 
-/** How the circle was oriented. Both workflows are taught, so both are offered. */
+/**
+ * How the circle was oriented.
+ *
+ * There used to be a third, "orientar pelo azimute" — dial the backsight's
+ * azimuth onto the limb so every reading IS an azimuth. It came out because you
+ * cannot do it: the circle reads what it reads when you point the telescope,
+ * and the one value the instrument lets you force is zero. Teaching a workflow
+ * the hardware does not have is worse than teaching one fewer.
+ */
 export const ORIENT = {
   ZERO_BACKSIGHT: 'zeroBacksight', // "zerar na ré": force the backsight to read 0°00'00"
-  BY_AZIMUTH: 'byAzimuth', // "orientar pelo azimute": set the circle to read Az directly
   ARBITRARY: 'arbitrary', // leave the circle wherever it sits and compute θ0
 };
 
@@ -56,9 +63,6 @@ export function setupOverKnownPoint({ over, backsight, kit, rng, orientMode = OR
   if (orientMode === ORIENT.ZERO_BACKSIGHT) {
     circleOffset = trueAzBs + pointingErr;
     backsightReading = 0;
-  } else if (orientMode === ORIENT.BY_AZIMUTH) {
-    circleOffset = trueAzBs + pointingErr - knownAzBs;
-    backsightReading = knownAzBs;
   } else {
     circleOffset = rng.range(0, 360);
     backsightReading = normalize360(trueAzBs + pointingErr - circleOffset);
