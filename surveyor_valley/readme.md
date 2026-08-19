@@ -256,9 +256,11 @@ On fácil the batch is a tour — Ligeirinho visits every target in turn, becaus
 a real sight with the prism actually on the point.
 
 **The owner pays at the sede, and the owner is standing there.** Delivering produces the
-planta and the memorial wherever you are standing and banks nothing; a waypoint then points
-at the farmhouse — with an arrow pinned to the edge of the screen when it is off view — and
-the money is settled when you get there. Every homestead now has its owner on the doorstep,
+planta and the memorial wherever you are standing and banks nothing; a toast names the
+property and the owner, and the money is settled when you knock. Nothing is drawn over the
+farmhouse to point at it — a pin and an edge arrow were there and came out again, because
+the building sits near the middle of the parcel you have spent the whole job walking, and
+the person you are looking for is standing outside it wearing their name. Every homestead now has its owner on the doorstep,
 not only the one whose job you are doing: the neighbours a memorial descritivo lists as
 confrontantes are people you have walked past, and reading a name off somebody's hat is a
 cheaper way to learn the cast than reading the document. The payment screen opens with the

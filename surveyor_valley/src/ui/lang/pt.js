@@ -329,7 +329,6 @@ export default {
   'delivery.incomplete': 'Ainda faltam {n} vértices por levantar.',
   'delivery.toSede': 'Levar à sede',
   'delivery.goToSede': 'Documentos prontos. Leve-os até a sede da {property} — {owner} espera na porta para acertar o pagamento.',
-  'sede.here': 'Sede da fazenda',
   'delivery.congratulations': 'Serviço concluído. {owner} agradece.',
   'delivery.pdfFailed': 'Não foi possível carregar o gerador de PDF. Use a impressão do navegador (Salvar como PDF).',
 

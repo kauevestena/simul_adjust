@@ -116,9 +116,10 @@ export function buildWorld(seed, difficulty) {
      *
      * The building has always been there, as scenery. It became load-bearing
      * when the owner started paying you at it, and a single definition of
-     * "close enough to the sede" is what stops the waypoint, the toast and the
-     * gate that opens the payment from drifting apart. `door` is a spot on
-     * walkable ground beside the house; the payment radius is measured to it.
+     * "close enough to the sede" is what stops the toast, the owner's own
+     * position and the gate that opens the payment from drifting apart. `door`
+     * is a spot on walkable ground beside the house; the owner stands on it and
+     * the payment radius is measured to it.
      *
      * Cached on the parcel: the search is a couple of hundred `isPassable`
      * probes and the answer never changes.

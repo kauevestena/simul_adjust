@@ -23,8 +23,6 @@ const COL = {
   panelEdge: '#5c3a1a',
   ink: '#3b2a16',
   inkSoft: '#6b5334',
-  /** The sede waypoint. The one thing on screen asking to be walked to. */
-  accent: '#d9622b',
 };
 
 /** Angles here honour the player's unit choice, exactly like every panel does. */
@@ -544,69 +542,12 @@ export function makeOverlays({ camera }) {
   }
 
   /**
-   * Where to go and get paid.
-   *
-   * A waypoint over the farmhouse once the documents are done, and an arrow
-   * pinned to the edge of the screen when the farmhouse is not on it. The
-   * off-screen case is the one that matters: the sede can be most of a parcel
-   * away, and "walk to the sede" with nothing on screen pointing at it is an
-   * instruction to wander.
-   */
-  function drawSedeWaypoint(ctx, sede, safe) {
-    if (!sede) return;
-    const { x, y } = camera.worldToScreen(sede.door.e, sede.door.n);
-    const { inside, ang, px, py } = frameEdge(x, y, safe);
-
-    ctx.save();
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-
-    if (inside) {
-      // A pin over the door, bobbing is not needed — it is the only one.
-      const top = y - 34;
-      ctx.beginPath();
-      ctx.moveTo(x, y - 8);
-      ctx.lineTo(x - 9, top);
-      ctx.lineTo(x + 9, top);
-      ctx.closePath();
-      ctx.fillStyle = COL.accent;
-      ctx.fill();
-      ctx.strokeStyle = COL.ink;
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-      label(ctx, t('sede.here'), x, top - 12, { size: 12, bold: true });
-      ctx.restore();
-      return;
-    }
-
-    // Clamped to the frame, pointing the way.
-    ctx.translate(px, py);
-    ctx.rotate(ang);
-    ctx.beginPath();
-    ctx.moveTo(14, 0);
-    ctx.lineTo(-8, -9);
-    ctx.lineTo(-8, 9);
-    ctx.closePath();
-    ctx.fillStyle = COL.accent;
-    ctx.fill();
-    ctx.strokeStyle = COL.ink;
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-    ctx.restore();
-
-    ctx.save();
-    const metres = Math.round(Math.hypot(sede.door.e - camera.e, sede.door.n - camera.n));
-    label(ctx, `${t('sede.here')} ${metres} m`, px, py + 24, { size: 12, bold: true });
-    ctx.restore();
-  }
-
-  /**
    * Pin a marker inside the part of the canvas nothing is covering.
    *
    * The overlay is drawn UNDER the HUD bar, the checklist and the tool rail, so
    * an edge marker placed by viewport alone can land squarely behind one of
-   * them and be, for the player, simply absent. Both things that clamp
-   * themselves to the frame go through here.
+   * them and be, for the player, simply absent. Anything that clamps itself to
+   * the frame goes through here.
    */
   function frameEdge(x, y, safe, m = 46) {
     const left = (safe?.left || 0) + m;
@@ -756,7 +697,7 @@ export function makeOverlays({ camera }) {
   }
 
   function draw(ctx, view) {
-    const { world, station, observations = [], setups = [], aim, tripodCheck, player, network = [], lang, showCornerLabels, sede, corners = [], safeArea } = view;
+    const { world, station, observations = [], setups = [], aim, tripodCheck, player, network = [], lang, showCornerLabels, corners = [], safeArea } = view;
     if (!world) return;
 
     if (tripodCheck) drawTripodDisc(ctx, tripodCheck.check, tripodCheck.e, tripodCheck.n);
@@ -769,7 +710,6 @@ export function makeOverlays({ camera }) {
     drawPointLabels(ctx, world, network, showCornerLabels);
     drawResidents(ctx, world, player);
     drawCorners(ctx, corners, safeArea);
-    drawSedeWaypoint(ctx, sede, safeArea);
     drawCompassAndScale(ctx, safeArea);
     if (aim) drawAimPanel(ctx, station, aim.target, aim.los, lang);
   }

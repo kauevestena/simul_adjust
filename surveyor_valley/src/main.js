@@ -221,9 +221,6 @@ function buildView(alpha = 1) {
     tripodCheck,
     lang: lang(),
     showCornerLabels: tools.active === TOOL.VISADA,
-    // Only once the documents are done and before the owner has paid: any
-    // earlier and it is a distraction, any later and it points at nothing.
-    sede: svc?.delivered && !svc.completed && world ? world.sedeFor(svc.parcelId) : null,
     light: lightAt(dayFraction(svc)),
     now: sceneClock,
   };
@@ -1231,9 +1228,12 @@ let lastReport = null;
 /**
  * Point the player at the farmhouse.
  *
- * The documents are done; the money is at the sede. Said once, by name, because
- * "go and get paid" with no indication of where is the kind of instruction that
- * turns into wandering — the waypoint in `overlays.js` does the rest.
+ * The documents are done; the money is at the sede. Said once, and by name:
+ * the property and the owner are what identify the place, and there is nothing
+ * drawn over it any more. There used to be a waypoint — a pin over the door and
+ * an arrow at the frame edge — and it was clutter over a building you have been
+ * walking past all job, near the middle of your own parcel, with its owner
+ * standing outside it wearing their name.
  */
 function announceSede() {
   const svc = store.get().activeService;

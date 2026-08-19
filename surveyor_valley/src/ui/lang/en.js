@@ -322,7 +322,6 @@ export default {
   'delivery.incomplete': '{n} corners are still unsurveyed.',
   'delivery.toSede': 'Take it to the farmhouse',
   'delivery.goToSede': 'Documents ready. Take them to the {property} farmhouse — {owner} is waiting at the door to settle up.',
-  'sede.here': 'Farmhouse',
   'delivery.congratulations': 'Job complete. {owner} thanks you.',
   'delivery.pdfFailed': 'The PDF generator could not be loaded. Use the browser’s print dialog (Save as PDF).',
 
