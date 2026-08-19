@@ -8,6 +8,7 @@
 import { formatAngle, fmtMetres, DEG } from '../survey/units.js';
 import { aimReadout, circleDial } from '../survey/readout.js';
 import { t, angleFormat } from '../ui/i18n.js';
+import { KIND } from '../world/entities.js';
 
 const COL = {
   ok: '#3f9d52',
@@ -495,9 +496,11 @@ export function makeOverlays({ camera }) {
   }
 
   /** North arrow and a scale bar, bottom-left, so the view is always readable. */
-  function drawCompassAndScale(ctx) {
-    const x = 26;
-    const y = camera.vh - 30;
+  function drawCompassAndScale(ctx, safe) {
+    // Nudged clear of whatever is in the bottom-left corner — which on a tablet
+    // is the thumbstick, sitting exactly where the scale bar used to be.
+    const x = 26 + (safe?.left || 0);
+    const y = camera.vh - 30 - (safe?.bottom || 0);
 
     ctx.save();
     ctx.fillStyle = 'rgba(255,255,255,0.85)';
@@ -549,11 +552,10 @@ export function makeOverlays({ camera }) {
    * away, and "walk to the sede" with nothing on screen pointing at it is an
    * instruction to wander.
    */
-  function drawSedeWaypoint(ctx, sede) {
+  function drawSedeWaypoint(ctx, sede, safe) {
     if (!sede) return;
     const { x, y } = camera.worldToScreen(sede.door.e, sede.door.n);
-    const m = 46;
-    const inside = x > m && x < camera.vw - m && y > m && y < camera.vh - m;
+    const { inside, ang, px, py } = frameEdge(x, y, safe);
 
     ctx.save();
     ctx.textAlign = 'center';
@@ -578,12 +580,6 @@ export function makeOverlays({ camera }) {
     }
 
     // Clamped to the frame, pointing the way.
-    const cx = camera.vw / 2;
-    const cy = camera.vh / 2;
-    const ang = Math.atan2(y - cy, x - cx);
-    const px = Math.max(m, Math.min(camera.vw - m, cx + Math.cos(ang) * camera.vw));
-    const py = Math.max(m, Math.min(camera.vh - m, cy + Math.sin(ang) * camera.vh));
-
     ctx.translate(px, py);
     ctx.rotate(ang);
     ctx.beginPath();
@@ -604,8 +600,163 @@ export function makeOverlays({ camera }) {
     ctx.restore();
   }
 
+  /**
+   * Pin a marker inside the part of the canvas nothing is covering.
+   *
+   * The overlay is drawn UNDER the HUD bar, the checklist and the tool rail, so
+   * an edge marker placed by viewport alone can land squarely behind one of
+   * them and be, for the player, simply absent. Both things that clamp
+   * themselves to the frame go through here.
+   */
+  function frameEdge(x, y, safe, m = 46) {
+    const left = (safe?.left || 0) + m;
+    const right = camera.vw - (safe?.right || 0) - m;
+    const top = (safe?.top || 0) + m;
+    const bottom = camera.vh - (safe?.bottom || 0) - m;
+    const inside = x > left && x < right && y > top && y < bottom;
+    const cx = camera.vw / 2;
+    const cy = camera.vh / 2;
+    const ang = Math.atan2(y - cy, x - cx);
+    return {
+      inside,
+      ang,
+      px: Math.max(left, Math.min(right, cx + Math.cos(ang) * camera.vw)),
+      py: Math.max(top, Math.min(bottom, cy + Math.sin(ang) * camera.vh)),
+    };
+  }
+
+  /**
+   * Every corner of the parcel being surveyed, and how far along it is.
+   *
+   * The one that matters is `unfound`. The boundary line is drawn from the true
+   * geometry whatever state the marks are in, so a buried corner used to show
+   * as a bend in the line with nothing on it — invisible, unclickable, and with
+   * nothing anywhere saying it was merely overgrown rather than absent. A
+   * dashed ring and a question mark turn "this game is broken" into "go and
+   * look over there", which is the instruction the scrub exists to give.
+   *
+   * `found` and `measured` are the cheap half of the same idea: the HUD counts
+   * 2/5 and never says which two, and the answer is only useful on the map.
+   */
+  function drawCorners(ctx, corners, safe) {
+    if (!corners.length || camera.zoom < 6) return;
+
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    let nearestUnfound = null;
+    let nearestD = Infinity;
+
+    for (const c of corners) {
+      const p = camera.worldToScreen(c.e, c.n);
+      // Culled against the UNCOVERED canvas: a ring drawn behind the checklist
+      // is not a ring the player has, and leaving it there also suppressed the
+      // arrow that would have pointed at it.
+      const onScreen =
+        p.x > (safe?.left || 0) - 20 &&
+        p.x < camera.vw - (safe?.right || 0) + 20 &&
+        p.y > (safe?.top || 0) - 20 &&
+        p.y < camera.vh - (safe?.bottom || 0) + 20;
+
+      if (c.state === 'unfound') {
+        const d = Math.hypot(c.e - camera.e, c.n - camera.n);
+        if (d < nearestD) {
+          nearestD = d;
+          nearestUnfound = { corner: c, screen: p };
+        }
+      }
+      if (!onScreen) continue;
+
+      if (c.state === 'unfound') {
+        // Dashed, because the mark is believed rather than seen — and filled,
+        // because the boundary line runs straight through this spot and a glyph
+        // drawn on top of it is unreadable. The pale disc is what lifts the
+        // question mark off the line.
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 12, 0, Math.PI * 2);
+        ctx.fillStyle = COL.labelBg;
+        ctx.fill();
+        ctx.strokeStyle = COL.marginal;
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([4, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.font = '800 15px "Inter", system-ui, sans-serif';
+        ctx.fillStyle = COL.marginal;
+        ctx.fillText('?', p.x, p.y + 0.5);
+        label(ctx, c.label, p.x, p.y - 26, { size: 11 });
+      } else {
+        // A thin ring, so the boundary reads as a progress bar you walk around.
+        // Blue for found-but-not-yet-measured, green for done: the same two
+        // colours the sight lines already use, so this needs no legend.
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 9, 0, Math.PI * 2);
+        ctx.strokeStyle = c.state === 'measured' ? COL.ok : COL.sight;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+    }
+
+    // One arrow, for the nearest corner still to be found, and only when none
+    // is on screen. Per-corner arrows would ring the frame with up to four of
+    // them and say less than this one does.
+    if (nearestUnfound) {
+      const { x, y } = nearestUnfound.screen;
+      const { inside, ang, px, py } = frameEdge(x, y, safe);
+      if (!inside) {
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.rotate(ang);
+        ctx.beginPath();
+        ctx.moveTo(13, 0);
+        ctx.lineTo(-7, -8);
+        ctx.lineTo(-7, 8);
+        ctx.closePath();
+        ctx.fillStyle = COL.marginal;
+        ctx.fill();
+        ctx.strokeStyle = COL.ink;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.restore();
+
+        label(ctx, `${nearestUnfound.corner.label} · ${Math.round(nearestD)} m`, px, py + 24, { size: 12, bold: true });
+      }
+    }
+
+    ctx.restore();
+  }
+
+  /**
+   * Name the neighbour you are standing next to.
+   *
+   * The owners in a memorial descritivo are a wall of names — the confrontantes
+   * of every side of the parcel — and until now the only place they appeared
+   * was that document. Walking past somebody and reading who they are is a
+   * cheaper way to learn the cast than a table, so the label is the whole
+   * mechanic: no bubble, no dialogue tree, just a name over whoever is close
+   * enough to say hello to.
+   *
+   * Drawn from the spatial index rather than from a list on the view, because
+   * the answer is "who is within a few metres of the player" and that is
+   * precisely the query the index exists to answer.
+   */
+  const NAME_RADIUS = 10;
+
+  function drawResidents(ctx, world, player) {
+    if (!player) return;
+    for (const ent of world.spatial.queryCircle(player.e, player.n, NAME_RADIUS)) {
+      if (ent.kind !== KIND.MORADOR || !ent.label) continue;
+      if (Math.hypot(ent.e - player.e, ent.n - player.n) > NAME_RADIUS) continue;
+      const p = camera.worldToScreen(ent.e, ent.n);
+      // Clear of the head: the sprite is 34 art pixels tall and anchored at the
+      // feet, so anything under about 46 screen pixels sits on the hat.
+      label(ctx, ent.label, p.x, p.y - 48, { size: 11, bold: true });
+    }
+  }
+
   function draw(ctx, view) {
-    const { world, station, observations = [], setups = [], aim, tripodCheck, player, network = [], lang, showCornerLabels, sede } = view;
+    const { world, station, observations = [], setups = [], aim, tripodCheck, player, network = [], lang, showCornerLabels, sede, corners = [], safeArea } = view;
     if (!world) return;
 
     if (tripodCheck) drawTripodDisc(ctx, tripodCheck.check, tripodCheck.e, tripodCheck.n);
@@ -616,10 +767,11 @@ export function makeOverlays({ camera }) {
     drawFlashes(ctx);
     if (aim) drawAim(ctx, station, aim.target, aim.los, lang);
     drawPointLabels(ctx, world, network, showCornerLabels);
-    drawSedeWaypoint(ctx, sede);
-    drawCompassAndScale(ctx);
+    drawResidents(ctx, world, player);
+    drawCorners(ctx, corners, safeArea);
+    drawSedeWaypoint(ctx, sede, safeArea);
+    drawCompassAndScale(ctx, safeArea);
     if (aim) drawAimPanel(ctx, station, aim.target, aim.los, lang);
-    void player;
   }
 
   return { draw, flashBlocked };

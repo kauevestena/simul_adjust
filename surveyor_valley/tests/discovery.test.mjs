@@ -15,6 +15,7 @@ import assert from 'node:assert/strict';
 
 import { revealMarksNear, applyRevealed, REVEAL_RADIUS } from '../src/game/discovery.js';
 import { buildWorld } from '../src/world/world.js';
+import { canStand } from '../src/game/player.js';
 import { DIFFICULTY } from '../src/core/state.js';
 
 const world = buildWorld('sv-discovery', DIFFICULTY.dificil);
@@ -131,17 +132,62 @@ test('no parcel is impossible to deliver', () => {
   // findable on the walk around it, because `parcelProgress` demands all of
   // them and ENTREGA is locked until it is complete. Before discovery existed
   // this failed on 67% of médio parcels and 90% of difícil ones.
+  //
+  // It asserts the entity EXISTS before asking whether it is buried, and that
+  // is not pedantry: written as `w.entity(id)?.hidden`, a corner whose entity
+  // was missing altogether read as "not buried" and sailed through — the one
+  // failure that would be worst of all, silently excused by the shape of the
+  // check meant to catch it.
   for (const seed of ['sv-d1', 'sv-d2', 'sv-d3', 'sv-d4', 'sv-d5']) {
     for (const level of ['facil', 'medio', 'dificil']) {
       const w = buildWorld(seed, DIFFICULTY[level]);
       for (const parcel of w.parcels) {
         revealMarksNear(w, perimeter(parcel));
-        const buried = parcel.markIds.filter((id) => w.entity(id)?.hidden);
-        assert.equal(
-          buried.length,
-          0,
-          `${seed}/${level}/${parcel.id}: ${buried.length} corner(s) unmeasurable, so the job cannot be delivered`,
-        );
+        for (const id of parcel.markIds) {
+          const ent = w.entity(id);
+          assert.ok(ent, `${seed}/${level}/${parcel.id}: ${id} has no entity, so it can never be sighted`);
+          assert.equal(
+            ent.hidden,
+            false,
+            `${seed}/${level}/${parcel.id}/${ent.label}: still buried after the perimeter walk, so the job cannot be delivered`,
+          );
+        }
+      }
+    }
+  }
+});
+
+test('every corner can be sighted from somewhere a tripod can stand', () => {
+  // The other half of "measurable", and the half nothing asserted. Finding a
+  // corner is worth nothing if no legal setup has a line to it: the player
+  // would walk to it, watch it appear, and still never be able to record it.
+  //
+  // Deliberately uses the game's own `canSetupTripod` and `lineOfSight` rather
+  // than an approximation — `world.js#ensureClosableRing` says exactly why, and
+  // a guarantee checked against a copy of the predicates is not a guarantee.
+  for (const seed of ['sv-s1', 'sv-s2']) {
+    for (const level of ['facil', 'medio', 'dificil']) {
+      const w = buildWorld(seed, DIFFICULTY[level]);
+      for (const parcel of w.parcels) {
+        for (const id of parcel.markIds) {
+          const c = w.entity(id);
+          assert.ok(c, `${id} has no entity`);
+          let line = null;
+          for (let r = 3; r <= 140 && !line; r += 3) {
+            const steps = Math.max(20, Math.round(r * 1.2));
+            for (let i = 0; i < steps; i++) {
+              const a = (i / steps) * Math.PI * 2;
+              const e = c.e + Math.cos(a) * r;
+              const n = c.n + Math.sin(a) * r;
+              if (!canStand(w, e, n)) continue;
+              if (!w.canSetupTripod(e, n).ok) continue;
+              if (!w.lineOfSight({ e, n }, { e: c.e, n: c.n }, { targetId: c.id }).clear) continue;
+              line = { e, n };
+              break;
+            }
+          }
+          assert.ok(line, `${seed}/${level}/${parcel.id}/${c.label}: no tripod site anywhere has a line to it`);
+        }
       }
     }
   }

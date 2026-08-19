@@ -63,6 +63,14 @@ export const P = {
   straw: ramp('#e3c069', 3),
   denim: ramp('#5b6b86', 3),
 
+  // The landowners. Sunday clothes rather than field kit — nobody who owns the
+  // farm is dressed for holding a prism pole — and deliberately outside both
+  // crew palettes: no hi-vis, no plaid, no denim.
+  linen: ramp('#d9c7a2', 3),
+  chita: ramp('#b06a86', 3),
+  khaki: ramp('#8f8455', 3),
+  camisa: ramp('#7fa8a0', 3),
+
   instrument: ramp('#3a4650', 3),
   instrumentTrim: ramp('#f2c14e', 3),
   lens: ramp('#7fd0f0', 3),
@@ -180,6 +188,48 @@ export const LIGEIRINHO_LOOK = {
   wearsVest: false,
   carriesPole: true,
 };
+
+/**
+ * The landowners, one look per parcel.
+ *
+ * Six of them, so a valley never has two neighbours wearing the same clothes,
+ * and painted for BOTH bodies — which body an owner gets is decided by the name
+ * they carry (`world/names.js`), and the name comes out of a shuffle, so the
+ * atlas cannot know it. Twelve standing figures is 12 x 8 frames of 24x34, or
+ * about 78k pixels: nothing, and it buys a valley where the neighbours listed
+ * as confrontantes in the memorial are people you have walked past.
+ *
+ * None of them wears hi-vis or carries a pole. That is the whole visual grammar
+ * of this game — the vest is the player, the plaid and the pole are Ligeirinho,
+ * and everybody else is somebody who lives here.
+ */
+/**
+ * `vest` is the CHECK on the shirt here, not a garment: the painter reads it as
+ * a vest only when `wearsVest` is set, and draws two sparse crossing lines with
+ * it otherwise. Setting it to the shirt's own ramp is therefore how somebody
+ * gets a plain shirt — two of the six, or a row of neighbours all reads as one
+ * family in matching flannel.
+ */
+export const OWNER_LOOKS = [
+  { skin: 1, hair: 4, hat: 0, shirt: P.linen, vest: P.linen, trousers: P.khaki },
+  { skin: 3, hair: 1, hat: 3, shirt: P.chita, vest: P.plaidDark, trousers: P.trousers },
+  { skin: 4, hair: 1, hat: 2, shirt: P.camisa, vest: P.camisa, trousers: P.khaki },
+  { skin: 2, hair: 0, hat: 0, shirt: P.khaki, vest: P.woodDark, trousers: P.trousers },
+  { skin: 0, hair: 4, hat: 3, shirt: P.linen, vest: P.chita, trousers: P.denim },
+  { skin: 2, hair: 3, hat: 1, shirt: P.camisa, vest: P.iron, trousers: P.khaki },
+];
+
+/**
+ * Resolve one of the looks above into ramps the painter can use.
+ *
+ * @param {'m'|'f'} body
+ * @param {number} variant  index into `OWNER_LOOKS`, wrapped
+ */
+export function ownerLook(body, variant = 0) {
+  const o = OWNER_LOOKS[((variant % OWNER_LOOKS.length) + OWNER_LOOKS.length) % OWNER_LOOKS.length];
+  const base = resolveLook({ body, skin: o.skin, hair: o.hair, hat: o.hat });
+  return { ...base, shirt: o.shirt, vest: o.vest, trousers: o.trousers, wearsVest: false, carriesPole: false };
+}
 
 /**
  * Ground colours per soil class, keyed by the ids in `world/terrain.js`.

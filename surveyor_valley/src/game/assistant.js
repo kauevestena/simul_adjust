@@ -59,6 +59,24 @@ export const ERRAND_CEILING = 12.0;
 /** How far behind the player he settles when there is nothing to measure. */
 export const FOLLOW_DISTANCE = 3.5;
 
+/**
+ * When a following assistant has to be picked up and put down again.
+ *
+ * The same failure the paddock fence used to cause, generalised: FOLLOW walks
+ * a straight line at the player and slides off whatever it hits, so anything
+ * concave is a trap with no exit and no timeout — a dash at least gives up,
+ * following never did. Dropped inside a paddock he was still in it after thirty
+ * seconds in 17 of 36 cases, and nothing in the game could have got him out.
+ *
+ * The fence is gone, so this is now insurance rather than a fix: a farmhouse,
+ * a tight stand of trees or any obstacle added later can do the same thing. He
+ * has to be far enough away that the player is not watching him closely, and
+ * stuck long enough that it is not a shrub he is about to round — at which
+ * point he turns up beside them, having taken the path he knows and you do not.
+ */
+export const CATCHUP_DISTANCE = 15;
+export const CATCHUP_TIMEOUT = 3.0;
+
 /** His body is narrower than the player's — he is carrying a pole, not a tripod. */
 export const ASSISTANT_RADIUS = 0.3;
 
@@ -126,7 +144,14 @@ export function sendTo(a, e, n) {
   return a;
 }
 
-/** Abandon the current errand and fall back in behind the player. */
+/**
+ * Abandon the current errand and fall back in behind the player.
+ *
+ * `bestDistance` and `stalledFor` are shared by both modes — they mean "closest
+ * he has been to what he is heading for" either way — so clearing them here is
+ * what stops a dash that ended stalled from counting toward the follow catch-up
+ * the instant he is recalled.
+ */
 export function recall(a) {
   a.target = null;
   a.mode = MODE.FOLLOW;
@@ -150,17 +175,23 @@ function facingFor(dx, dy, current) {
  * @param {object} world
  * @param {number} dt
  * @param {{player:{e:number,n:number}}} ctx
- * @returns {{arrived:boolean, gaveUp:boolean}}  `arrived` fires exactly once,
- *          on the step he reaches the point; `gaveUp` exactly once, on the step
- *          the timeout expires. The caller takes the reading on either.
+ * @returns {{arrived:boolean, gaveUp:boolean, caughtUp:boolean}}  `arrived`
+ *          fires exactly once, on the step he reaches the point; `gaveUp`
+ *          exactly once, on the step the timeout expires. The caller takes the
+ *          reading on either. `caughtUp` says he was wedged while following and
+ *          has been put down beside the player.
  */
 export function updateAssistant(a, world, dt, { player } = {}) {
   a.prevE = a.e;
   a.prevN = a.n;
 
-  const startE = a.e;
-  const startN = a.n;
-  const result = { arrived: false, gaveUp: false };
+  // Not const: the catch-up below moves him without him having WALKED, and the
+  // animation block at the foot of this function derives the walk cycle from
+  // ground actually covered. Left alone, a 40 m teleport would read as a 2400
+  // m/s sprint for one frame — legs, footstep audio and all.
+  let startE = a.e;
+  let startN = a.n;
+  const result = { arrived: false, gaveUp: false, caughtUp: false };
 
   if (a.mode === MODE.DASH && a.target) {
     a.dashTime += dt;
@@ -204,6 +235,29 @@ export function updateAssistant(a, world, dt, { player } = {}) {
       // which otherwise reads as a sprite being snapped to a leash.
       const ease = Math.min(1, (dist - FOLLOW_DISTANCE) / 1.5);
       run(world, a, dE / dist, dN / dist, FOLLOW_SPEED * ease * dt);
+    }
+
+    // Wedged behind something, and far enough away for it to matter.
+    const now = Math.hypot(player.e - a.e, player.n - a.n);
+    if (now < a.bestDistance - 0.05) {
+      a.bestDistance = now;
+      a.stalledFor = 0;
+    } else {
+      a.stalledFor += dt;
+    }
+    if (now > CATCHUP_DISTANCE && a.stalledFor >= CATCHUP_TIMEOUT) {
+      const spot = standableNear(world, player);
+      if (spot) {
+        a.e = spot.e;
+        a.n = spot.n;
+        a.prevE = spot.e;
+        a.prevN = spot.n;
+        startE = spot.e;
+        startN = spot.n;
+        result.caughtUp = true;
+      }
+      a.bestDistance = Infinity;
+      a.stalledFor = 0;
     }
   }
 
@@ -251,15 +305,21 @@ function run(world, a, ux, uy, distance) {
  * their back to a fence — so this spirals out rather than dropping him into it.
  */
 export function placeBeside(world, { e, n }) {
+  const spot = standableNear(world, { e, n });
+  return makeAssistant(spot || { e, n });
+}
+
+/** The nearest spot beside a point where he can actually stand, or null. */
+function standableNear(world, { e, n }) {
   for (let r = 1.2; r <= 6; r += 0.6) {
     for (let i = 0; i < 12; i++) {
       const a = (i / 12) * Math.PI * 2;
       const te = e + Math.cos(a) * r;
       const tn = n + Math.sin(a) * r;
-      if (canStand(world, te, tn, ASSISTANT_RADIUS)) return makeAssistant({ e: te, n: tn });
+      if (canStand(world, te, tn, ASSISTANT_RADIUS)) return { e: te, n: tn };
     }
   }
-  return makeAssistant({ e, n });
+  return null;
 }
 
 /** Interpolated position for rendering between fixed steps. */

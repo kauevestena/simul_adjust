@@ -19,7 +19,7 @@ import { resolveKit } from '../survey/instrument.js';
 import { setupOverKnownPoint, sightTarget, establishDatum, ORIENT } from '../survey/station.js';
 import { solveResection, reduceFreeStation } from '../survey/resection.js';
 import { computeTraverse, RULE } from '../survey/traverse.js';
-import { makeControlPoint, assignCoordinates, SOURCE, resetCounter } from '../survey/network.js';
+import { makeControlPoint, assignCoordinates, SOURCE, resetCounter, datumShift, accuracyReport } from '../survey/network.js';
 import { reducedPoints } from '../survey/observations.js';
 import { canStand } from './player.js';
 import { isSelfIntersecting } from '../core/math2d.js';
@@ -599,8 +599,11 @@ export function makeService({ store, getWorld, bus, EV, getPlayerPos = () => nul
      * loop can still satisfy every "saw both neighbours" check while closing at
      * something absurd like 1:4, so geometry is checked, not just visibility.
      */
+    /** Always the SURVEYED coordinate, never one this function's own output moved. */
+    const radiated = (cp) => (cp && cp.radiatedE != null ? { E: cp.radiatedE, N: cp.radiatedN } : cp);
+
     const coordOf = (station) => {
-      const cp = store.findControlPoint(station.id);
+      const cp = radiated(store.findControlPoint(station.id));
       return cp && cp.E != null ? { E: cp.E, N: cp.N } : null;
     };
 
@@ -765,8 +768,8 @@ export function makeService({ store, getWorld, bus, EV, getPlayerPos = () => nul
 
     // `order` is the loop that was actually solved, which may be a reordering
     // of the occupation sequence.
-    const first = store.findControlPoint(order[0].id);
-    const second = store.findControlPoint(order[1].id);
+    const first = radiated(store.findControlPoint(order[0].id));
+    const second = radiated(store.findControlPoint(order[1].id));
     if (!first || first.E == null || !second || second.E == null) {
       return { ok: false, reason: 'noStartCoordinates' };
     }
@@ -805,9 +808,80 @@ export function makeService({ store, getWorld, bus, EV, getPlayerPos = () => nul
         const cp = store.findControlPoint(c.id);
         if (cp) assignCoordinates(cp, { E: c.E, N: c.N, source: SOURCE.TRAVERSE });
       }
+      result.reradiated = reradiate(result);
       bus.emit(EV.TRAVERSE_COMPUTED, result);
     }
     return result;
+  }
+
+  /**
+   * Reduce the detail again, from the network the compensation just produced.
+   *
+   * Without this the whole cálculos panel was theatre. Compensation moved the
+   * STATIONS and stopped there, while every boundary corner kept the coordinate
+   * it had been radiated to from the unadjusted ones — so switching Bowditch to
+   * transit redistributed corrections that could not reach the planta, the
+   * memorial, the area or the score. Measured on a clean survey: stations moved
+   * up to 5 mm, corners moved 0.0000 m, and the delivered area was identical to
+   * the last millimetre.
+   *
+   * The orientation comes from INVERTING the adjusted coordinates rather than
+   * from the traverse's own leg azimuths, and deliberately: `coords` is the
+   * coordinate set being delivered, so detail reduced from it has to be
+   * consistent with it. It is also exactly the hand method — inverse the
+   * adjusted coordinates for the azimuth to the ré, then re-radiate.
+   *
+   * Setups outside the loop — a free station, a monument occupied once and
+   * never closed through — are left exactly as they were. Nothing adjusted
+   * them, so nothing here may pretend it did.
+   */
+  function reradiate(result) {
+    const svc = service();
+    const adjusted = new Map(result.coords.map((c) => [c.id, c]));
+    const done = [];
+    const skipped = [];
+
+    for (const setup of svc.setups) {
+      const at = setup.mode === 'known' ? adjusted.get(setup.overId) : null;
+      if (!at) {
+        // Named rather than passed over in silence: a student looking at a
+        // compensated coordinate list is entitled to know which of their
+        // occupations the compensation did not reach.
+        if (setup.observations.length) {
+          skipped.push({ id: setup.id, over: setup.overId, mode: setup.mode, n: setup.observations.length });
+        }
+        continue;
+      }
+
+      // The ré's adjusted position — from the loop if it is in it, otherwise
+      // from the network, which the loop has just rewritten anyway.
+      const bs = adjusted.get(setup.backsightId) || knownPositionOf(setup.backsightId);
+      if (!bs || bs.E == null) continue;
+
+      const theta0 = normalize360(azimuth(at.E, at.N, bs.E, bs.N) - setup.backsightReading);
+      for (const o of setup.observations) {
+        const az = normalize360(o.hz + theta0);
+        const p = polarPoint(at.E, at.N, az, o.distance);
+        // The observed reduction is left standing. A field book records what
+        // was measured and what it gave at the time; overwriting it would also
+        // mean a second run of the traverse compounded on the first instead of
+        // recomputing from the observations.
+        o.adjE = p.E;
+        o.adjN = p.N;
+        o.adjAzimuth = az;
+      }
+      done.push({ id: setup.id, over: setup.overId, n: setup.observations.length });
+    }
+
+    // Every reduction that feeds a coordinate goes through one cache, so
+    // rebuilding it here is what carries the adjustment into the ring, the
+    // area, the documents and the score.
+    surveyed = new Map();
+    for (const p of reducedPoints(svc.observations)) {
+      surveyed.set(p.id, { id: p.id, label: p.label, E: p.E, N: p.N, sights: p.sights });
+    }
+
+    return { adjusted: done, skipped };
   }
 
   // -------------------------------------------------------------- delivery ---
@@ -857,6 +931,27 @@ export function makeService({ store, getWorld, bus, EV, getPlayerPos = () => nul
     }
     const sideRms = Math.sqrt(sideErrors.reduce((s, v) => s + v * v, 0) / sideErrors.length);
 
+    // ---- where the error actually went --------------------------------------
+    //
+    // Area, perimeter and the side RMS are datum-invariant, which is why they
+    // came first and why they stay: they answer "how good was the survey?"
+    // without needing the frames aligned at all. They cannot answer "which
+    // corner did I get wrong?", and that is the question a student is left
+    // holding. `accuracyReport` was written for it and had never been called.
+    //
+    // The alignment is a pure translation — see `datumShift` — fitted on the
+    // control network rather than on the corners, so a corner's own error
+    // cannot leak into the shift and hide itself.
+    const shift = datumShift(state().network);
+    const control = accuracyReport(state().network, shift);
+    const corners = ring.map((p, i) => {
+      const dE = p.E - shift.dE - truth[i].E;
+      const dN = p.N - shift.dN - truth[i].N;
+      return { id: p.id, label: p.label || p.id, E: p.E, N: p.N, dE, dN, d: Math.hypot(dE, dN), sights: p.sights ?? 0 };
+    });
+    const cornerRms = Math.sqrt(corners.reduce((s, c) => s + c.d * c.d, 0) / corners.length);
+    const worstCorner = corners.reduce((w, c) => (w === null || c.d > w.d ? c : w), null);
+
     return {
       areaTrue: areaTrue.m2,
       areaSurveyed: areaSurveyed.m2,
@@ -867,6 +962,12 @@ export function makeService({ store, getWorld, bus, EV, getPlayerPos = () => nul
       perimeterError: perimSurveyed - perimTrue,
       sideRms,
       sideErrors,
+      /** Per-corner, in the aligned frame: the answer to "which one?". */
+      corners,
+      cornerRms,
+      worstCorner,
+      control,
+      datumShift: shift,
     };
   }
 

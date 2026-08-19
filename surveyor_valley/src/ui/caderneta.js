@@ -13,6 +13,65 @@ import { groupBySetup, derivedAngles } from '../survey/observations.js';
 /** Angles honour the player's unit choice: DMS or gon. */
 const fmtAngle = (deg, opts) => formatAngle(deg, angleFormat(), opts);
 
+/**
+ * The field book as a flat table, for a spreadsheet.
+ *
+ * A caderneta is the one artefact a student actually hands in, and until now it
+ * could not leave the browser. Flat rather than grouped on purpose: the setup
+ * context is repeated on every line so the file sorts, filters and pivots like
+ * data instead of like a printout.
+ *
+ * Both reductions are carried. `E`/`N` are what the observation gave when it
+ * was taken; `E ajust.`/`N ajust.` are the same observation reduced again from
+ * the compensated traverse — see `service.js#reradiate` — and having the pair
+ * side by side is exactly the comparison the cálculos panel is teaching.
+ */
+export function cadernetaRows({ setups, observations }) {
+  const header = [
+    t('caderneta.csvSetup'),
+    t('caderneta.csvOver'),
+    t('caderneta.csvBacksight'),
+    t('station.theta0'),
+    t('caderneta.colTarget'),
+    t('caderneta.colHz'),
+    'PD',
+    'PI',
+    '2C (")',
+    t('caderneta.colDist'),
+    t('caderneta.colAz'),
+    'E',
+    'N',
+    `E ${t('caderneta.csvAdjusted')}`,
+    `N ${t('caderneta.csvAdjusted')}`,
+  ];
+
+  const n = (v, dp) => (v == null || Number.isNaN(v) ? '' : v.toFixed(dp));
+  const rows = [header];
+
+  for (const { setup, rows: obs } of groupBySetup(setups, observations)) {
+    for (const o of obs) {
+      rows.push([
+        setup.id,
+        setup.mode === 'free' ? t('station.freeStation') : setup.overId ?? '',
+        setup.backsightId ?? '',
+        n(setup.theta0, 6),
+        o.label ?? o.targetId,
+        n(o.hz, 6),
+        n(o.hzPD, 6),
+        n(o.hzPI, 6),
+        n(o.twoCSec, 1),
+        n(o.distance, 4),
+        n(o.azimuth, 6),
+        n(o.E, 4),
+        n(o.N, 4),
+        n(o.adjE, 4),
+        n(o.adjN, 4),
+      ]);
+    }
+  }
+  return rows;
+}
+
 export function renderCaderneta({ setups, observations }) {
   const root = el('div.caderneta');
 

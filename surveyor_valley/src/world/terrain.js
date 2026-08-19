@@ -58,6 +58,29 @@ export function makeTerrain(seed, bounds) {
   const firmness = makeNoise(seed, 'firmness');
   const grain = makeNoise(seed, 'grain');
 
+  /**
+   * Places where the water is not allowed to reach, as {e, n, r2}.
+   *
+   * The soil field knows nothing about the parcels — it is noise, and the
+   * parcels are a Voronoi partition cut without ever consulting it — so a
+   * boundary corner can land in a pond. Measured over eight seeds, three of 261
+   * corners did, all of them within 2.5 m of dry land, which is what makes this
+   * the right shape of fix: they are shoreline corners, not corners in the
+   * middle of a lake.
+   *
+   * A marco is a concrete monument driven into the ground. One standing in open
+   * water is simply not a thing, and the crew cannot stand on it to hold the
+   * prism plumb either — so the shore gives way instead, by the metre or two it
+   * takes. The class it gives way TO is marsh, which already rings every lake
+   * in this generator (`wet > 0.42`), so what the player sees is a shoreline a
+   * little further out and never a suspicious dry disc.
+   *
+   * The same family of intervention as `scatter.js#clearSightlinesToCorners`,
+   * which already clears vegetation off a corner for the same reason: the
+   * generator does not get to make its own evidence unreachable.
+   */
+  const dryMargins = [];
+
   // The function is still the truth; this only spares the renderer from
   // re-evaluating four octaves per pixel.
   const cell = 1 / CELLS_PER_M;
@@ -79,7 +102,7 @@ export function makeTerrain(seed, bounds) {
     // dominates, and the ground a tripod cannot stand on — marsh, rock, loose
     // sand, water — stays occasional. Around a third of the valley being
     // unusable made planting a monument a chore rather than a decision.
-    if (wet > 0.56) return SOIL.AGUA;
+    if (wet > 0.56) return isDry(e, n) ? SOIL.BREJO : SOIL.AGUA;
     if (wet > 0.42) return SOIL.BREJO;
     if (firm > 0.54) return SOIL.ROCHA;
     if (wet < -0.46 && firm < -0.18) return SOIL.AREIA;
@@ -88,6 +111,15 @@ export function makeTerrain(seed, bounds) {
     if (fine < -0.28) return SOIL.CAMPO_SUJO;
     return SOIL.PASTO;
   }
+
+  const isDry = (e, n) => {
+    for (const m of dryMargins) {
+      const de = e - m.e;
+      const dn = n - m.n;
+      if (de * de + dn * dn <= m.r2) return true;
+    }
+    return false;
+  };
 
   function soilAt(e, n) {
     const cx = Math.floor((e - bounds.minE) * CELLS_PER_M);
@@ -111,6 +143,17 @@ export function makeTerrain(seed, bounds) {
 
   return {
     soilAt,
+    /**
+     * Keep the water off this spot. Clears the memo, so it may be called at any
+     * point in world building without the answer depending on what has already
+     * been sampled — `soilAt` caches per cell, and a cell sampled before the
+     * margin existed would otherwise keep its old class for ever.
+     */
+    addDryMargin(e, n, r) {
+      dryMargins.push({ e, n, r2: r * r });
+      memo.fill(255);
+    },
+    dryMargins,
     /** Uncached, for tests and for sub-metre sampling. */
     classify,
     isWalkable: (e, n) => soilAt(e, n).walkable,

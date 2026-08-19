@@ -21,6 +21,8 @@ import {
 } from '../src/survey/traverse.js';
 import { makeRng } from '../src/core/rng.js';
 import { toRad } from '../src/survey/units.js';
+import { datumShift, accuracyReport } from '../src/survey/network.js';
+import { buildErrorFigure, chooseExaggeration } from '../src/report/errorfigure.js';
 
 const near = (a, b, tol, msg) =>
   assert.ok(Math.abs(a - b) <= tol, `${msg ?? ''} expected ${a} ≈ ${b} (tol ${tol})`);
@@ -701,3 +703,112 @@ test('gon converts, formats and round-trips', () => {
   // An unknown format must not silently produce nothing.
   assert.equal(formatAngle(90, 'nonsense'), formatDMS(90));
 });
+
+// --------------------------------------------------- aligning the frames ----
+
+test('datumShift recovers a pure translation exactly', () => {
+  // The surveyed frame differs from the world's by a shift and nothing else —
+  // arbitrary origin, map north — so this has an exact answer, and the whole
+  // per-corner error report rests on it being exact.
+  const shift = { dE: 1000 - 73.25, dN: 1000 - 118.5 };
+  const net = [
+    { id: 'M1', trueE: 73.25, trueN: 118.5 },
+    { id: 'M2', trueE: 130.0, trueN: 96.25 },
+    { id: 'M3', trueE: 101.75, trueN: 160.0 },
+  ].map((p) => ({ ...p, E: p.trueE + shift.dE, N: p.trueN + shift.dN }));
+
+  const got = datumShift(net);
+  assert.ok(Math.abs(got.dE - shift.dE) < 1e-9, `dE ${got.dE}`);
+  assert.ok(Math.abs(got.dN - shift.dN) < 1e-9, `dN ${got.dN}`);
+  assert.equal(got.n, 3);
+
+  // With the shift removed there is nothing left, because nothing was wrong.
+  const report = accuracyReport(net, got);
+  assert.ok(report.rms < 1e-9, `residual ${report.rms}`);
+});
+
+test('accuracyReport returns the error that was actually injected', () => {
+  const shift = { dE: 900, dN: 900 };
+  const errors = [
+    { dE: 0.012, dN: -0.005 },
+    { dE: -0.003, dN: 0.021 },
+    { dE: 0.0, dN: 0.0 },
+    { dE: -0.009, dN: -0.009 },
+  ];
+  // Zero-mean, so the fitted shift is the true one and the residuals survive.
+  const mE = errors.reduce((s, e) => s + e.dE, 0) / errors.length;
+  const mN = errors.reduce((s, e) => s + e.dN, 0) / errors.length;
+
+  const net = errors.map((e, i) => ({
+    id: `P${i}`,
+    trueE: 100 + i * 17,
+    trueN: 200 - i * 11,
+    E: 100 + i * 17 + shift.dE + e.dE - mE,
+    N: 200 - i * 11 + shift.dN + e.dN - mN,
+  }));
+
+  const report = accuracyReport(net, datumShift(net));
+  assert.equal(report.n, 4);
+  report.items.forEach((item, i) => {
+    assert.ok(Math.abs(item.dE - (errors[i].dE - mE)) < 1e-9, `${item.id} dE`);
+    assert.ok(Math.abs(item.dN - (errors[i].dN - mN)) < 1e-9, `${item.id} dN`);
+  });
+  // The worst one is the one that is worst, and it is named.
+  const biggest = report.items.reduce((w, i) => (i.d > w.d ? i : w));
+  assert.equal(report.worst.id, biggest.id);
+});
+
+test('an unsurveyed network reports nothing rather than NaN', () => {
+  assert.deepEqual(datumShift([]), { dE: 0, dN: 0, n: 0 });
+  assert.equal(accuracyReport([]).n, 0);
+  assert.equal(accuracyReport([{ id: 'x', trueE: 1, trueN: 2, E: null, N: null }]).n, 0);
+});
+
+// -------------------------------------------------------- the error plot ----
+
+test('the error figure states its exaggeration and draws one vector per corner', () => {
+  // Every number on this drawing is a lie without the factor printed beside it:
+  // the vectors are millimetres shown at metres. So the factor is asserted to
+  // be on the sheet, not merely computed.
+  const corners = [
+    { label: 'V1', E: 1000, N: 1000, dE: 0.012, dN: -0.004, d: Math.hypot(0.012, 0.004) },
+    { label: 'V2', E: 1050, N: 1004, dE: -0.006, dN: 0.009, d: Math.hypot(0.006, 0.009) },
+    { label: 'V3', E: 1042, N: 1046, dE: 0.001, dN: 0.002, d: Math.hypot(0.001, 0.002) },
+    { label: 'V4', E: 998, N: 1039, dE: -0.008, dN: -0.001, d: Math.hypot(0.008, 0.001) },
+  ];
+  const fig = buildErrorFigure({ corners, t: (k, v) => `${k}:${JSON.stringify(v ?? {})}` });
+
+  assert.ok(fig.factor > 1, 'the vectors have to be magnified to be visible at all');
+  const texts = fig.drawList.items.filter((i) => i.t === 'text').map((i) => i.s);
+  assert.ok(texts.some((s) => s.includes('figureLegend') && s.includes(String(fig.factor))), 'the factor is printed');
+  assert.ok(texts.some((s) => s.includes('figureNote')), 'and so is "not part of the delivery"');
+
+  // One error line per corner that actually has an error.
+  const lines = fig.drawList.items.filter((i) => i.t === 'line');
+  assert.equal(lines.length, corners.length, 'one vector per corner');
+
+  // Nothing may wander off the sheet, or the worst corner is the one you cannot see.
+  for (const it of fig.drawList.items) {
+    for (const [x, y] of coordsOf(it)) {
+      assert.ok(x >= -1 && x <= fig.sheet.w + 1, `x ${x} is off the sheet`);
+      assert.ok(y >= -1 && y <= fig.sheet.h + 1, `y ${y} is off the sheet`);
+    }
+  }
+});
+
+test('the exaggeration is chosen for the worst vector, and is a round number', () => {
+  // 8% of a 50 m figure is 4 m; a 20 mm error therefore wants about 200x.
+  assert.equal(chooseExaggeration(0.02, 50), 200);
+  // A big blunder needs less magnification, not more.
+  assert.ok(chooseExaggeration(1.0, 50) < chooseExaggeration(0.02, 50));
+  // Degenerate inputs must not produce Infinity on a drawing.
+  assert.ok(Number.isFinite(chooseExaggeration(0, 50)));
+  assert.ok(Number.isFinite(chooseExaggeration(0.01, 0)));
+});
+
+function coordsOf(it) {
+  if (it.t === 'line') return [[it.x1, it.y1], [it.x2, it.y2]];
+  if (it.t === 'poly') return it.pts;
+  if (it.t === 'rect') return [[it.x, it.y], [it.x + it.w, it.y + it.h]];
+  return [[it.x, it.y]];
+}

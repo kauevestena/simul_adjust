@@ -57,14 +57,21 @@ export function latestForTarget(observations, targetId) {
  * Best available coordinate for every target that has been sighted, by taking
  * the mean of all reductions. Crude on purpose: averaging repeated sights is
  * exactly what the course teaches before any rigorous adjustment appears.
+ *
+ * `adjE/adjN` win when they are there. They are the same observation reduced
+ * again from a compensated traverse — see `service.js#reradiate` — and this one
+ * line is what carries the compensation out to the corners, the area and the
+ * documents. Preferring them HERE rather than at each call site means the
+ * reduction cache, the reload path and anything else reading points all inherit
+ * it without knowing the adjustment exists.
  */
 export function reducedPoints(observations) {
   const acc = new Map();
   for (const o of observations) {
     if (!acc.has(o.targetId)) acc.set(o.targetId, { id: o.targetId, label: o.label, E: 0, N: 0, k: 0 });
     const a = acc.get(o.targetId);
-    a.E += o.E;
-    a.N += o.N;
+    a.E += o.adjE ?? o.E;
+    a.N += o.adjN ?? o.N;
     a.k++;
   }
   return [...acc.values()].map((a) => ({

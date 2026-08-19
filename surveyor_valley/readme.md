@@ -55,13 +55,19 @@ memorial descritivo, without a browser.
   which is the difference between a walk cycle and a sprite scrubbing in place.
 - `tests/assistant.test.mjs` — Ligeirinho. Mostly the ways an errand can FAIL, because a
   reading now waits for him: a corner he cannot reach gives up rather than never arriving,
-  a merely long run is not mistaken for a stuck one, and a 45 m/s dash does not step over
-  a fence.
+  a merely long run is not mistaken for a stuck one, a 45 m/s dash does not step over a
+  fence, and one wedged behind something while following is picked up rather than lost.
+  The two fence tests build their own fence: nothing in the generator plants one any more,
+  and a property of the collision solver should not stop being tested because the valley
+  ran out of obstacles to test it with.
 - `tests/discovery.test.mjs` — finding the buried boundary corners, and the assertion the
   whole file exists for: **no parcel is impossible to deliver**. Before it, a corner that
   started hidden could be seen and never measured, so `parcelProgress` never completed —
   67% of médio parcels and 90% of difícil ones could not be delivered at all, from the
-  first commit onwards. It is the cheapest test here and the most valuable.
+  first commit onwards. It is the cheapest test here and the most valuable. It also asserts
+  each corner's entity EXISTS before asking whether it is buried: written the obvious way,
+  `w.entity(id)?.hidden`, a corner with no entity at all read as "not buried" and sailed
+  through the very check meant to catch it.
 - `tests/readout.test.mjs` — the live instrument face. That the circle reading inverts the
   reduction, that the angle from the ré is zero when aimed at the ré whatever the circle
   reads, that a free station reports no ré at all, and that the readout agrees with a real
@@ -156,6 +162,33 @@ tests/
   a marco, and a sight is taken even when he gives up short of the point while a monument
   is not — a prism two metres out is a slightly worse reading, a monument two metres out
   is simply in the wrong place.
+- **Compensating the traverse RE-RADIATES the detail.** `service.js#reradiate` inverts the
+  adjusted coordinates for the azimuth to the ré and reduces every observation again, which
+  is the hand method and the only reason the cálculos panel changes anything at all — it
+  used to move the stations and stop, leaving every corner where the unadjusted ones had
+  put it. The adjusted reduction lands in `adjE/adjN` BESIDE the observed one, never over
+  it: a caderneta that rewrote its own reductions would stop being a record, and keeping
+  them apart is also what makes a second run recompute instead of compound.
+- **A traverse is computed from the raw survey, never from its own last answer.**
+  `assignCoordinates` keeps `radiatedE/radiatedN`, and `buildTraverseInput` reads those.
+  Without it, rewriting the stations fed the next run a moved starting azimuth and
+  bowditch → transit → bowditch did not give the first answer back — so a student toggling
+  the rule to compare them was watching a drift.
+- **Truth is shown in exactly one place**: the debrief. `network.js#datumShift` removes the
+  arbitrary origin (the frames differ by a pure translation — arbitrary origin, map north),
+  and what is left is the error the player earned. The error plot is built by
+  `report/errorfigure.js` and is deliberately NOT part of the planta: the planta is the
+  deliverable and imitates a legal instrument.
+- **The overlay canvas is UNDER the HTML panels**, so anything pinned to an edge can be
+  drawn behind one and be, for the player, simply absent. `main.js#measureSafeArea` reports
+  what the panels cover and every edge marker clamps inside it. Each panel owns exactly ONE
+  edge — testing all four let the full-width HUD bar count as a 1280 px left inset *and* a
+  1280 px right inset, walling off the whole canvas.
+- **Touch joins `input.intent()` rather than bypassing it.** The thumbstick contributes a
+  unit direction and a deflection past 70% stands in for Shift, so `game/player.js` does
+  not know touch exists. `setPointerCapture` is wrapped, because it throws whenever the
+  pointer has already gone — and an uncaught throw there took the whole `pointerdown`
+  branch down with it, silently disabling pinch and two-finger pan.
 - **Documents are not part of the game skin.** `styles/report.css` stays clean white
   paper on purpose; a planta that looks like a game UI is a worse teaching artefact.
 
@@ -222,15 +255,39 @@ gate that opens; this one never does, so the button is hidden rather than shown 
 On fácil the batch is a tour — Ligeirinho visits every target in turn, because each one is
 a real sight with the prism actually on the point.
 
-**The owner pays at the sede.** Delivering produces the planta and the memorial wherever
-you are standing and banks nothing; a waypoint then points at the farmhouse — with an
-arrow pinned to the edge of the screen when it is off view — and the money is settled when
-you get there. The homestead was always in the world as scenery, but the paddock fence
-closed completely around it: measured by flood fill from the spawn, **only 54 of 72
-farmhouses could be reached on foot at all**. Leaving one side open as a gate takes that to
-108/108, and it does so without moving a single entity, so `world.hash()` is unchanged and
-saves written before the gate still line up with their valley. A sealed paddock could
-already trap a station site inside it, and a paddock without a gate was wrong anyway.
+**The owner pays at the sede, and the owner is standing there.** Delivering produces the
+planta and the memorial wherever you are standing and banks nothing; a waypoint then points
+at the farmhouse — with an arrow pinned to the edge of the screen when it is off view — and
+the money is settled when you get there. Every homestead now has its owner on the doorstep,
+not only the one whose job you are doing: the neighbours a memorial descritivo lists as
+confrontantes are people you have walked past, and reading a name off somebody's hat is a
+cheaper way to learn the cast than reading the document. The payment screen opens with the
+same face, painted from the same look as the sprite outside.
+
+Which body an owner is painted with is carried beside their name in `world/names.js` rather
+than guessed from it. A name is not a reliable guide to anybody, and inferring one from the
+ending of "Epaminondas" would be wrong sometimes and wrong in a way that reads as
+carelessness about the people these names belong to.
+
+**The paddock fence is gone.** It ringed every farmhouse, and it was a net: Ligeirinho
+dashes in a straight line and slides off what he hits, and nothing routes him around a
+concave obstacle or times a FOLLOW out. Dropped inside one he was still inside it after
+thirty seconds in **17 of 36 cases** — which is for ever, because nothing in the game could
+recover him, and a crew with no prism man silently plants monuments nowhere near where you
+asked. It had already cost the sede a gate for the same family of reason (a closed ring
+sealed the farmhouse in, and only 54 of 72 were reachable on foot). A yard you can walk into
+is worth more than scenery with a trap in it. `updateAssistant` also grew the general
+version of the cure: wedged, far away and getting no closer, he turns up beside you having
+taken the path he knows and you do not.
+
+**No boundary corner stands in open water.** The soil is a noise field and the parcels are
+a Voronoi partition cut without ever consulting it, so nothing stopped a corner landing in
+a pond — measured over eight seeds, three of 261 did, and a marco in a lake is not a thing:
+`canStand` refuses water, so the prism cannot be held plumb over it either. The WATER gives
+way rather than the corner moving, because the partition is exact and its exactness is what
+makes the confrontantes and the shared marcos true. It gives way to marsh, which already
+rings every lake in this generator, so what you see is a shoreline a couple of metres
+further out and never a suspicious dry disc.
 
 **Some corners have to be found before they can be measured.** On médio and difícil the
 generator buries a share of the boundary marks in scrub — 15% and 40% — so the job starts
@@ -245,6 +302,45 @@ measured — which keeps `parcelProgress` incomplete, which keeps ENTREGA locked
 over five seeds, **67% of médio parcels and 90% of difícil parcels could not be delivered
 at all**, from the first commit onwards. `tests/discovery.test.mjs` now asserts the
 opposite over fifteen worlds.
+
+**A buried corner announces itself.** The active parcel's boundary is drawn from the true
+geometry at all times, so before this the line simply BENT at a corner whose mark was still
+in the scrub — nothing on it, nothing clickable, and a click there answered "nenhum alvo
+sob o cursor", which was a lie. Every corner of the parcel you are surveying now carries
+its state: a dashed ring with a question mark for one nobody has found, blue for found and
+not yet measured, green for done, plus one arrow at the frame edge for the nearest corner
+still missing. Clicking a buried one says it is overgrown and how far you have to walk.
+Showing where they are is not a giveaway — the premise of the job is that the owner already
+walked the boundary and pointed them out; the walk, and on difícil the clock, still cost
+what they cost.
+
+**Compensating the traverse now reaches the survey.** The cálculos panel calls itself the
+didactic centrepiece and it is, but it used to change nothing: compensation rewrote the
+station coordinates and stopped there, while every boundary corner kept the coordinate it
+had been radiated to from the unadjusted ones. Measured on a clean survey — stations moved
+up to 5 mm, **corners moved 0.0000 m**, and the delivered area was identical to the
+millimetre. Now the detail is reduced again from the adjusted network, exactly as it is
+done by hand, and over sixteen surveys compensation improved the corner RMS in thirteen of
+them; the three it did not were the tightest closures, where the closure is mostly noise
+and redistributing it is as likely to hurt as help. Which is itself the lesson.
+
+**The debrief says WHICH corner you got wrong.** Area error, perimeter error and the side
+RMS are datum-invariant and answer "how good was this?"; none of them can answer "where did
+it go wrong?", and that is the only question a student can act on. There is now a table of
+per-corner errors, worst first, and a **carta de erros** — the surveyed polygon with an
+error vector at every corner, exaggerated by a stated factor because the vectors are
+millimetres on a fifty-metre figure. It never joins the planta or the PDF.
+
+**It runs on a tablet.** Movement was WASD-only, so a touchscreen could not walk — not
+awkward, unplayable: no reaching a corner, no finding a buried mark, no walking to the
+sede. There is a thumbstick, pinch to zoom (stepped to the same rungs, because the art is
+pixel-exact only at whole multiples of 16 px/m), two fingers to pan, and tap to act. The
+roteiro folds into its title bar, since on a 1024 px tablet it covered a quarter of the
+play area and silently swallowed every tap that landed on it.
+
+**The caderneta exports as CSV** — one row per observation with its setup context repeated,
+carrying both the observed reduction and the compensated one. It is the artefact a student
+hands in and it could not leave the browser.
 
 **A marco goes in at your feet, or wherever you point.** Space plants one where you stand;
 click firm ground further off and Ligeirinho runs out and plants it there. The ground is

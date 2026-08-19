@@ -25,7 +25,7 @@ export function clockFor(elapsedMs) {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
-export function makeHud(root, { onShop, onJobs, onBatch, onToggleSetting, audio } = {}) {
+export function makeHud(root, { onShop, onJobs, onBatch, onToggleSetting, onChecklistToggle, audio } = {}) {
   const field = (labelKey, id, cls = '') =>
     el(`div.hud-field${cls}`, {}, el('span.hud-label', { 'data-i18n': labelKey }), el('span.hud-value', { id }));
 
@@ -113,9 +113,40 @@ export function makeHud(root, { onShop, onJobs, onBatch, onToggleSetting, audio 
   const batchBar = el('div.field-actions', { hidden: true }, twoFaceBtn, batchBtn, gonBtn);
   root.append(batchBar);
 
-  const checklist = el('aside.checklist', {}, el('h3', { 'data-i18n': 'tutorial.title' }), el('ol.checklist-items'));
+  /**
+   * The roteiro, with a header you can fold it into.
+   *
+   * On a 1024 px tablet it covers a quarter of the play area, and a touch
+   * screen has no cursor to reveal that the panel is why a tap did nothing —
+   * the taps just vanish. The ≤720 px rule hides it outright, which is right
+   * for a phone and wrong for a tablet in landscape, where the roteiro is
+   * exactly the thing a student is following.
+   *
+   * So: a real button, folding it to its title bar. Collapsed by default where
+   * the pointer is coarse, open everywhere else.
+   */
+  const checklistToggle = el('button.checklist-toggle', {
+    type: 'button',
+    'aria-expanded': 'true',
+    onclick: () => setChecklistOpen(!checklistOpen),
+  }, el('span', { 'data-i18n': 'tutorial.title' }), el('span.checklist-caret', { text: '▾' }));
+
+  const checklist = el('aside.checklist', {}, checklistToggle, el('ol.checklist-items'));
+
+  let checklistOpen = !(typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches);
+
+  function setChecklistOpen(on, notify = true) {
+    checklistOpen = on;
+    checklist.classList.toggle('is-collapsed', !on);
+    checklistToggle.setAttribute('aria-expanded', String(on));
+    checklistToggle.querySelector('.checklist-caret').textContent = on ? '▾' : '▸';
+    // Not on the initial lay-out: that is not a change of state, and firing it
+    // there calls back into a module that is still being evaluated.
+    if (notify) onChecklistToggle?.();
+  }
 
   root.append(bar, checklist);
+  setChecklistOpen(checklistOpen, false);
 
   const byId = (id) => bar.querySelector(`#${id}`);
 
@@ -229,6 +260,11 @@ export function makeHud(root, { onShop, onJobs, onBatch, onToggleSetting, audio 
 
     toggleChecklist(on) {
       checklist.hidden = !on;
+    },
+
+    /** Fold the roteiro away — used when the session turns out to be touch. */
+    collapseChecklist() {
+      setChecklistOpen(false);
     },
   };
 }

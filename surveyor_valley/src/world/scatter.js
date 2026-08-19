@@ -10,7 +10,7 @@
 // traverse or a free station — the whole reason the harder difficulties are
 // harder in an interesting way rather than just a fiddlier way.
 
-import { makeTree, makeBush, makeRock, makeBoundaryMark, makeFence, makeBuilding } from './entities.js';
+import { makeTree, makeBush, makeRock, makeBoundaryMark, makeBuilding } from './entities.js';
 import { pointInPolygon } from '../core/math2d.js';
 
 /** Base plants per hectare, before the difficulty multiplier. */
@@ -102,7 +102,20 @@ export function scatterWorld(rng, terrain, bounds, parcels, difficulty) {
     });
   }
 
-  // ---- one homestead per parcel, plus a paddock fence ---------------------
+  // ---- one homestead per parcel ------------------------------------------
+  //
+  // The house used to come with a paddock fence ringing it, and that fence was
+  // a net. Dropped inside one, Ligeirinho never got out: he dashes in a
+  // straight line, slides along whatever he hits, and nothing in `assistant.js`
+  // ever routes him around a concave obstacle — measured, he was still inside
+  // the paddock after thirty seconds of following in 17 of 36 cases, which is
+  // for ever, because nothing recovers him. It had already cost the sede its
+  // gate for the same family of reason.
+  //
+  // It was scenery with a hazard attached, so it is gone. What it gave the
+  // world — targetable fence corners — the boundary marks and the building
+  // corners give better, and the farmyard now reads as a yard you can walk
+  // into.
   for (const parcel of parcels) {
     const c = parcel.centroid;
     const spot = findBuildableSpot(rng, terrain, parcel, c);
@@ -121,32 +134,6 @@ export function scatterWorld(rng, terrain, bounds, parcels, difficulty) {
         [spot.e - w / 2, spot.n + h / 2],
       ];
       entities.push(makeBuilding(ring, { id: `casa-${parcel.id}`, label: `Sede ${parcel.id}`, parcelId: parcel.id }));
-
-      // The paddock, as a fraction of the holding rather than a fixed ring —
-      // and with a GATE in it.
-      //
-      // It used to close completely around the farmhouse, which meant the sede
-      // could not be reached on foot at all: measured by flood fill from the
-      // spawn, only 54 of 72 parcels had a reachable homestead. That mattered
-      // little while the building was scenery and became a blocker the moment
-      // the owner started paying you at it — and it could already seal a
-      // station site inside the paddock, which no amount of walking would fix.
-      // A paddock without a gate is wrong anyway.
-      const fenceR = rng.range(0.09, 0.14) * span;
-      const pts = [];
-      const sides = rng.int(4, 6);
-      for (let i = 0; i < sides; i++) {
-        const a = (i / sides) * Math.PI * 2 + rng.range(-0.15, 0.15);
-        pts.push([spot.e + Math.cos(a) * fenceR, spot.n + Math.sin(a) * fenceR * 0.8]);
-      }
-      pts.push(pts[0]);
-      const { line, posts } = makeFence(pts, {
-        id: `cerca-${parcel.id}`,
-        label: `C${parcel.index + 1}`,
-        parcelId: parcel.id,
-        gate: true,
-      });
-      entities.push(line, ...posts);
     }
   }
 

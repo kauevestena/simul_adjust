@@ -169,6 +169,49 @@ export function renderDebrief(result) {
       row('delivery.quality', `${Math.round(result.quality * 100)} %`),
       row('delivery.payment', `R$ ${num(result.payment, 0)}`, '.is-good'),
     ),
+    // Which corner, not just how much. The aggregate figures above are
+    // datum-invariant and answer a different question; this one needs the
+    // frames aligned, which is why it took a `datumShift` to become possible.
+    d.corners?.length ? renderCornerErrors(d) : null,
+  );
+}
+
+/** Per-corner error, worst first: the list a student can act on. */
+function renderCornerErrors(d) {
+  const mm = (v) => `${(v * 1000).toFixed(0)} mm`;
+  const rows = [...d.corners].sort((a, b) => b.d - a.d);
+
+  return el(
+    'section.debrief-corners',
+    {},
+    el('h4', { text: t('debrief.perCorner') }),
+    el('p.hint', {
+      text: t('debrief.perCornerHelp', { rms: mm(d.cornerRms), control: mm(d.control?.rms ?? 0) }),
+    }),
+    el(
+      'table.tbl',
+      {},
+      el(
+        'thead',
+        {},
+        el('tr', {}, [t('debrief.corner'), 'ΔE', 'ΔN', t('debrief.offBy'), t('debrief.sights')].map((h) => el('th', { text: h }))),
+      ),
+      el(
+        'tbody',
+        {},
+        rows.map((c) =>
+          el(
+            `tr${c === rows[0] && c.d > 0 ? '.is-bad' : ''}`,
+            {},
+            el('td', { text: c.label }),
+            el('td', { text: mm(c.dE) }),
+            el('td', { text: mm(c.dN) }),
+            el('td', { text: mm(c.d) }),
+            el('td', { text: String(c.sights ?? 0) }),
+          ),
+        ),
+      ),
+    ),
   );
 }
 

@@ -5,23 +5,31 @@
 // The pools are larger than the six parcels need, so a different seed gives a
 // different cast and the campaign does not feel prefabricated.
 
+/**
+ * `body` is which silhouette the owner is painted with when they are standing
+ * on their own doorstep waiting to be paid. It is carried here, beside the
+ * name, rather than derived from it: a name is not a reliable guide to anybody,
+ * and the alternative — guessing from the ending of "Epaminondas" — would be
+ * both wrong sometimes and wrong in a way that reads as carelessness about the
+ * people these names belong to. Authored data, one field, no inference.
+ */
 export const OWNER_NAMES = [
-  'Epaminondas Ermenegildo',
-  'Gertrudes Dorvalina',
-  'Firmino Anacleto',
-  'Idalina Bernardete',
-  'Ozéias Nepomuceno',
-  'Genoveva Aparecida',
-  'Belarmino Sinfrônio',
-  'Etelvina Zuleica',
-  'Aristides Balbino',
-  'Rosalvo Deodato',
-  'Maria Ondina Pafúncia',
-  'Hermenegildo Quirino',
-  'Jovelina Sebastiana',
-  'Teotônio Anastácio',
-  'Doralice Filomena',
-  'Waldemar Zeferino',
+  { name: 'Epaminondas Ermenegildo', body: 'm' },
+  { name: 'Gertrudes Dorvalina', body: 'f' },
+  { name: 'Firmino Anacleto', body: 'm' },
+  { name: 'Idalina Bernardete', body: 'f' },
+  { name: 'Ozéias Nepomuceno', body: 'm' },
+  { name: 'Genoveva Aparecida', body: 'f' },
+  { name: 'Belarmino Sinfrônio', body: 'm' },
+  { name: 'Etelvina Zuleica', body: 'f' },
+  { name: 'Aristides Balbino', body: 'm' },
+  { name: 'Rosalvo Deodato', body: 'm' },
+  { name: 'Maria Ondina Pafúncia', body: 'f' },
+  { name: 'Hermenegildo Quirino', body: 'm' },
+  { name: 'Jovelina Sebastiana', body: 'f' },
+  { name: 'Teotônio Anastácio', body: 'm' },
+  { name: 'Doralice Filomena', body: 'f' },
+  { name: 'Waldemar Zeferino', body: 'm' },
 ];
 
 export const PROPERTY_NAMES = [
@@ -61,11 +69,22 @@ export const UF = 'PR';
  * shuffled together so the same seed always tells the same story.
  */
 export function dealCast(rng, count) {
-  const owners = rng.shuffle([...OWNER_NAMES]).slice(0, count);
+  const cast = rng.shuffle([...OWNER_NAMES]).slice(0, count);
   const properties = rng.shuffle([...PROPERTY_NAMES]).slice(0, count);
   const municipio = rng.pick(MUNICIPIOS);
   const exteriors = rng.shuffle([...EXTERIOR_FEATURES]);
-  return { owners, properties, municipio, uf: UF, exteriors };
+  // `owners` stays a list of plain strings: it signs memoriais, names
+  // confrontantes and is compared in a dozen places, and none of them want an
+  // object. `ownerBodies` runs alongside it for the one caller that paints a
+  // face — see `world.js#placeResidents`.
+  return {
+    owners: cast.map((o) => o.name),
+    ownerBodies: cast.map((o) => o.body),
+    properties,
+    municipio,
+    uf: UF,
+    exteriors,
+  };
 }
 
 /**

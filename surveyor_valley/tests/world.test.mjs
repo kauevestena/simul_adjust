@@ -360,6 +360,87 @@ test('every parcel corner carries physical evidence to sight on', () => {
   }
 });
 
+/**
+ * A monument cannot be built in a pond.
+ *
+ * The soil field is noise and the parcels are a Voronoi partition cut without
+ * consulting it, so nothing stopped a corner landing in open water — measured
+ * over eight seeds, three of 261 corners did. It reads as a generator that does
+ * not know what it is drawing, and the crew cannot stand on it to hold the
+ * prism plumb either: `canStand` refuses water outright.
+ *
+ * The water gives way rather than the corner moving, because the partition is
+ * exact and an exact partition is what makes the confrontantes and the shared
+ * marcos true. See `terrain.js#dryMargins`.
+ */
+test('no boundary corner stands in water, and the crew can occupy every one', () => {
+  const offenders = [];
+  for (const seed of ['sv-agua-1', 'sv-agua-2', 'sv-agua-3', 'sv-agua-4']) {
+    for (const [name, difficulty] of Object.entries(DIFFICULTY)) {
+      const w = buildWorld(seed, difficulty);
+      for (const p of w.parcels) {
+        for (const v of p.vertices) {
+          const soil = w.terrain.soilAt(v.e, v.n);
+          if (!soil.walkable) offenders.push(`${seed}/${name}/${p.id}/${v.id}: ${soil.id}`);
+          // Not just the point: the prism man has a body, and standing ON the
+          // corner is what "he carried the pole to it" means.
+          else if (!canStand(w, v.e, v.n, 0.3)) offenders.push(`${seed}/${name}/${p.id}/${v.id}: cannot be occupied`);
+        }
+      }
+    }
+  }
+  assert.deepEqual(offenders, [], `corners nobody can stand on:\n  ${offenders.join('\n  ')}`);
+});
+
+/**
+ * The dry margin is a MARGIN, not a drained valley.
+ *
+ * If it ever grew to the point of removing the lakes it would take the
+ * landscape with it — and water is half of why a tripod site is a decision.
+ */
+test('drying the corners leaves the lakes alone', () => {
+  const w = buildWorld('sv-agua-1', DIFFICULTY.medio);
+  let water = 0;
+  let cells = 0;
+  for (let e = 2; e < w.bounds.maxE; e += 2) {
+    for (let n = 2; n < w.bounds.maxN; n += 2) {
+      cells++;
+      if (w.terrain.soilAt(e, n).id === 'AGUA') water++;
+    }
+  }
+  assert.ok(water / cells > 0.01, `the valley has dried out: ${(100 * water) / cells}% water`);
+});
+
+/**
+ * Somebody lives here.
+ *
+ * The owners were a name in a memorial and a line in a toast, and the job ends
+ * by walking to a building with nobody in it. One per homestead, standing on
+ * the doorstep the payment radius is measured to.
+ */
+test('every homestead has its owner standing on the doorstep', () => {
+  const w = buildWorld('sv-morador', DIFFICULTY.medio);
+  for (const p of w.parcels) {
+    const sede = w.sedeFor(p.id);
+    const who = w.residentFor(p.id);
+    if (!sede) {
+      assert.equal(who, null, `${p.id}: no homestead, so nobody to stand at it`);
+      continue;
+    }
+    assert.ok(who, `${p.id}: the sede has no owner at it`);
+    assert.equal(who.label, p.owner, 'and it is the owner named in the memorial');
+    assert.ok(Math.hypot(who.e - sede.door.e, who.n - sede.door.n) < 1e-6, 'standing at the door');
+    // A person is scenery, not an obstacle: one standing in their own gate
+    // would block the crew that has to reach them to be paid, and a body
+    // between the instrument and a corner would refuse a sight for a reason
+    // no student could learn anything from.
+    assert.equal(who.blocksWalk, false, 'and blocks nobody');
+    assert.equal(who.blocksLOS, false);
+    assert.equal(who.targetable, false, 'and is not a survey target');
+    assert.match(who.look, /^owner-[mf]\d+$/, 'carries an atlas key for its own face');
+  }
+});
+
 test('a marco planted by the player joins the world and the spatial index', () => {
   const w = buildWorld('sv-marco', DIFFICULTY.facil);
   const spot = w.spawnPointFor(w.parcels[0]);
@@ -440,11 +521,12 @@ test('every parcel, on every difficulty, admits a closable ring of stations', ()
  * This is a real flood fill over `canStand`, which is expensive — about 700 ms
  * for six parcels against the 42 ms the whole world takes to generate. That
  * ratio is exactly why the guarantee is STRUCTURAL rather than a search at
- * generation time: the paddock fence is built with a gate in it, and this test
- * is what checks the gate is enough.
- *
- * It caught the original: a closed paddock ring sealed the farmhouse in, and
- * only 54 of 72 parcels had a homestead the player could reach at all.
+ * generation time, and it has already caught this failing twice: a closed
+ * paddock ring sealed the farmhouse in and only 54 of 72 parcels had a
+ * homestead the player could reach, which bought the paddock a gate — and then
+ * the paddock itself, because a gate does not help a prism man who has no idea
+ * where it is. There is no fence around a farmhouse any more, and the fill is
+ * what says so rather than a comment claiming it.
  */
 test('the sede can be reached on foot from where the job starts', () => {
   const STEP = 0.35;

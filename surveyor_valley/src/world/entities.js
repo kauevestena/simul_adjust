@@ -18,6 +18,7 @@ export const KIND = {
   BENFEITORIA: 'benfeitoria',
   MARCO_DIVISA: 'marco_divisa',
   MARCO_JOGADOR: 'marco_jogador',
+  MORADOR: 'morador',
 };
 
 const DEFAULTS = {
@@ -29,6 +30,13 @@ const DEFAULTS = {
   [KIND.BENFEITORIA]: { r: 4, blocksWalk: true, blocksLOS: true, targetable: true, losR: 4 },
   [KIND.MARCO_DIVISA]: { r: 0.18, blocksWalk: false, blocksLOS: false, targetable: true, losR: 0 },
   [KIND.MARCO_JOGADOR]: { r: 0.18, blocksWalk: false, blocksLOS: false, targetable: true, losR: 0 },
+  /**
+   * A person. Blocks nothing, on purpose: an owner standing in their own gate
+   * would otherwise be a walking obstacle for a crew that has to get past them
+   * to be paid, and a body between the instrument and a corner would refuse a
+   * sight for a reason no student could learn anything from.
+   */
+  [KIND.MORADOR]: { r: 0.3, blocksWalk: false, blocksLOS: false, targetable: false, losR: 0 },
 };
 
 let nextId = 0;
@@ -60,6 +68,8 @@ export function makeEntity(kind, e, n, extra = {}) {
     /** Polyline vertices for fences and building footprints, in metres. */
     seg: extra.seg || null,
     variant: extra.variant ?? 0,
+    /** Atlas key prefix, for entities whose art is chosen per world. */
+    look: extra.look || null,
     scale: extra.scale ?? 1,
     rot: extra.rot ?? 0,
     label: extra.label || null,
@@ -93,6 +103,15 @@ export const makeBoundaryMark = (e, n, o = {}) =>
 export const makePlayerMarco = (e, n, o = {}) =>
   makeEntity(KIND.MARCO_JOGADOR, e, n, { targetKind: 'marco', ...o });
 
+/**
+ * Somebody who lives here.
+ *
+ * `look` is an atlas key prefix — `owner-f2` — rather than a colour, because
+ * the sheet is painted once at boot from fixed archetypes and the valley is
+ * built per seed. `scene.js` appends the direction and the breath frame.
+ */
+export const makeResident = (e, n, o = {}) => makeEntity(KIND.MORADOR, e, n, o);
+
 /** A building. `seg` is its footprint ring; corners are targetable. */
 export function makeBuilding(ring, o = {}) {
   const cx = ring.reduce((s, p) => s + p[0], 0) / ring.length;
@@ -103,6 +122,13 @@ export function makeBuilding(ring, o = {}) {
 
 /**
  * A run of fence: a polyline plus a post entity at each vertex.
+ *
+ * NOTHING IN THE GENERATOR PLANTS ONE TODAY. The paddock that used to ring each
+ * farmhouse is gone — see the note in `scatter.js` — and this is kept because
+ * the capability is complete and correct (collision, the slide solver, the line
+ * renderer and the targetable posts all handle it), and because a fence along a
+ * divisa is the obvious next use. It is not called from anywhere; do not read
+ * its presence as evidence that fences exist in the valley.
  *
  * `gate` drops the LAST segment of the line while keeping every post, so a ring
  * of points becomes an enclosure you can walk into. Doing it this way rather

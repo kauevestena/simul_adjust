@@ -73,6 +73,33 @@ export function renderCalculos({ traverse, area, requiredPrecision, rule, onRule
   const angOk = traverse.angOk;
   const relOk = traverse.relPrecision <= requiredPrecision;
 
+  // What the compensation reached, and what it did not.
+  //
+  // The corrections are applied to the loop and then carried out to every point
+  // radiated from it — which is the whole reason this panel changes anything at
+  // all. An occupation outside the loop, or a free station, keeps the
+  // coordinates it was reduced to, and saying so is cheaper than letting a
+  // student wonder why one corner did not move.
+  if (traverse.reradiated) {
+    const { adjusted = [], skipped = [] } = traverse.reradiated;
+    const points = adjusted.reduce((sum, a) => sum + a.n, 0);
+    root.append(
+      el(
+        'section.calc-section',
+        {},
+        el('h4', { text: t('calc.reradiation') }),
+        el('p.hint', { text: t('calc.reradiationBody', { setups: adjusted.length, points }) }),
+        skipped.length
+          ? el('p.hint.is-warn', {
+              text: t('calc.reradiationSkipped', {
+                list: skipped.map((sk) => sk.over || t('calc.freeStationShort')).join(', '),
+              }),
+            })
+          : null,
+      ),
+    );
+  }
+
   root.append(
     el(
       'section.calc-section',

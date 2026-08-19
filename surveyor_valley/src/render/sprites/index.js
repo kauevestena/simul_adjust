@@ -11,7 +11,7 @@
 import { makeRng } from '../../core/rng.js';
 import { tree, bush, rock, SIZES } from './nature.js';
 import { surveyor } from './character.js';
-import { resolveLook, LIGEIRINHO_LOOK } from '../palette.js';
+import { resolveLook, LIGEIRINHO_LOOK, OWNER_LOOKS, ownerLook } from '../palette.js';
 import { playerMarco, boundaryMark, totalStation, prism, fencePost } from './survey.js';
 import { grassTuft, tussock, flower, pebble, stone, reed, clod, crop } from './ground.js';
 
@@ -69,6 +69,30 @@ export function buildSprites(look = null) {
     }
     const eastIdle = surveyor({ dir: 'E', pose: 'idle', look });
     add(`${prefix}-W-idle`, { pix: eastIdle.pix.mirrorX(), anchorX: 0.5, anchorY: eastIdle.anchorY });
+  }
+
+  // ---- the neighbours ----------------------------------------------------
+  // One standing figure per owner look per body, and STANDING is the whole
+  // roster: an owner waits on their own doorstep, so there is no walk cycle to
+  // paint. Two poses a direction — the rest pose and the top of a breath — is
+  // what stops a person on a porch reading as a statue.
+  //
+  // Keyed `owner-<body><variant>-<dir>`, because which body an owner has comes
+  // from the name they were dealt and the atlas is painted long before any
+  // valley exists.
+  for (const body of ['m', 'f']) {
+    for (let v = 0; v < OWNER_LOOKS.length; v++) {
+      const look = ownerLook(body, v);
+      const key = `owner-${body}${v}`;
+      for (const dir of ['S', 'N', 'E']) {
+        add(`${key}-${dir}-0`, surveyor({ dir, frame: 0, look }));
+        add(`${key}-${dir}-idle`, surveyor({ dir, pose: 'idle', look }));
+      }
+      const east = surveyor({ dir: 'E', frame: 0, look });
+      add(`${key}-W-0`, { pix: east.pix.mirrorX(), anchorX: 0.5, anchorY: east.anchorY });
+      const eastIdle = surveyor({ dir: 'E', pose: 'idle', look });
+      add(`${key}-W-idle`, { pix: eastIdle.pix.mirrorX(), anchorX: 0.5, anchorY: eastIdle.anchorY });
+    }
   }
 
   // Only the player kneels: the tribrach is hers, and Ligeirinho is at the

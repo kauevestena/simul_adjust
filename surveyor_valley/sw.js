@@ -13,7 +13,7 @@
 // Bump CACHE_VERSION whenever the file list or the Pixi pin changes; old caches
 // are deleted on activate.
 
-const CACHE_VERSION = 'sv-v4';
+const CACHE_VERSION = 'sv-v6';
 const PIXI_URL = 'https://cdn.jsdelivr.net/npm/pixi.js@8.19.0/dist/pixi.min.mjs';
 
 /**
@@ -72,6 +72,7 @@ const CORE = [
   './src/report/docmodel.js',
   './src/report/memorial.js',
   './src/report/pdf.js',
+  './src/report/errorfigure.js',
   './src/report/planta.js',
   './src/report/reportview.js',
   './src/survey/geometry.js',
@@ -89,6 +90,7 @@ const CORE = [
   './src/ui/hud.js',
   './src/ui/i18n.js',
   './src/ui/intro.js',
+  './src/ui/portrait.js',
   './src/ui/lang/en.js',
   './src/ui/lang/pt.js',
   './src/ui/modal.js',

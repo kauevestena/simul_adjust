@@ -17,10 +17,10 @@ import { t, num, setLanguage, lang, availableLanguages, applyI18n } from './i18n
 import { randomSeed, makeRng } from '../core/rng.js';
 import { DIFFICULTY } from '../core/state.js';
 import { SKIN_TONES, HAIR_TONES, HAT_STYLES, DEFAULT_LOOK } from '../render/palette.js';
-import { surveyor } from '../render/sprites/character.js';
+import { paintSurveyor, HEAD, BUST, MINI } from './portrait.js';
 import { randomSurveyorName } from '../world/names.js';
 
-const CONTROLS = [
+const KEYBOARD_CONTROLS = [
   ['intro.moveKeys', 'intro.moveDesc'],
   ['intro.runKeys', 'intro.runDesc'],
   ['intro.mouseKeys', 'intro.mouseDesc'],
@@ -31,6 +31,23 @@ const CONTROLS = [
   ['intro.dblClickKeys', 'intro.dblClickDesc'],
   ['intro.escKeys', 'intro.escDesc'],
 ];
+
+/**
+ * On a touchscreen the keyboard list is not merely incomplete, it is wrong: the
+ * first thing it tells a tablet user is to press W. These rows lead when the
+ * pointer is coarse, and the keyboard rows stay underneath because a tablet
+ * with a keyboard case is a real thing.
+ */
+const TOUCH_CONTROLS = [
+  ['intro.stickKeys', 'intro.stickDesc'],
+  ['intro.tapKeys', 'intro.tapDesc'],
+  ['intro.pinchKeys', 'intro.pinchDesc'],
+  ['intro.twoFingerKeys', 'intro.twoFingerDesc'],
+  ['intro.doubleTapKeys', 'intro.doubleTapDesc'],
+];
+
+const isTouch = () => typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+const CONTROLS = () => (isTouch() ? [...TOUCH_CONTROLS, ...KEYBOARD_CONTROLS] : KEYBOARD_CONTROLS);
 
 /**
  * @param {object} p
@@ -49,51 +66,6 @@ export function showIntro({ modals, onStart, onContinue = null, saved = null, in
   let name = initial.name || rollName(look.body);
 
   // ---- who you are --------------------------------------------------------
-
-  /**
-   * Paint a surveyor into a canvas at whole-number scale, optionally cropped.
-   *
-   * Straight from the painter rather than through the atlas: `surveyor()`
-   * returns a plain `{pix}`, the atlas does not exist yet at this point in the
-   * boot, and a canvas here needs no GPU. Nearest-neighbour, because the whole
-   * game's art depends on never scaling pixel art by a fraction.
-   *
-   * `crop` is what turns the same call into a portrait: a head is the top of
-   * the frame, and a head is what a swatch should be showing.
-   */
-  function paintSurveyor(canvas, into, crop = null) {
-    const { pix } = surveyor({ dir: 'S', pose: 'idle', look: into });
-    const ctx = canvas.getContext('2d');
-    ctx.imageSmoothingEnabled = false;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    const off = document.createElement('canvas');
-    off.width = pix.w;
-    off.height = pix.h;
-    off.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(pix.data), pix.w, pix.h), 0, 0);
-
-    const c = crop || { x: 0, y: 0, w: pix.w, h: pix.h };
-    ctx.drawImage(off, c.x, c.y, c.w, c.h, 0, 0, canvas.width, canvas.height);
-  }
-
-  /**
-   * The crops, in sprite pixels, measured off the frame rather than guessed:
-   * the hat crown starts at row 0, the brim spans rows 2-4 and x 5-19, the face
-   * runs to row 11 and the shoulders begin at row 13.
-   *
-   * HEAD is what skin, hair and hat are choices about, and it takes two rows of
-   * shoulder so the head has something to sit on instead of floating. BUST
-   * reaches the hips, because the body choice is a silhouette — the reversed
-   * shoulder-to-hip taper and the long hair under the brim — and neither of
-   * those reads in a crop that stops at the chin.
-   *
-   * `y: -1` buys a row of margin above the tallest crown. A source rectangle
-   * reaching outside the image is transparent, which is exactly what is wanted:
-   * without it the cap sits flush against the frame and looks cropped.
-   */
-  const HEAD = { x: 4, y: -1, w: 16, h: 16 };
-  const BUST = { x: 3, y: -1, w: 18, h: 23 };
-  const MINI = 3; // whole-number scale, or the pixel art stops being pixel art
 
   const preview = el('canvas.char-preview', { width: 24 * 4, height: 34 * 4 });
   const paintPreview = () => paintSurveyor(preview, look);
@@ -370,7 +342,7 @@ export function showIntro({ modals, onStart, onContinue = null, saved = null, in
       el(
         'dl.controls',
         {},
-        CONTROLS.flatMap(([k, d]) => [el('dt', { 'data-i18n': k }), el('dd', { 'data-i18n': d })]),
+        CONTROLS().flatMap(([k, d]) => [el('dt', { 'data-i18n': k }), el('dd', { 'data-i18n': d })]),
       ),
     ),
 

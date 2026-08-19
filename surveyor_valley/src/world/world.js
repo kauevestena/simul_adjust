@@ -10,7 +10,7 @@ import { makeTerrain } from './terrain.js';
 import { generateParcels, totalArea } from './parcels.js';
 import { scatterWorld } from './scatter.js';
 import { makeSpatialIndex } from './spatial.js';
-import { resetIds, makePlayerMarco } from './entities.js';
+import { resetIds, makePlayerMarco, makeResident } from './entities.js';
 import { canSetupTripod, lineOfSight } from './los.js';
 import { pointInPolygon } from '../core/math2d.js';
 
@@ -24,6 +24,16 @@ import { pointInPolygon } from '../core/math2d.js';
  * every metre of it still gets terrain-classified and ground-baked.
  */
 export const WORLD_SIZE = 220;
+
+/**
+ * How far the shoreline retreats from a boundary corner, in metres.
+ *
+ * Wide enough for the crew to stand ON the corner rather than beside it:
+ * Ligeirinho counts as arrived within 0.9 m (`assistant.js#ARRIVE_RADIUS`) and
+ * needs 0.3 m of body around him, so anything under about 1.5 m would leave a
+ * corner he can see, reach for and never actually occupy.
+ */
+export const CORNER_DRY_MARGIN = 2.5;
 
 /**
  * @param {string} seed
@@ -46,6 +56,12 @@ export function buildWorld(seed, difficulty) {
     cx: WORLD_SIZE / 2,
     cy: WORLD_SIZE / 2,
   });
+
+  // Before anything samples the soil: no boundary corner stands in open water.
+  // See `terrain.js#dryMargins` for why the water gives way rather than the
+  // corner moving — the partition is exact, and an exact partition is what
+  // makes the confrontantes and the shared marcos true.
+  for (const v of vertices.values()) terrain.addDryMargin(v.e, v.n, CORNER_DRY_MARGIN);
 
   const entities = scatterWorld(makeRng(seed, 'scatter'), terrain, bounds, parcels, difficulty);
 
@@ -80,6 +96,9 @@ export function buildWorld(seed, difficulty) {
     },
 
     entity: (id) => byId.get(id) || null,
+
+    /** The owner of a parcel, standing on their doorstep. Null if no homestead. */
+    residentFor: (parcelId) => byId.get(`morador-${parcelId}`) || null,
 
     /** Which parcel contains this point, if any. */
     parcelAt(e, n) {
@@ -150,8 +169,9 @@ export function buildWorld(seed, difficulty) {
 
     /**
      * Where to drop the player at the start: inside the parcel, on ground a
-     * tripod could stand on, and clear of the homestead — arriving wedged
-     * between the farmhouse and its paddock fence is a poor first impression.
+     * tripod could stand on, and clear of the homestead — arriving with your
+     * nose against a wall is a poor first impression, and the exclusion also
+     * keeps the first tripod out of the farmyard.
      */
     spawnPointFor(parcel) {
       const c = parcel.centroid;
@@ -160,8 +180,8 @@ export function buildWorld(seed, difficulty) {
 
       // Both against the parcel, not in fixed metres: a 34 m exclusion disc on
       // a holding only ~110 m across rules out most of it, and the search then
-      // drops through to the bare-centroid fallback — which is very often
-      // inside the paddock fence, the one place the player must not start.
+      // drops through to the bare-centroid fallback — which lands the player
+      // wherever the centroid happens to be, homestead included.
       const span = Math.min(parcel.bbox.w, parcel.bbox.h);
       const reach = span * 0.31;
       const clearHouse = span * 0.19;
@@ -234,12 +254,43 @@ export function buildWorld(seed, difficulty) {
   };
 
   ensureClosableRing(world);
+  placeResidents(world);
   return world;
+}
+
+/**
+ * Put every owner on their own doorstep.
+ *
+ * They were a name in a memorial descritivo and a line in a toast, and the job
+ * ends with "walk to the sede and get paid" — at a building with nobody in it.
+ * So they are people now, standing where the money is handed over, one per
+ * parcel rather than only on the job you happen to be doing: the owners either
+ * side of a boundary are exactly the confrontantes the memorial names, and
+ * meeting them is a cheaper way to learn who they are than reading a document.
+ *
+ * AFTER `ensureClosableRing`, because that pass deletes obstacles and `sedeFor`
+ * picks the doorstep by walking outward until the ground is standable — sited
+ * before it, an owner could end up standing where a tree used to be.
+ */
+function placeResidents(world) {
+  world.parcels.forEach((parcel, i) => {
+    const sede = world.sedeFor(parcel.id);
+    if (!sede) return;
+    const ent = makeResident(sede.door.e, sede.door.n, {
+      id: `morador-${parcel.id}`,
+      label: parcel.owner,
+      parcelId: parcel.id,
+      look: `owner-${parcel.ownerBody === 'f' ? 'f' : 'm'}${i}`,
+    });
+    world.entities.push(ent);
+    world.byId.set(ent.id, ent);
+    world.spatial.insert(ent);
+  });
 }
 
 /** How many stations the guaranteed ring is built from. */
 const RING_STATIONS = 5;
-/** Alternative sites per station, so the ring can route around a fence post. */
+/** Alternative sites per station, so the ring can route around the farmhouse. */
 const CANDIDATES_PER_SLOT = 6;
 
 /**
@@ -335,7 +386,9 @@ export function closableRing(world, parcel) {
    */
   const build = (startIdx) => {
     const ring = [];
-    const blocked = [];
+    /** Which slot each ring member came from, and what its legs cost. */
+    const fromSlot = [];
+    const blockedAt = [];
     const hardBlocked = [];
 
     for (let i = 0; i < slots.length; i++) {
@@ -377,23 +430,65 @@ export function closableRing(world, parcel) {
         }
       }
 
+      let ids = [];
       if (!chosen && fallback) {
         chosen = fallback;
-        blocked.push(...fallbackIds);
+        ids = fallbackIds;
       }
       // Every candidate for this slot is permanently obstructed from the last
       // station: skip the slot rather than force an impossible leg. A traverse
       // of four good stations beats five with one that cannot be measured.
       if (!chosen) continue;
       ring.push(chosen);
+      fromSlot.push(i);
+      blockedAt.push(ids);
     }
 
     if (ring.length >= 3) {
-      const { hard, ids } = legCost(ring[ring.length - 1], ring[0]);
-      if (hard) hardBlocked.push('closing-leg');
-      else blocked.push(...ids);
+      let close = legCost(ring[ring.length - 1], ring[0]);
+
+      // The closing leg, repaired rather than merely reported.
+      //
+      // `isLast` above only fires on the FINAL SLOT, and a slot with no usable
+      // candidate is skipped — so when the last slot dropped out, the station
+      // that actually ends up last was chosen without the closing leg ever
+      // being considered. Measured: one parcel in ninety, and it read as "no
+      // closable traverse exists" when one plainly did, two metres to the left.
+      //
+      // Two repairs, cheapest first: take a different candidate from that same
+      // slot, or failing that drop the station altogether. A four-station ring
+      // that closes is worth more than a five-station ring that cannot.
+      if (close.hard) {
+        const slot = fromSlot[ring.length - 1];
+        const prev = ring[ring.length - 2];
+        let swap = null;
+        let swapIds = [];
+        for (const cand of slots[slot]) {
+          const inLeg = legCost(prev, cand);
+          if (inLeg.hard) continue;
+          const outLeg = legCost(cand, ring[0]);
+          if (outLeg.hard) continue;
+          swap = cand;
+          swapIds = [...inLeg.ids, ...outLeg.ids];
+          if (!swapIds.length) break;
+        }
+
+        if (swap) {
+          ring[ring.length - 1] = swap;
+          blockedAt[blockedAt.length - 1] = swapIds;
+          close = { hard: false, ids: [] };
+        } else if (ring.length > 3) {
+          ring.pop();
+          fromSlot.pop();
+          blockedAt.pop();
+          close = legCost(ring[ring.length - 1], ring[0]);
+        }
+      }
+
+      if (close.hard) hardBlocked.push('closing-leg');
+      else blockedAt.push(close.ids);
     }
-    return { ring, blocked, hardBlocked };
+    return { ring, blocked: blockedAt.flat(), hardBlocked };
   };
 
   // The closing leg is the one the greedy walk cannot plan for: it is fixed the
@@ -423,8 +518,8 @@ function siteRing(world, parcel) {
     const found = [];
 
     // Several candidates per slot, not one. A single site per bearing leaves no
-    // way to route around a fence post or a farmhouse — the things the clearing
-    // pass is not allowed to delete.
+    // way to route around the farmhouse — the one thing the clearing pass is
+    // not allowed to delete.
     for (let f = 0.72; f >= 0.24 && found.length < CANDIDATES_PER_SLOT; f -= 0.06) {
       for (let da = -0.5; da <= 0.5 && found.length < CANDIDATES_PER_SLOT; da += 0.125) {
         const a = base + da;

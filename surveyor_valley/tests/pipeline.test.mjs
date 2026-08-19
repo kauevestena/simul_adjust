@@ -18,7 +18,8 @@ import { canStand } from '../src/game/player.js';
 import { bus, EV } from '../src/core/bus.js';
 import { buildMemorial } from '../src/report/memorial.js';
 import { buildPlanta } from '../src/report/planta.js';
-import { areaOf } from '../src/survey/geometry.js';
+import { areaOf, azimuth, polarPoint } from '../src/survey/geometry.js';
+import { normalize360 } from '../src/survey/units.js';
 import { pointInPolygon } from '../src/core/math2d.js';
 import { revealMarksNear } from '../src/game/discovery.js';
 
@@ -793,4 +794,158 @@ test('a point you are standing on cannot fix you', () => {
   assert.ok(!here.some((p) => p.id === m1.id), 'the monument under your feet is not a sight');
   assert.equal(service.setupFreeStation({ playerPos: a }).reason, 'needTwoKnownPoints');
   void m2;
+});
+
+// ------------------------------------------------- compensation that lands ----
+
+test('compensating the traverse moves the corners, not just the stations', () => {
+  // The defect this replaces was silent and total: `runTraverse` wrote the
+  // compensated coordinates over the STATIONS and stopped, while every boundary
+  // corner kept the coordinate it had been radiated to from the unadjusted
+  // ones. Measured on a clean survey, the stations moved up to 5 mm and the
+  // corners moved 0.0000 m — so the cálculos panel, which invites the student
+  // to switch rules and watch the corrections redistribute, could not reach the
+  // planta, the memorial, the area or the score.
+  const { service } = runFullSurvey();
+  const before = service.surveyedRing().map((p) => ({ id: p.id, E: p.E, N: p.N }));
+  const areaBefore = areaOf(before).m2;
+
+  const tr = service.runTraverse({ rule: 'bowditch' });
+  assert.equal(tr.ok, true, `traverse: ${tr.reason ?? ''}`);
+  assert.ok(tr.eLin > 0, 'there is a closure to distribute in the first place');
+
+  const after = service.surveyedRing();
+  const moved = before.map((p, i) => Math.hypot(p.E - after[i].E, p.N - after[i].N));
+  assert.ok(
+    moved.some((m) => m > 1e-6),
+    'not one corner moved, so the compensation reached nothing that gets delivered',
+  );
+  assert.notEqual(areaOf(after).m2, areaBefore, 'the delivered area must feel it too');
+});
+
+test('the re-radiation is exactly the hand computation', () => {
+  // Inverse the adjusted coordinates for the azimuth to the ré, apply the
+  // observed angle, radiate the observed distance. If this drifts from what the
+  // student would get with a calculator, the panel is teaching a method the
+  // game does not use.
+  const { store, service } = runFullSurvey();
+  const tr = service.runTraverse({ rule: 'bowditch' });
+  assert.equal(tr.ok, true);
+
+  const svc = store.get().activeService;
+  const adjusted = new Map(tr.coords.map((c) => [c.id, c]));
+  let checked = 0;
+
+  for (const setup of svc.setups) {
+    const at = adjusted.get(setup.overId);
+    if (setup.mode !== 'known' || !at) continue;
+    const bs = adjusted.get(setup.backsightId) || store.get().network.find((c) => c.id === setup.backsightId);
+    if (!bs || bs.E == null) continue;
+
+    const theta0 = normalize360(azimuth(at.E, at.N, bs.E, bs.N) - setup.backsightReading);
+    for (const o of setup.observations) {
+      if (o.adjE == null) continue;
+      const p = polarPoint(at.E, at.N, normalize360(o.hz + theta0), o.distance);
+      assert.ok(Math.hypot(p.E - o.adjE, p.N - o.adjN) < 1e-9, `${o.label} re-radiated differently by hand`);
+      checked++;
+    }
+  }
+  assert.ok(checked > 5, `expected plenty of adjusted observations, checked ${checked}`);
+});
+
+test('the field book still records what was measured', () => {
+  // A caderneta that rewrote its own reductions would stop being a record. The
+  // observed reduction stays; the adjusted one sits beside it.
+  const { store, service } = runFullSurvey();
+  service.runTraverse({ rule: 'bowditch' });
+
+  const svc = store.get().activeService;
+  const adjusted = svc.observations.filter((o) => o.adjE != null);
+  assert.ok(adjusted.length, 'something was adjusted');
+  for (const o of adjusted) {
+    assert.ok(Number.isFinite(o.E) && Number.isFinite(o.N), 'the observed reduction survives');
+    assert.ok(Number.isFinite(o.hz) && Number.isFinite(o.distance), 'and so does what was actually read');
+  }
+});
+
+test('switching compensation rules compares them rather than compounding', () => {
+  // The trap, and it was real: `runTraverse` rewrote the station coordinates
+  // and the next run read those rewritten stations for its starting azimuth, so
+  // bowditch → transit → bowditch did NOT give the first answer back. A student
+  // toggling the rule to see the difference was watching a drift.
+  const { service } = runFullSurvey();
+
+  const snap = () => service.surveyedRing().map((p) => ({ E: p.E, N: p.N }));
+  assert.equal(service.runTraverse({ rule: 'bowditch' }).ok, true);
+  const bowditch = snap();
+
+  service.runTraverse({ rule: 'bowditch' });
+  const again = snap();
+  for (let i = 0; i < bowditch.length; i++) {
+    assert.ok(
+      Math.hypot(again[i].E - bowditch[i].E, again[i].N - bowditch[i].N) < 1e-12,
+      'running the same rule twice must be a no-op',
+    );
+  }
+
+  service.runTraverse({ rule: 'transit' });
+  const transit = snap();
+  assert.ok(
+    transit.some((p, i) => Math.hypot(p.E - bowditch[i].E, p.N - bowditch[i].N) > 1e-9),
+    'the two rules must actually differ, or the choice is decoration',
+  );
+
+  service.runTraverse({ rule: 'bowditch' });
+  const back = snap();
+  for (let i = 0; i < bowditch.length; i++) {
+    assert.ok(
+      Math.hypot(back[i].E - bowditch[i].E, back[i].N - bowditch[i].N) < 1e-12,
+      'coming back to bowditch must give the first answer back, exactly',
+    );
+  }
+});
+
+test('a free station is left alone by the traverse', () => {
+  // Nothing adjusted it, so nothing may pretend it did.
+  const seed = 'sv-freeuntouched';
+  const store = makeStore(makeInitialState({ seed, difficulty: 'facil' }));
+  const world = buildWorld(seed, DIFFICULTY.facil);
+  const service = makeService({ store, getWorld: () => world, bus, EV });
+  const parcel = world.parcels[0];
+  service.start(parcel.id);
+
+  const a = findMarcoSpot(world, store, parcel.centroid);
+  const b = findMarcoSpot(world, store, { e: parcel.centroid.e + 30, n: parcel.centroid.n + 8 });
+  const m1 = service.placeMarco(a.e, a.n);
+  const m2 = service.placeMarco(b.e, b.n);
+  assert.equal(service.setupStation({ over: m1.id, backsight: m2.id, playerPos: a }).ok, true);
+
+  const c = findMarcoSpot(world, store, { e: parcel.centroid.e + 10, n: parcel.centroid.n - 28 });
+  const m3 = service.placeMarco(c.e, c.n);
+  service.sight(`marco-${m3.id}`);
+
+  let stand = null;
+  for (let r = 8; r <= 40 && !stand; r += 2) {
+    for (let i = 0; i < 24; i++) {
+      const th = (i / 24) * Math.PI * 2;
+      const e = parcel.centroid.e + Math.cos(th) * r;
+      const n = parcel.centroid.n + Math.sin(th) * r;
+      if (!world.canSetupTripod(e, n).ok) continue;
+      if (store.get().network.some((cp) => Math.hypot(cp.trueE - e, cp.trueN - n) < 5)) continue;
+      if (service.visibleKnownPoints({ e, n }).length >= 2) { stand = { e, n }; break; }
+    }
+  }
+  assert.ok(stand, 'somewhere to stand off the monuments');
+  const free = service.setupFreeStation({ playerPos: stand });
+  assert.equal(free.ok, true, `free station: ${free.reason ?? ''}`);
+
+  const freeObs = free.setup.observations.map((o) => ({ id: o.id, E: o.E, N: o.N }));
+  service.runTraverse({ rule: 'bowditch' });
+
+  for (const o of free.setup.observations) {
+    const was = freeObs.find((x) => x.id === o.id);
+    assert.equal(o.adjE, undefined, 'a free station is not part of the loop and must not be re-radiated');
+    assert.equal(o.E, was.E);
+    assert.equal(o.N, was.N);
+  }
 });

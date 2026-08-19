@@ -21,41 +21,64 @@ import {
   ERRAND_CEILING,
   FOLLOW_DISTANCE,
   DASH_SPEED,
+  CATCHUP_DISTANCE,
+  CATCHUP_TIMEOUT,
   MODE,
 } from '../src/game/assistant.js';
 import { buildWorld } from '../src/world/world.js';
 import { DIFFICULTY } from '../src/core/state.js';
 import { canStand } from '../src/game/player.js';
+import { makeFence } from '../src/world/entities.js';
 
 const DT = 1 / 60;
 const world = buildWorld('sv-ligeirinho', DIFFICULTY.facil);
 
 /** Somewhere in this world he could legitimately stand. */
-function openSpot(near = { e: 110, n: 110 }) {
+function openSpot(near = { e: 110, n: 110 }, w = world) {
   for (let r = 0; r <= 60; r += 1) {
     const steps = r === 0 ? 1 : Math.max(8, Math.round(r * 2));
     for (let i = 0; i < steps; i++) {
       const a = (i / steps) * Math.PI * 2;
       const e = near.e + Math.cos(a) * r;
       const n = near.n + Math.sin(a) * r;
-      if (canStand(world, e, n)) return { e, n };
+      if (canStand(w, e, n)) return { e, n };
     }
   }
   throw new Error('no open ground in this world');
 }
 
+/**
+ * A fence, built by the test that needs one.
+ *
+ * Nothing in the generator plants a fence any more: the paddock that used to
+ * ring every farmhouse was a net he could not get out of, and it is gone. The
+ * collision machinery is not — and the two properties below are properties of
+ * THAT, not of the valley, so they build their own obstacle rather than
+ * quietly stopping being tested the month the world runs out of fences.
+ */
+function fenceInto(w, points, opts = {}) {
+  const { line, posts } = makeFence(points, { id: `test-cerca-${w.entities.length}`, ...opts });
+  for (const ent of [line, ...posts]) {
+    w.entities.push(ent);
+    w.byId.set(ent.id, ent);
+    w.spatial.insert(ent);
+  }
+  return line;
+}
+
 /** Run him until something happens, or the clock runs out. */
-function runUntil(a, ctx, seconds = 10) {
-  const events = { arrived: 0, gaveUp: 0 };
+function runUntil(a, ctx, seconds = 10, w = world) {
+  const events = { arrived: 0, gaveUp: 0, caughtUp: 0 };
   const steps = Math.round(seconds / DT);
   for (let i = 0; i < steps; i++) {
-    const r = updateAssistant(a, world, DT, ctx);
+    const r = updateAssistant(a, w, DT, ctx);
     if (r.arrived) events.arrived++;
     if (r.gaveUp) events.gaveUp++;
+    if (r.caughtUp) events.caughtUp++;
     if (events.arrived || events.gaveUp) {
       // Keep going a little, to prove the event does not repeat.
       for (let k = 0; k < 30; k++) {
-        const again = updateAssistant(a, world, DT, ctx);
+        const again = updateAssistant(a, w, DT, ctx);
         if (again.arrived) events.arrived++;
         if (again.gaveUp) events.gaveUp++;
       }
@@ -148,29 +171,73 @@ test('the dash does not step over a fence', () => {
   // 45 m/s is 0.75 m in a fixed step, and `canStand` tests a position rather
   // than a swept path — so without sub-stepping he would clear a fence, a post
   // and most of a building without ever occupying an illegal spot.
-  const fence = world.entities.find((ent) => ent.kind === 'cerca' && ent.seg && ent.seg.length > 2);
-  assert.ok(fence, 'this world has a fence');
+  const w = buildWorld('sv-cerca', DIFFICULTY.facil);
+  const mid = openSpot({ e: 110, n: 110 }, w);
+  const fence = fenceInto(w, [
+    [mid.e - 12, mid.n],
+    [mid.e + 12, mid.n],
+  ]);
+  assert.ok(fence.seg.length === 2, 'a straight run to cross');
 
-  // Straddle the middle of one segment: start a few metres one side, aim the
-  // same distance the other.
-  const [ax, ay] = fence.seg[0];
-  const [bx, by] = fence.seg[1];
-  const mid = { e: (ax + bx) / 2, n: (ay + by) / 2 };
-  const len = Math.hypot(bx - ax, by - ay);
-  const nx = (by - ay) / len;
-  const ny = -(bx - ax) / len;
-
-  const from = { e: mid.e + nx * 4, n: mid.n + ny * 4 };
-  const to = { e: mid.e - nx * 4, n: mid.n - ny * 4 };
-  if (!canStand(world, from.e, from.n)) return; // scenery in the way; nothing to prove here
+  const from = { e: mid.e, n: mid.n + 4 };
+  const to = { e: mid.e, n: mid.n - 4 };
+  if (!canStand(w, from.e, from.n) || !canStand(w, to.e, to.n)) return; // scenery in the way
 
   const a = makeAssistant(from);
   sendTo(a, to.e, to.n);
-  runUntil(a, { player: from }, STUCK_TIMEOUT + 1);
+  runUntil(a, { player: from }, STUCK_TIMEOUT + 1, w);
 
-  // Signed distance along the fence normal keeps its sign if he never crossed.
-  const side = (p) => (p.e - mid.e) * nx + (p.n - mid.n) * ny;
-  assert.ok(side(a) > -0.5, `he ended up ${side(a).toFixed(2)} m through the fence`);
+  assert.ok(a.n > mid.n - 0.5, `he ended up ${(mid.n - a.n).toFixed(2)} m through the fence`);
+});
+
+/**
+ * The trap the paddock used to be, and the way out of it.
+ *
+ * FOLLOW walks a straight line at the player and slides off whatever it hits;
+ * nothing routes it around a concave obstacle and nothing timed it out. Inside
+ * a fenced yard that is permanent — measured on the paddock as it shipped, he
+ * was still inside after thirty seconds in 17 of 36 cases, and no input the
+ * player had could recover him. The fence is gone; this is what stops the next
+ * concave thing costing the crew its second member.
+ */
+test('a following assistant wedged behind an obstacle catches up', () => {
+  const w = buildWorld('sv-curral', DIFFICULTY.facil);
+  const yard = openSpot({ e: 110, n: 110 }, w);
+  // A pen, open only to the north.
+  fenceInto(w, [
+    [yard.e - 5, yard.n + 5],
+    [yard.e - 5, yard.n - 5],
+    [yard.e + 5, yard.n - 5],
+    [yard.e + 5, yard.n + 5],
+  ]);
+
+  const a = makeAssistant(yard);
+  // Due south of him, well beyond the catch-up distance: the only way out is
+  // north, which is the one direction following will never take him.
+  const player = { e: yard.e, n: yard.n - (CATCHUP_DISTANCE + 15) };
+
+  const ev = runUntil(a, { player }, CATCHUP_TIMEOUT + 3, w);
+  assert.equal(ev.caughtUp, 1, 'he should be picked up exactly once');
+  assert.ok(
+    Math.hypot(a.e - player.e, a.n - player.n) <= 6,
+    `and put down beside the player, not ${Math.hypot(a.e - player.e, a.n - player.n).toFixed(1)} m away`,
+  );
+});
+
+test('a long walk in the open is never mistaken for being stuck', () => {
+  // The catch-up must cost him nothing when he is simply far away and walking:
+  // teleporting a man who is making perfectly good progress would be the same
+  // bug as the one it exists to fix, pointed the other way.
+  const from = openSpot();
+  const player = openSpot({ e: from.e + (CATCHUP_DISTANCE + 10), n: from.n });
+  const a = makeAssistant(from);
+
+  const ev = runUntil(a, { player }, CATCHUP_TIMEOUT + 5);
+  assert.equal(ev.caughtUp, 0, 'he walked there; nobody had to carry him');
+  assert.ok(
+    Math.hypot(a.e - player.e, a.n - player.n) <= FOLLOW_DISTANCE + 0.6,
+    'and he arrives on foot',
+  );
 });
 
 test('with nothing to do he trails the player and then stops', () => {

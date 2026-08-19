@@ -21,8 +21,7 @@ import { makeDisplay } from './render/display.js';
 import { makePlanView } from './render/planview.js';
 import { makeEffects } from './render/effects.js';
 import { building } from './render/sprites/index.js';
-import { surveyor } from './render/sprites/character.js';
-import { lightAt, LIGEIRINHO_LOOK } from './render/palette.js';
+import { lightAt, LIGEIRINHO_LOOK, ownerLook } from './render/palette.js';
 import { pixi } from './render/pixi.js';
 import { makeAudio } from './audio/audio.js';
 
@@ -37,7 +36,7 @@ import {
   placeBeside,
   MODE as AUX_MODE,
 } from './game/assistant.js';
-import { revealMarksNear, applyRevealed } from './game/discovery.js';
+import { revealMarksNear, applyRevealed, REVEAL_RADIUS } from './game/discovery.js';
 import { makeInput } from './game/input.js';
 import { makeTools, TOOL, PANEL_TOOLS } from './game/tools.js';
 import { makeTutorial } from './game/tutorial.js';
@@ -47,9 +46,10 @@ import { initLanguage, applyI18n, t, setLanguage, lang, registerLanguage, setAng
 import { makeModalHost } from './ui/modal.js';
 import { makeNotifier } from './ui/notify.js';
 import { showIntro } from './ui/intro.js';
+import { paintSurveyor, HEAD, MINI } from './ui/portrait.js';
 import { makeHud } from './ui/hud.js';
 import { makeToolbar } from './ui/toolbar.js';
-import { renderCaderneta } from './ui/caderneta.js';
+import { renderCaderneta, cadernetaRows } from './ui/caderneta.js';
 import { renderCalculos } from './ui/calculos.js';
 import { showStationDialog } from './ui/stationdialog.js';
 import { showParcelPicker, showCampaignEnd } from './ui/parcelpicker.js';
@@ -58,9 +58,10 @@ import { el } from './ui/dom.js';
 
 import { buildPlanta, buildPlantaTables } from './report/planta.js';
 import { buildMemorial } from './report/memorial.js';
+import { buildErrorFigure } from './report/errorfigure.js';
 import { makeDocBlocks } from './report/docmodel.js';
 import { drawListToCanvas, docBlocksToHtml, renderDebrief } from './report/reportview.js';
-import { exportPDF, printFallback, downloadText } from './report/pdf.js';
+import { exportPDF, printFallback, downloadText, downloadCSV } from './report/pdf.js';
 
 import { areaOf } from './survey/geometry.js';
 import { num } from './ui/i18n.js';
@@ -70,6 +71,21 @@ import { fmtDuration } from './survey/units.js';
 
 const root = document.getElementById('app');
 const canvas = document.getElementById('world');
+
+/**
+ * Where the HTML panels sit over the canvas, in CSS pixels.
+ *
+ * The overlay canvas is UNDER the HUD bar, the checklist and the thumbstick, so
+ * anything pinned to an edge is drawn behind them and simply cannot be seen —
+ * which is how the first version of the unfound-corner arrow ended up invisible
+ * in exactly the corner it was pointing to. Cached rather than measured every
+ * frame: `getBoundingClientRect` forces layout, and these move only when the
+ * HUD changes or the window does.
+ *
+ * Declared up here because `makeHud` runs at module top level and calls back
+ * into the measurement while it lays itself out.
+ */
+let safeArea = { top: 0, right: 0, bottom: 0, left: 0 };
 const overlayCanvas = document.getElementById('overlay');
 
 const store = makeStore(makeInitialState());
@@ -150,6 +166,7 @@ const hud = makeHud(root, {
   onJobs: () => nextJob(),
   onBatch: () => doMeasureAll(),
   onToggleSetting: (key) => toggleSetting(key),
+  onChecklistToggle: () => measureSafeArea(),
   audio,
 });
 const toolbar = makeToolbar({ root, tools, onSelect: selectTool });
@@ -194,6 +211,8 @@ function buildView(alpha = 1) {
     player: drawPlayer,
     assistant: interpolatedAssistant(assistant, alpha),
     activeParcelId: svc?.parcelId ?? null,
+    corners: cornerStates(),
+    safeArea,
     station: setup,
     setups: svc?.setups ?? [],
     observations: setup ? setup.observations : [],
@@ -206,7 +225,81 @@ function buildView(alpha = 1) {
     // earlier and it is a distraction, any later and it points at nothing.
     sede: svc?.delivered && !svc.completed && world ? world.sedeFor(svc.parcelId) : null,
     light: lightAt(dayFraction(svc)),
+    now: sceneClock,
   };
+}
+
+function measureSafeArea() {
+  if (!canvas) return;
+  const view = canvas.getBoundingClientRect();
+  const inset = { top: 0, right: 0, bottom: 0, left: 0 };
+
+  for (const sel of ['.hud-bar', '.checklist', '.toolbar', '.field-actions', '.thumbstick']) {
+    const node = root.querySelector(sel);
+    if (!node || node.hidden) continue;
+    // Deliberately NOT `offsetParent`: these panels are positioned, and a
+    // positioned element reports a null offsetParent — which silently skipped
+    // every one of them. A hidden or unrendered node measures zero anyway,
+    // which is the check that actually works.
+    const r = node.getBoundingClientRect();
+    if (!r.width || !r.height) continue;
+
+    // Each panel owns exactly ONE edge. Testing all four let the full-width HUD
+    // bar count as a left inset AND a right inset — both 1280 px — which walled
+    // off the whole canvas and put every marker straight back in the corner the
+    // insets exist to keep it out of.
+    const band = r.width >= view.width * 0.6;
+    if (band) {
+      if (r.top - view.top <= view.height / 2) inset.top = Math.max(inset.top, r.bottom - view.top);
+      else inset.bottom = Math.max(inset.bottom, view.bottom - r.top);
+    } else if (r.left - view.left <= view.width / 2) {
+      inset.left = Math.max(inset.left, r.right - view.left);
+    } else {
+      inset.right = Math.max(inset.right, view.right - r.left);
+    }
+  }
+
+  // Never let the panels eat the frame: a marker with nowhere legal to go is
+  // worse than one sitting slightly under an edge.
+  inset.left = Math.min(inset.left, view.width * 0.25);
+  inset.right = Math.min(inset.right, view.width * 0.25);
+  inset.top = Math.min(inset.top, view.height * 0.25);
+  inset.bottom = Math.min(inset.bottom, view.height * 0.25);
+  safeArea = inset;
+}
+
+/**
+ * The state of every corner of the parcel being surveyed.
+ *
+ * The boundary itself is drawn from the true geometry, always — so on médio and
+ * difícil the player could see the line BEND at a corner whose mark is still
+ * buried, with nothing on it to click and nothing saying why. Measured over six
+ * seeds, that is 30 of 199 corners on médio and 80 of 199 on difícil, and it
+ * left 94% of difícil parcels with at least one corner that read as a bug.
+ *
+ * Showing where they are is not a giveaway: the premise of the job is that the
+ * owner has already walked the boundary and pointed the corners out. What the
+ * player still has to do — go there, and find the evidence in the scrub — is
+ * untouched, and on difícil it is still charged to the clock.
+ */
+function cornerStates() {
+  const svc = store.get().activeService;
+  const parcel = svc && world ? world.parcelById.get(svc.parcelId) : null;
+  if (!parcel) return [];
+  const missing = new Set(service.parcelProgress().missing);
+
+  return parcel.markIds.map((id, i) => {
+    const ent = world.entity(id);
+    const v = parcel.vertices[i];
+    return {
+      id,
+      label: v.id,
+      e: ent ? ent.e : v.e,
+      n: ent ? ent.n : v.n,
+      // Three states, because "2/5" in the HUD never says WHICH two.
+      state: !ent || ent.hidden ? 'unfound' : missing.has(id) ? 'found' : 'measured',
+    };
+  });
 }
 
 /**
@@ -231,6 +324,13 @@ function dayFraction(svc) {
 
 let clockAcc = 0;
 let discoveryAcc = 0;
+/**
+ * Seconds of GAME time, for the idle animations of things that are not the
+ * crew. Advanced from the fixed step rather than read off the wall clock, so
+ * everybody in the valley holds still while a dialog is open — exactly as the
+ * player and Ligeirinho already do.
+ */
+let sceneClock = 0;
 /** Last verdict on standing at the eyepiece, for spotting the flip. */
 let wasAtInstrument = null;
 
@@ -245,6 +345,8 @@ const loop = makeLoop({
       haltAssistant(assistant);
       return;
     }
+
+    sceneClock += dt;
 
     const intent = input.intent();
     const wasPhase = player.walkPhase;
@@ -393,6 +495,46 @@ function selectTool(tool) {
   return verdict;
 }
 
+/**
+ * Say why there is nothing to aim at — including when there IS.
+ *
+ * `targetAt` skips buried marks, and rightly: a mark nobody has found is not
+ * something the instrument may be pointed at. But falling through to "nenhum
+ * alvo sob o cursor" made the game deny the corner exists, while drawing the
+ * boundary bending straight through it. That is the complaint that opened this
+ * round, and it was the message rather than the world that was wrong.
+ *
+ * So this looks a second time, deliberately including hidden marks, purely to
+ * produce a better sentence. `targetAt` keeps its single rule about what may be
+ * sighted, which is the thing worth not muddling.
+ */
+function explainNoTarget(at) {
+  const buried = buriedCornerAt(at);
+  if (!buried) {
+    notifier.key('tip.noTarget', {}, 'warn');
+    return;
+  }
+  const away = Math.max(0, Math.round(Math.hypot(buried.e - player.e, buried.n - player.n)));
+  notifier.key('tip.cornerBuried', { label: buried.label || '', dist: away, reach: Math.round(REVEAL_RADIUS) }, 'warn');
+}
+
+/** A corner mark under the cursor that the crew has not turned up yet. */
+function buriedCornerAt(worldPos) {
+  if (!world || !worldPos) return null;
+  const pick = Math.max(2.5, 20 / camera.zoom);
+  let best = null;
+  let bestD = Infinity;
+  for (const ent of world.spatial.queryCircle(worldPos.e, worldPos.n, pick)) {
+    if (!ent.hidden || ent.targetKind !== 'divisa') continue;
+    const d = Math.hypot(ent.e - worldPos.e, ent.n - worldPos.n);
+    if (d < bestD && d <= pick) {
+      bestD = d;
+      best = ent;
+    }
+  }
+  return best;
+}
+
 /** The sightable thing nearest a world position, within the cursor's pick radius. */
 function targetAt(worldPos) {
   if (!world || !worldPos) return null;
@@ -457,9 +599,10 @@ function doActiveToolAction(at = null) {
       // 4 key — or letting the game select it for you after a station goes up —
       // fires no pointer event at all, so a cursor already resting on a corner
       // used to leave the key dead until the mouse was physically nudged.
+      const at2 = at || input?.worldPointer;
       const target = targetAt(at) || hoverTarget || targetAt(input?.worldPointer);
       if (target) doSight(target.id);
-      else notifier.key('tip.noTarget', {}, 'warn');
+      else explainNoTarget(at2);
       break;
     }
     default:
@@ -927,7 +1070,22 @@ function openCaderneta() {
     titleKey: 'caderneta.title',
     wide: true,
     body: renderCaderneta({ setups: svc.setups, observations: svc.observations }),
-    actions: [{ labelKey: 'common.close' }],
+    actions: [
+      {
+        // The field book is the one artefact a student hands in, and it could
+        // not leave the browser. CSV rather than PDF: it is data, and the point
+        // of handing it in is that somebody checks the arithmetic.
+        labelKey: 'caderneta.export',
+        closes: false,
+        onClick: () => {
+          const rows = cadernetaRows({ setups: svc.setups, observations: svc.observations });
+          downloadCSV(rows, `caderneta-${svc.parcelId}.csv`);
+          notifier.key('caderneta.exported', { n: rows.length - 1 }, 'success');
+          return false;
+        },
+      },
+      { labelKey: 'common.close' },
+    ],
   });
 }
 
@@ -1002,10 +1160,20 @@ function openDelivery() {
   buildPlantaTables(result.report, docs, lang());
 
   const plantaCanvas = el('canvas.planta-canvas');
+
+  // The error figure is debrief-only and never joins the documents: the planta
+  // is the deliverable and imitates a legal instrument, so the true corner
+  // positions have no business on it. This is the one screen in the game where
+  // truth is shown at all.
+  const figure = buildErrorFigure({ corners: result.debrief?.corners ?? [], t });
+  const errorCanvas = figure.drawList.items.length ? el('canvas.planta-canvas') : null;
+
   const body = el(
     'div.delivery',
     {},
     renderDebrief(result),
+    errorCanvas ? el('h3', { text: t('debrief.figureTitle') }) : null,
+    errorCanvas,
     el('h3', { text: t('delivery.planta') }),
     plantaCanvas,
     el('h3', { text: t('delivery.memorial') }),
@@ -1045,8 +1213,11 @@ function openDelivery() {
     ],
   });
 
-  // Draw after the canvas is in the document so it has a measured width.
-  requestAnimationFrame(() => drawListToCanvas(plantaCanvas, planta.drawList, planta.sheet, 3.4));
+  // Draw after the canvases are in the document so they have a measured width.
+  requestAnimationFrame(() => {
+    drawListToCanvas(plantaCanvas, planta.drawList, planta.sheet, 3.4);
+    if (errorCanvas) drawListToCanvas(errorCanvas, figure.drawList, figure.sheet, 3.4);
+  });
 
   lastReport = { result, planta, memorial, docs };
   refreshUI();
@@ -1114,6 +1285,20 @@ function showPayment(result) {
   const s = store.get();
   audio.kaching();
 
+  // The owner, in person. The screen used to open with a table of numbers for
+  // money handed over by nobody — and there is somebody standing on the
+  // doorstep now, so it is the same face, painted from the same look the sprite
+  // out in the valley is painted from.
+  const parcel = service.activeParcel();
+  const portrait = parcel
+    ? el('canvas.pay-face', {
+        width: HEAD.w * MINI,
+        height: HEAD.h * MINI,
+        'aria-hidden': 'true',
+      })
+    : null;
+  if (portrait) paintSurveyor(portrait, ownerLook(parcel.ownerBody, parcel.index), HEAD);
+
   const rows = result.breakdown.lines.map((line) =>
     el(
       `tr${line.value < 0 ? '.is-debit' : ''}`,
@@ -1128,6 +1313,14 @@ function showPayment(result) {
     body: el(
       'div.payment',
       {},
+      parcel
+        ? el(
+            'div.pay-owner',
+            {},
+            portrait,
+            el('p.pay-owner-line', { text: t('pay.ownerLine', { owner: parcel.owner }) }),
+          )
+        : null,
       el(
         'table.tbl.pay-table',
         {},
@@ -1251,6 +1444,7 @@ function refreshUI() {
   hud.setArea(ring.length >= 3 ? areaOf(ring) : null);
   toolbar.refresh();
   tutorial.refresh();
+  measureSafeArea();
 }
 
 // ------------------------------------------------------------------ start ---
@@ -1295,15 +1489,7 @@ function meetLigeirinho() {
   if (s.player.metLigeirinho) return;
   s.player.metLigeirinho = true;
 
-  const portrait = el('canvas.char-portrait', { width: 24 * 5, height: 34 * 5 });
-  const { pix } = surveyor({ dir: 'S', pose: 'idle', look: LIGEIRINHO_LOOK });
-  const off = document.createElement('canvas');
-  off.width = pix.w;
-  off.height = pix.h;
-  off.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(pix.data), pix.w, pix.h), 0, 0);
-  const ctx = portrait.getContext('2d');
-  ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(off, 0, 0, portrait.width, portrait.height);
+  const portrait = paintSurveyor(el('canvas.char-portrait', { width: 24 * 5, height: 34 * 5 }), LIGEIRINHO_LOOK);
 
   modals.open({
     titleKey: 'ligeirinho.title',
@@ -1403,12 +1589,21 @@ function begin() {
       // The overlay sits on top and covers the world canvas exactly, so it is
       // the single owner of pointer events.
       canvas: overlayCanvas,
+      // The thumbstick is a sibling of the panels, so it sits above the canvas
+      // and inside the same layout the safe-area measurement already reads.
+      root,
       camera,
       bus,
       EV,
       onClick,
       onDoubleClick,
       onHover,
+      onTouch: () => {
+        // A tablet in landscape is wide enough to keep the roteiro on screen,
+        // where it covers a quarter of the play area and silently eats taps.
+        hud.collapseChecklist();
+        measureSafeArea();
+      },
       onToolKey: (tool) => selectTool(tool),
       onBatchKey: () => doMeasureAll(),
       onAct: () => doActiveToolAction(),
@@ -1506,7 +1701,10 @@ bus.on(EV.LANG_CHANGED, () => {
   refreshUI();
 });
 
-window.addEventListener('resize', () => display?.resize());
+window.addEventListener('resize', () => {
+  display?.resize();
+  measureSafeArea();
+});
 
 /**
  * Autosave.
@@ -1908,6 +2106,8 @@ window.game = {
       return { e: player.e, n: player.n };
     },
     ready: () => running && atlas.ready,
+    /** The canvas area the HTML panels are not covering. */
+    safeArea: () => ({ ...safeArea }),
   },
 };
 

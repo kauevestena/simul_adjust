@@ -241,7 +241,37 @@ export function makeScene({ app, camera, atlas, ground }) {
     return a.idleFrame ? `aux-${a.facing}-idle` : `aux-${a.facing}-0`;
   }
 
-  function drawEntities(w, playerState, station, assistantState) {
+  /**
+   * Which frame of a resident to draw.
+   *
+   * They never move, so their whole animation is a breath and where they are
+   * looking. Both are computed here rather than stored on the entity: a person
+   * on a doorstep is pure presentation, and `world/` has no business holding a
+   * facing that only exists because somebody walked past.
+   *
+   * The breath is offset per person by their own position, or six neighbours
+   * would inhale in unison across the valley, which reads as machinery.
+   */
+  const BREATH_SLOT = 0.8;
+  const BREATH_PATTERN = [0, 0, 1];
+  /** Near enough for them to have noticed you. */
+  const NOTICE_RADIUS = 14;
+
+  function residentKey(ent, playerState, now) {
+    let dir = 'S';
+    if (playerState) {
+      const dE = playerState.e - ent.e;
+      const dN = playerState.n - ent.n;
+      if (Math.hypot(dE, dN) <= NOTICE_RADIUS) {
+        dir = Math.abs(dN) >= Math.abs(dE) ? (dN > 0 ? 'N' : 'S') : dE > 0 ? 'E' : 'W';
+      }
+    }
+    const phase = now + ent.e * 0.37 + ent.n * 0.11;
+    const breath = BREATH_PATTERN[Math.floor(phase / BREATH_SLOT) % BREATH_PATTERN.length];
+    return `${ent.look || 'owner-m0'}-${dir}-${breath ? 'idle' : '0'}`;
+  }
+
+  function drawEntities(w, playerState, station, assistantState, now) {
     const detail = camera.zoom >= DETAIL_ZOOM;
     const view = camera.viewRect(12);
     visible.length = 0;
@@ -261,7 +291,7 @@ export function makeScene({ app, camera, atlas, ground }) {
     entityUsed = 0;
 
     for (const ent of visible) {
-      const key = spriteKeyFor(ent);
+      const key = ent.kind === KIND.MORADOR ? residentKey(ent, playerState, now) : spriteKeyFor(ent);
       const frame = key && atlas.get(key);
       if (!frame) continue;
       place(takeEntitySprite(), frame, ent.e, ent.n);
@@ -301,7 +331,7 @@ export function makeScene({ app, camera, atlas, ground }) {
 
   // ---- frame --------------------------------------------------------------
   function render(view) {
-    const { world: w, player, assistant, activeParcelId, station, light: lightState } = view;
+    const { world: w, player, assistant, activeParcelId, station, light: lightState, now = 0 } = view;
 
     if (!w) {
       world.visible = false;
@@ -327,7 +357,7 @@ export function makeScene({ app, camera, atlas, ground }) {
 
     drawGround(w);
     drawLines(w, activeParcelId);
-    drawEntities(w, player, station, assistant);
+    drawEntities(w, player, station, assistant, now);
 
     // Light pass, in screen space.
     tint.width = camera.vw;
@@ -372,6 +402,7 @@ export function makeScene({ app, camera, atlas, ground }) {
      */
     characterKey,
     assistantKey,
+    residentKey,
   };
 }
 

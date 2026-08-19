@@ -10,9 +10,11 @@ import assert from 'node:assert/strict';
 
 import { makePix, ramp, rgba, rgbToHsl, hash2, PX_PER_M } from '../src/render/pixbuf.js';
 import { buildSprites, buildGroundSprites } from '../src/render/sprites/index.js';
-import { SKIN_TONES, HAIR_TONES, HAT_STYLES } from '../src/render/palette.js';
+import { SKIN_TONES, HAIR_TONES, HAT_STYLES, OWNER_LOOKS } from '../src/render/palette.js';
 import { classGrid, paintBase, paintDetail, shadeField } from '../src/render/groundpaint.js';
 import { makeTerrain } from '../src/world/terrain.js';
+import { buildWorld } from '../src/world/world.js';
+import { DIFFICULTY } from '../src/core/state.js';
 import { makeCamera, ZOOM_LADDER, ZOOM_DEFAULT } from '../src/render/camera.js';
 
 // ------------------------------------------------------------ the painter ---
@@ -149,6 +151,64 @@ test('the two of the crew can be told apart at a glance', () => {
     const him = byKey.get(`aux-${dir}-0`);
     assert.notEqual(him.pix.hash(), me.pix.hash(), `aux-${dir}-0 paints identically to the player`);
     assert.equal(him.anchorY, me.anchorY, 'and stands on the same ground line');
+  }
+});
+
+/**
+ * The neighbours.
+ *
+ * One standing figure per owner look per body, and standing is the whole
+ * roster: an owner waits on their own doorstep, so there is no walk cycle. The
+ * atlas is painted from fixed archetypes long before any valley exists, which
+ * is why the key carries the body and the variant — the world picks one at
+ * generation time and can only pick something already painted.
+ */
+test('every landowner has a face, and none of them is the crew', () => {
+  const byKey = new Map(buildSprites().map((s) => [s.key, s]));
+  const crew = new Set(['char-S-0', 'aux-S-0'].map((k) => byKey.get(k).pix.hash()));
+  const seen = new Map();
+
+  for (const body of ['m', 'f']) {
+    for (let v = 0; v < OWNER_LOOKS.length; v++) {
+      for (const dir of ['S', 'N', 'E', 'W']) {
+        for (const pose of ['0', 'idle']) {
+          const key = `owner-${body}${v}-${dir}-${pose}`;
+          assert.ok(byKey.has(key), `${key} missing`);
+        }
+        assert.equal(
+          byKey.get(`owner-${body}${v}-${dir}-0`).anchorY,
+          byKey.get(`char-${dir}-0`).anchorY,
+          'everybody stands on the same ground line',
+        );
+      }
+
+      const face = byKey.get(`owner-${body}${v}-S-0`).pix.hash();
+      assert.ok(!crew.has(face), `owner-${body}${v} is painted as one of the crew`);
+      assert.ok(!seen.has(face), `owner-${body}${v} is identical to ${seen.get(face)}`);
+      seen.set(face, `owner-${body}${v}`);
+    }
+  }
+});
+
+/**
+ * The one join between a generated valley and a sheet painted at boot.
+ *
+ * `placeResidents` writes an atlas key onto an entity. Nothing checks it at
+ * runtime — `scene.js` asks the atlas for a frame and silently draws nothing if
+ * it is missing — so a person standing invisibly on a doorstep is exactly the
+ * kind of bug that survives a play-through.
+ */
+test('the owner an actual world puts on a doorstep has a sprite to be drawn with', () => {
+  const keys = new Set(buildSprites().map((s) => s.key));
+  const w = buildWorld('sv-morador', DIFFICULTY.medio);
+  for (const p of w.parcels) {
+    const who = w.residentFor(p.id);
+    if (!who) continue;
+    for (const dir of ['S', 'N', 'E', 'W']) {
+      for (const pose of ['0', 'idle']) {
+        assert.ok(keys.has(`${who.look}-${dir}-${pose}`), `${p.id}: no sprite ${who.look}-${dir}-${pose}`);
+      }
+    }
   }
 });
 

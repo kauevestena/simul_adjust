@@ -296,3 +296,39 @@ test('a corner found before a reload is still found after it', () => {
   applyRevealed(after, restored.revealedMarks);
   assert.equal(after.entity(buriedId).hidden, false, 'the walk has to be remembered');
 });
+
+test('a compensated survey comes back compensated', () => {
+  // The adjustment lives on the observations, and `rehydrate` rebuilds the
+  // reduction cache through `reducedPoints` — so this is really asserting that
+  // the one place preferring `adjE/adjN` is the one place that matters.
+  const seed = 'sv-persist-adj';
+  const store = makeStore(makeInitialState({ seed, difficulty: 'facil' }));
+  const world = buildWorld(seed, DIFFICULTY.facil);
+  const service = makeService({ store, getWorld: () => world, bus, EV });
+  const parcel = world.parcels[0];
+  service.start(parcel.id);
+  surveySome(store, world, service, parcel);
+
+  const tr = service.runTraverse({});
+  if (!tr.ok) return; // this seed did not close; nothing to assert about
+  const compensated = service.surveyedRing().map((p) => ({ E: p.E, N: p.N }));
+  assert.ok(compensated.length >= 3);
+
+  const storage = makeStorage(memoryBackend());
+  storage.saveNow(store.snapshot());
+  const back = storage.loadSave();
+
+  const store2 = makeStore(back);
+  const world2 = buildWorld(seed, DIFFICULTY.facil);
+  const service2 = makeService({ store: store2, getWorld: () => world2, bus, EV });
+  service2.rehydrate();
+
+  const after = service2.surveyedRing();
+  assert.equal(after.length, compensated.length, 'the same ring comes back');
+  for (let i = 0; i < after.length; i++) {
+    assert.ok(
+      Math.hypot(after[i].E - compensated[i].E, after[i].N - compensated[i].N) < 1e-9,
+      'a reload must not silently undo the compensation',
+    );
+  }
+});

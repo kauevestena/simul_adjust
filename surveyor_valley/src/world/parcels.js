@@ -291,6 +291,8 @@ export function generateParcels(
       id: `P${ci + 1}`,
       index: ci,
       owner: cast.owners[ci],
+      /** Which silhouette the owner is painted with. See `names.js`. */
+      ownerBody: cast.ownerBodies[ci],
       propertyName: cast.properties[ci],
       municipio: cast.municipio,
       uf: cast.uf,
