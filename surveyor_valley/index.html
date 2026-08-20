@@ -266,8 +266,13 @@
 
     <script>
       // The language toggle. Both texts are in the page, so switching is free
-      // and works with no network — the browser's own language only picks which
-      // one leads.
+      // and works with no network.
+      //
+      // Portuguese leads, always, and NOT whatever the browser happens to be
+      // set to: this is a Brazilian classroom game whose own interface opens in
+      // Portuguese, and a lab machine imaged in en-US would otherwise greet the
+      // students it was bought for in the wrong language. English is one click
+      // away, which is the right weight for it.
       const panels = document.querySelectorAll('[data-lang]');
       const buttons = document.querySelectorAll('.lang');
       function show(lang) {
@@ -276,7 +281,7 @@
         document.documentElement.lang = lang === 'pt' ? 'pt-BR' : 'en';
       }
       for (const b of buttons) b.addEventListener('click', () => show(b.dataset.set));
-      show((navigator.language || 'pt').toLowerCase().startsWith('pt') ? 'pt' : 'en');
+      show('pt');
 
       // The game shipped a service worker scoped to THIS directory, and it is
       // cache-first: without this, a returning player is served the old game
