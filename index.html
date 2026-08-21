@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simuladores de Geodésia, Topografia e Ajustamento — Portal Monorepo</title>
+  <meta name="description" content="Portal central de simuladores científicos e didáticos para Geodésia, Topografia, Ajustamento por Mínimos Quadrados, Órbitas GNSS e Engenharia Rodoviária.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌐</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg-base: #080c14;
+      --bg-card: rgba(15, 23, 42, 0.65);
+      --bg-card-hover: rgba(26, 38, 66, 0.85);
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-hover: rgba(99, 102, 241, 0.4);
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent-cyan: #06b6d4;
+      --accent-indigo: #6366f1;
+      --accent-purple: #a855f7;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --accent-blue: #3b82f6;
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 24px;
+      --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+      --shadow-glow: 0 0 25px rgba(99, 102, 241, 0.15);
+      --transition-smooth: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      background-color: var(--bg-base);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      line-height: 1.6;
+      background-image: 
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.18), transparent 70%),
+        radial-gradient(ellipse 60% 40% at 85% 60%, rgba(6, 182, 212, 0.08), transparent 60%),
+        radial-gradient(ellipse 50% 30% at 15% 40%, rgba(168, 85, 247, 0.08), transparent 60%);
+      background-attachment: fixed;
+    }
+
+    /* Ambient animated mesh backdrop */
+    .mesh-glow {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 0;
+      background-size: 40px 40px;
+      background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1360px;
+      margin: 0 auto;
+      padding: 0 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Header & Hero */
+    header {
+      padding: 56px 0 36px 0;
+      text-align: center;
+    }
+
+    .monorepo-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      background: rgba(99, 102, 241, 0.12);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      border-radius: 9999px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #a5b4fc;
+      margin-bottom: 20px;
+      letter-spacing: 0.02em;
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      background: #10b981;
+      border-radius: 50%;
+      box-shadow: 0 0 10px #10b981;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    h1 {
+      font-size: clamp(2.2rem, 5vw, 3.5rem);
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+      margin-bottom: 16px;
+      background: linear-gradient(135deg, #ffffff 30%, #cbd5e1 70%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-subtitle {
+      font-size: clamp(1rem, 2vw, 1.2rem);
+      color: var(--text-secondary);
+      max-width: 780px;
+      margin: 0 auto 32px auto;
+      font-weight: 400;
+    }
+
+    /* Key Statistics Pills */
+    .hero-stats {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 40px;
+    }
+
+    .stat-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 18px;
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      backdrop-filter: blur(8px);
+    }
+
+    .stat-pill strong {
+      color: var(--text-primary);
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Controls Bar: Search & Categories */
+    .controls-panel {
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl);
+      padding: 16px 20px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+      margin-bottom: 36px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .search-wrapper {
+      position: relative;
+      width: 100%;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 14px 44px 14px 48px;
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--radius-lg);
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 0.95rem;
+      outline: none;
+      transition: var(--transition-smooth);
+    }
+
+    .search-input:focus {
+      border-color: var(--accent-indigo);
+      background: rgba(30, 41, 59, 0.9);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+    }
+
+    .search-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .search-clear {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: var(--text-secondary);
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 0.75rem;
+      transition: var(--transition-smooth);
+    }
+
+    .search-clear:hover {
+      background: rgba(255, 255, 255, 0.2);
+      color: #fff;
+    }
+
+    /* Category Filter Buttons */
+    .filter-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .filter-btn {
+      padding: 8px 16px;
+      background: rgba(30, 41, 59, 0.4);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition-smooth);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: inherit;
+    }
+
+    .filter-btn:hover {
+      background: rgba(51, 65, 85, 0.6);
+      color: var(--text-primary);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .filter-btn.active {
+      background: var(--accent-indigo);
+      color: #ffffff;
+      border-color: var(--accent-indigo);
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+    }
+
+    .filter-count {
+      font-size: 0.75rem;
+      padding: 1px 7px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 9999px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .filter-btn.active .filter-count {
+      background: rgba(255, 255, 255, 0.25);
+    }
+
+    /* Grid of Simulator Cards */
+    .simulators-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+      gap: 24px;
+      margin-bottom: 64px;
+    }
+
+    /* Simulator Card */
+    .sim-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl);
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      backdrop-filter: blur(14px);
+      transition: var(--transition-smooth);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .sim-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--card-accent, var(--accent-indigo)), transparent);
+      opacity: 0.6;
+      transition: var(--transition-smooth);
+    }
+
+    .sim-card:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--card-accent, var(--border-hover));
+      transform: translateY(-4px);
+      box-shadow: 0 16px 32px -8px rgba(0, 0, 0, 0.6), 0 0 24px -6px var(--card-accent-glow, rgba(99, 102, 241, 0.2));
+    }
+
+    .sim-card:hover::before {
+      opacity: 1;
+      height: 4px;
+    }
+
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 18px;
+    }
+
+    .card-icon-box {
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius-md);
+      background: var(--card-icon-bg, rgba(99, 102, 241, 0.15));
+      color: var(--card-accent, var(--accent-indigo));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      border: 1px solid var(--border-subtle);
+      flex-shrink: 0;
+    }
+
+    .card-category-badge {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+      background: var(--card-badge-bg, rgba(255, 255, 255, 0.06));
+      color: var(--card-accent, #cbd5e1);
+      border: 1px solid var(--border-subtle);
+      white-space: nowrap;
+    }
+
+    .card-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+      line-height: 1.3;
+    }
+
+    .card-path {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .card-path svg {
+      opacity: 0.6;
+    }
+
+    .card-description {
+      font-size: 0.92rem;
+      color: var(--text-secondary);
+      margin-bottom: 18px;
+      line-height: 1.55;
+      flex-grow: 1;
+    }
+
+    /* Key features bullet points */
+    .card-features {
+      list-style: none;
+      margin-bottom: 20px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .card-features li {
+      font-size: 0.82rem;
+      color: #cbd5e1;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      line-height: 1.4;
+    }
+
+    .card-features li::before {
+      content: "•";
+      color: var(--card-accent, var(--accent-indigo));
+      font-weight: bold;
+      font-size: 1rem;
+      line-height: 1;
+    }
+
+    /* Tech Tags */
+    .card-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 22px;
+    }
+
+    .tech-tag {
+      font-size: 0.72rem;
+      font-family: 'JetBrains Mono', monospace;
+      padding: 3px 8px;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 4px;
+      color: #94a3b8;
+    }
+
+    /* Action Buttons */
+    .card-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-top: auto;
+    }
+
+    .btn-launch {
+      flex: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 11px 18px;
+      background: var(--card-btn-bg, linear-gradient(135deg, #4f46e5, #6366f1));
+      color: #ffffff;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 0.88rem;
+      border-radius: var(--radius-md);
+      transition: var(--transition-smooth);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .btn-launch:hover {
+      filter: brightness(1.15);
+      transform: translateY(-1px);
+    }
+
+    .btn-launch svg {
+      transition: transform 0.2s ease;
+    }
+
+    .btn-launch:hover svg {
+      transform: translateX(3px);
+    }
+
+    .btn-icon-ext {
+      padding: 11px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      color: var(--text-secondary);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      transition: var(--transition-smooth);
+    }
+
+    .btn-icon-ext:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Empty state for search */
+    .empty-state {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 60px 20px;
+      background: var(--bg-card);
+      border: 1px dashed rgba(255, 255, 255, 0.15);
+      border-radius: var(--radius-xl);
+      display: none;
+    }
+
+    .empty-state-icon {
+      font-size: 3rem;
+      margin-bottom: 12px;
+      opacity: 0.6;
+    }
+
+    .empty-state h3 {
+      font-size: 1.3rem;
+      color: var(--text-primary);
+      margin-bottom: 6px;
+    }
+
+    .empty-state p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    /* Footer */
+    footer {
+      margin-top: auto;
+      border-top: 1px solid var(--border-subtle);
+      background: rgba(8, 12, 20, 0.85);
+      padding: 32px 0;
+      backdrop-filter: blur(12px);
+    }
+
+    .footer-content {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      font-size: 0.88rem;
+      color: var(--text-muted);
+    }
+
+    .footer-content a {
+      color: #a5b4fc;
+      text-decoration: none;
+      transition: var(--transition-smooth);
+    }
+
+    .footer-content a:hover {
+      color: #ffffff;
+      text-decoration: underline;
+    }
+
+    /* Responsive tweaks */
+    @media (max-width: 768px) {
+      .simulators-grid {
+        grid-template-columns: 1fr;
+      }
+      .controls-panel {
+        padding: 14px;
+      }
+      .filter-tabs {
+        overflow-x: auto;
+        padding-bottom: 4px;
+        flex-wrap: nowrap;
+      }
+      .filter-btn {
+        white-space: nowrap;
+      }
+      header {
+        padding: 36px 0 24px 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="mesh-glow"></div>
+
+  <div class="container">
+    <header>
+      <div class="monorepo-badge">
+        <span class="pulse-dot"></span>
+        MONOREPO • APLICAÇÕES CIENTÍFICAS SERVERLESS
+      </div>
+      <h1>Simuladores de Geodésia & Topografia</h1>
+      <p class="hero-subtitle">
+        Portal centralizado com ferramentas interativas, visualizadores 3D e laboratórios de ajustamento por Mínimos Quadrados. Todas as ferramentas executam 100% no navegador.
+      </p>
+
+      <div class="hero-stats">
+        <div class="stat-pill">
+          <span>📦 Total de Simuladores:</span>
+          <strong id="statTotalApps">10</strong>
+        </div>
+        <div class="stat-pill">
+          <span>⚡ Arquitetura:</span>
+          <strong>Client-side (Sem Servidor)</strong>
+        </div>
+        <div class="stat-pill">
+          <span>📐 Métodos:</span>
+          <strong>MMQ, Órbitas, 3D & Vias</strong>
+        </div>
+      </div>
+
+      <!-- Controls Panel: Instant Search and Category Pills -->
+      <div class="controls-panel">
+        <div class="search-wrapper">
+          <div class="search-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </div>
+          <input 
+            type="text" 
+            id="searchInput" 
+            class="search-input" 
+            placeholder="Buscar por nome, método (ex: MMQ, GNSS, Geoide, Curvas), biblioteca..."
+            aria-label="Buscar simuladores"
+          >
+          <button id="searchClear" class="search-clear" aria-label="Limpar busca">&times;</button>
+        </div>
+
+        <div class="filter-tabs" id="filterTabs">
+          <button class="filter-btn active" data-category="all">
+            Todos <span class="filter-count" id="countAll">10</span>
+          </button>
+          <button class="filter-btn" data-category="ajustamento">
+            📐 Ajustamento & MMQ <span class="filter-count" id="countAjustamento">4</span>
+          </button>
+          <button class="filter-btn" data-category="geodesia-3d">
+            🌍 Geodésia & Modelos 3D <span class="filter-count" id="countGeodesia">2</span>
+          </button>
+          <button class="filter-btn" data-category="astronomia-gnss">
+            📡 GNSS & Astronomia <span class="filter-count" id="countAstro">2</span>
+          </button>
+          <button class="filter-btn" data-category="vias">
+            🛣️ Rodovias & Traçado <span class="filter-count" id="countVias">1</span>
+          </button>
+          <button class="filter-btn" data-category="jogos">
+            🎮 Jogos Educativos <span class="filter-count" id="countJogos">1</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Simulators Grid -->
+    <main class="simulators-grid" id="simulatorsGrid">
+
+      <!-- 1. Sistemas de Coordenadas -->
+      <article class="sim-card" data-category="geodesia-3d" style="--card-accent: #06b6d4; --card-accent-glow: rgba(6, 182, 212, 0.25); --card-icon-bg: rgba(6, 182, 212, 0.12); --card-btn-bg: linear-gradient(135deg, #0891b2, #06b6d4);">
+        <div class="card-top">
+          <div class="card-icon-box">📐</div>
+          <span class="card-category-badge">Geodésia Fundamental</span>
+        </div>
+        <h2 class="card-title">Sistemas de Coordenadas</h2>
+        <div class="card-path">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+          sistemas_coordenadas/
+        </div>
+        <p class="card-description">
+          Visualizador 3D didático e interativo que explora a geometria e as fórmulas de conversão entre os referenciais fundamentais da Geodésia.
+        </p>
+        <ul class="card-features">
+          <li>Coordenadas Geodésicas (&phi;, &lambda;, h) e Cartesianas Geocêntricas (ECEF X,Y,Z)</li>
+          <li>Sistemas Esférico, Astronômico, Topocêntrico (ENU) e Plano Topográfico Local</li>
+          <li>Visualização orbital 3D e renderização de equações em tempo real com KaTeX</li>
+        </ul>
+        <div class="card-tags">
+          <span class="tech-tag">Three.js</span>
+          <span class="tech-tag">KaTeX</span>
+          <span class="tech-tag">Geodésia 3D</span>
+          <span class="tech-tag">Transformações</span>
+        </div>
+        <div class="card-actions">
+          <a href="sistemas_coordenadas/index.html" class="btn-launch">
+            Acessar Simulador
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+          </a>
+          <a href="sistemas_coordenadas/index.html" target="_blank" class="btn-icon-ext" title="Abrir em nova aba">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+          </a>
+        </div>
+      </article>
+
+      <!-- 2. História dos Modelos Terrestres -->
+      <article class="sim-card" data-category="geodesia-3d" style="--card-accent: #3b82f6; --card-accent-glow: rgba(59, 130, 246, 0.25); --card-icon-bg: rgba(59, 130, 246, 0.12); --card-btn-bg: linear-gradient(135deg, #2563eb, #3b82f6);">
+        <div class="card-top">
+          <div class="card-icon-box">🌍</div>
+          <span class="card-category-badge">Geodésia Histórica & Física</span>
+        </div>
+        <h2 class="card-title">Modelos Terrestres</h2>
+        <div class="card-path">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+          historia_modelos_terrestres/
+        </div>
+        <p class="card-description">
+          Jornada científica em 3D pela evolução dos modelos da Terra — desde os conceitos primitivos até o elipsoide de revolução e o geoide gravimétrico moderno.
+        </p>
+        <ul class="card-features">
+          <li>4 modelos históricos: Terra Plana, Esfera, Elipsoide e Geoide Gravimétrico</li>
+          <li>Visualização de ondulações geoidais em 3D com dados EGM96 e Three.js</li>
+          <li>Painel didático com contexto histórico, parâmetros geométricos e fórmulas</li>
+        </ul>
+        <div class="card-tags">
+          <span class="tech-tag">Three.js</span>
+          <span class="tech-tag">Geoide EGM96</span>
+          <span class="tech-tag">Elipsoide</span>
+          <span class="tech-tag">História da Ciência</span>
+        </div>
+        <div class="card-actions">
+          <a href="historia_modelos_terrestres/index.html" class="btn-launch">
+            Acessar Simulador
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+          </a>
+          <a href="historia_modelos_terrestres/index.html" target="_blank" class="btn-icon-ext" title="Abrir em nova aba">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+          </a>
+        </div>
+      </article>
+
+      <!-- 3. Simulador de Órbitas GNSS -->
+      <article class="sim-card" data-category="astronomia-gnss" style="--card-accent: #8b5cf6; --card-accent-glow: rgba(139, 92, 246, 0.25); --card-icon-bg: rgba(139, 92, 246, 0.12); --card-btn-bg: linear-gradient(135deg, #7c3aed, #8b5cf6);">
+        <div class="card-top">
+          <div class="card-icon-box">🛰️</div>
+          <span class="card-category-badge">Posicionamento por Satélite</span>
+        </div>
+        <h2 class="card-title">Simulador de Órbitas GNSS</h2>
+        <div class="card-path">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+          GNSS_simul/
+        </div>
+        <p class="card-description">
+          Propagação e rastreamento de órbitas de satélites GNSS em globo 3D (CesiumJS) com dados TLE reais e cálculo em tempo real da diluição de precisão (DOP).
+        </p>
+        <ul class="card-features">
+          <li>Propagação orbital com Satellite.js baseada em efemérides TLE</li>
+          <li>Posicionamento de receptor no globo e traçado de linhas de visada (LOS)</li>
+          <li>Cálculo dinâmico da matriz de geometria e métricas GDOP, HDOP e VDOP</li>
+        </ul>
+        <div class="card-tags">
+          <span class="tech-tag">CesiumJS</span>
+          <span class="tech-tag">Satellite.js</span>
+          <span class="tech-tag">TLE</span>
+          <span class="tech-tag">Diluição DOP</span>
+          <span class="tech-tag">Globo 3D</span>
+        </div>
+        <div class="card-actions">
+          <a href="GNSS_simul/index.html" class="btn-launch">
+            Acessar Simulador
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+          </a>
+          <a href="GNSS_simul/index.html" target="_blank" class="btn-icon-ext" title="Abrir em nova aba">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+          </a>
+        </div>
+      </article>
+
+      <!-- 4. Astrometria -->
+      <article class="sim-card" data-category="astronomia-gnss" style="--card-accent: #ec4899; --card-accent-glow: rgba(236, 72, 153, 0.25); --card-icon-bg: rgba(236, 72, 153, 0.12); --card-btn-bg: linear-gradient(135deg, #db2777, #ec4899);">
+        <div class="card-top">
+          <div class="card-icon-box">🔭</div>
+          <span class="card-category-badge">Geodésia Celeste</span>
+        </div>
+        <h2 class="card-title">Astrometria de Posição</h2>
+        <div class="card-path">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+          astrometria/
+        </div>
+        <p class="card-description">
+          Simulação de determinação de posição geográfica clássica por observações astronômicas através da lente de um teodolito virtual.
+        </p>
+        <ul class="card-features">
+          <li>Visada com retículo de teodolito em ambiente Three.js</li>
+          <li>Leituras de ângulo azimutal, distância zenital e tempo de Greenwich</li>
+          <li>Catálogo estelar com ascensão reta (RA) e declinação (DEC)</li>
+        </ul>
+        <div class="card-tags">
+          <span class="tech-tag">Three.js</span>
+          <span class="tech-tag">TailwindCSS</span>
+          <span class="tech-tag">Teodolito</span>
+          <span class="tech-tag">Catálogo Estelar</span>
+        </div>
+        <div class="card-actions">
+          <a href="astrometria/index.html" class="btn-launch">
+            Acessar Simulador
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+          </a>
+          <a href="astrometria/index.html" target="_blank" class="btn-icon-ext" title="Abrir em nova aba">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+          </a>
+        </div>
+      </article>
+
+      <!-- 5. Interseção à Ré (Estação Livre) -->
+      <article class="sim-card" data-category="ajustamento" style="--card-accent: #10b981; --card-accent-glow: rgba(16, 185, 129, 0.25); --card-icon-bg: rgba(16, 185, 129, 0.12); --card-btn-bg: linear-gradient(135deg, #059669, #10b981);">
+        <div class="card-top">
+          <div class="card-icon-box">📍</div>
+          <span class="card-category-badge">Ajustamento MMQ</span>
+        </div>
+        <h2 class="card-title">Interseção à Ré (Estação Livre)</h2>
+        <div class="card-path">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+          estacao_livre/
+        </div>
+        <p class="card-description">
+          Simulação interativa de redes topográficas 2D de estação livre com ajustamento paramétrico pelo Método dos Mínimos Quadrados.
+        </p>
+        <ul class="card-features">
+          <li>Inserção livre de pontos de apoio (A) e estações livres (B) no Canvas</li>
+          <li>Ajustamento MMQ com desenho dinâmico de elipses de erro e incerteza</li>
+          <li>Injeção de erros grosseiros e teste estatístico de Data Snooping de Baarda</li>
+        </ul>
+        <div class="card-tags">
+          <span class="tech-tag">Canvas 2D</span>
+          <span class="tech-tag">MMQ Paramétrico</span>
+          <span class="tech-tag">Elipses de Erro</span>
+          <span class="tech-tag">Data Snooping</span>
+        </div>
+        <div class="card-actions">
+          <a href="estacao_livre/index.html" class="btn-launch">
+            Acessar Simulador
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+          </a>
+          <a href="estacao_livre/index.html" target="_blank" class="btn-icon-ext" title="Abrir em nova aba">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+          </a>
+        </div>
+      </article>
+
+      <!-- 6. 2D Resection Lab v3 (Free Station EN) -->
+      <article class="sim-card" data-category="ajustamento" style="--card-accent: #6366f1; --card-accent-glow: rgba(99, 102, 241, 0.25); --card-icon-bg: rgba(99, 102, 241, 0.12); --card-btn-bg: linear-gradient(135deg, #4f46e5, #6366f1);">
+        <div class="card-top">
+          <div class="card-icon-box">📊</div>
+          <span class="card-category-badge">Resection & Monte Carlo</span>
+        </div>
+        <h2 class="card-title">2D Resection Lab v3 (EN)</h2>
+        <div class="card-path">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+          free_station/
+        </div>
+        <p class="card-description">
+          Laboratório avançado em inglês para cálculo de intersecção à ré, análise de confiabilidade (MDB/MDS) e ensaios estatísticos de Monte Carlo.
+        </p>
+        <ul class="card-features">
+          <li>Modelos com direções e constante de orientação ou ângulos horizontais derivados</li>
+          <li>Pré-processamento de distâncias inclinadas e ângulos zenitais (redução)</li>
+          <li>Simulação de Monte Carlo com dispersão estocástica e elipses empíricas</li>
+        </ul>
+        <div class="card-tags">
+          <span class="tech-tag">SVG</span>
+          <span class="tech-tag">Monte Carlo</span>
+          <span class="tech-tag">MDB / MDS</span>
+          <span class="tech-tag">Least Squares</span>
+        </div>
+        <div class="card-actions">
+          <a href="free_station/index.html" class="btn-launch">
+            Acessar Simulador
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+          </a>
+          <a href="free_station/index.html" target="_blank" class="btn-icon-ext" title="Abrir em nova aba">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+          </a>
+        </div>
+      </article>
+
+      <!-- 7. Rede de Nivelamento -->
+      <article class="sim-card" data-category="ajustamento" style="--card-accent: #0ea5e9; --card-accent-glow: rgba(14, 165, 233, 0.25); --card-icon-bg: rgba(14, 165, 233, 0.12); --card-btn-bg: linear-gradient(135deg, #0284c7, #0ea5e9);">
+        <div class="card-top">
+          <div class="card-icon-box">⛰️</div>
+          <span class="card-category-badge">Geodésia Altimétrica</span>
+        </div>
+        <h2 class="card-title">Rede de Nivelamento Geométrico</h2>
+        <div class="card-path">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+          nivelamento/
+        </div>
+        <p class="card-description">
+          Ajustamento rigoroso de redes altimétricas de nivelamento geométrico pelo MMQ sobre mapa interativo com propagação de incertezas.
+        </p>
+        <ul class="card-features">
+          <li>Criação de circuitos e desníveis observados sobre mapa MapLibre GL</li>
+          <li>Fixação de referências de nível (RN) e ponderação por extensão de nivelamento</li>
+          <li>Análise de resíduos normalizados, matriz peso e teste Chi-quadrado global</li>
+        </ul>
+        <div class="card-tags">
+          <span class="tech-tag">MapLibre GL</span>
+          <span class="tech-tag">KaTeX</span>
+          <span class="tech-tag">Altimetria</span>
+          <span class="tech-tag">Ajustamento MMQ</span>
+        </div>
+        <div class="card-actions">
+          <a href="nivelamento/index.html" class="btn-launch">
+            Acessar Simulador
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+          </a>
+          <a href="nivelamento/index.html" target="_blank" class="btn-icon-ext" title="Abrir em nova aba">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+          </a>
+        </div>
+      </article>
+
+      <!-- 8. Rede Gravimétrica -->
+      <article class="sim-card" data-category="ajustamento" style="--card-accent: #f59e0b; --card-accent-glow: rgba(245, 158, 11, 0.25); --card-icon-bg: rgba(245, 158, 11, 0.12); --card-btn-bg: linear-gradient(135deg, #d97706, #f59e0b);">
+        <div class="card-top">
+          <div class="card-icon-box">⚖️</div>
+          <span class="card-category-badge">Geodésia Física & Gravimetria</span>
+        </div>
+        <h2 class="card-title">Rede Gravimétrica</h2>
+        <div class="card-path">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+          rede_gravimetrica/
+        </div>
+        <p class="card-description">
+          Simulação de levantamento gravimétrico relativo e ajustamento de redes de gravidade (mGal) pelo Método dos Mínimos Quadrados.
+        </p>
+        <ul class="card-features">
+          <li>Observações relativas de aceleração da gravidade (&Delta;g) em mGal</li>
+          <li>Ponderação estocástica proporcional à distância (&sigma; = &sigma;0 &radic;km)</li>
+          <li>Interface geoespacial com MapLibre GL e equações matemáticas KaTeX</li>
+        </ul>
+        <div class="card-tags">
+          <span class="tech-tag">MapLibre GL</span>
+          <span class="tech-tag">KaTeX</span>
+          <span class="tech-tag">Gravimetria (mGal)</span>
+          <span class="tech-tag">MMQ</span>
+        </div>
+        <div class="card-actions">
+          <a href="rede_gravimetrica/index.html" class="btn-launch">
+            Acessar Simulador
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+          </a>
+          <a href="rede_gravimetrica/index.html" target="_blank" class="btn-icon-ext" title="Abrir em nova aba">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+          </a>
+        </div>
+      </article>
+
+      <!-- 9. Projeto Rodoviário -->
+      <article class="sim-card" data-category="vias" style="--card-accent: #f97316; --card-accent-glow: rgba(249, 115, 22, 0.25); --card-icon-bg: rgba(249, 115, 22, 0.12); --card-btn-bg: linear-gradient(135deg, #ea580c, #f97316);">
+        <div class="card-top">
+          <div class="card-icon-box">🛣️</div>
+          <span class="card-category-badge">Engenharia Rodoviária</span>
+        </div>
+        <h2 class="card-title">Projeto Rodoviário</h2>
+        <div class="card-path">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+          estradas/
+        </div>
+        <p class="card-description">
+          Ferramenta completa para dimensionamento geométrico de traçado rodoviário baseada na metodologia clássica de Wolf & Ghilani.
+        </p>
+        <ul class="card-features">
+          <li>Curva horizontal circular simples com PC/PT, raio, ângulo central e deflexões</li>
+          <li>Curva vertical parabólica com cálculo de K, ponto crítico (alto/baixo) e greide</li>
+          <li>Perfil longitudinal com terreno, cubagem/terraplenagem e notas de locação</li>
+        </ul>
+        <div class="card-tags">
+          <span class="tech-tag">Canvas</span>
+          <span class="tech-tag">Curvas Horizontais</span>
+          <span class="tech-tag">Curvas Verticais</span>
+          <span class="tech-tag">Terraplenagem</span>
+        </div>
+        <div class="card-actions">
+          <a href="estradas/index.html" class="btn-launch">
+            Acessar Simulador
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+          </a>
+          <a href="estradas/index.html" target="_blank" class="btn-icon-ext" title="Abrir em nova aba">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+          </a>
+        </div>
+      </article>
+
+      <!-- 10. Surveyor Valley (Game) -->
+      <article class="sim-card" data-category="jogos" style="--card-accent: #22c55e; --card-accent-glow: rgba(34, 197, 94, 0.25); --card-icon-bg: rgba(34, 197, 94, 0.12); --card-btn-bg: linear-gradient(135deg, #16a34a, #22c55e);">
+        <div class="card-top">
+          <div class="card-icon-box">🎮</div>
+          <span class="card-category-badge">Jogo Didático & Topografia</span>
+        </div>
+        <h2 class="card-title">Surveyor Valley</h2>
+        <div class="card-path">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+          surveyor_valley/
+        </div>
+        <p class="card-description">
+          Jogo interativo e educativo de agrimensura e topografia em estética pixel-art. Página de redirecionamento para o repositório e versão web oficial.
+        </p>
+        <ul class="card-features">
+          <li>Desafios interativos e missões de campo para aprendizado de topografia</li>
+          <li>Renderização em pixel-art construída para execução direta no navegador</li>
+          <li>Acesso ao novo repositório oficial dedicado e link de reprodução online</li>
+        </ul>
+        <div class="card-tags">
+          <span class="tech-tag">Jogo Educativo</span>
+          <span class="tech-tag">Topografia</span>
+          <span class="tech-tag">Pixel Art</span>
+          <span class="tech-tag">Repositório Autônomo</span>
+        </div>
+        <div class="card-actions">
+          <a href="https://kauevestena.github.io/surveyor_valley/" target="_blank" class="btn-launch">
+            Jogar Online
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+          </a>
+          <a href="surveyor_valley/index.html" class="btn-icon-ext" title="Ver aviso local">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          </a>
+        </div>
+      </article>
+
+      <!-- Empty State for filtered results -->
+      <div class="empty-state" id="emptyState">
+        <div class="empty-state-icon">🔍</div>
+        <h3>Nenhum simulador encontrado</h3>
+        <p>Tente ajustar os termos da pesquisa ou selecionar outra categoria.</p>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container footer-content">
+      <div>
+        <strong>Simuladores Monorepo</strong> • Plataforma educacional e científica de Geodésia & Topografia.
+      </div>
+      <div>
+        100% Client-Side • Desenvolvido com HTML, CSS e JavaScript Vanilla
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Search and Filter Logic
+    const searchInput = document.getElementById('searchInput');
+    const searchClear = document.getElementById('searchClear');
+    const filterTabs = document.getElementById('filterTabs');
+    const filterBtns = document.querySelectorAll('.filter-btn');
+    const simCards = document.querySelectorAll('.sim-card');
+    const emptyState = document.getElementById('emptyState');
+
+    let currentCategory = 'all';
+    let searchQuery = '';
+
+    function normalizeText(text) {
+      return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    }
+
+    function updateCounts() {
+      const counts = {
+        all: 0,
+        ajustamento: 0,
+        'geodesia-3d': 0,
+        'astronomia-gnss': 0,
+        vias: 0,
+        jogos: 0
+      };
+
+      simCards.forEach(card => {
+        const cat = card.getAttribute('data-category');
+        counts.all++;
+        if (counts[cat] !== undefined) counts[cat]++;
+      });
+
+      document.getElementById('countAll').textContent = counts.all;
+      document.getElementById('countAjustamento').textContent = counts.ajustamento;
+      document.getElementById('countGeodesia').textContent = counts['geodesia-3d'];
+      document.getElementById('countAstro').textContent = counts['astronomia-gnss'];
+      document.getElementById('countVias').textContent = counts.vias;
+      document.getElementById('countJogos').textContent = counts.jogos;
+      document.getElementById('statTotalApps').textContent = counts.all;
+    }
+
+    function filterCards() {
+      const query = normalizeText(searchQuery.trim());
+      let visibleCount = 0;
+
+      simCards.forEach(card => {
+        const category = card.getAttribute('data-category');
+        const title = normalizeText(card.querySelector('.card-title')?.textContent || '');
+        const desc = normalizeText(card.querySelector('.card-description')?.textContent || '');
+        const path = normalizeText(card.querySelector('.card-path')?.textContent || '');
+        const features = normalizeText(card.querySelector('.card-features')?.textContent || '');
+        const tags = Array.from(card.querySelectorAll('.tech-tag')).map(t => normalizeText(t.textContent)).join(' ');
+
+        const matchesCategory = currentCategory === 'all' || category === currentCategory;
+        const matchesSearch = !query || 
+          title.includes(query) || 
+          desc.includes(query) || 
+          path.includes(query) || 
+          features.includes(query) || 
+          tags.includes(query);
+
+        if (matchesCategory && matchesSearch) {
+          card.style.display = 'flex';
+          visibleCount++;
+        } else {
+          card.style.display = 'none';
+        }
+      });
+
+      emptyState.style.display = visibleCount === 0 ? 'block' : 'none';
+      searchClear.style.display = searchQuery ? 'flex' : 'none';
+    }
+
+    // Search event
+    searchInput.addEventListener('input', (e) => {
+      searchQuery = e.target.value;
+      filterCards();
+    });
+
+    searchClear.addEventListener('click', () => {
+      searchInput.value = '';
+      searchQuery = '';
+      searchInput.focus();
+      filterCards();
+    });
+
+    // Category button clicks
+    filterBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        filterBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentCategory = btn.getAttribute('data-category');
+        filterCards();
+      });
+    });
+
+    // Keyboard shortcut '/' to search
+    window.addEventListener('keydown', (e) => {
+      if (e.key === '/' && document.activeElement !== searchInput) {
+        e.preventDefault();
+        searchInput.focus();
+        searchInput.select();
+      } else if (e.key === 'Escape' && document.activeElement === searchInput) {
+        searchInput.value = '';
+        searchQuery = '';
+        searchInput.blur();
+        filterCards();
+      }
+    });
+
+    // Initialize counts and filter
+    updateCounts();
+    filterCards();
+  </script>
+</body>
+</html>

@@ -345,6 +345,21 @@ html, body {
     font-weight: 700;
 }
 
+#coord-readout .readout-section-divider {
+    height: 1px;
+    background: var(--border-subtle);
+    margin: 6px 0;
+}
+
+#coord-readout .readout-subtitle {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+}
+
 /* ============================================
    Info Panel
    ============================================ */
@@ -728,6 +743,33 @@ input[type="range"]::-moz-range-thumb {
     display: flex;
     gap: 6px;
     flex-wrap: wrap;
+}
+
+.btn-group.view-presets {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 6px;
+}
+
+.btn-group.cut-modes {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 6px;
+}
+
+.btn-group.view-presets .ctrl-btn,
+.btn-group.cut-modes .ctrl-btn {
+    justify-content: center;
+    text-align: center;
+    padding: 7px 10px;
+    font-size: 0.74rem;
+}
+
+.ctrl-caption {
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    margin-top: 2px;
+    line-height: 1.4;
 }
 
 /* Select dropdown */
