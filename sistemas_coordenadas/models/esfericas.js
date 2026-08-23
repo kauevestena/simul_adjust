@@ -415,8 +415,9 @@ export function setup(scene, camera, controls) {
                 shellEnd = 360 + lambda;
             }
         } else if (cutMode === 'quadrant') {
-            shellStart = 90;
-            shellEnd = 360;
+            // Fixed 90°-wide wedge anchored at P's own meridian (gap = [λ-90, λ])
+            shellStart = lambda;
+            shellEnd = lambda + 270;
         } else if (cutMode === 'meridian') {
             shellStart = lambda + 90;
             shellEnd = lambda + 270;
@@ -536,8 +537,8 @@ export function setup(scene, camera, controls) {
                 let eqStart = 0;
                 let eqEnd = lambda;
                 if (cutMode === 'quadrant') {
-                    eqStart = 0;
-                    eqEnd = 90;
+                    eqStart = lambda - 90;
+                    eqEnd = lambda;
                 } else if (cutMode === 'meridian') {
                     eqStart = lambda - 90;
                     eqEnd = lambda + 90;
@@ -558,10 +559,16 @@ export function setup(scene, camera, controls) {
                 });
             }
 
-            if (cutMode === 'wedge' || cutMode === 'quadrant') {
+            if (cutMode === 'wedge') {
+                // At lon = 0 (Greenwich) — the wedge's gap always runs between Greenwich and P
                 const greenwichFace = createMeridianCutFace(0, -90, 90);
                 greenwichFace.material = greenwichCutMat;
                 group.add(greenwichFace);
+            } else if (cutMode === 'quadrant') {
+                // At lon = λ-90 — the other edge of the fixed 90° gap anchored at P
+                const quadrantSecondFace = createMeridianCutFace(lambda - 90, -90, 90);
+                quadrantSecondFace.material = greenwichCutMat;
+                group.add(quadrantSecondFace);
             }
         }
 

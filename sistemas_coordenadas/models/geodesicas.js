@@ -342,7 +342,7 @@ export function setup(scene, camera, controls) {
     }
 
     // Helper: generate 2D planar half-ellipse interior face at a given longitude
-    function createMeridianCutFace(lonDeg, isHalf = false, phiStart = -90, phiEnd = 90) {
+    function createMeridianCutFace(lonDeg, phiStart = -90, phiEnd = 90) {
         const segments = 48;
         const positions = [];
         const normals = [];
@@ -502,10 +502,11 @@ export function setup(scene, camera, controls) {
                 shellEnd = 360 + lambda;
             }
         } else if (cutMode === 'quadrant') {
-            shellStart = 90;
-            shellEnd = 360;
+            // Fixed 90°-wide wedge anchored at P's own meridian (gap = [λ-90, λ])
+            shellStart = lambda;
+            shellEnd = lambda + 270;
         } else if (cutMode === 'meridian') {
-            // Half cut along the meridian of P (exposing full meridian ellipse)
+            // Half cut centered on the meridian of P (exposing the meridian ellipse through P)
             shellStart = lambda + 90;
             shellEnd = lambda + 270;
         }
@@ -606,7 +607,7 @@ export function setup(scene, camera, controls) {
         if (hasCut) {
             // A. Meridional Cut Face at meridian of P
             if (showMeridianPlane) {
-                const meridianFace = createMeridianCutFace(lambda, true, -90, 90);
+                const meridianFace = createMeridianCutFace(lambda, -90, 90);
                 group.add(meridianFace);
 
                 // Grid lines inside the meridian cut face
@@ -637,13 +638,13 @@ export function setup(scene, camera, controls) {
 
                 // Dimension a (Semi-eixo maior)
                 const aMid = p0.clone().multiplyScalar(0.5);
-                const aLabel = makeTextSprite('a = 6.378 km', 0x34d399, 0.22);
+                const aLabel = makeTextSprite(`a = ${a.toFixed(2)} u`, 0x34d399, 0.22);
                 aLabel.position.copy(aMid.clone().add(new THREE.Vector3(0, -0.18, 0)));
                 group.add(aLabel);
 
                 // Dimension b (Semi-eixo menor)
                 const bMid = new THREE.Vector3(0, b * 0.5, 0);
-                const bLabel = makeTextSprite('b = 6.357 km', 0x93c5fd, 0.22);
+                const bLabel = makeTextSprite(`b = ${b.toFixed(2)} u`, 0x93c5fd, 0.22);
                 bLabel.position.copy(bMid.clone().add(radDir.clone().multiplyScalar(-0.35)));
                 group.add(bLabel);
             }
@@ -653,8 +654,8 @@ export function setup(scene, camera, controls) {
                 let eqStart = 0;
                 let eqEnd = lambda;
                 if (cutMode === 'quadrant') {
-                    eqStart = 0;
-                    eqEnd = 90;
+                    eqStart = lambda - 90;
+                    eqEnd = lambda;
                 } else if (cutMode === 'meridian') {
                     eqStart = lambda - 90;
                     eqEnd = lambda + 90;
@@ -676,11 +677,17 @@ export function setup(scene, camera, controls) {
                 });
             }
 
-            // C. Greenwich Cut Face (at lon = 0)
-            if (cutMode === 'wedge' || cutMode === 'quadrant') {
-                const greenwichFace = createMeridianCutFace(0, true, -90, 90);
+            // C. Companion Cut Face (second boundary of the wedge/quadrant gap)
+            if (cutMode === 'wedge') {
+                // At lon = 0 (Greenwich) — the wedge's gap always runs between Greenwich and P
+                const greenwichFace = createMeridianCutFace(0, -90, 90);
                 greenwichFace.material = greenwichCutMat;
                 group.add(greenwichFace);
+            } else if (cutMode === 'quadrant') {
+                // At lon = λ-90 — the other edge of the fixed 90° gap anchored at P
+                const quadrantSecondFace = createMeridianCutFace(lambda - 90, -90, 90);
+                quadrantSecondFace.material = greenwichCutMat;
+                group.add(quadrantSecondFace);
             }
         }
 
