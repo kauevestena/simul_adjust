@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Direções Horizontais — Simulador Didático de Topografia</title>
+  <meta name="description"
+    content="Simulador interativo para aprendizado de medição de ângulos horizontais em topografia: conceito de Ré, Estação e Vante, leituras de direção e cálculo de ângulos.">
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧭</text></svg>">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="header-inner">
+      <span class="header-icon">🧭</span>
+      <div>
+        <h1>Direções Horizontais</h1>
+        <p>Simulador Didático de Topografia</p>
+      </div>
+      <a href="../index.html" class="back-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+        Portal
+      </a>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main>
+    <!-- Left Panel: Controls -->
+    <aside>
+      <div class="panel controls-stack" style="gap: 0.75rem;">
+
+        <!-- Mode -->
+        <div>
+          <div class="panel-title">Modo de Leitura</div>
+          <div class="toggle-group">
+            <label>Leitura de Ré</label>
+            <div class="radio-group">
+              <button class="radio-btn active" data-cfg-mode="zeroed">Zerado na Ré</button>
+              <button class="radio-btn" data-cfg-mode="random">Não Orientado</button>
+            </div>
+            <p class="info-box">
+              <strong>Zerado na Ré:</strong> leitura de Ré = 0°.
+              <strong>Não Orientado:</strong> leitura de Ré depende de onde o equipamento foi zerado da última vez.
+            </p>
+          </div>
+        </div>
+
+        <hr class="divider">
+
+        <!-- Direction -->
+        <div>
+          <div class="panel-title">Sentido da Leitura</div>
+          <div class="toggle-group">
+            <div class="radio-group">
+              <button class="radio-btn active" data-cfg-dir="cw">↻ Horário</button>
+              <button class="radio-btn" data-cfg-dir="ccw">↺ Anti-horário</button>
+            </div>
+          </div>
+        </div>
+
+        <hr class="divider">
+
+        <!-- Result -->
+        <div>
+          <div class="panel-title">Resultado</div>
+          <div class="result-box" id="resultBox">
+            <div class="result-label">Ângulo Horizontal</div>
+            <div class="result-value" id="resultValue">—</div>
+            <div class="result-sub">Hz = Leitura Vante − Leitura Ré</div>
+          </div>
+          <div class="readings-grid">
+            <div class="reading-item">
+              <div class="reading-label">Leitura Ré</div>
+              <div class="reading-val" id="readingRe">—</div>
+            </div>
+            <div class="reading-item">
+              <div class="reading-label">Leitura Vante</div>
+              <div class="reading-val" id="readingVante">—</div>
+            </div>
+          </div>
+        </div>
+
+        <hr class="divider">
+
+        <!-- Actions -->
+        <button class="btn-primary" id="btnNewExercise">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+          </svg>
+          Novo Exercício
+        </button>
+
+        <div class="exercise-counter">
+          Exercício nº <span class="count" id="exerciseCount">0</span>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- Canvas Area -->
+    <div class="canvas-wrapper">
+      <div class="canvas-container">
+        <canvas id="simCanvas"></canvas>
+        <div class="canvas-hint" id="canvasHint">🎯 Clique para apontar a luneta na direção do Vante</div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal 1: Conceito Básico -->
+  <div class="modal-overlay" id="modal1">
+    <div class="modal">
+      <div class="step-indicator">
+        <div class="step-dot active"></div>
+        <div class="step-dot"></div>
+      </div>
+      <div class="modal-icon">📐</div>
+      <h2>Medição de Direções Horizontais</h2>
+      <p>
+        Uma medição topográfica de ângulo horizontal geralmente envolve <strong>três pontos</strong> fundamentais:
+      </p>
+      <p>
+        <strong>Ré</strong> — ponto de referência inicial (para onde a luneta é apontada primeiro).<br>
+        <strong>Estação</strong> — onde está instalado o instrumento (teodolito/estação total).<br>
+        <strong>Vante</strong> — o ponto para o qual se deseja medir o ângulo em relação à Ré.
+      </p>
+      <p>
+        O <strong>ângulo horizontal (Hz)</strong> é medido no plano horizontal, a partir da direção da Ré até a direção
+        do Vante.
+      </p>
+      <div class="modal-diagram">
+        <canvas id="modal1DiagramCanvas"></canvas>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-modal btn-modal-primary" id="btnModal1Next">
+          Próximo →
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 2: Ângulo como diferença -->
+  <div class="modal-overlay" id="modal2">
+    <div class="modal">
+      <div class="step-indicator">
+        <div class="step-dot"></div>
+        <div class="step-dot active"></div>
+      </div>
+      <div class="modal-icon">🔄</div>
+      <h2>Ângulo = Diferença de Leituras</h2>
+      <p>
+        Um ângulo horizontal provém da <strong>diferença entre duas leituras de direção horizontal</strong> realizadas
+        com o instrumento:
+      </p>
+      <div class="modal-diagram">
+        <canvas id="modalDiagramCanvas"></canvas>
+      </div>
+      <p>
+        A primeira leitura (L₁) é feita com a luneta apontada para a <strong>Ré</strong>, e a segunda (L₂) para o
+        <strong>Vante</strong>. O ângulo horizontal é:
+      </p>
+      <p style="text-align: center; font-size: 1.1rem;">
+        <strong style="color: #a855f7;">Hz = L₂ − L₁</strong>
+      </p>
+      <div class="modal-actions">
+        <button class="btn-modal btn-modal-primary" id="btnModal2Start">
+          🎯 Começar Simulação
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+
+</html>

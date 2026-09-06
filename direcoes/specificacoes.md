@@ -1,0 +1,5 @@
+- direcoes/fundamentos-topografia-i-1.pdf possui a teoria necessária, armazenado no capítulo 6
+- o simulador deverá primeiro mostrar conceitos básicos: primeiro um modal dizendo "uma medição topogŕafica geralmente possui três pontos Ré, estação (onde está o instrumento) e Vante"
+- o segundo modal deverá mostrar a figura 6.1: um ângulo horizontal próvém da diferença entre duas leituras de direção horizontal
+- depois, deverá gerar os três pontos de maneira aleatória em um canvas 2D (bem simples, é para substituir figuras simples), onde estará escrito na descrição "Estação", "Ré" e "Vante", e o usuário deverá fazer a pontaria no vante para obter o angulo horizontal duas opções deverão ser apresentadas (como checkbox): zerado na ré e equipamento não orientado (nesse caso a leitura de ré deverá ser aleatória também) e a diferença mostrada como o resultado. Opção de leitura de ângulo horário ou anti-horário também deverá ser apresentada.
+- ao concluir o processo, 3 novos pontos deverão ser gerados para que uma nova leitura de vante seja feita, a existência de uma seta indicando o sentido da leitura é muito importante
