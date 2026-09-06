@@ -1,0 +1,5 @@
+- um simulador que mostre o equipamento (teodolito) fazendo visadas em pontaria direta (PD) e inversa (PI);
+- deverá ter um canvas dividido em 2: um com vista superior (lado esquerdo) e outro com vista lateral do equipamento (lado direito). No lado direito a luneta move em conjunto. Na vista superior serão mostradas as leituras dos limbos horizontais, similar ao feito em direcoes/index.html, porém sempre com equipamento orientado (zerado) à ré e ângulo horário. Assim como no simulador direções, 3 pontos serão gerados aleatoriamente.
+- Serão as seguintes etapas de interação: pontaria horizontal em vante em PD; pontaria vertical em vante em PI; clicar no botão "tombar a luneta" ( que conduzirá a uma nimação do lado direito, mostrando nova contagem); pontaria horizontal em ré em PI; pontaria vertical em ré em PD; então os cálculos serão mostrados e um botão "finalizar" deverá ser mostrado 
+- direcoes/fundamentos-topografia-i-1.pdf poderá ser utilizado com embasamento
+- o estilo visual deverá ser similar a direcoes/index.html 

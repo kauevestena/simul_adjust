@@ -1,0 +1,4 @@
+- criar uma apresentação didática com um item no painel lateral para cada parágrafo do texto med/teoria.md
+- cada parágrafo deverá ter uma versão resumida do seu texto e uma animação em GIF
+- o parágrafo que fala sobre como a ambiguidade de distância é resolvida deverá ser um simulador interativo
+- o estilo visual deverá ser similar a direcoes/index.html
