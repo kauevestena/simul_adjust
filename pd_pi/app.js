@@ -51,6 +51,7 @@ const POINT_RADIUS = 8;
 const LABEL_OFFSET = 22;
 const MIN_DIST = 100;
 const SNAP_TOLERANCE_DEG = 3;
+const TAP_RADIUS_PX = 30; // generous fallback hit-radius, forgiving for touch
 const TOMBAR_DURATION_MS = 800;
 
 // ── Step definitions ──
@@ -147,15 +148,16 @@ document.addEventListener('DOMContentLoaded', () => {
   btnNewExercise.addEventListener('click', startExercise);
   btnFinalizar.addEventListener('click', onFinalizeClick);
 
-  topCanvas.addEventListener('mousemove', onTopMove);
-  topCanvas.addEventListener('mousedown', onTopDown);
-  topCanvas.addEventListener('touchmove', onTopTouchMove, { passive: false });
-  topCanvas.addEventListener('touchstart', onTopTouchStart, { passive: false });
+  // Pointer Events unify mouse/touch/pen in a single code path — touch-specific
+  // handlers were dropped because relying on touchstart/touchmove alongside
+  // mousedown/mousemove is a classic source of unreliable taps on mobile
+  // (the browser's own gesture handling can steal the touch before/instead of
+  // firing it). CSS `touch-action: none` on the canvases keeps that from happening.
+  topCanvas.addEventListener('pointermove', onTopMove);
+  topCanvas.addEventListener('pointerdown', onTopDown);
 
-  sideCanvas.addEventListener('mousemove', onSideMove);
-  sideCanvas.addEventListener('mousedown', onSideDown);
-  sideCanvas.addEventListener('touchmove', onSideTouchMove, { passive: false });
-  sideCanvas.addEventListener('touchstart', onSideTouchStart, { passive: false });
+  sideCanvas.addEventListener('pointermove', onSideMove);
+  sideCanvas.addEventListener('pointerdown', onSideDown);
 
   resizeCanvases();
   window.addEventListener('resize', () => {
@@ -315,6 +317,25 @@ function advanceStep() {
   state.stepIndex++;
   updateStepUI();
   drawAll();
+  scrollStepIntoView();
+}
+
+// On narrow/mobile layouts the canvases and the controls in <aside> can be far
+// apart vertically (interacting with a button scrolls the controls into view,
+// which can push the canvas needed for the *next* step off-screen with no
+// visual cue). Bring whatever the user needs to act on next into view.
+function scrollStepIntoView() {
+  const step = currentStep();
+  let el = null;
+  if (step.key === 'tombar') el = btnTombar;
+  else if (step.axis === 'hz') el = topCanvas;
+  else if (step.axis === 'v') el = sideCanvas;
+  else if (step.key === 'results') el = calcPanelEl;
+  if (el && el.scrollIntoView) {
+    // Instant, not smooth: the user needs to tap this element right away, and
+    // an in-progress scroll animation is a race against that next tap.
+    el.scrollIntoView({ behavior: 'auto', block: 'nearest' });
+  }
 }
 
 // ── Geometry helpers ──
@@ -336,6 +357,14 @@ function hzReading(aimMathAngle) {
 
 function vReading(zTrue) {
   return state.face === 'PD' ? normAngle(zTrue) : normAngle(360 - zTrue);
+}
+
+// Math angle (same convention as trueAngle/atan2) of the direction that is
+// `zDeg` away from the zenith on the side-view protractor. Z=0 -> 90° (up),
+// Z=90 -> 0° (horizontal), Z=180 -> -90° (down); see sideZPoint for the
+// matching screen-space parametrization.
+function zToMathAngle(zDeg) {
+  return (90 - zDeg) * Math.PI / 180;
 }
 
 // ── Random generation ──
@@ -410,6 +439,7 @@ function startExercise() {
   updateSideReadout();
   updateStepUI();
   drawAll();
+  scrollStepIntoView();
 }
 
 function setReading(key, text) {
@@ -454,45 +484,13 @@ function onTopMove(e) {
 function onTopDown(e) {
   const step = currentStep();
   if (step.axis !== 'hz' || state.isTombarAnimating) return;
+  e.preventDefault();
   const pos = getCanvasPos(topCanvas, e);
   const station = state.points.station;
   const aim = Math.atan2(-(pos.y - station.y), pos.x - station.x);
   const targetPoint = state.points[step.target];
 
-  if (dist(pos, targetPoint) <= 25 || isWithinSnapTop(aim, step.target)) {
-    state.pose.azimuth = trueAngle(step.target);
-    state.snapMissTop = false;
-    confirmHzReading();
-  } else {
-    state.pose.azimuth = aim;
-    state.snapMissTop = true;
-    updateTopReadout();
-    drawAll();
-  }
-}
-
-function onTopTouchMove(e) {
-  e.preventDefault();
-  const step = currentStep();
-  if (step.axis !== 'hz' || state.isTombarAnimating) return;
-  const pos = getCanvasPos(topCanvas, e.touches[0]);
-  const station = state.points.station;
-  state.pose.azimuth = Math.atan2(-(pos.y - station.y), pos.x - station.x);
-  state.snapMissTop = false;
-  updateTopReadout();
-  drawAll();
-}
-
-function onTopTouchStart(e) {
-  e.preventDefault();
-  const step = currentStep();
-  if (step.axis !== 'hz' || state.isTombarAnimating) return;
-  const pos = getCanvasPos(topCanvas, e.touches[0]);
-  const station = state.points.station;
-  const aim = Math.atan2(-(pos.y - station.y), pos.x - station.x);
-  const targetPoint = state.points[step.target];
-
-  if (dist(pos, targetPoint) <= 25 || isWithinSnapTop(aim, step.target)) {
+  if (dist(pos, targetPoint) <= TAP_RADIUS_PX || isWithinSnapTop(aim, step.target)) {
     state.pose.azimuth = trueAngle(step.target);
     state.snapMissTop = false;
     confirmHzReading();
@@ -535,6 +533,12 @@ function zFromSidePos(pos, trunnion) {
   return Math.atan2(dx, -dy) * 180 / Math.PI;
 }
 
+function sideGuideRadius() {
+  const w = sideCanvas.width / (window.devicePixelRatio || 1);
+  const h = sideCanvas.height / (window.devicePixelRatio || 1);
+  return Math.min(w, h) * 0.34;
+}
+
 function isWithinSnapSide(zAim, targetName) {
   return Math.abs(zAim - state.Z[targetName]) <= SNAP_TOLERANCE_DEG;
 }
@@ -552,40 +556,14 @@ function onSideMove(e) {
 function onSideDown(e) {
   const step = currentStep();
   if (step.axis !== 'v' || state.isTombarAnimating) return;
+  e.preventDefault();
   const pos = getCanvasPos(sideCanvas, e);
-  const zAim = zFromSidePos(pos, sideTrunnion());
+  const trunnion = sideTrunnion();
+  const zAim = zFromSidePos(pos, trunnion);
+  const guideR = sideGuideRadius();
+  const flagPos = sideZPoint(trunnion, state.Z[step.target], guideR);
 
-  if (isWithinSnapSide(zAim, step.target)) {
-    state.pose.elevation = state.Z[step.target];
-    state.snapMissSide = false;
-    confirmVReading();
-  } else {
-    state.pose.elevation = zAim;
-    state.snapMissSide = true;
-    updateSideReadout();
-    drawAll();
-  }
-}
-
-function onSideTouchMove(e) {
-  e.preventDefault();
-  const step = currentStep();
-  if (step.axis !== 'v' || state.isTombarAnimating) return;
-  const pos = getCanvasPos(sideCanvas, e.touches[0]);
-  state.pose.elevation = zFromSidePos(pos, sideTrunnion());
-  state.snapMissSide = false;
-  updateSideReadout();
-  drawAll();
-}
-
-function onSideTouchStart(e) {
-  e.preventDefault();
-  const step = currentStep();
-  if (step.axis !== 'v' || state.isTombarAnimating) return;
-  const pos = getCanvasPos(sideCanvas, e.touches[0]);
-  const zAim = zFromSidePos(pos, sideTrunnion());
-
-  if (isWithinSnapSide(zAim, step.target)) {
+  if (dist(pos, flagPos) <= TAP_RADIUS_PX || isWithinSnapSide(zAim, step.target)) {
     state.pose.elevation = state.Z[step.target];
     state.snapMissSide = false;
     confirmVReading();
@@ -716,13 +694,19 @@ function drawDashedLine(ctx, from, to, color, width) {
   ctx.setLineDash([]);
 }
 
-function drawGenericArc(ctx, { center, startMathAngle, endMathAngle, radius, color, fillColor = null, label = null, showArrow = true, lineWidth = 2.5 }) {
+function drawGenericArc(ctx, { center, startMathAngle, endMathAngle, radius, color, fillColor = null, label = null, showArrow = true, showSenseIcon = false, ccw = false, lineWidth = 2.5 }) {
   const canvasStart = -startMathAngle;
   const canvasEnd = -endMathAngle;
-  const ccw = false; // sempre sentido horário
 
-  const spanDeg = normAngle((canvasEnd - canvasStart) * 180 / Math.PI);
-  const midCanvasAngle = canvasStart + (spanDeg / 2) * Math.PI / 180;
+  let spanDeg;
+  let midCanvasAngle;
+  if (!ccw) {
+    spanDeg = normAngle((canvasEnd - canvasStart) * 180 / Math.PI);
+    midCanvasAngle = canvasStart + (spanDeg / 2) * Math.PI / 180;
+  } else {
+    spanDeg = normAngle((canvasStart - canvasEnd) * 180 / Math.PI);
+    midCanvasAngle = canvasStart - (spanDeg / 2) * Math.PI / 180;
+  }
 
   if (spanDeg < 0.2) return;
 
@@ -744,7 +728,7 @@ function drawGenericArc(ctx, { center, startMathAngle, endMathAngle, radius, col
   if (showArrow && spanDeg >= 5) {
     const tipX = center.x + Math.cos(canvasEnd) * radius;
     const tipY = center.y + Math.sin(canvasEnd) * radius;
-    const tangent = canvasEnd + Math.PI / 2;
+    const tangent = ccw ? canvasEnd - Math.PI / 2 : canvasEnd + Math.PI / 2;
     const headLen = 8;
     const spread = 0.45;
     ctx.beginPath();
@@ -755,6 +739,17 @@ function drawGenericArc(ctx, { center, startMathAngle, endMathAngle, radius, col
     ctx.strokeStyle = color;
     ctx.lineWidth = Math.max(2, lineWidth);
     ctx.stroke();
+  }
+
+  if (showSenseIcon && spanDeg > 25) {
+    const iconR = radius - 14;
+    const ix = center.x + Math.cos(midCanvasAngle) * iconR;
+    const iy = center.y + Math.sin(midCanvasAngle) * iconR;
+    ctx.font = '600 11px "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = color;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(ccw ? '↺' : '↻', ix, iy);
   }
 
   if (label && spanDeg > 4) {
@@ -843,8 +838,8 @@ function drawStationPoint(ctx, pos) {
   ctx.fillText(label, pos.x, pos.y + LABEL_OFFSET + 3);
 }
 
-function drawZeroDirection(ctx, station, zeroMathAngle) {
-  const zeroLen = 115;
+function drawReferenceRay(ctx, station, zeroMathAngle, label = 'Zero PI (Ré+180°)', len = 115) {
+  const zeroLen = len;
   const rayAngle = -zeroMathAngle;
   const rayEnd = {
     x: station.x + Math.cos(zeroMathAngle) * zeroLen,
@@ -874,7 +869,7 @@ function drawZeroDirection(ctx, station, zeroMathAngle) {
   const badgeR = zeroLen + 20;
   const bx = station.x + Math.cos(rayAngle) * badgeR;
   const by = station.y + Math.sin(rayAngle) * badgeR;
-  drawBadge(ctx, 'Zero PI (Ré+180°)', bx, by, '#cbd5e1', 'rgba(148, 163, 184, 0.4)');
+  drawBadge(ctx, label, bx, by, '#cbd5e1', 'rgba(148, 163, 184, 0.4)');
 }
 
 // ── Drawing: top view ──
@@ -894,7 +889,7 @@ function drawTop() {
   const zeroA = zeroRefAngle();
 
   if (state.face === 'PI') {
-    drawZeroDirection(topCtx, station, zeroA);
+    drawReferenceRay(topCtx, station, zeroA);
   }
 
   if (state.pose.azimuth !== null && currentStep().axis === 'hz') {
@@ -1000,7 +995,7 @@ function drawSide() {
   if (!state.points.station) return;
 
   const trunnion = sideTrunnion();
-  const guideR = Math.min(w, h) * 0.34;
+  const guideR = sideGuideRadius();
 
   sideCtx.beginPath();
   sideCtx.moveTo(0, trunnion.y);
@@ -1030,6 +1025,33 @@ function drawSide() {
     sideCtx.strokeStyle = z === 90 ? 'rgba(148,163,184,0.7)' : 'rgba(148,163,184,0.3)';
     sideCtx.lineWidth = z === 90 ? 2 : 1;
     sideCtx.stroke();
+  }
+
+  // Zênite: referência fixa (Z=0) para a leitura vertical, análoga à Ré no Hz.
+  const zenithMathAngle = Math.PI / 2;
+  drawReferenceRay(sideCtx, trunnion, zenithMathAngle, 'Zênite (Z=0°)', Math.min(guideR + 30, h * 0.42));
+
+  // Raios tracejados até Ré/Vante, análogos às linhas estação→Ré/Vante da vista superior.
+  drawDashedLine(sideCtx, trunnion, sideZPoint(trunnion, state.Z.re, guideR), COLORS.re, 1.2);
+  drawDashedLine(sideCtx, trunnion, sideZPoint(trunnion, state.Z.vante, guideR), COLORS.vante, 1.2);
+
+  // Arco varrido do Zênite até a pontaria atual: horário em PD, anti-horário em PI
+  // (mesma convenção do círculo vertical real — daí V_PI = 360° − V_PD).
+  if (state.pose.elevation !== null) {
+    const isPI = state.face === 'PI';
+    drawGenericArc(sideCtx, {
+      center: trunnion,
+      startMathAngle: zenithMathAngle,
+      endMathAngle: zToMathAngle(state.pose.elevation),
+      radius: guideR * 0.6,
+      color: isPI ? COLORS.pi : COLORS.pd,
+      fillColor: isPI ? 'rgba(168,85,247,0.10)' : 'rgba(6,182,212,0.10)',
+      label: formatDMS(vReading(state.pose.elevation)),
+      showArrow: true,
+      showSenseIcon: true,
+      ccw: isPI,
+      lineWidth: 2.5,
+    });
   }
 
   drawSideFlag(trunnion, state.Z.re, guideR, COLORS.re, 'Ré');
