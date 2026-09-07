@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Medida Eletrônica de Distâncias (EDM) — Apresentação Didática Interativa</title>
+  <meta name="description"
+    content="Apresentação didática interativa sobre Medida Eletrônica de Distâncias (EDM): princípios, refletores, erros, calibração, correções atmosféricas e um simulador da resolução da ambiguidade de fase.">
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📏</text></svg>">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="header-inner">
+      <span class="header-icon">📏</span>
+      <div>
+        <h1>Medida Eletrônica de Distâncias</h1>
+        <p>Apresentação Didática Interativa — EDM</p>
+      </div>
+      <a href="../index.html" class="back-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+        Portal
+      </a>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main>
+    <!-- Sidebar: topic navigation -->
+    <aside>
+      <div class="panel">
+        <div class="panel-title">Tópicos</div>
+        <div class="topic-nav" id="topicNav"></div>
+      </div>
+    </aside>
+
+    <!-- Content panel -->
+    <div class="content-panel">
+      <div class="step-indicator" id="stepIndicator"></div>
+      <div class="topic-breadcrumb" id="topicBreadcrumb">Tópico 1 de 10</div>
+      <h2 id="topicTitle">—</h2>
+
+      <div class="anim-canvas-wrap" id="animCanvasWrap">
+        <canvas id="animCanvas"></canvas>
+      </div>
+
+      <!-- Interactive ambiguity-resolution simulator (shown only for its topic) -->
+      <div class="ambiguity-block" id="ambiguityBlock" hidden>
+        <div class="info-box">
+          <strong>Como funciona:</strong> um EDM por diferença de fase só enxerga a parte fracionária de cada
+          comprimento de onda modulado. Cada onda (10 m, 100 m, 1 km, 10 km) revela um grupo de dígitos da distância.
+          Combine as 4 leituras abaixo — como os dígitos de um odômetro — para reconstruir a distância total.
+        </div>
+        <div class="readings-grid ambiguity-grid">
+          <div class="reading-item">
+            <div class="reading-label">λ ≈ 10 m</div>
+            <div class="reading-val" id="ambR10">—</div>
+          </div>
+          <div class="reading-item">
+            <div class="reading-label">λ ≈ 100 m</div>
+            <div class="reading-val" id="ambR100">—</div>
+          </div>
+          <div class="reading-item">
+            <div class="reading-label">λ ≈ 1 km</div>
+            <div class="reading-val" id="ambR1000">—</div>
+          </div>
+          <div class="reading-item">
+            <div class="reading-label">λ ≈ 10 km</div>
+            <div class="reading-val" id="ambR10000">—</div>
+          </div>
+        </div>
+        <div class="ambiguity-input-row">
+          <input type="text" id="ambInput" class="ambiguity-input" placeholder="Distância reconstruída, em metros (ex: 3123,456)">
+          <button class="btn-primary" id="btnAmbCheck">✅ Verificar</button>
+        </div>
+        <div class="result-box" id="ambResultBox" style="display:none;">
+          <div class="result-label">Distância Real</div>
+          <div class="result-value" id="ambResultValue">—</div>
+          <div class="result-sub" id="ambResultSub"></div>
+        </div>
+        <div class="ambiguity-actions">
+          <button class="btn-secondary" id="btnAmbNew">🔄 Nova Distância</button>
+        </div>
+      </div>
+
+      <p class="topic-summary" id="topicSummary">—</p>
+
+      <div class="content-nav-actions">
+        <button class="btn-secondary" id="btnPrev">← Anterior</button>
+        <button class="btn-primary" id="btnNext">Próximo →</button>
+      </div>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+
+</html>
