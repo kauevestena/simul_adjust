@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pontaria Direta e Inversa (PD/PI) — Simulador Didático de Topografia</title>
+  <meta name="description"
+    content="Simulador interativo de teodolito em dupla posição: pontaria direta (PD) e inversa (PI), com vistas superior e lateral sincronizadas, tombamento da luneta e verificação de face.">
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔄</text></svg>">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="header-inner">
+      <span class="header-icon">🔄</span>
+      <div>
+        <h1>Pontaria Direta e Inversa</h1>
+        <p>Simulador Didático de Topografia — PD / PI</p>
+      </div>
+      <a href="../index.html" class="back-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+        Portal
+      </a>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main>
+    <!-- Left Panel: Steps & Readings -->
+    <aside>
+      <div class="panel controls-stack" style="gap: 0.9rem;">
+
+        <!-- Face indicator -->
+        <div class="face-badge-row">
+          <div class="panel-title" style="margin-bottom:0;border-bottom:none;padding-bottom:0;">Face Atual</div>
+          <span class="face-badge pd" id="faceBadge">PD</span>
+        </div>
+
+        <hr class="divider">
+
+        <!-- Steps -->
+        <div>
+          <div class="panel-title">Etapas</div>
+          <div class="step-checklist" id="stepChecklist"></div>
+        </div>
+
+        <hr class="divider">
+
+        <!-- Readings -->
+        <div>
+          <div class="panel-title">Leituras Coletadas</div>
+          <div class="readings-grid">
+            <div class="reading-item filled" id="riHzRePd">
+              <div class="reading-label">Hz Ré (PD)</div>
+              <div class="reading-val">00°00'00.0"</div>
+            </div>
+            <div class="reading-item" id="riHzVantePd">
+              <div class="reading-label">Hz Vante (PD)</div>
+              <div class="reading-val">—</div>
+            </div>
+            <div class="reading-item" id="riVVantePd">
+              <div class="reading-label">V Vante (PD)</div>
+              <div class="reading-val">—</div>
+            </div>
+            <div class="reading-item" id="riHzRePi">
+              <div class="reading-label">Hz Ré (PI)</div>
+              <div class="reading-val">—</div>
+            </div>
+            <div class="reading-item" id="riVRePi">
+              <div class="reading-label">V Ré (PI)</div>
+              <div class="reading-val">—</div>
+            </div>
+          </div>
+        </div>
+
+        <hr class="divider">
+
+        <!-- Tombar button -->
+        <button class="btn-tombar" id="btnTombar" disabled>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M21 2v6h-6"></path>
+            <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
+            <path d="M3 22v-6h6"></path>
+            <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
+          </svg>
+          Tombar a Luneta
+        </button>
+
+        <!-- New exercise -->
+        <button class="btn-primary" id="btnNewExercise">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+          </svg>
+          Novo Exercício
+        </button>
+
+        <div class="exercise-counter">
+          Exercício nº <span class="count" id="exerciseCount">0</span>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- Dual Canvas Area -->
+    <div class="canvas-wrapper">
+      <div class="dual-canvas-container">
+        <div class="canvas-pane">
+          <span class="pane-label">Vista Superior — Limbo Horizontal</span>
+          <span class="pane-readout" id="topReadout">—</span>
+          <canvas id="topCanvas"></canvas>
+        </div>
+        <div class="canvas-pane">
+          <span class="pane-label">Vista Lateral — Círculo Vertical</span>
+          <span class="pane-readout" id="sideReadout">—</span>
+          <canvas id="sideCanvas"></canvas>
+        </div>
+      </div>
+      <div class="canvas-hint" id="canvasHint">🎯 Mire na direção do Vante (visão superior) para registrar a pontaria horizontal</div>
+    </div>
+
+    <!-- Calculations panel (revealed at the end) -->
+    <div class="calc-panel" id="calcPanel">
+      <h3>📐 Cálculos e Verificação de Face</h3>
+      <div class="calc-grid">
+        <div class="calc-row">
+          <div class="calc-label">Ângulo Horizontal (Hz)</div>
+          <div class="calc-formula" id="calcHz">—</div>
+        </div>
+        <div class="calc-row">
+          <div class="calc-label">Verificação de Face (Hz)</div>
+          <div class="calc-formula" id="calcHzCheck">—</div>
+        </div>
+        <div class="calc-row">
+          <div class="calc-label">Ângulo Zenital do Vante (Z)</div>
+          <div class="calc-formula" id="calcZVante">—</div>
+        </div>
+        <div class="calc-row">
+          <div class="calc-label">Ângulo Zenital da Ré (Z)</div>
+          <div class="calc-formula" id="calcZRe">—</div>
+        </div>
+      </div>
+      <div class="calc-panel-actions">
+        <button class="btn-modal btn-modal-primary" id="btnFinalizar">✅ Finalizar</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal 1: Conceito PD/PI -->
+  <div class="modal-overlay" id="modal1">
+    <div class="modal">
+      <div class="step-indicator">
+        <div class="step-dot active"></div>
+        <div class="step-dot"></div>
+      </div>
+      <div class="modal-icon">🔄</div>
+      <h2>Pontaria Direta (PD) e Inversa (PI)</h2>
+      <p>
+        Para eliminar erros sistemáticos do teodolito, cada direção pode ser observada em <strong>duas posições</strong>
+        da luneta:
+      </p>
+      <p>
+        <strong>PD (Posição Direta)</strong> — posição normal da luneta.<br>
+        <strong>PI (Posição Inversa)</strong> — após "tombar" (girar 180° em torno do eixo horizontal) a luneta.
+      </p>
+      <p>
+        Assim como no simulador de Direções, três pontos são gerados aleatoriamente: <strong>Estação</strong>,
+        <strong>Ré</strong> e <strong>Vante</strong>. O equipamento está sempre orientado (zerado) na Ré, em sentido horário.
+      </p>
+      <div class="modal-diagram">
+        <canvas id="modal1DiagramCanvas"></canvas>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-modal btn-modal-primary" id="btnModal1Next">Próximo →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 2: Relação entre as faces -->
+  <div class="modal-overlay" id="modal2">
+    <div class="modal">
+      <div class="step-indicator">
+        <div class="step-dot"></div>
+        <div class="step-dot active"></div>
+      </div>
+      <div class="modal-icon">📏</div>
+      <h2>A Relação Entre as Faces</h2>
+      <p>
+        Ao tombar a luneta, duas relações clássicas aparecem entre as leituras da PD e da PI, para o mesmo alvo:
+      </p>
+      <p style="text-align:center; font-size: 1.05rem;">
+        <strong style="color:#a855f7;">Hz(PI) = Hz(PD) + 180°</strong><br><br>
+        <strong style="color:#06b6d4;">Z(PI) = 360° − Z(PD)</strong>
+      </p>
+      <p>
+        Você fará a pontaria no <strong>Vante</strong> (horizontal e vertical) em PD, tombará a luneta, e então fará a
+        pontaria na <strong>Ré</strong> (horizontal e vertical) em PI. Ao final, os cálculos mostrarão essas relações
+        na prática.
+      </p>
+      <div class="modal-actions">
+        <button class="btn-modal btn-modal-primary" id="btnModal2Start">🎯 Começar Simulação</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+
+</html>
