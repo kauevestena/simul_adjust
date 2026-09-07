@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Medida Eletrônica de Distâncias (EDM) — Apresentação Didática Interativa</title>
   <meta name="description"
-    content="Apresentação didática interativa sobre Medida Eletrônica de Distâncias (EDM): princípios, refletores, erros, calibração, correções atmosféricas e um simulador da resolução da ambiguidade de fase.">
+    content="Apresentação didática interativa sobre Medida Eletrônica de Distâncias (EDM): modulação de amplitude sobre a portadora, extração de fase, resolução da ambiguidade, erros sistemáticos e correção atmosférica.">
   <link rel="icon"
     href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📏</text></svg>">
   <link rel="stylesheet" href="style.css">
@@ -14,7 +14,6 @@
 
 <body>
 
-  <!-- Header -->
   <header>
     <div class="header-inner">
       <span class="header-icon">📏</span>
@@ -31,7 +30,6 @@
     </div>
   </header>
 
-  <!-- Main Content -->
   <main>
     <!-- Sidebar: topic navigation -->
     <aside>
@@ -47,50 +45,234 @@
       <div class="topic-breadcrumb" id="topicBreadcrumb">Tópico 1 de 10</div>
       <h2 id="topicTitle">—</h2>
 
+      <!-- Default view: animated diagram -->
       <div class="anim-canvas-wrap" id="animCanvasWrap">
         <canvas id="animCanvas"></canvas>
       </div>
 
-      <!-- Interactive ambiguity-resolution simulator (shown only for its topic) -->
-      <div class="ambiguity-block" id="ambiguityBlock" hidden>
-        <div class="info-box">
-          <strong>Como funciona:</strong> um EDM por diferença de fase só enxerga a parte fracionária de cada
-          comprimento de onda modulado. Cada onda (10 m, 100 m, 1 km, 10 km) revela um grupo de dígitos da distância.
-          Combine as 4 leituras abaixo — como os dígitos de um odômetro — para reconstruir a distância total.
+      <!-- ══ LAB 1: Ambiguidade de fase (tópico 3) ══ -->
+      <div class="lab" id="labAmbiguity" hidden>
+        <div class="lab-modes">
+          <button class="mode-btn active" data-amb-mode="explore">🔬 Explorar</button>
+          <button class="mode-btn" data-amb-mode="challenge">🎯 Desafio</button>
         </div>
-        <div class="readings-grid ambiguity-grid">
-          <div class="reading-item">
-            <div class="reading-label">λ ≈ 10 m</div>
-            <div class="reading-val" id="ambR10">—</div>
+
+        <!-- Painel 1: modulação de amplitude -->
+        <section class="lab-block">
+          <div class="lab-block-title">
+            <span class="lab-num">1</span>
+            Modulação de amplitude sobre a portadora
           </div>
-          <div class="reading-item">
-            <div class="reading-label">λ ≈ 100 m</div>
-            <div class="reading-val" id="ambR100">—</div>
+          <div class="layer-toggles" id="ambLayerToggles">
+            <button class="layer-btn active" data-layer="carrier">Portadora</button>
+            <button class="layer-btn active" data-layer="envelope">Envoltória (modulação)</button>
+            <button class="layer-btn active" data-layer="am">Sinal AM resultante</button>
           </div>
-          <div class="reading-item">
-            <div class="reading-label">λ ≈ 1 km</div>
-            <div class="reading-val" id="ambR1000">—</div>
+          <div class="lab-canvas-wrap" style="height:210px;">
+            <canvas id="ambCarrierCanvas"></canvas>
           </div>
-          <div class="reading-item">
-            <div class="reading-label">λ ≈ 10 km</div>
-            <div class="reading-val" id="ambR10000">—</div>
+          <p class="lab-caption">
+            A portadora (infravermelha, ~3×10¹⁴ Hz) não carrega a medida: quem é medido é o
+            <strong>envelope de modulação</strong>, de frequência muito menor. As duas escalas de frequência
+            diferem em ~7 ordens de grandeza — o desenho está fora de escala para ficar legível.
+          </p>
+        </section>
+
+        <!-- Painel 2: percurso de ida e volta -->
+        <section class="lab-block">
+          <div class="lab-block-title">
+            <span class="lab-num">2</span>
+            Percurso de ida e volta — a origem da ambiguidade
           </div>
-        </div>
-        <div class="ambiguity-input-row">
-          <input type="text" id="ambInput" class="ambiguity-input" placeholder="Distância reconstruída, em metros (ex: 3123,456)">
-          <button class="btn-primary" id="btnAmbCheck">✅ Verificar</button>
-        </div>
-        <div class="result-box" id="ambResultBox" style="display:none;">
-          <div class="result-label">Distância Real</div>
-          <div class="result-value" id="ambResultValue">—</div>
-          <div class="result-sub" id="ambResultSub"></div>
-        </div>
-        <div class="ambiguity-actions">
-          <button class="btn-secondary" id="btnAmbNew">🔄 Nova Distância</button>
-        </div>
+          <div class="lab-canvas-wrap" style="height:250px;">
+            <canvas id="ambPathCanvas"></canvas>
+          </div>
+          <p class="lab-caption">
+            O sinal percorre <strong>2D</strong>. Nesse percurso cabem <strong>N</strong> ciclos inteiros de
+            modulação mais uma fração. O instrumento mede <em>apenas a fração</em> (pela fase) — o número
+            inteiro de ciclos <strong>N</strong> é a ambiguidade.
+          </p>
+        </section>
+
+        <!-- Painel 3: comparação de fase -->
+        <section class="lab-block">
+          <div class="lab-block-title">
+            <span class="lab-num">3</span>
+            Comparação de fase — extração da fração
+          </div>
+          <div class="lab-canvas-wrap" style="height:230px;">
+            <canvas id="ambPhaseCanvas"></canvas>
+          </div>
+          <p class="lab-caption">
+            O sinal que voltou do prisma é comparado com a cópia interna do sinal emitido (a que passou pelo
+            divisor de feixe). A defasagem Δφ entre os dois converte-se diretamente na fração da distância.
+          </p>
+        </section>
+
+        <!-- Controles -->
+        <section class="lab-block">
+          <div class="lab-block-title"><span class="lab-num">⚙</span> Controles</div>
+
+          <div class="control-row" id="ambDistanceRow">
+            <label for="ambDistance">Distância D</label>
+            <input type="range" id="ambDistance" min="0" max="10000" step="0.001" value="3123.456">
+            <input type="text" id="ambDistanceNum" class="num-input" value="3123,456">
+            <span class="unit">m</span>
+          </div>
+
+          <div class="control-row">
+            <label>Escala de medida (U = λ/2)</label>
+            <div class="scale-btns" id="ambScaleBtns"></div>
+          </div>
+
+          <div class="scale-table-wrap">
+            <table class="scale-table" id="ambScaleTable">
+              <thead>
+                <tr>
+                  <th>Escala U</th>
+                  <th>λ = 2U</th>
+                  <th>f<sub>mod</sub></th>
+                  <th>N ciclos</th>
+                  <th>Δφ</th>
+                  <th>Leitura</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <div class="compose-box" id="ambComposeBox"></div>
+
+          <!-- Challenge mode extras -->
+          <div class="challenge-area" id="ambChallengeArea" hidden>
+            <div class="info-box">
+              <strong>Desafio:</strong> a distância está oculta. Combine as quatro leituras — como os dígitos
+              de um odômetro — e reconstrua a distância total.
+            </div>
+            <div class="ambiguity-input-row">
+              <input type="text" id="ambInput" class="ambiguity-input"
+                placeholder="Distância reconstruída, em metros (ex: 3123,456)">
+              <button class="btn-primary" id="btnAmbCheck">✅ Verificar</button>
+            </div>
+            <div class="result-box" id="ambResultBox" style="display:none;">
+              <div class="result-label">Distância real</div>
+              <div class="result-value" id="ambResultValue">—</div>
+              <div class="result-sub" id="ambResultSub"></div>
+            </div>
+            <div class="ambiguity-actions">
+              <button class="btn-secondary" id="btnAmbNew">🔄 Nova Distância</button>
+            </div>
+          </div>
+        </section>
       </div>
 
+      <!-- ══ LAB 2: Erros sistemáticos (tópico 5) ══ -->
+      <div class="lab" id="labErrors" hidden>
+        <section class="lab-block">
+          <div class="lab-block-title"><span class="lab-num">📉</span> Erro total × distância</div>
+          <div class="lab-canvas-wrap" style="height:280px;">
+            <canvas id="errCanvas"></canvas>
+          </div>
+          <p class="lab-caption">
+            Cada erro sistemático tem uma <strong>assinatura própria em função da distância</strong>: o erro de
+            zero é constante, o fator de escala cresce proporcionalmente, e o erro cíclico oscila com o período
+            da escala de medida. A faixa cinza é a precisão nominal ±(A + B·ppm).
+          </p>
+        </section>
+
+        <section class="lab-block">
+          <div class="lab-block-title"><span class="lab-num">⚙</span> Componentes</div>
+
+          <div class="control-row toggle-row">
+            <button class="layer-btn active" data-err="zero">Erro de zero</button>
+            <button class="layer-btn active" data-err="scale">Fator de escala</button>
+            <button class="layer-btn active" data-err="cyclic">Erro cíclico</button>
+            <button class="layer-btn active" data-err="nominal">Precisão nominal</button>
+          </div>
+
+          <div class="control-row">
+            <label for="errZero">Erro de zero <span class="hint">(ponto cardã → emissor)</span></label>
+            <input type="range" id="errZero" min="-15" max="15" step="0.5" value="4">
+            <output id="errZeroOut" class="num-out">+4,0 mm</output>
+          </div>
+          <div class="control-row">
+            <label for="errScale">Fator de escala <span class="hint">(deriva do oscilador)</span></label>
+            <input type="range" id="errScale" min="-20" max="20" step="0.5" value="6">
+            <output id="errScaleOut" class="num-out">+6,0 ppm</output>
+          </div>
+          <div class="control-row">
+            <label for="errCyclic">Erro cíclico <span class="hint">(diafonia emissor/receptor)</span></label>
+            <input type="range" id="errCyclic" min="0" max="10" step="0.5" value="3">
+            <output id="errCyclicOut" class="num-out">3,0 mm</output>
+          </div>
+          <div class="control-row">
+            <label>Precisão nominal</label>
+            <div class="nominal-inputs">
+              A = <input type="number" id="errA" class="num-input tiny" value="2" min="0" max="10" step="0.5"> mm
+              &nbsp;+&nbsp;
+              B = <input type="number" id="errB" class="num-input tiny" value="2" min="0" max="10" step="0.5"> ppm
+            </div>
+          </div>
+
+          <div class="readout-grid" id="errReadout"></div>
+        </section>
+      </div>
+
+      <!-- ══ LAB 3: Correção atmosférica (tópico 7) ══ -->
+      <div class="lab" id="labAtmosphere" hidden>
+        <section class="lab-block">
+          <div class="lab-block-title"><span class="lab-num">🌡️</span> Primeira correção de velocidade</div>
+          <div class="lab-canvas-wrap" style="height:250px;">
+            <canvas id="atmCanvas"></canvas>
+          </div>
+          <p class="lab-caption">
+            A correção é dada em <strong>ppm</strong> — proporcional à distância. Note que
+            <strong>não aplicar a correção equivale a 0 ppm</strong>, e não à correção para 0 °C. Em torno das
+            condições padrão, 1 °C de erro na temperatura vale aproximadamente 1 ppm.
+          </p>
+        </section>
+
+        <section class="lab-block">
+          <div class="lab-block-title"><span class="lab-num">⚙</span> Atmosfera local</div>
+          <div class="control-row">
+            <label for="atmTemp">🌡️ Temperatura</label>
+            <input type="range" id="atmTemp" min="-20" max="50" step="0.1" value="12">
+            <output id="atmTempOut" class="num-out">12,0 °C</output>
+          </div>
+          <div class="control-row">
+            <label for="atmPress">📊 Pressão</label>
+            <input type="range" id="atmPress" min="600" max="1100" step="0.5" value="1013.25">
+            <output id="atmPressOut" class="num-out">1013,3 hPa</output>
+          </div>
+          <div class="control-row">
+            <label for="atmHum">💧 Umidade relativa</label>
+            <input type="range" id="atmHum" min="0" max="100" step="1" value="60">
+            <output id="atmHumOut" class="num-out">60 %</output>
+          </div>
+          <div class="control-row">
+            <label for="atmDist">📏 Distância medida</label>
+            <input type="range" id="atmDist" min="100" max="10000" step="10" value="2000">
+            <output id="atmDistOut" class="num-out">2000 m</output>
+          </div>
+          <div class="control-row">
+            <button class="btn-secondary" id="btnAtmStandard">↺ Voltar às condições padrão (12 °C, 1013,25 hPa, 60 %)</button>
+          </div>
+          <div class="readout-grid" id="atmReadout"></div>
+          <div class="formula-box">
+            ppm = 286,34 − <span class="frac">0,29525·p / (1 + 0,003661·t)</span> −
+            <span class="frac">4,126×10⁻⁴·h·10<sup>x</sup> / (1 + 0,003661·t)</span>,
+            com x = 7,5·t/(237,3+t) + 0,7857
+          </div>
+        </section>
+      </div>
+
+      <!-- Texto -->
       <p class="topic-summary" id="topicSummary">—</p>
+      <ul class="key-points" id="topicKeyPoints"></ul>
+      <details class="source-details">
+        <summary>📖 Texto original (<code>teoria.md</code>)</summary>
+        <p id="topicSource"></p>
+      </details>
 
       <div class="content-nav-actions">
         <button class="btn-secondary" id="btnPrev">← Anterior</button>
