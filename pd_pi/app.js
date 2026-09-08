@@ -838,7 +838,7 @@ function drawStationPoint(ctx, pos) {
   ctx.fillText(label, pos.x, pos.y + LABEL_OFFSET + 3);
 }
 
-function drawReferenceRay(ctx, station, zeroMathAngle, label = 'Zero PI (Ré+180°)', len = 115) {
+function drawReferenceRay(ctx, station, zeroMathAngle, label = 'Zero PI (Ré+180°)', len = 115, labelDx = 0, labelDy = 0) {
   const zeroLen = len;
   const rayAngle = -zeroMathAngle;
   const rayEnd = {
@@ -867,8 +867,8 @@ function drawReferenceRay(ctx, station, zeroMathAngle, label = 'Zero PI (Ré+180
   ctx.stroke();
 
   const badgeR = zeroLen + 20;
-  const bx = station.x + Math.cos(rayAngle) * badgeR;
-  const by = station.y + Math.sin(rayAngle) * badgeR;
+  const bx = station.x + Math.cos(rayAngle) * badgeR + labelDx;
+  const by = station.y + Math.sin(rayAngle) * badgeR + labelDy;
   drawBadge(ctx, label, bx, by, '#cbd5e1', 'rgba(148, 163, 184, 0.4)');
 }
 
@@ -1029,11 +1029,20 @@ function drawSide() {
 
   // Zênite: referência fixa (Z=0) para a leitura vertical, análoga à Ré no Hz.
   const zenithMathAngle = Math.PI / 2;
-  drawReferenceRay(sideCtx, trunnion, zenithMathAngle, 'Zênite (Z=0°)', Math.min(guideR + 30, h * 0.42));
+  // O rótulo é desenhado 20px além da ponta do raio; limitar o comprimento a
+  // (trunnion.y − 34) garante que ele nunca encoste no topo em canvas curto.
+  // O rótulo sai deslocado para a direita e um pouco abaixo da ponta do raio,
+  // para não cair sob o título "Vista Lateral" sobreposto ao canto do canvas.
+  drawReferenceRay(sideCtx, trunnion, zenithMathAngle, 'Zênite (Z=0°)',
+    Math.min(guideR + 30, trunnion.y - 34), 58, 52);
 
   // Raios tracejados até Ré/Vante, análogos às linhas estação→Ré/Vante da vista superior.
   drawDashedLine(sideCtx, trunnion, sideZPoint(trunnion, state.Z.re, guideR), COLORS.re, 1.2);
   drawDashedLine(sideCtx, trunnion, sideZPoint(trunnion, state.Z.vante, guideR), COLORS.vante, 1.2);
+
+  // O tripé vem antes do arco: em PI o arco varre quase 360°, e seu rótulo de
+  // leitura cai perto da base — desenhado depois, fica legível por cima dela.
+  drawTripod(trunnion);
 
   // Arco varrido do Zênite até a pontaria atual: horário em PD, anti-horário em PI
   // (mesma convenção do círculo vertical real — daí V_PI = 360° − V_PD).
@@ -1073,8 +1082,6 @@ function drawSide() {
     sideCtx.fillStyle = tubeColor;
     sideCtx.fill();
   }
-
-  drawTripod(trunnion);
 }
 
 function drawAll() {
