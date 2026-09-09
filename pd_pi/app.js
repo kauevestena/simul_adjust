@@ -717,13 +717,15 @@ function drawDashedLine(ctx, from, to, color, width) {
   ctx.setLineDash([]);
 }
 
-function drawGenericArc(ctx, { center, startMathAngle, endMathAngle, radius, color, fillColor = null, label = null, showArrow = true, lineWidth = 2.5 }) {
+function drawGenericArc(ctx, { center, startMathAngle, endMathAngle, radius, color, fillColor = null, label = null, showArrow = true, lineWidth = 2.5, ccw = false }) {
   const canvasStart = -startMathAngle;
   const canvasEnd = -endMathAngle;
-  const ccw = false; // sempre sentido horário
+  const sweepSign = ccw ? -1 : 1;
 
-  const spanDeg = normAngle((canvasEnd - canvasStart) * 180 / Math.PI);
-  const midCanvasAngle = canvasStart + (spanDeg / 2) * Math.PI / 180;
+  const spanDeg = ccw
+    ? normAngle((canvasStart - canvasEnd) * 180 / Math.PI)
+    : normAngle((canvasEnd - canvasStart) * 180 / Math.PI);
+  const midCanvasAngle = canvasStart + sweepSign * (spanDeg / 2) * Math.PI / 180;
 
   if (spanDeg < 0.2) return;
 
@@ -745,7 +747,7 @@ function drawGenericArc(ctx, { center, startMathAngle, endMathAngle, radius, col
   if (showArrow && spanDeg >= 5) {
     const tipX = center.x + Math.cos(canvasEnd) * radius;
     const tipY = center.y + Math.sin(canvasEnd) * radius;
-    const tangent = canvasEnd + Math.PI / 2;
+    const tangent = canvasEnd + sweepSign * Math.PI / 2;
     const headLen = 8;
     const spread = 0.45;
     ctx.beginPath();
@@ -1013,6 +1015,17 @@ function drawSide() {
   sideCtx.setLineDash([]);
   drawBadge(sideCtx, 'Horizonte Z=90°', w - 76, trunnion.y - 16, '#cbd5e1', 'rgba(148,163,184,0.3)');
 
+  const zenithPoint = sideZPoint(trunnion, 0, guideR);
+  sideCtx.beginPath();
+  sideCtx.moveTo(trunnion.x, trunnion.y);
+  sideCtx.lineTo(zenithPoint.x, zenithPoint.y);
+  sideCtx.strokeStyle = 'rgba(148,163,184,0.55)';
+  sideCtx.lineWidth = 1.2;
+  sideCtx.setLineDash([6, 5]);
+  sideCtx.stroke();
+  sideCtx.setLineDash([]);
+  drawBadge(sideCtx, 'Zênite Z=0°', zenithPoint.x, zenithPoint.y - 18, '#cbd5e1', 'rgba(148,163,184,0.3)');
+
   sideCtx.beginPath();
   for (let z = 60; z <= 120; z += 2) {
     const p = sideZPoint(trunnion, z, guideR);
@@ -1037,6 +1050,20 @@ function drawSide() {
 
   if (state.pose.elevation !== null) {
     const tubeColor = state.face === 'PD' ? COLORS.pd : COLORS.pi;
+    const zArcCcw = state.face === 'PI';
+    drawGenericArc(sideCtx, {
+      center: trunnion,
+      startMathAngle: Math.PI / 2,
+      endMathAngle: (90 - state.pose.elevation) * Math.PI / 180,
+      radius: guideR * 0.55,
+      color: tubeColor,
+      fillColor: (state.face === 'PD' ? 'rgba(6,182,212,0.10)' : 'rgba(168,85,247,0.10)'),
+      label: formatDMS(vReading(state.pose.elevation)),
+      showArrow: true,
+      lineWidth: 2.5,
+      ccw: zArcCcw,
+    });
+
     const tip = sideZPoint(trunnion, state.pose.elevation, guideR - 4);
     sideCtx.beginPath();
     sideCtx.moveTo(trunnion.x, trunnion.y);
