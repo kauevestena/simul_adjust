@@ -58,8 +58,8 @@ const STEPS = [
   { key: 'hz_vante_pd', axis: 'hz', target: 'vante', face: 'PD' },
   { key: 'v_vante_pd', axis: 'v', target: 'vante', face: 'PD' },
   { key: 'tombar', axis: null, target: null, face: 'PD' },
-  { key: 'hz_re_pi', axis: 'hz', target: 're', face: 'PI' },
-  { key: 'v_re_pi', axis: 'v', target: 're', face: 'PI' },
+  { key: 'hz_re_pi', axis: 'hz', target: 'vante', face: 'PI' },
+  { key: 'v_re_pi', axis: 'v', target: 'vante', face: 'PI' },
   { key: 'results', axis: null, target: null, face: 'PI' },
 ];
 
@@ -67,8 +67,8 @@ const STEP_LABELS = {
   hz_vante_pd: 'Pontaria horizontal — Vante (PD)',
   v_vante_pd: 'Pontaria vertical — Vante (PD)',
   tombar: 'Tombar a luneta',
-  hz_re_pi: 'Pontaria horizontal — Ré (PI)',
-  v_re_pi: 'Pontaria vertical — Ré (PI)',
+  hz_re_pi: 'Pontaria horizontal — Vante (PI)',
+  v_re_pi: 'Pontaria vertical — Vante (PI)',
   results: 'Cálculos e finalização',
 };
 
@@ -76,8 +76,8 @@ const HINTS = {
   hz_vante_pd: '🎯 Mire na direção do Vante (vista superior) para registrar a pontaria horizontal',
   v_vante_pd: '🎯 Mire na elevação do Vante (vista lateral) para registrar a pontaria vertical',
   tombar: '🔄 Clique em "Tombar a Luneta" para passar à posição inversa (PI)',
-  hz_re_pi: '🎯 Mire na direção da Ré (vista superior) para registrar a pontaria horizontal em PI',
-  v_re_pi: '🎯 Mire na elevação da Ré (vista lateral) para registrar a pontaria vertical em PI',
+  hz_re_pi: '🎯 Mire na direção do Vante (vista superior) para registrar a pontaria horizontal em PI',
+  v_re_pi: '🎯 Mire na elevação do Vante (vista lateral) para registrar a pontaria vertical em PI',
   results: '✅ Pontarias concluídas! Revise os cálculos e finalize.',
 };
 
@@ -647,20 +647,21 @@ function computeAndShowResults() {
   const { hzVantePd, vVantePd, hzRePi, vRePi } = state.readings;
   if (hzVantePd == null || vVantePd == null || hzRePi == null || vRePi == null) return;
 
-  const zRe = normAngle(360 - vRePi);
-  const checkOk = Math.abs(normAngle(hzRePi - 180)) < 0.05 || Math.abs(normAngle(hzRePi - 180) - 360) < 0.05;
+  const zVantePi = normAngle(360 - vRePi);
+  const expectedHz = normAngle(hzVantePd + 180);
+  const checkOk = Math.abs(normAngle(hzRePi - expectedHz)) < 0.05 || Math.abs(normAngle(hzRePi - expectedHz) - 360) < 0.05;
 
   document.getElementById('calcHz').innerHTML =
     `Hz = Vante (PD) − Ré (PD)<br>Hz = ${formatDMS(hzVantePd)} − ${formatDMS(0)}<br><span class="eq">Hz = ${formatDMS(hzVantePd)}</span>`;
 
   document.getElementById('calcHzCheck').innerHTML =
-    `Ré (PI) = Ré (PD) + 180°<br>Ré (PI) = ${formatDMS(0)} + 180°<br><span class="eq">Ré (PI) = ${formatDMS(hzRePi)}</span> ${checkOk ? '<span class="calc-check">✓</span>' : ''}`;
+    `Vante (PI) = Vante (PD) + 180°<br>Vante (PI) = ${formatDMS(hzVantePd)} + 180°<br><span class="eq">Vante (PI) = ${formatDMS(hzRePi)}</span> ${checkOk ? '<span class="calc-check">✓</span>' : ''}`;
 
   document.getElementById('calcZVante').innerHTML =
     `Lido diretamente em PD<br><span class="eq">Z = ${formatDMS(vVantePd)}</span>`;
 
   document.getElementById('calcZRe').innerHTML =
-    `Z = 360° − V Ré (PI)<br>Z = 360° − ${formatDMS(vRePi)}<br><span class="eq">Z = ${formatDMS(zRe)}</span>`;
+    `Z = 360° − V Vante (PI)<br>Z = 360° − ${formatDMS(vRePi)}<br><span class="eq">Z = ${formatDMS(zVantePi)}</span>`;
 
   calcPanelEl.classList.add('visible');
   btnFinalizar.disabled = false;
