@@ -1033,7 +1033,6 @@ function drawSide() {
     sideCtx.stroke();
   }
 
-  drawSideFlag(trunnion, state.Z.re, guideR, COLORS.re, 'Ré');
   drawSideFlag(trunnion, state.Z.vante, guideR, COLORS.vante, 'Vante');
 
   if (state.pose.elevation !== null) {
