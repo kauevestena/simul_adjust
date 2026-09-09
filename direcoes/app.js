@@ -57,6 +57,37 @@ const MIN_DIST = 100;
 // The user must click within ±SNAP_TOLERANCE_DEG of the Vante direction to register
 const SNAP_TOLERANCE_DEG = 3;
 
+// ── Zoom / Pan ──
+const ZOOM_MIN = 0.5;
+const ZOOM_MAX = 5;
+const view = { scale: 1, offsetX: 0, offsetY: 0 };
+
+function resetView() {
+  view.scale = 1;
+  view.offsetX = 0;
+  view.offsetY = 0;
+  updateZoomIndicator();
+}
+
+function screenToWorld(pos) {
+  return {
+    x: (pos.x - view.offsetX) / view.scale,
+    y: (pos.y - view.offsetY) / view.scale
+  };
+}
+
+function zoomAt(screenPos, factor) {
+  const worldBefore = screenToWorld(screenPos);
+  view.scale = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, view.scale * factor));
+  view.offsetX = screenPos.x - worldBefore.x * view.scale;
+  view.offsetY = screenPos.y - worldBefore.y * view.scale;
+  updateZoomIndicator();
+}
+
+function updateZoomIndicator() {
+  if (zoomLevelEl) zoomLevelEl.textContent = `${Math.round(view.scale * 100)}%`;
+}
+
 // ── State ──
 const state = {
   // Config
@@ -86,6 +117,7 @@ let modalOverlay1, modalOverlay2;
 let resultValueEl, resultBoxEl;
 let readingReEl, readingVanteEl;
 let hintEl, counterEl;
+let zoomLevelEl;
 
 // ── Initialization ──
 document.addEventListener('DOMContentLoaded', () => {
@@ -101,6 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
   readingVanteEl = document.getElementById('readingVante');
   hintEl         = document.getElementById('canvasHint');
   counterEl      = document.getElementById('exerciseCount');
+  zoomLevelEl    = document.getElementById('zoomLevel');
   
   // Modal buttons
   document.getElementById('btnModal1Next').addEventListener('click', () => {
@@ -135,20 +168,55 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   
   document.getElementById('btnNewExercise').addEventListener('click', startExercise);
-  
+
   // Canvas events
   canvas.addEventListener('mousemove', onCanvasMove);
   canvas.addEventListener('mousedown', onCanvasDown);
   canvas.addEventListener('touchmove', onCanvasTouchMove, { passive: false });
   canvas.addEventListener('touchstart', onCanvasTouchStart, { passive: false });
-  
+
+  // Zoom: mouse wheel (centered on cursor), buttons, and reset
+  canvas.addEventListener('wheel', onCanvasWheel, { passive: false });
+  canvas.addEventListener('dblclick', () => {
+    resetView();
+    drawScene();
+  });
+  const btnZoomIn = document.getElementById('btnZoomIn');
+  const btnZoomOut = document.getElementById('btnZoomOut');
+  const btnZoomReset = document.getElementById('btnZoomReset');
+  if (btnZoomIn) btnZoomIn.addEventListener('click', () => {
+    zoomAt({ x: canvas.clientWidth / 2, y: canvas.clientHeight / 2 }, 1.3);
+    drawScene();
+  });
+  if (btnZoomOut) btnZoomOut.addEventListener('click', () => {
+    zoomAt({ x: canvas.clientWidth / 2, y: canvas.clientHeight / 2 }, 1 / 1.3);
+    drawScene();
+  });
+  if (btnZoomReset) btnZoomReset.addEventListener('click', () => {
+    resetView();
+    drawScene();
+  });
+
+  // Spacebar: advance to a new exercise (same action as "Novo Exercício"), regardless
+  // of which element currently has focus — except the button itself, whose native
+  // Space-activates-click behavior already calls startExercise once.
+  document.addEventListener('keydown', (e) => {
+    if (e.code !== 'Space' && e.key !== ' ') return;
+    const active = document.activeElement;
+    if (active && (active.id === 'btnNewExercise' || active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
+    if (modalOverlay1.classList.contains('active') || modalOverlay2.classList.contains('active')) return;
+    if (!state.points.station) return;
+    e.preventDefault();
+    startExercise();
+  });
+
   // Resize
   resizeCanvas();
   window.addEventListener('resize', () => {
     resizeCanvas();
     if (state.points.station) drawScene();
   });
-  
+
   // Show first modal
   setTimeout(() => {
     showModal(modalOverlay1);
@@ -614,6 +682,7 @@ function startExercise() {
   state.angleResult = null;
   state.vanteLeitura = null;
   state.snapMiss = false;
+  resetView();
   
   generatePoints();
   
@@ -658,7 +727,8 @@ function resetCurrentExercise() {
   state.angleResult = null;
   state.vanteLeitura = null;
   state.snapMiss = false;
-  
+  resetView();
+
   const angleRe = Math.atan2(-(state.points.re.y - state.points.station.y), state.points.re.x - state.points.station.x);
   if (state.zeroedOnRe) {
     state.reLeitura = 0;
@@ -741,11 +811,19 @@ function getCanvasPos(e) {
   };
 }
 
+function onCanvasWheel(e) {
+  e.preventDefault();
+  if (!state.points.station) return;
+  const factor = Math.exp(-e.deltaY * 0.001);
+  zoomAt(getCanvasPos(e), factor);
+  drawScene();
+}
+
 function onCanvasMove(e) {
   if (state.solved) return;
   if (!state.points.station) return;
-  
-  const pos = getCanvasPos(e);
+
+  const pos = screenToWorld(getCanvasPos(e));
   state.aimAngle = Math.atan2(-(pos.y - state.points.station.y), pos.x - state.points.station.x);
   state.snapMiss = false;
   updateAimReading();
@@ -765,10 +843,10 @@ function isWithinSnap(aimAngle) {
 function onCanvasDown(e) {
   if (state.solved) return;
   if (!state.points.station) return;
-  
-  const pos = getCanvasPos(e);
+
+  const pos = screenToWorld(getCanvasPos(e));
   state.aimAngle = Math.atan2(-(pos.y - state.points.station.y), pos.x - state.points.station.x);
-  
+
   if (dist(pos, state.points.vante) <= 25 || isWithinSnap(state.aimAngle)) {
     state.aimAngle = Math.atan2(
       -(state.points.vante.y - state.points.station.y),
@@ -789,7 +867,7 @@ function onCanvasTouchMove(e) {
   if (!state.points.station) return;
   
   const touch = e.touches[0];
-  const pos = getCanvasPos(touch);
+  const pos = screenToWorld(getCanvasPos(touch));
   state.aimAngle = Math.atan2(-(pos.y - state.points.station.y), pos.x - state.points.station.x);
   state.snapMiss = false;
   updateAimReading();
@@ -802,9 +880,9 @@ function onCanvasTouchStart(e) {
   if (!state.points.station) return;
   
   const touch = e.touches[0];
-  const pos = getCanvasPos(touch);
+  const pos = screenToWorld(getCanvasPos(touch));
   state.aimAngle = Math.atan2(-(pos.y - state.points.station.y), pos.x - state.points.station.x);
-  
+
   if (dist(pos, state.points.vante) <= 25 || isWithinSnap(state.aimAngle)) {
     state.aimAngle = Math.atan2(
       -(state.points.vante.y - state.points.station.y),
@@ -876,16 +954,21 @@ function drawScene() {
   const w = canvas.width / (window.devicePixelRatio || 1);
   const h = canvas.height / (window.devicePixelRatio || 1);
   
-  // Clear
+  // Clear (screen space, unaffected by zoom/pan)
   ctx.fillStyle = COLORS.bg;
   ctx.fillRect(0, 0, w, h);
-  
+
+  // Everything below is drawn in world space, subject to pan/zoom
+  ctx.save();
+  ctx.translate(view.offsetX, view.offsetY);
+  ctx.scale(view.scale, view.scale);
+
   // Grid
   drawGrid(w, h);
-  
+
   const { station, re, vante } = state.points;
-  if (!station) return;
-  
+  if (!station) { ctx.restore(); return; }
+
   const angleRe = Math.atan2(-(re.y - station.y), re.x - station.x);
   const angleVante = Math.atan2(-(vante.y - station.y), vante.x - station.x);
   
@@ -900,9 +983,10 @@ function drawScene() {
   
   // Aim line (if aiming)
   if (state.aimAngle !== null && !state.solved) {
+    const rayLen = Math.max(w, h) * 4 / view.scale;
     const aimEnd = {
-      x: station.x + Math.cos(state.aimAngle) * Math.max(w, h),
-      y: station.y - Math.sin(state.aimAngle) * Math.max(w, h)
+      x: station.x + Math.cos(state.aimAngle) * rayLen,
+      y: station.y - Math.sin(state.aimAngle) * rayLen
     };
     ctx.beginPath();
     ctx.moveTo(station.x, station.y);
@@ -943,7 +1027,7 @@ function drawScene() {
         center: station,
         startMathAngle: angleRe,
         endMathAngle: aimA,
-        radius: 56,
+        radius: 70,
         color: '#a855f7',
         fillColor: 'rgba(99, 102, 241, 0.12)',
         label: labelTxt,
@@ -966,7 +1050,7 @@ function drawScene() {
         center: station,
         startMathAngle: state.zeroMathAngle,
         endMathAngle: angleRe,
-        radius: 46,
+        radius: 62,
         color: COLORS.re,
         fillColor: 'rgba(245, 158, 11, 0.08)',
         label: `L₁ = ${formatDMS(state.reLeitura)}`,
@@ -983,7 +1067,7 @@ function drawScene() {
         center: station,
         startMathAngle: state.zeroMathAngle,
         endMathAngle: aimA,
-        radius: 74,
+        radius: 92,
         color: COLORS.vante,
         fillColor: 'rgba(16, 185, 129, 0.08)',
         label: l2Txt,
@@ -999,7 +1083,7 @@ function drawScene() {
         center: station,
         startMathAngle: angleRe,
         endMathAngle: angleVante,
-        radius: 104,
+        radius: 122,
         color: '#a855f7',
         fillColor: 'rgba(168, 85, 247, 0.12)',
         label: `Hz = L₂ − L₁ = ${formatDMS(state.angleResult)}`,
@@ -1014,22 +1098,29 @@ function drawScene() {
   drawPoint(re, 'Ré', COLORS.re);
   drawPoint(vante, 'Vante', COLORS.vante);
   drawStationPoint(station);
+
+  ctx.restore();
 }
 
 function drawGrid(w, h) {
   const step = 40;
+  const topLeft = screenToWorld({ x: 0, y: 0 });
+  const bottomRight = screenToWorld({ x: w, y: h });
+  const x0 = Math.floor(topLeft.x / step) * step;
+  const y0 = Math.floor(topLeft.y / step) * step;
+
   ctx.strokeStyle = COLORS.grid;
-  ctx.lineWidth = 0.5;
-  for (let x = step; x < w; x += step) {
+  ctx.lineWidth = 0.5 / view.scale;
+  for (let x = x0; x < bottomRight.x; x += step) {
     ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, h);
+    ctx.moveTo(x, topLeft.y);
+    ctx.lineTo(x, bottomRight.y);
     ctx.stroke();
   }
-  for (let y = step; y < h; y += step) {
+  for (let y = y0; y < bottomRight.y; y += step) {
     ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(w, y);
+    ctx.moveTo(topLeft.x, y);
+    ctx.lineTo(bottomRight.x, y);
     ctx.stroke();
   }
 }
@@ -1241,7 +1332,21 @@ function drawGenericArc({
   ctx.strokeStyle = color;
   ctx.lineWidth = lineWidth;
   ctx.stroke();
-  
+
+  // Endpoint caps — make the arc's true start/end unambiguous even when the
+  // span is large (a wide arc can otherwise read as a closed full circle)
+  for (const a of [canvasStart, canvasEnd]) {
+    const capX = center.x + Math.cos(a) * radius;
+    const capY = center.y + Math.sin(a) * radius;
+    ctx.beginPath();
+    ctx.arc(capX, capY, 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.strokeStyle = COLORS.bg;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
   // Arrowhead at the tip
   if (showArrow && spanDeg >= 5) {
     const tipX = center.x + Math.cos(canvasEnd) * radius;
