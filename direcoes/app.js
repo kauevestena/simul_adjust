@@ -865,14 +865,10 @@ function solveExercise() {
   }
   
   if (hintEl) {
-    hintEl.textContent = '✅  Pontaria registrada! Novo exercício em breve...';
+    hintEl.textContent = '✅  Pontaria registrada! Clique em "Novo Exercício" para continuar.';
   }
-  
+
   drawScene();
-  
-  setTimeout(() => {
-    startExercise();
-  }, 3500);
 }
 
 // ── Drawing ──
@@ -1226,6 +1222,7 @@ function drawGenericArc({
     midCanvasAngle = canvasStart - (spanDeg / 2) * Math.PI / 180;
   }
   
+  if (spanDeg > 359.8) spanDeg = 0;
   if (spanDeg < 0.2) return;
   
   // Filled sector
