@@ -1,105 +1,43 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Medida Eletrônica de Distâncias (EDM) — Apresentação Didática Interativa</title>
-  <meta name="description"
-    content="Apresentação didática interativa sobre Medida Eletrônica de Distâncias (EDM): princípios, refletores, erros, calibração, correções atmosféricas e um simulador da resolução da ambiguidade de fase.">
-  <link rel="icon"
-    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📏</text></svg>">
+  <meta name="description" content="Laboratório didático de Medida Eletrônica de Distâncias: tempo de voo, fase, ambiguidade, erros, calibração por mínimos quadrados, atmosfera e estações totais.">
+  <title>MED — Medida Eletrônica de Distâncias</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E📏%3C/text%3E%3C/svg%3E">
   <link rel="stylesheet" href="style.css">
+  <script src="physics.js" defer></script>
+  <script src="lessons.js" defer></script>
+  <script src="app.js" defer></script>
 </head>
-
 <body>
-
-  <!-- Header -->
-  <header>
-    <div class="header-inner">
-      <span class="header-icon">📏</span>
-      <div>
-        <h1>Medida Eletrônica de Distâncias</h1>
-        <p>Apresentação Didática Interativa — EDM</p>
-      </div>
-      <a href="../index.html" class="back-link">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <polyline points="15 18 9 12 15 6"></polyline>
-        </svg>
-        Portal
-      </a>
-    </div>
+  <a class="skip-link" href="#lesson">Ir para o experimento</a>
+  <header class="site-header">
+    <div class="brand"><span class="brand-mark" aria-hidden="true">MED</span><div><h1>Medida Eletrônica de Distâncias</h1><p>Topografia e Geodésia · laboratório de fundamentos</p></div></div>
+    <a class="back-link" href="../index.html">← Portal</a>
   </header>
-
-  <!-- Main Content -->
-  <main>
-    <!-- Sidebar: topic navigation -->
-    <aside>
-      <div class="panel">
-        <div class="panel-title">Tópicos</div>
-        <div class="topic-nav" id="topicNav"></div>
-      </div>
+  <main class="layout">
+    <aside class="sidebar">
+      <p class="eyebrow">Percurso de estudo</p>
+      <nav id="topicNav" aria-label="Tópicos de MED"></nav>
+      <p class="sidebar-note">Preveja o resultado, altere uma variável e confronte a observação com o modelo.</p>
+      <a href="teoria.md" class="text-link">Texto de apoio e convenções ↗</a>
     </aside>
-
-    <!-- Content panel -->
-    <div class="content-panel">
-      <div class="step-indicator" id="stepIndicator"></div>
-      <div class="topic-breadcrumb" id="topicBreadcrumb">Tópico 1 de 10</div>
-      <h2 id="topicTitle">—</h2>
-
-      <div class="anim-canvas-wrap" id="animCanvasWrap">
-        <canvas id="animCanvas"></canvas>
-      </div>
-
-      <!-- Interactive ambiguity-resolution simulator (shown only for its topic) -->
-      <div class="ambiguity-block" id="ambiguityBlock" hidden>
-        <div class="info-box">
-          <strong>Como funciona:</strong> um EDM por diferença de fase só enxerga a parte fracionária de cada
-          comprimento de onda modulado. Cada onda (10 m, 100 m, 1 km, 10 km) revela um grupo de dígitos da distância.
-          Combine as 4 leituras abaixo — como os dígitos de um odômetro — para reconstruir a distância total.
-        </div>
-        <div class="readings-grid ambiguity-grid">
-          <div class="reading-item">
-            <div class="reading-label">λ ≈ 10 m</div>
-            <div class="reading-val" id="ambR10">—</div>
-          </div>
-          <div class="reading-item">
-            <div class="reading-label">λ ≈ 100 m</div>
-            <div class="reading-val" id="ambR100">—</div>
-          </div>
-          <div class="reading-item">
-            <div class="reading-label">λ ≈ 1 km</div>
-            <div class="reading-val" id="ambR1000">—</div>
-          </div>
-          <div class="reading-item">
-            <div class="reading-label">λ ≈ 10 km</div>
-            <div class="reading-val" id="ambR10000">—</div>
-          </div>
-        </div>
-        <div class="ambiguity-input-row">
-          <input type="text" id="ambInput" class="ambiguity-input" placeholder="Distância reconstruída, em metros (ex: 3123,456)">
-          <button class="btn-primary" id="btnAmbCheck">✅ Verificar</button>
-        </div>
-        <div class="result-box" id="ambResultBox" style="display:none;">
-          <div class="result-label">Distância Real</div>
-          <div class="result-value" id="ambResultValue">—</div>
-          <div class="result-sub" id="ambResultSub"></div>
-        </div>
-        <div class="ambiguity-actions">
-          <button class="btn-secondary" id="btnAmbNew">🔄 Nova Distância</button>
-        </div>
-      </div>
-
-      <p class="topic-summary" id="topicSummary">—</p>
-
-      <div class="content-nav-actions">
-        <button class="btn-secondary" id="btnPrev">← Anterior</button>
-        <button class="btn-primary" id="btnNext">Próximo →</button>
-      </div>
-    </div>
+    <article id="lesson" tabindex="-1">
+      <div class="lesson-heading"><div><p class="eyebrow" id="topicBreadcrumb"></p><h2 id="topicTitle">Medida Eletrônica de Distâncias</h2></div><button id="btnReset" type="button" class="secondary">Restaurar experimento</button></div>
+      <p class="lead" id="topicSummary"></p>
+      <div class="objective"><span>Investigue</span><p id="topicObjective"></p></div>
+      <section class="laboratory" aria-label="Experimento interativo">
+        <div class="controls" id="controls"></div>
+        <div class="experiment-output"><div id="visual"></div><div id="metrics" class="metrics" aria-live="off"></div><div id="interpretation" class="interpretation"></div></div>
+      </section>
+      <section id="labDetail" class="lab-detail" aria-label="Resultados detalhados"></section>
+      <section class="theory" aria-labelledby="theoryTitle"><p class="eyebrow">Do fenômeno ao modelo</p><h3 id="theoryTitle">Fundamentação</h3><div id="theoryContent"></div></section>
+      <section class="exercise" aria-labelledby="exerciseTitle"><p class="eyebrow">Roteiro de investigação</p><h3 id="exerciseTitle"></h3><p id="exercisePrompt"></p><details><summary>Ver explicação</summary><div id="exerciseAnswer"></div></details></section>
+      <footer class="lesson-footer"><div id="sources" class="sources"></div><div class="lesson-actions"><button id="btnPrev" class="secondary" type="button">← Anterior</button><span id="lessonPosition"></span><button id="btnNext" type="button">Próximo →</button></div></footer>
+    </article>
   </main>
-
-  <script src="app.js"></script>
+  <noscript><p class="noscript">Ative o JavaScript para usar os experimentos. O <a href="teoria.md">texto de apoio</a> continua disponível.</p></noscript>
 </body>
-
 </html>
