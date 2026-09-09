@@ -91,12 +91,13 @@
         <hr class="divider">
 
         <!-- Actions -->
-        <button class="btn-primary" id="btnNewExercise">
+        <button class="btn-primary" id="btnNewExercise" title="Atalho: barra de espaço">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <polyline points="23 4 23 10 17 10"></polyline>
             <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
           </svg>
           Novo Exercício
+          <span class="btn-hint">espaço</span>
         </button>
 
         <div class="exercise-counter">
@@ -110,6 +111,12 @@
     <div class="canvas-wrapper">
       <div class="canvas-container">
         <canvas id="simCanvas"></canvas>
+        <div class="zoom-controls">
+          <button id="btnZoomOut" title="Diminuir zoom">−</button>
+          <span class="zoom-level" id="zoomLevel">100%</span>
+          <button id="btnZoomIn" title="Aumentar zoom">+</button>
+          <button id="btnZoomReset" title="Restaurar zoom (ou dê duplo clique no canvas)">⟲</button>
+        </div>
         <div class="canvas-hint" id="canvasHint">🎯 Clique para apontar a luneta na direção do Vante</div>
       </div>
     </div>
