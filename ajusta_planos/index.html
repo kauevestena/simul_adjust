@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ajustamento de Planos — Modelo Combinado</title>
+    <meta name="description"
+        content="Simulador didático de ajustamento de planos pelo Método Combinado (MMQ) a partir de observações brutas de estação total: propagação da MVC, detecção de outliers, visualização 3D e modelo 2D dos resíduos.">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📐</text></svg>">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body class="text-stone-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-stone-900 text-stone-50 py-4 shadow-md">
+        <div class="max-w-[1600px] mx-auto px-4 sm:px-6 flex justify-between items-center gap-4">
+            <div>
+                <h1 class="text-xl md:text-2xl font-bold tracking-tight">Ajustamento de Planos</h1>
+                <p class="text-stone-400 text-xs md:text-sm mt-1">Método Combinado (MMQ) sobre nuvens de pontos de
+                    estação total</p>
+            </div>
+            <a href="../index.html"
+                class="text-xs text-stone-300 hover:text-white border border-stone-700 rounded px-3 py-1.5 transition-colors">&#8592;
+                Portal</a>
+        </div>
+    </header>
+
+    <main class="max-w-[1600px] mx-auto px-4 sm:px-6 py-6 flex-grow w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- ============================ PAINEL ESQUERDO ============================ -->
+        <div class="lg:col-span-3 space-y-6">
+
+            <!-- Dados -->
+            <div class="bg-white p-5 rounded-xl border border-stone-200 shadow-sm">
+                <h2 class="text-sm font-bold text-stone-500 uppercase tracking-wider mb-3 border-b pb-2">Observações
+                </h2>
+
+                <label class="field-label">Amostras (estação total sem prisma)</label>
+                <div class="space-y-1.5">
+                    <button onclick="app.loadSample('parede_frontal.csv')"
+                        class="btn w-full py-1.5 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-xs font-semibold">&#9646;
+                        Parede frontal</button>
+                    <button onclick="app.loadSample('parede_esquerda_7col.csv')"
+                        class="btn w-full py-1.5 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-xs font-semibold">&#9646;
+                        Parede esquerda</button>
+                    <button onclick="app.loadSample('piso_7col.csv')"
+                        class="btn w-full py-1.5 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-xs font-semibold">&#9647;
+                        Piso</button>
+                </div>
+
+                <div class="mt-3 pt-3 border-t border-stone-100">
+                    <label class="field-label" for="csvFile">Carregar CSV próprio (7 colunas)</label>
+                    <input id="csvFile" type="file" accept=".csv,.txt" onchange="app.loadUserCSV(event)"
+                        class="w-full text-xs text-stone-600 file:mr-2 file:py-1 file:px-2 file:rounded file:border file:border-stone-300 file:text-xs file:font-semibold file:bg-stone-100 file:text-stone-700 hover:file:bg-stone-200 cursor-pointer">
+                    <p class="text-[10px] text-stone-400 mt-1 leading-tight">G,M,S do azimute · G,M,S do zenital ·
+                        distância inclinada (m). 8ª coluna opcional: identificador.</p>
+                </div>
+
+                <details class="mt-3 pt-3 border-t border-stone-100">
+                    <summary class="text-xs font-semibold text-stone-600 cursor-pointer select-none">Gerador sintético
+                    </summary>
+                    <div class="mt-2 space-y-2">
+                        <div>
+                            <label class="field-label" for="synthType">Superfície</label>
+                            <select id="synthType" class="field">
+                                <option value="parede_frontal">Parede frontal</option>
+                                <option value="parede_lateral">Parede lateral</option>
+                                <option value="piso">Piso</option>
+                                <option value="rampa">Rampa (10%)</option>
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="field-label" for="synthN">Nº de pontos</label>
+                                <input id="synthN" type="number" class="field" value="40" min="5" max="400">
+                            </div>
+                            <div>
+                                <label class="field-label" for="synthExtent">Semi-extensão (m)</label>
+                                <input id="synthExtent" type="number" class="field" value="2.5" min="0.2" step="0.1">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="field-label" for="synthRough">Rugosidade da superfície (mm)</label>
+                            <input id="synthRough" type="number" class="field" value="0" min="0" step="0.5">
+                        </div>
+                        <button onclick="app.generateSynthetic()"
+                            class="btn w-full py-1.5 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-xs font-semibold">&#8635;
+                            Gerar observações</button>
+                    </div>
+                </details>
+
+                <button onclick="app.openBlunderModal()" id="btnBlunder" disabled
+                    class="btn w-full mt-3 py-1.5 bg-rose-50 text-rose-700 border border-rose-200 rounded hover:bg-rose-100 text-xs font-semibold">&#9888;
+                    Simular Erro Grosseiro</button>
+
+                <p id="dataStatus" class="text-[11px] text-stone-400 mt-3 leading-tight">Nenhuma observação carregada.
+                </p>
+            </div>
+
+            <!-- Fluxo de trabalho -->
+            <div class="bg-white p-5 rounded-xl border border-stone-200 shadow-sm">
+                <h2 class="text-sm font-bold text-stone-500 uppercase tracking-wider mb-3 border-b pb-2">Fluxo de
+                    Trabalho</h2>
+
+                <div class="space-y-3">
+                    <div class="step" id="step1">
+                        <span class="step-num">1</span>
+                        <div class="flex-1 space-y-1.5">
+                            <label class="field-label" for="gaugeSelect">Remoção da liberdade de
+                                escala</label>
+                            <select id="gaugeSelect" class="field" onchange="app.onGaugeChange()">
+                                <option value="reduction">Redução de parâmetros</option>
+                                <option value="constraint">Injunção A²+B²+C²=1</option>
+                                <option value="pseudoinverse">Pseudo-inversa (injunção mínima)</option>
+                            </select>
+                            <div id="pinWrap">
+                                <label class="field-label" for="pinSelect">Parâmetro fixado</label>
+                                <select id="pinSelect" class="field" onchange="app.onGaugeChange()">
+                                    <option value="auto">Automático (maior componente da normal)</option>
+                                    <option value="A">A</option>
+                                    <option value="B">B</option>
+                                    <option value="C">C</option>
+                                    <option value="D">D</option>
+                                </select>
+                            </div>
+                            <p id="gaugeHint" class="text-[10px] text-stone-400 leading-tight"></p>
+                            <button onclick="app.runAdjustment()" id="btnAdjust" disabled
+                                class="btn w-full py-2 bg-teal-600 text-white rounded shadow hover:bg-teal-700 text-sm font-bold">&#9654;
+                                Executar Ajustamento</button>
+                        </div>
+                    </div>
+
+                    <div class="step" id="step2">
+                        <span class="step-num">2</span>
+                        <div class="flex-1 space-y-1.5">
+                            <select id="outlierMethod" class="field">
+                                <option value="3sigma">Regra k&sigma; (a priori)</option>
+                                <option value="snooping">Data snooping iterativo</option>
+                                <option value="ransac">RANSAC</option>
+                            </select>
+                            <button onclick="app.runOutlierDetection()" id="btnOutliers" disabled
+                                class="btn w-full py-1.5 bg-amber-500 text-white rounded shadow hover:bg-amber-600 text-xs font-bold">&#9888;
+                                Detectar Outliers</button>
+                        </div>
+                    </div>
+
+                    <div class="step" id="step3">
+                        <span class="step-num">3</span>
+                        <div class="flex-1">
+                            <p class="text-[11px] text-stone-500 leading-tight">Desative os pontos marcados na aba
+                                <strong>Tabela de Dados</strong>.</p>
+                            <div class="flex gap-1.5 mt-1.5">
+                                <button onclick="app.deactivateFlagged()" id="btnDeactivate" disabled
+                                    class="btn flex-1 py-1 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-[11px] font-semibold">Desativar
+                                    marcados</button>
+                                <button onclick="app.reactivateAll()"
+                                    class="btn flex-1 py-1 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-[11px] font-semibold">Reativar
+                                    todos</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step" id="step4">
+                        <span class="step-num">4</span>
+                        <p class="flex-1 text-[11px] text-stone-500 leading-tight">Reexecute o ajustamento quantas vezes
+                            forem necessárias.</p>
+                    </div>
+
+                    <div class="step" id="step5">
+                        <span class="step-num">5</span>
+                        <div class="flex-1">
+                            <button onclick="app.toggleNormalization()" id="btnNormalize" disabled
+                                class="btn w-full py-1.5 bg-indigo-600 text-white rounded shadow hover:bg-indigo-700 text-xs font-bold">&#8730;
+                                Normalizar Parâmetros</button>
+                        </div>
+                    </div>
+
+                    <div class="step" id="step6">
+                        <span class="step-num">6</span>
+                        <div class="flex-1 space-y-1.5">
+                            <button onclick="app.exportParameters()" id="btnExportParams" disabled
+                                class="btn w-full py-1.5 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-[11px] font-semibold">&#8615;
+                                Parâmetros + MVC</button>
+                            <button onclick="app.exportReport()" id="btnExportReport" disabled
+                                class="btn w-full py-1.5 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-[11px] font-semibold">&#8615;
+                                Relatório completo</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Teste global -->
+            <div class="bg-white p-5 rounded-xl border border-stone-200 shadow-sm" id="panelGlobalTest">
+                <h2 class="text-sm font-bold text-stone-500 uppercase tracking-wider mb-4 border-b pb-2">Teste Global
+                    (&chi;&sup2;)</h2>
+                <div class="text-center py-4">
+                    <p class="text-xs text-stone-400">Aguardando ajustamento...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================ PAINEL DIREITO ============================ -->
+        <div class="lg:col-span-9 flex flex-col gap-6">
+
+            <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-sm">
+                <div class="flex flex-wrap gap-1 bg-stone-100 rounded-lg p-0.5 mb-3 w-fit">
+                    <button id="tabBtn-view3d" onclick="app.switchTab('view3d')"
+                        class="tab-btn tab-btn-active px-3 py-1.5 text-xs font-semibold rounded-md transition-all">&#9711;
+                        Vista 3D</button>
+                    <button id="tabBtn-surface" onclick="app.switchTab('surface')"
+                        class="tab-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all">&#9636; Resíduos
+                        2D</button>
+                    <button id="tabBtn-table" onclick="app.switchTab('table')"
+                        class="tab-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all">&#9776; Tabela de
+                        Dados</button>
+                    <button id="tabBtn-matrices" onclick="app.switchTab('matrices')"
+                        class="tab-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all">&#8862;
+                        Matrizes</button>
+                    <button id="tabBtn-gauges" onclick="app.switchTab('gauges')"
+                        class="tab-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all">&#8646;
+                        Comparar Gauges</button>
+                    <button id="tabBtn-settings" onclick="app.switchTab('settings')"
+                        class="tab-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all">&#9881;
+                        Configurações</button>
+                </div>
+
+                <!-- ---------------- Vista 3D ---------------- -->
+                <div id="tab-view3d">
+                    <div class="flex flex-wrap gap-3 items-center mb-2 text-xs text-stone-600">
+                        <button onclick="app.viewer.fitView()"
+                            class="btn py-1 px-3 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-xs font-semibold">&#8982;
+                            Ajustar à janela</button>
+                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="chkEllipsoids"
+                                checked class="accent-teal-600" onchange="app.updateViewerOptions()"> Elipsoides</label>
+                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="chkPlane"
+                                checked class="accent-teal-600" onchange="app.updateViewerOptions()"> Plano</label>
+                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="chkResiduals"
+                                class="accent-teal-600" onchange="app.updateViewerOptions()"> Resíduos</label>
+                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="chkAxes"
+                                checked class="accent-teal-600" onchange="app.updateViewerOptions()"> Eixos</label>
+                    </div>
+                    <div class="flex flex-wrap gap-4 items-center mb-2 text-xs text-stone-600">
+                        <label class="flex items-center gap-2">Escala elipsoides
+                            <input id="ellipsoidScale" type="range" min="10" max="2000" step="10" value="200"
+                                style="width:110px" oninput="app.updateViewerOptions()">
+                            <span id="ellipsoidScaleVal" class="font-mono text-stone-700 min-w-[3rem]">200×</span>
+                        </label>
+                        <label class="flex items-center gap-2">Escala resíduos
+                            <input id="residualScale" type="range" min="1" max="500" step="1" value="50"
+                                style="width:110px" oninput="app.updateViewerOptions()">
+                            <span id="residualScaleVal" class="font-mono text-stone-700 min-w-[3rem]">50×</span>
+                        </label>
+                    </div>
+                    <div id="viewer3d"></div>
+                    <div class="flex flex-wrap justify-between gap-2 mt-2">
+                        <p class="text-xs text-stone-500 italic">Arraste para rotacionar · roda para zoom · botão
+                            direito (ou Ctrl) para transladar. A estação total está na origem.</p>
+                        <details class="text-xs">
+                            <summary class="text-stone-500 cursor-pointer select-none">Cores</summary>
+                            <div class="grid grid-cols-2 gap-2 mt-2 p-2 bg-stone-50 rounded border border-stone-100">
+                                <label class="text-[11px] text-stone-600">Pontos<input type="color" id="colPoint"
+                                        class="field" value="#0f766e" oninput="app.updateViewerOptions()"></label>
+                                <label class="text-[11px] text-stone-600">Outliers<input type="color" id="colOutlier"
+                                        class="field" value="#e11d48" oninput="app.updateViewerOptions()"></label>
+                                <label class="text-[11px] text-stone-600">Elipsoides<input type="color"
+                                        id="colEllipsoid" class="field" value="#6366f1"
+                                        oninput="app.updateViewerOptions()"></label>
+                                <label class="text-[11px] text-stone-600">Plano<input type="color" id="colPlane"
+                                        class="field" value="#14b8a6" oninput="app.updateViewerOptions()"></label>
+                            </div>
+                        </details>
+                    </div>
+                </div>
+
+                <!-- ---------------- Resíduos 2D ---------------- -->
+                <div id="tab-surface" style="display:none">
+                    <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-2 mb-3">
+                        <div>
+                            <label class="field-label" for="surfMethod">Interpolador</label>
+                            <select id="surfMethod" class="field" onchange="app.updateSurface(true)">
+                                <option value="tin">TIN (Delaunay)</option>
+                                <option value="idw">IDW</option>
+                                <option value="kriging">Krigagem Ordinária</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="field-label" for="surfMode">Valores</label>
+                            <select id="surfMode" class="field" onchange="app.onSurfaceModeChange()">
+                                <option value="signed">Assinados (±)</option>
+                                <option value="abs">Absolutos</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="field-label" for="surfScale">Escala de cor</label>
+                            <select id="surfScale" class="field" onchange="app.updateSurface(false)"></select>
+                        </div>
+                        <div>
+                            <label class="field-label" for="surfRender">Representação</label>
+                            <select id="surfRender" class="field" onchange="app.updateSurface(false)">
+                                <option value="heatmap">Mapa de calor</option>
+                                <option value="contours">Isolinhas</option>
+                                <option value="both">Ambos</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="field-label" for="surfResolution">Resolução</label>
+                            <input id="surfResolution" type="number" class="field" value="160" min="40" max="400"
+                                step="20" onchange="app.updateSurface(true)">
+                        </div>
+                        <div>
+                            <label class="field-label" for="surfLevels">Nº de isolinhas</label>
+                            <input id="surfLevels" type="number" class="field" value="10" min="2" max="40"
+                                onchange="app.updateSurface(false)">
+                        </div>
+                    </div>
+
+                    <div id="surfIdwOpts" class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3" style="display:none">
+                        <div>
+                            <label class="field-label" for="idwPower">Potência (p)</label>
+                            <input id="idwPower" type="number" class="field" value="2" min="0.5" max="8" step="0.5"
+                                onchange="app.updateSurface(true)">
+                        </div>
+                        <div>
+                            <label class="field-label" for="idwK">Vizinhos (0 = todos)</label>
+                            <input id="idwK" type="number" class="field" value="0" min="0" max="200"
+                                onchange="app.updateSurface(true)">
+                        </div>
+                    </div>
+
+                    <div id="surfKrigOpts" class="grid grid-cols-2 md:grid-cols-5 gap-2 mb-3" style="display:none">
+                        <div>
+                            <label class="field-label" for="varioModel">Variograma</label>
+                            <select id="varioModel" class="field" onchange="app.updateSurface(true)">
+                                <option value="exponential">Exponencial</option>
+                                <option value="spherical">Esférico</option>
+                                <option value="gaussian">Gaussiano</option>
+                            </select>
+                        </div>
+                        <div class="flex items-end pb-1">
+                            <label class="flex items-center gap-1 text-[11px] text-stone-600 cursor-pointer"><input
+                                    type="checkbox" id="varioAuto" checked class="accent-teal-600"
+                                    onchange="app.updateSurface(true)"> Ajuste automático</label>
+                        </div>
+                        <div>
+                            <label class="field-label" for="varioNugget">Efeito pepita</label>
+                            <input id="varioNugget" type="number" class="field" value="0" min="0" step="0.1"
+                                onchange="app.updateSurface(true)">
+                        </div>
+                        <div>
+                            <label class="field-label" for="varioSill">Patamar</label>
+                            <input id="varioSill" type="number" class="field" value="1" min="0" step="0.1"
+                                onchange="app.updateSurface(true)">
+                        </div>
+                        <div>
+                            <label class="field-label" for="varioRange">Alcance (m)</label>
+                            <input id="varioRange" type="number" class="field" value="1" min="0.01" step="0.1"
+                                onchange="app.updateSurface(true)">
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap gap-4 items-center mb-2 text-xs text-stone-600">
+                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="surfAutoRange"
+                                checked class="accent-teal-600" onchange="app.updateSurface(false)"> Faixa
+                            automática</label>
+                        <label class="flex items-center gap-1">mín <input id="surfMin" type="number" class="field"
+                                style="width:72px" step="0.5" onchange="app.updateSurface(false)"></label>
+                        <label class="flex items-center gap-1">máx <input id="surfMax" type="number" class="field"
+                                style="width:72px" step="0.5" onchange="app.updateSurface(false)"></label>
+                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="surfClip"
+                                checked class="accent-teal-600" onchange="app.updateSurface(true)"> Recortar ao
+                            envoltório</label>
+                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="surfPoints"
+                                checked class="accent-teal-600" onchange="app.updateSurface(false)"> Mostrar
+                            pontos</label>
+                        <button onclick="app.exportSurfaceGrid()"
+                            class="btn py-1 px-3 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-xs font-semibold">&#8615;
+                            Grade CSV</button>
+                    </div>
+
+                    <div class="surface-wrap">
+                        <canvas id="surfaceCanvas"></canvas>
+                        <div id="surfaceTooltip"></div>
+                    </div>
+                    <canvas id="colorbarCanvas"></canvas>
+                    <p id="surfaceInfo" class="text-[11px] text-stone-500 leading-tight"></p>
+                </div>
+
+                <!-- ---------------- Tabela de dados ---------------- -->
+                <div id="tab-table" style="display:none">
+                    <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
+                        <p class="text-xs text-stone-500">Edite as observações brutas. Desmarque <strong>Ativo</strong>
+                            para excluir um ponto do próximo ajustamento.</p>
+                        <div class="flex gap-2">
+                            <button onclick="app.addRow()"
+                                class="btn py-1 px-3 bg-teal-600 text-white rounded shadow hover:bg-teal-700 text-xs font-bold">&#43;
+                                Nova observação</button>
+                            <button onclick="app.exportObservations()"
+                                class="btn py-1 px-3 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-xs font-semibold">&#8615;
+                                CSV</button>
+                        </div>
+                    </div>
+                    <div class="table-container" style="max-height:560px;overflow-y:auto">
+                        <table id="tableData">
+                            <thead>
+                                <tr>
+                                    <th data-tooltip="Incluir esta observação no ajustamento">Ativo</th>
+                                    <th>ID</th>
+                                    <th data-tooltip="Azimute observado em graus, minutos e segundos">Azimute (G M S)
+                                    </th>
+                                    <th data-tooltip="Ângulo zenital observado em graus, minutos e segundos">Zenital (G
+                                        M S)</th>
+                                    <th data-tooltip="Distância inclinada em metros">DI (m)</th>
+                                    <th>X (m)</th>
+                                    <th>Y (m)</th>
+                                    <th>Z (m)</th>
+                                    <th data-tooltip="Desvios padrão propagados das coordenadas (diagonal de Sigma_XYZ)">
+                                        &sigma;X, &sigma;Y, &sigma;Z (mm)</th>
+                                    <th data-tooltip="Distância ortogonal assinada do ponto observado ao plano ajustado">
+                                        d (mm)</th>
+                                    <th data-tooltip="Resíduo padronizado de Baarda sobre a equação de condição">w</th>
+                                    <th data-tooltip="Número de redundância local (0 a 1)">r</th>
+                                    <th data-tooltip="Menor erro grosseiro detectável na direção normal ao plano">
+                                        &nabla;<sub>0</sub> (mm)</th>
+                                    <th>Estado</th>
+                                    <th style="width:32px"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="15" class="text-center text-stone-400 py-4">Carregue uma amostra ou um
+                                        CSV.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ---------------- Matrizes ---------------- -->
+                <div id="tab-matrices" style="display:none">
+                    <div class="flex flex-wrap gap-1 bg-stone-100 rounded-lg p-0.5 mb-3" id="matrixTabs"></div>
+                    <div class="flex flex-wrap gap-3 items-center mb-2">
+                        <div id="matPointSelectWrap" style="display:none">
+                            <label class="field-label" for="matPointSelect">Ponto</label>
+                            <select id="matPointSelect" class="field" onchange="app.renderMatrixTab()"></select>
+                        </div>
+                        <button onclick="app.exportActiveMatrix()"
+                            class="btn py-1 px-3 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-xs font-semibold self-end">&#8615;
+                            Exportar esta matriz</button>
+                        <button onclick="app.exportAllMatrices()"
+                            class="btn py-1 px-3 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-xs font-semibold self-end">&#8615;
+                            Exportar todas</button>
+                    </div>
+                    <div id="matrixContent"
+                        class="overflow-auto p-2 flex justify-center items-start bg-stone-50 rounded border border-stone-100 min-h-[150px]"
+                        style="font-size:0.72rem">
+                        <p class="text-xs text-stone-400">Aguardando ajustamento...</p>
+                    </div>
+                    <p id="matDesc" class="text-[11px] text-stone-500 mt-2 leading-snug"></p>
+                    <p class="text-[10px] text-stone-400 mt-1">A exibição é truncada em 20×20; a exportação em CSV traz
+                        a matriz inteira.</p>
+                </div>
+
+                <!-- ---------------- Comparar gauges ---------------- -->
+                <div id="tab-gauges" style="display:none">
+                    <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
+                        <p class="text-xs text-stone-500 max-w-3xl">Roda as três estratégias sobre
+                            os mesmos pontos ativos. Compare o que muda (representação dos
+                            parâmetros, condicionamento, direção nula) com o que não muda
+                            (o plano, os resíduos, a MVC normalizada).</p>
+                        <button onclick="app.runGaugeComparison()" id="btnCompare" disabled
+                            class="btn py-1.5 px-3 bg-indigo-600 text-white rounded shadow hover:bg-indigo-700 text-xs font-bold">&#8646;
+                            Comparar as três</button>
+                    </div>
+                    <div id="gaugeCompareContent">
+                        <p class="text-xs text-stone-400">Carregue observações e clique em
+                            <strong>Comparar as três</strong>.</p>
+                    </div>
+                </div>
+
+                <!-- ---------------- Configurações ---------------- -->
+                <div id="tab-settings" style="display:none">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <h3 class="text-xs font-bold text-stone-500 uppercase tracking-wider mb-2 border-b pb-1">
+                                Precisão nominal (1&sigma;) das observações</h3>
+                            <div class="space-y-2">
+                                <div>
+                                    <label class="field-label" for="setSigAng">&sigma; angular — azimute e zenital
+                                        (&Prime;)</label>
+                                    <input id="setSigAng" type="number" class="field" value="2" min="0.1" step="0.1"
+                                        onchange="app.updateSettings()">
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="field-label" for="setEdmMm">MED — parcela fixa (mm)</label>
+                                        <input id="setEdmMm" type="number" class="field" value="2" min="0" step="0.1"
+                                            onchange="app.updateSettings()">
+                                    </div>
+                                    <div>
+                                        <label class="field-label" for="setEdmPpm">MED — parcela (ppm)</label>
+                                        <input id="setEdmPpm" type="number" class="field" value="2" min="0" step="0.1"
+                                            onchange="app.updateSettings()">
+                                    </div>
+                                </div>
+                                <p class="text-[10px] text-stone-400 leading-tight">&sigma;<sub>DI</sub> = fixa + ppm
+                                    &middot; DI. Alterar estes valores recalcula &Sigma;<sub>XYZ</sub> e invalida o
+                                    ajustamento atual.</p>
+                            </div>
+
+                            <h3
+                                class="text-xs font-bold text-stone-500 uppercase tracking-wider mt-5 mb-2 border-b pb-1">
+                                Ajustamento</h3>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="field-label" for="setMaxIter">Máx. de iterações</label>
+                                    <input id="setMaxIter" type="number" class="field" value="20" min="1" max="200"
+                                        onchange="app.updateSettings()">
+                                </div>
+                                <div>
+                                    <label class="field-label" for="setTol">Tolerância em max|X|</label>
+                                    <input id="setTol" type="number" class="field" value="1e-10" step="1e-12"
+                                        onchange="app.updateSettings()">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 class="text-xs font-bold text-stone-500 uppercase tracking-wider mb-2 border-b pb-1">
+                                Testes estatísticos</h3>
+                            <div class="space-y-2">
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="field-label" for="setAlpha">&alpha; do teste global (%)</label>
+                                        <input id="setAlpha" type="number" class="field" value="5" min="0.1" max="20"
+                                            step="0.1" onchange="app.updateSettings()">
+                                    </div>
+                                    <div>
+                                        <label class="field-label" for="setAlpha0">&alpha;<sub>0</sub> do data snooping
+                                            (%)</label>
+                                        <input id="setAlpha0" type="number" class="field" value="0.1" min="0.001"
+                                            max="10" step="0.01" onchange="app.updateSettings()">
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="field-label" for="setSigmaK">k da regra k&sigma;</label>
+                                        <input id="setSigmaK" type="number" class="field" value="3" min="1" max="10"
+                                            step="0.1" onchange="app.updateSettings()">
+                                    </div>
+                                    <div>
+                                        <label class="field-label" for="setDelta0">&delta;<sub>0</sub> (não
+                                            centralidade)</label>
+                                        <input id="setDelta0" type="number" class="field" value="2.8" min="1" max="6"
+                                            step="0.1" onchange="app.updateSettings()">
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="field-label" for="setRansacIters">RANSAC — iterações</label>
+                                        <input id="setRansacIters" type="number" class="field" value="1000" min="50"
+                                            max="50000" step="50" onchange="app.updateSettings()">
+                                    </div>
+                                    <div>
+                                        <label class="field-label" for="setRansacThresh">RANSAC — limiar (mm)</label>
+                                        <input id="setRansacThresh" type="number" class="field" value="6" min="0.1"
+                                            step="0.5" onchange="app.updateSettings()">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mt-5 p-3 bg-stone-50 border border-stone-200 rounded text-[11px] text-stone-600 leading-snug space-y-2">
+                                <p><strong class="text-stone-700">Por que é preciso escolher uma estratégia.</strong>
+                                    A equação do plano é homogênea: (A, B, C, D) e k·(A, B, C, D) descrevem o mesmo
+                                    plano. Com os 4 parâmetros totalmente livres o modelo combinado é degenerado —
+                                    como W = A&middot;X<sub>0</sub>, resulta X = &minus;X<sub>0</sub> e a solução
+                                    colapsa para o vetor nulo. As três opções do passo 1 removem essa liberdade de
+                                    formas diferentes.</p>
+                                <p><strong class="text-stone-700">Injunção A²+B²+C²=1.</strong> Acrescenta uma equação
+                                    de condição e resolve um sistema aumentado (KKT) 5×5. Sai com &#8214;n&#8214; = 1
+                                    exato, então a normalização posterior só precisa fixar o sentido.</p>
+                                <p><strong class="text-stone-700">Redução de parâmetros.</strong> Congela um dos quatro
+                                    e resolve um sistema 3×3 não-singular. É a mais simples e a mais bem condicionada.
+                                    O automático fixa a maior componente da normal — nunca D, já que ao menos uma de
+                                    A, B, C vale &ge; 1/&radic;3. Fixar um parâmetro quase nulo continua sendo um gauge
+                                    válido, mas quase ortogonal à direção de escala: o condicionamento dispara e a
+                                    convergência se arrasta.</p>
+                                <p><strong class="text-stone-700">Pseudo-inversa.</strong> Mantém os 4 parâmetros
+                                    livres com a injunção mínima E<sup>T</sup>X = 0, onde E = X<sub>0</sub> é a direção
+                                    de escala. O espaço nulo é imposto <em>analiticamente</em>, não detectado por
+                                    limiar de autovalor: a razão &lambda;<sub>min</sub>/&lambda;<sub>max</sub> de N
+                                    cai de ~10<sup>&minus;7</sup> na primeira iteração para ~10<sup>&minus;17</sup> na
+                                    convergência, e qualquer corte fixo erra numa das pontas — devolvendo N<sup>&minus;1</sup>
+                                    e colapsando a solução.</p>
+                                <p><strong class="text-stone-700">O que nunca muda.</strong> Nos três, gl = m &minus; 3
+                                    e &Sigma;<sub>Xa</sub> tem posto 3 (muda apenas <em>qual</em> direção é nula). O
+                                    plano ajustado, os resíduos, &sigma;&#x302;²<sub>0</sub> e a MVC normalizada são
+                                    idênticos — veja a aba <strong>Comparar Gauges</strong>.</p>
+                            </div>
+
+                            <button onclick="app.resetSettings()"
+                                class="btn w-full mt-4 py-1.5 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-xs font-semibold">Restaurar
+                                padrões</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Parâmetros ajustados -->
+            <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-sm">
+                <h2 class="text-sm font-bold text-stone-500 uppercase tracking-wider mb-3">Parâmetros do Plano &amp; MVC
+                    <span id="normBadge" class="text-[10px] font-normal normal-case ml-1 tracking-normal"></span>
+                </h2>
+                <div id="paramsPanel">
+                    <p class="text-xs text-stone-400">Aguardando ajustamento...</p>
+                </div>
+            </div>
+
+            <!-- Confiabilidade -->
+            <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-sm">
+                <h2 class="text-sm font-bold text-stone-500 uppercase tracking-wider mb-3">Confiabilidade Interna</h2>
+                <div id="reliabilityPanel">
+                    <p class="text-xs text-stone-400">Aguardando ajustamento...</p>
+                </div>
+                <p class="text-[10px] text-stone-400 mt-2 leading-tight">
+                    <strong>r:</strong> contribuição da observação para a redundância do sistema (soma = graus de
+                    liberdade). <strong>&nabla;<sub>0</sub>:</strong> menor erro grosseiro detectável na direção normal
+                    ao plano, com &delta;<sub>0</sub> configurável.
+                </p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal de erro grosseiro -->
+    <div id="blunderModal" class="fixed inset-0 z-50 bg-black/50 items-center justify-center p-4" style="display:none">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg border border-stone-200">
+            <div class="flex justify-between items-center px-5 py-4 border-b border-stone-100">
+                <h3 class="font-bold text-stone-700 text-sm uppercase tracking-wider">&#9888; Simular Erro Grosseiro
+                </h3>
+                <button onclick="app.closeBlunderModal()"
+                    class="text-stone-400 hover:text-stone-600 text-xl leading-none">&times;</button>
+            </div>
+            <div class="px-5 py-4 space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-stone-600 mb-2">Magnitude (múltiplo do
+                        &sigma; da distância inclinada)</label>
+                    <div class="flex items-center gap-3">
+                        <input id="blunderK" type="range" min="3" max="50" step="1" value="10" class="flex-1"
+                            oninput="document.getElementById('blunderKVal').textContent=this.value+'σ'">
+                        <span id="blunderKVal"
+                            class="font-mono text-sm font-bold text-rose-600 min-w-[3rem] text-right">10&sigma;</span>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-stone-600 mb-2">Observações candidatas <span
+                            class="font-normal text-stone-400">(selecione uma ou mais)</span></label>
+                    <div id="blunderList"
+                        class="space-y-1 max-h-64 overflow-y-auto border border-stone-100 rounded p-2 bg-stone-50"></div>
+                </div>
+            </div>
+            <div class="px-5 py-4 border-t border-stone-100 flex justify-end gap-2">
+                <button onclick="app.closeBlunderModal()"
+                    class="btn px-4 py-2 text-sm text-stone-600 bg-stone-100 border border-stone-200 rounded hover:bg-stone-200">Cancelar</button>
+                <button onclick="app.confirmBlunder()"
+                    class="btn px-4 py-2 text-sm text-white bg-rose-600 rounded shadow hover:bg-rose-700 font-semibold">&#9888;
+                    Injetar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/delaunator@5.0.1/delaunator.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="io.js"></script>
+    <script src="adjustment.js"></script>
+    <script src="viewer3d.js"></script>
+    <script src="surface2d.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
