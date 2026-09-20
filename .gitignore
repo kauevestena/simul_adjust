@@ -57,3 +57,14 @@ htmlcov/
 # OS metadata
 .DS_Store
 Thumbs.db
+
+# LaTeX build artifacts (the generated PDFs are versioned on purpose)
+*.aux
+*.nav
+*.snm
+*.toc
+*.out
+*.vrb
+*.fls
+*.fdb_latexmk
+*.synctex.gz

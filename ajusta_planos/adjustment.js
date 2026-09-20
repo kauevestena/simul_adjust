@@ -112,6 +112,21 @@
             };
         },
 
+        // Devolve uma cópia de V (3×3, colunas ortonormais) com determinante +1, invertendo o
+        // sinal de uma coluna quando preciso. A ordenação por autovalor no fim de eigSym é uma
+        // permutação das colunas, e as permutações ímpares deixam a base à esquerda. Quem monta
+        // uma rotação a partir dela — THREE.Quaternion.setFromRotationMatrix, no viewer3d —
+        // exige det = +1 e devolve uma rotação errada caso contrário. Trocar o sinal de uma
+        // coluna não altera o elipsoide: V·diag(λ)·Vᵀ continua o mesmo.
+        rightHanded(V) {
+            const M = V.map(r => r.slice());
+            const det = M[0][0] * (M[1][1] * M[2][2] - M[1][2] * M[2][1])
+                - M[0][1] * (M[1][0] * M[2][2] - M[1][2] * M[2][0])
+                + M[0][2] * (M[1][0] * M[2][1] - M[1][1] * M[2][0]);
+            if (det < 0) for (let i = 0; i < 3; i++) M[i][0] = -M[i][0];
+            return M;
+        },
+
         dot(a, b) { return a.reduce((s, v, i) => s + v * b[i], 0); },
         cross(a, b) {
             return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
@@ -254,9 +269,14 @@
         return [nv[0], nv[1], nv[2], -linalg.dot(nv, c)];
     }
 
-    // Classificação pelos vetores de deslocamento interno (pontos - centróide).
-    // Pouca variabilidade em Z => plano horizontal; muita => plano vertical.
-    function classifyPlane(pts) {
+    // Classificação horizontal/vertical pela direção da normal: |n_z| > cos 45° => horizontal.
+    // A normal pode vir pronta (o ajustamento já a tem); sem ela, sai de uma PCA dos pontos.
+    // Os vetores de deslocamento interno continuam sendo devolvidos porque a interface os
+    // mostra, mas NÃO servem de critério: uma parede medida numa faixa larga e baixa varia
+    // pouco em Z e seria tomada por horizontal. É o caso de samples/parede_frontal.csv, com
+    // 3,07 m de extensão em X contra 0,42 m em Z. Diverge de propósito do specs.md, que
+    // prescrevia a regra do espalhamento.
+    function classifyPlane(pts, normal) {
         const m = pts.length;
         const c = [0, 0, 0];
         pts.forEach(p => { c[0] += p[0]; c[1] += p[1]; c[2] += p[2]; });
@@ -266,9 +286,15 @@
             for (let i = 0; i < 3; i++) { const d = p[i] - c[i]; sd[i] += d * d; }
         });
         for (let i = 0; i < 3; i++) sd[i] = Math.sqrt(sd[i] / m);
-        const horizontalSpread = Math.max(sd[0], sd[1]);
-        const isHorizontal = sd[2] < 0.2 * horizontalSpread;
-        return { spread: sd, isHorizontal, tipo: isHorizontal ? 'horizontal' : 'vertical' };
+
+        const nv = normal || initialPlanePCA(pts);
+        const n = [nv[0], nv[1], nv[2]];
+        const nn = linalg.norm(n);
+        if (nn < 1e-12) throw new Error('Vetor normal degenerado; classificação impossível.');
+        const cosZ = Math.abs(n[2]) / nn;           // |cos| entre a normal e o eixo Z
+        const isHorizontal = cosZ > Math.SQRT1_2;   // mais perto de Z do que de 45°
+
+        return { spread: sd, cosZ, isHorizontal, tipo: isHorizontal ? 'horizontal' : 'vertical' };
     }
 
     // ---------------------------------------------------------------- ajustamento
@@ -633,7 +659,7 @@
         const s = linalg.norm(n);
         if (s < 1e-12) throw new Error('Vetor normal degenerado; normalização impossível.');
 
-        const cls = classifyPlane(result.Lb);
+        const cls = classifyPlane(result.Lb, n);
         const refAxis = cls.isHorizontal ? 2 : 0; // horizontal -> +Z; vertical -> +X
         const sign = (n[refAxis] < 0) ? -1 : 1;
 

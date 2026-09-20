@@ -7,6 +7,7 @@ const path = require('path');
 const io = require('./io.js');
 const A = require('./adjustment.js');
 const { linalg } = A;
+const raw = require('./samples/raw_to_csv.js');
 
 const SAMPLES = path.join(__dirname, 'samples');
 const S = Object.assign({}, io.DEFAULT_SETTINGS);
@@ -24,6 +25,9 @@ function loadSample(name) {
     assert.strictEqual(errors.length, 0, `${name}: ${errors.join(' | ')}`);
     return io.buildPoints(rows, S);
 }
+
+// Todas as amostras da pasta, para que um CSV novo entre nos testes sem editar nada aqui.
+const ALL_SAMPLES = fs.readdirSync(SAMPLES).filter(f => f.endsWith('.csv')).sort();
 
 // ---------------------------------------------------------------- conversões
 console.log('\nGMS / XYZ');
@@ -75,7 +79,9 @@ const REF = {
         Xa: [5.55000229e-04, -5.64020766e-04, 9.99999687e-01, 1.60890582],
         chi2low: 29.956, chi2upp: 67.821, globalPass: false
     },
-    'parede_frontal.csv': {
+    // Esta referência foi calculada sobre os números que hoje estão em parede_esquerda_7col.csv
+    // (o antigo parede_frontal.csv era uma cópia dela, ver readme).
+    'parede_esquerda_7col.csv': {
         m: 51, dof: 48, VtPV: 20.686, sigma02: 0.4310,
         Xa: [9.99918489e-01, -1.27306307e-02, -9.72759912e-04, -3.85785009],
         chi2low: 30.755, chi2upp: 69.023, globalPass: false
@@ -83,7 +89,7 @@ const REF = {
 };
 
 const GAUGES = ['constraint', 'reduction', 'pseudoinverse'];
-const HORIZONTAL = { 'piso_7col.csv': true, 'parede_frontal.csv': false };
+const HORIZONTAL = { 'piso_7col.csv': true, 'parede_esquerda_7col.csv': false };
 
 for (const [name, ref] of Object.entries(REF)) {
     for (const gauge of GAUGES) {
@@ -203,7 +209,7 @@ console.log('\nMecânica do gauge');
     const X0piso = A.initialPlanePCA(pts.map(p => p.xyz));
     assert.strictEqual(A.resolvePinIndex(X0piso, { pinParam: 'auto' }), 2);
     ok('piso: automático fixa C (normal ≈ +Z)');
-    const ptsW = loadSample('parede_frontal.csv');
+    const ptsW = loadSample('parede_esquerda_7col.csv');
     const X0par = A.initialPlanePCA(ptsW.map(p => p.xyz));
     assert.strictEqual(A.resolvePinIndex(X0par, { pinParam: 'auto' }), 0);
     ok('parede: automático fixa A (normal ≈ +X)');
@@ -281,13 +287,60 @@ console.log('\nNormalização dos parâmetros');
     approx(asym / magn, 0, 1e-12, 'Σ_X̂ simétrica (erro relativo)');
 }
 {
-    const pts = loadSample('parede_frontal.csv');
+    const pts = loadSample('parede_esquerda_7col.csv');
     const res = A.adjustPlane(pts, S);
     const nrm = A.normalizeParameters(res);
     assert.strictEqual(nrm.classification.tipo, 'vertical');
     ok('parede classificada como vertical');
     assert.ok(nrm.Xn[0] > 0, 'plano vertical deve ter a normal apontando para +X');
     ok('sentido escolhido próximo de +X');
+}
+
+{
+    // A classificação olha a normal, não o espalhamento. A parede frontal foi medida numa
+    // faixa larga e baixa (3,07 m em X contra 0,42 m em Z): a regra antiga, que comparava a
+    // variação em Z com 20% do maior espalhamento horizontal, a chamava de horizontal.
+    const pts = loadSample('parede_frontal.csv');
+    const res = A.adjustPlane(pts, S);
+    const nrm = A.normalizeParameters(res);
+    const sp = nrm.classification.spread;
+    assert.ok(sp[2] < 0.2 * Math.max(sp[0], sp[1]),
+        'esta amostra precisa mesmo ser a faixa larga e baixa que enganava a regra antiga');
+    assert.strictEqual(nrm.classification.tipo, 'vertical');
+    ok('parede larga e baixa classificada como vertical (regra pela normal)');
+
+    // classifyPlane sem a normal cai na PCA dos pontos e tem de concordar
+    const semNormal = A.classifyPlane(res.Lb);
+    assert.strictEqual(semNormal.tipo, 'vertical', 'PCA deve concordar com a normal ajustada');
+    ok('classificação pela PCA concorda com a normal ajustada');
+
+    // piso e teto continuam horizontais pelos dois caminhos
+    ['piso_7col.csv', 'teto_7col.csv'].forEach(nome => {
+        const r2 = A.adjustPlane(loadSample(nome), S);
+        assert.strictEqual(A.normalizeParameters(r2).classification.tipo, 'horizontal');
+        assert.strictEqual(A.classifyPlane(r2.Lb).tipo, 'horizontal');
+    });
+    ok('piso e teto continuam horizontais pelos dois caminhos');
+
+    // A fronteira é 45°: normal a 40° de Z ainda é horizontal, a 50° já é vertical.
+    // Pontos sobre um plano inclinado de theta, para exercitar também o caminho da PCA.
+    function planoInclinado(thetaDeg) {
+        const t = thetaDeg * Math.PI / 180;
+        const n = [Math.sin(t), 0, Math.cos(t)];            // normal a theta do eixo Z
+        const e1 = [0, 1, 0];                                // duas direções dentro do plano
+        const e2 = linalg.cross(n, e1);
+        const pts = [];
+        for (let i = -3; i <= 3; i++) for (let j = -3; j <= 3; j++) {
+            pts.push([e1[0] * i + e2[0] * j, e1[1] * i + e2[1] * j, e1[2] * i + e2[2] * j]);
+        }
+        return { pts, n };
+    }
+    [[40, 'horizontal'], [50, 'vertical']].forEach(([deg, esperado]) => {
+        const { pts, n } = planoInclinado(deg);
+        assert.strictEqual(A.classifyPlane(pts, n).tipo, esperado, `normal a ${deg}° de Z`);
+        assert.strictEqual(A.classifyPlane(pts).tipo, esperado, `normal a ${deg}° de Z, via PCA`);
+    });
+    ok('fronteira em 45°: 40° é horizontal, 50° é vertical (com normal e via PCA)');
 }
 
 // ---------------------------------------------------------------- outliers
@@ -321,6 +374,19 @@ console.log('\nDetecção de outliers');
 // ---------------------------------------------------------------- dados sintéticos
 console.log('\nGerador sintético e erro grosseiro');
 {
+    // Semente fixa: o bloco gera ruído aleatório e depois exige que o teste global a 5%
+    // aprove. Sem semente ele reprova em cerca de 5% das execuções — por construção, não por
+    // defeito — e um portão de testes que falha sozinho não serve para nada.
+    const randomOriginal = Math.random;
+    let semente = 0x9e3779b9;
+    Math.random = function () {                      // mulberry32
+        semente = (semente + 0x6d2b79f5) >>> 0;
+        let t = semente;
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+
     const rows = io.generateSynthetic({ tipo: 'parede_frontal', n: 40, extent: 2.5 }, S);
     const pts = io.buildPoints(rows, S);
     const res = A.adjustPlane(pts, S);
@@ -344,6 +410,8 @@ console.log('\nGerador sintético e erro grosseiro');
     const resC = A.adjustPlane(pts, S);
     assert.ok(resC.globalPass, 'teste global deve aprovar após remover o erro grosseiro');
     ok('teste global aprovado após a remoção');
+
+    Math.random = randomOriginal;
 }
 
 // ---------------------------------------------------------------- matrizes completas
@@ -373,6 +441,120 @@ console.log('\nMatrizes completas');
         scaleRef = Math.max(scaleRef, Math.abs(res.sigma02 * F.SigLb[i][j]));
     }
     approx(maxErr2 / scaleRef, 0, 1e-9, 'Σ_V + Σ_La = σ₀² P⁻¹ (erro relativo)');
+}
+
+// ---------------------------------------------------------------- elipsoides de erro a priori
+// A vista 3D monta a rotação de cada elipsoide com as colunas de eigSym(sigXYZ). A ordenação
+// por autovalor pode deixar a base à esquerda, e THREE.Quaternion.setFromRotationMatrix exige
+// determinante +1 — sem isso o elipsoide sai girado (chegou a 71° nas amostras).
+console.log('\nElipsoides de erro a priori');
+{
+    function det3(M) {
+        return M[0][0] * (M[1][1] * M[2][2] - M[1][2] * M[2][1])
+            - M[0][1] * (M[1][0] * M[2][2] - M[1][2] * M[2][0])
+            + M[0][2] * (M[1][0] * M[2][1] - M[1][1] * M[2][0]);
+    }
+
+    let worstDet = 0, worstOrtho = 0, worstRebuild = 0, worstLOS = 0, total = 0;
+    ALL_SAMPLES.forEach(name => {
+        loadSample(name).forEach(p => {
+            total++;
+            const { values, vectors } = linalg.eigSym(p.sigXYZ);
+            const R = linalg.rightHanded(vectors);
+            worstDet = Math.max(worstDet, Math.abs(det3(R) - 1));
+
+            // colunas ortonormais
+            const RtR = linalg.matmul(linalg.transpose(R), R);
+            for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
+                worstOrtho = Math.max(worstOrtho, Math.abs(RtR[i][j] - (i === j ? 1 : 0)));
+            }
+
+            // R·diag(λ)·Rᵀ tem de reproduzir Sigma_XYZ: a troca de sinal não mexe no elipsoide
+            const D = linalg.zeros(3, 3);
+            for (let i = 0; i < 3; i++) D[i][i] = values[i];
+            const reb = linalg.matmul(R, linalg.matmul(D, linalg.transpose(R)));
+            let num = 0, den = 0;
+            for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
+                num = Math.max(num, Math.abs(reb[i][j] - p.sigXYZ[i][j]));
+                den = Math.max(den, Math.abs(p.sigXYZ[i][j]));
+            }
+            worstRebuild = Math.max(worstRebuild, num / den);
+
+            // o eixo maior é a direção do MED: aponta para a estação, na origem
+            const e = [R[0][2], R[1][2], R[2][2]];
+            const u = p.xyz, un = linalg.norm(u);
+            const cos = Math.abs(linalg.dot(e, u) / un);
+            worstLOS = Math.max(worstLOS, 1 - Math.min(1, cos));
+        });
+    });
+
+    assert.ok(total > 200, `poucos pontos varridos (${total}) — a pasta samples/ está completa?`);
+    approx(worstDet, 0, 1e-12, 'base dos autovetores com determinante +1 (rotação própria)');
+    approx(worstOrtho, 0, 1e-12, 'colunas continuam ortonormais após a correção de sinal');
+    approx(worstRebuild, 0, 1e-12, 'R·diag(λ)·Rᵀ reproduz Σ_XYZ (erro relativo)');
+    approx(worstLOS, 0, 1e-9, 'eixo maior alinhado à linha de visada (1 − |cos|)');
+
+    // Razão de eixos: 2 mm do MED contra ~2" nos ângulos — a agulha é física, não artefato
+    const piso = loadSample('piso_7col.csv');
+    let minRatio = Infinity;
+    piso.forEach(p => {
+        const v = linalg.eigSym(p.sigXYZ).values.map(x => Math.sqrt(Math.max(x, 0)));
+        minRatio = Math.min(minRatio, v[2] / v[0]);
+    });
+    assert.ok(minRatio > 10, `elipsoides deveriam ser muito alongados, razão mínima ${minRatio}`);
+    ok(`elipsoides alongados ao longo da visada (razão mínima ${minRatio.toFixed(1)}:1)`);
+}
+
+// ---------------------------------------------------------------- amostras da pasta
+// Cada CSV de samples/ é um botão da interface: tem de ser lido sem erro, ajustar e
+// normalizar. Os seis planos são da mesma sala, medidos da mesma estação total.
+console.log('\nAmostras de samples/');
+{
+    // Cada CSV tem de ser exatamente o que sai do bruto da estação total. Foi assim que se
+    // descobriu que parede_frontal.csv era uma cópia da esquerda, com a frontal de verdade
+    // (53 observações) nunca convertida.
+    const divergentes = raw.conferir();
+    assert.strictEqual(divergentes.length, 0,
+        `CSV fora de sincronia com raw/: ${divergentes.map(d => d.csv).join(', ')}`);
+    ok(`os ${Object.keys(raw.PARES).length} CSVs conferem byte a byte com raw/`);
+
+    assert.ok(ALL_SAMPLES.length >= 6, `esperadas ao menos 6 amostras, achadas ${ALL_SAMPLES.length}`);
+
+    // eixo = componente dominante da normal (0=X, 1=Y, 2=Z); lado = de que lado da estação.
+    const GEOMETRIA = {
+        'parede_frontal.csv':       { tipo: 'vertical',   eixo: 1, lado: -1 },
+        'parede_traseira_7col.csv': { tipo: 'vertical',   eixo: 0, lado: -1 },
+        'parede_esquerda_7col.csv': { tipo: 'vertical',   eixo: 0, lado: +1 },
+        'parede_direita_7col.csv':  { tipo: 'vertical',   eixo: 1, lado: +1 },
+        'piso_7col.csv':            { tipo: 'horizontal', eixo: 2, lado: -1 },
+        'teto_7col.csv':            { tipo: 'horizontal', eixo: 2, lado: +1 }
+    };
+
+    ALL_SAMPLES.forEach(name => {
+        const { rows, errors } = io.parseCSV(fs.readFileSync(path.join(SAMPLES, name), 'utf8'));
+        assert.strictEqual(errors.length, 0, `${name}: ${errors.join(' | ')}`);
+        assert.ok(rows.length >= 4, `${name}: ${rows.length} observações, mínimo 4`);
+
+        const pts = io.buildPoints(rows, S);
+        const res = A.adjustPlane(pts, S);
+        assert.ok(res.converged, `${name}: não convergiu em ${res.iterations} iterações`);
+        assert.strictEqual(res.dof, res.m - 3, `${name}: graus de liberdade`);
+
+        const nrm = A.normalizeParameters(res);
+        const n = nrm.Xn;
+        assert.ok(Math.abs(linalg.norm(n.slice(0, 3)) - 1) < 1e-12, `${name}: ‖n‖ ≠ 1 após normalizar`);
+
+        const g = GEOMETRIA[name];
+        if (!g) return; // amostra nova ainda não catalogada: os testes acima já valem
+        assert.strictEqual(nrm.classification.tipo, g.tipo,
+            `${name}: classificado como ${nrm.classification.tipo}`);
+        // a normal tem de ser dominada pelo eixo esperado, e o plano ficar do lado certo
+        const dom = [Math.abs(n[0]), Math.abs(n[1]), Math.abs(n[2])];
+        assert.strictEqual(dom.indexOf(Math.max(...dom)), g.eixo, `${name}: normal não domina o eixo esperado`);
+        // D = -n·P, então o plano está em -D ao longo da normal
+        assert.ok(Math.sign(-n[3]) === g.lado, `${name}: plano do lado errado da estação (D = ${n[3]})`);
+        ok(`${name}: ${g.tipo}, ${res.m} pts, |D| = ${Math.abs(n[3]).toFixed(3)} m`);
+    });
 }
 
 console.log(`\n${passed} verificações OK\n`);

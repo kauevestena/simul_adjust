@@ -7,6 +7,67 @@ Raw observations are azimuth and zenith angle in DMS plus slope distance (see
 covariance is propagated with the Jacobian of that transformation, using the nominal 1σ
 precisions (2" for the angles, 2 mm + 2 ppm for the EDM, all editable in the Settings tab).
 
+## The samples
+
+Six planes of one room — four walls, floor and ceiling — all observed from the same station,
+so they share a coordinate frame: the instrument is the origin and its distance to each plane
+reads directly off `|D|` after normalization. Azimuth zero is not aligned with the room, which
+is why the wall names do not line up with the axes.
+
+| sample | pts | plane | `|D|` | out of plumb / tilt | σ̂₀ |
+|---|---|---|---|---|---|
+| `parede_frontal.csv` | 53 | vertical, −Y | 3.247 m | 5.03 mm/m | 2.35 |
+| `parede_traseira_7col.csv` | 32 | vertical, −X | 7.223 m | 2.43 mm/m | 0.51 |
+| `parede_esquerda_7col.csv` | 51 | vertical, +X | 3.858 m | 0.97 mm/m | 0.66 |
+| `parede_direita_7col.csv` | 26 | vertical, +Y | 4.055 m | 11.84 mm/m | 3.07 |
+| `piso_7col.csv` | 50 | horizontal, below | 1.609 m | 0.79 mm/m | 3.92 |
+| `teto_7col.csv` | 33 | horizontal, above | 1.745 m | 0.76 mm/m | 5.18 |
+
+The box closes: 11.08 m along X, 7.30 m along Y, 3.354 m high. `σ̂₀` is the achieved precision
+over the nominal 2 mm + 2″ — under 1 means the data beat the nominal figures, above 1 means the
+surface itself is rougher than the instrument, which is the interesting case: the floor and the
+ceiling are not instrument noise, they are the slab.
+
+Two are worth loading on purpose. `parede_direita_7col.csv` is the worst surface in the set,
+11.84 mm/m out of plumb over 26 points, so the global test fails loudly and the residual map has
+structure rather than noise. `piso_7col.csv` is where the reduction gauge misbehaves if you
+freeze the wrong parameter (see below), and where 22 of the 50 error ellipsoids used to be drawn
+misoriented.
+
+### Raw files and the conversion
+
+`samples/raw/` holds the instrument's own export, one file per plane: alternating `SS` (point
+number) and `SD` (azimuth, zenith angle, slope distance) records, with the angles packed as
+`DDD.MMSS` — `316.2342` is 316° 23′ 42″. `samples/raw_to_csv.js` converts a raw file to the
+7-column CSV, and with no argument it checks every CSV against its raw file byte for byte:
+
+```
+node ajusta_planos/samples/raw_to_csv.js              # check all six
+node ajusta_planos/samples/raw_to_csv.js piso.txt     # print one conversion
+```
+
+That check also runs inside `test_adjust.js`, because it is how a real mix-up was caught:
+`parede_frontal.csv` used to be a byte-identical copy of `parede_esquerda_7col.csv`, and the
+actual frontal wall — 53 observations, job `AJ3C` — had never been converted. It has been
+regenerated from the raw file; the other five matched their raw exactly, in the same order.
+
+### Horizontal or vertical, and why not by spread
+
+`classifyPlane` decides from the **direction of the normal**: `|n_z| > cos 45°` means
+horizontal. It takes the adjusted normal when the caller has one and falls back to a PCA of the
+points otherwise, so both paths agree.
+
+This deliberately departs from `specs.md`, which prescribed comparing the Z spread of the
+internal displacement vectors against the horizontal spread. That rule breaks on a wall measured
+as a wide, low band: `parede_frontal.csv` spans 3.07 m in X but only 0.42 m in Z, so the spread
+rule called it *horizontal*. The spread is still computed and reported — the interface shows it —
+it just no longer decides.
+
+The classification picks the reference axis used to fix the **sense** of the normal (+Z for
+horizontal planes, +X for vertical ones), so getting it wrong risks flipping the sign of the whole
+parameter vector. Changing the rule did not move any result on the six samples: every plane came
+back identical to machine precision, only the label changed.
+
 ## The singularity, and the three ways out
 
 The plane equation `Ax + By + Cz + D = 0` is homogeneous, so the four parameters are only
@@ -65,3 +126,11 @@ transformation. It is what makes results from different gauges directly comparab
 
 The page needs to be served over HTTP (the sample CSVs are read with `fetch`):
 `python3 -m http.server` from the repository root.
+
+## Classroom material
+
+`explanations/quatro_parametros.pdf` is a slide deck (Portuguese, aimed at high-school
+students) explaining why the four plane parameters cannot simply be computed and walking
+through the three gauge strategies, with a technical appendix. Rebuild it from
+`explanations/` with `latexmk -pdf quatro_parametros.tex`; the numbers it quotes come from
+this simulator run on the sample CSVs.

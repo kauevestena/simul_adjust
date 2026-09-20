@@ -433,7 +433,7 @@ const app = {
             row.map(v => `<td class="font-mono text-xs">${v.toExponential(3)}</td>`).join('') + '</tr>').join('');
 
         const ev = PlaneAdjust.linalg.eigSym(S).values;
-        const cls = PlaneAdjust.classifyPlane(r.Lb);
+        const cls = PlaneAdjust.classifyPlane(r.Lb, r.Xa);
 
         // A direção nula de Σ_Xa depende da estratégia: é a escala nos dois gauges livres,
         // mas é o eixo do parâmetro congelado na redução.

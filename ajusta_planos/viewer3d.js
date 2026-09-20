@@ -172,13 +172,16 @@
             this.points.forEach(p => {
                 if (!p.active) return;
                 const { values, vectors } = PlaneAdjust.linalg.eigSym(p.sigXYZ);
+                // Colunas de `R` são os autovetores: montam a rotação do elipsoide.
+                // setFromRotationMatrix só é válido para rotação própria, e a ordenação por
+                // autovalor de eigSym pode deixar a base à esquerda — daí o rightHanded.
+                const R = PlaneAdjust.linalg.rightHanded(vectors);
                 const mesh = new THREE.Mesh(this._sphereGeom, mat);
-                // Colunas de `vectors` são os autovetores: montam a rotação do elipsoide
                 const m = new THREE.Matrix4();
                 m.set(
-                    vectors[0][0], vectors[0][1], vectors[0][2], 0,
-                    vectors[1][0], vectors[1][1], vectors[1][2], 0,
-                    vectors[2][0], vectors[2][1], vectors[2][2], 0,
+                    R[0][0], R[0][1], R[0][2], 0,
+                    R[1][0], R[1][1], R[1][2], 0,
+                    R[2][0], R[2][1], R[2][2], 0,
                     0, 0, 0, 1
                 );
                 mesh.quaternion.setFromRotationMatrix(m);

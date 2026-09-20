@@ -1,0 +1,940 @@
+% Por que os quatro parâmetros de um plano não podem simplesmente ser calculados
+% Aula para o ensino médio, com apêndice técnico.
+%
+% Compilar (nesta pasta):  latexmk -pdf quatro_parametros.tex
+% Limpar auxiliares:       latexmk -c
+%
+% Os números citados vêm do simulador (ajusta_planos/), calculados sobre as amostras
+% samples/piso_7col.csv e samples/parede_esquerda_7col.csv — esta última é a parede de
+% D = -3,858 m usada nos slides. (Até 2026-09-20 esses mesmos números estavam duplicados
+% em samples/parede_frontal.csv, que desde então guarda a parede frontal de verdade.)
+
+\documentclass[aspectratio=169,11pt]{beamer}
+
+\usetheme[progressbar=frametitle, sectionpage=progressbar, numbering=fraction]{metropolis}
+\metroset{block=fill}
+
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[brazilian]{babel}
+\usepackage{icomma}
+\usepackage{amsmath, amssymb, mathtools}
+\usepackage{booktabs}
+\usepackage[most]{tcolorbox}
+\usepackage{tikz}
+\usepackage{tikz-3dplot}
+\usetikzlibrary{arrows.meta, calc, positioning, decorations.pathreplacing, babel}
+
+% ------------------------------------------------------------------ paleta (a mesma do simulador)
+\definecolor{mStone}{HTML}{1C1917}
+\definecolor{mStoneMid}{HTML}{78716C}
+\definecolor{mStoneLight}{HTML}{F5F5F4}
+\definecolor{mTeal}{HTML}{0D9488}
+\definecolor{mRose}{HTML}{E11D48}
+\definecolor{mAmber}{HTML}{D97706}
+\definecolor{mIndigo}{HTML}{4F46E5}
+
+% Cada método tem sua cor, usada em todas as figuras
+\colorlet{corReducao}{mAmber}
+\colorlet{corInjuncao}{mTeal}
+\colorlet{corPseudo}{mIndigo}
+
+\setbeamercolor{normal text}{fg=mStone, bg=white}
+\setbeamercolor{palette primary}{fg=white, bg=mStone}
+\setbeamercolor{frametitle}{fg=white, bg=mStone}
+\setbeamercolor{alerted text}{fg=mRose}
+\setbeamercolor{example text}{fg=mTeal}
+\setbeamercolor{progress bar}{fg=mTeal, bg=mTeal!20}
+\setbeamercolor{progress bar in head/foot}{fg=mTeal, bg=mTeal!20}
+\setbeamercolor{progress bar in section page}{fg=mTeal, bg=mTeal!20}
+\setbeamercolor{title separator}{fg=mTeal}
+\setbeamercolor{block title}{fg=white, bg=mTeal}
+\setbeamercolor{block body}{fg=mStone, bg=mTeal!8}
+
+% ------------------------------------------------------------------ caixas
+\newtcolorbox{ideia}[1][]{enhanced, colback=mTeal!7, colframe=mTeal, boxrule=0.6pt, arc=2pt,
+  left=6pt, right=6pt, top=4pt, bottom=4pt, fonttitle=\bfseries\small, coltitle=white, #1}
+\newtcolorbox{cuidado}[1][]{enhanced, colback=mAmber!8, colframe=mAmber, boxrule=0.6pt, arc=2pt,
+  left=6pt, right=6pt, top=4pt, bottom=4pt, fonttitle=\bfseries\small, coltitle=white, #1}
+\newtcolorbox{armadilha}[1][]{enhanced, colback=mRose!6, colframe=mRose, boxrule=0.6pt, arc=2pt,
+  left=6pt, right=6pt, top=4pt, bottom=4pt, fonttitle=\bfseries\small, coltitle=white, #1}
+
+% ------------------------------------------------------------------ estilos TikZ
+\tikzset{
+  linhaCerta/.style={mStone, very thick},
+  pontoP/.style={circle, fill=mStone, inner sep=1.4pt},
+  buraco/.style={circle, draw=mRose, fill=white, very thick, inner sep=2.4pt},
+  seta/.style={-{Stealth[length=2.4mm]}, thick},
+  rotulo/.style={font=\scriptsize, text=mStone},
+}
+
+\newcommand{\bnum}[1]{\textbf{\textcolor{mTeal}{#1}}}
+
+\title{Por que não dá para calcular os quatro números de um plano?}
+\subtitle{Ajustamento de planos --- e três jeitos de resolver o problema}
+\author{}
+\institute{Simulador de Ajustamento de Planos}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+% ==================================================================
+\begin{frame}{O que vamos ver}
+  \setbeamertemplate{section in toc}[sections numbered]
+  \tableofcontents
+\end{frame}
+
+% ==================================================================
+\section{O problema}
+
+\begin{frame}{Uma parede está mesmo reta?}
+  \begin{columns}[T]
+    \begin{column}{0.46\textwidth}
+      Engenheiros precisam saber se paredes, pisos, prédios e até
+      \bnum{torres eólicas} estão retos e no prumo.
+      \bigskip
+
+      Uma \bnum{estação total} mede, para cada ponto da superfície:
+      \begin{itemize}
+        \item uma direção (dois ângulos)
+        \item uma distância
+      \end{itemize}
+      Com isso calculamos as coordenadas $(x, y, z)$ de dezenas de pontos.
+    \end{column}
+    \begin{column}{0.52\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.82]
+        \fill[mStoneLight] (-0.6,0) rectangle (7,-0.3);
+        \draw[mStoneMid, thick] (-0.6,0) -- (7,0);
+        \fill[mStone!12] (5.7,0) rectangle (6.2,4.3);
+        \draw[mStoneMid] (5.7,0) rectangle (6.2,4.3);
+        % tripé e instrumento
+        \draw[thick, mStone] (1,1.55) -- (0.35,0) (1,1.55) -- (1.65,0) (1,1.55) -- (1.08,0);
+        \fill[mStone] (0.78,1.55) rectangle (1.22,2.0);
+        \fill[mTeal] (1.25,1.78) circle (0.08);
+        \foreach \y in {0.5,1.3,2.1,2.9,3.7} {
+          \draw[mTeal, -{Stealth[length=1.8mm]}] (1.33,1.78) -- (5.66,\y);
+          \fill[mRose] (5.7,\y) circle (0.07);
+        }
+        \node[below, rotulo] at (1,-0.3) {estação total};
+        \node[right, rotulo, align=left] at (6.25,3.7) {pontos\\medidos};
+        \node[right, rotulo] at (6.25,1.2) {parede};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Toda medida tem um errinho}
+  \begin{columns}[c]
+    \begin{column}{0.5\textwidth}
+      Nenhum instrumento é perfeito. Cada ponto sai com um errinho de
+      \bnum{uns 2 milímetros}.
+      \bigskip
+
+      Resultado: mesmo numa parede perfeitamente lisa, os pontos medidos
+      \alert{não caem todos exatamente no mesmo plano}.
+      \bigskip
+
+      \small\textcolor{mStoneMid}{Na figura, os errinhos estão bem exagerados para dar para ver.}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \draw[mStoneMid, dashed] (3,0) -- (3,4.3);
+        \node[rotulo, above] at (3,4.3) {parede de verdade};
+        \foreach \y/\dx in {0.3/0.10, 0.7/-0.15, 1.1/0.05, 1.5/0.18, 1.9/-0.08,
+                            2.3/-0.20, 2.7/0.12, 3.1/-0.04, 3.5/0.16, 3.9/-0.12} {
+          \fill[mRose] (3+\dx*2.2,\y) circle (0.07);
+        }
+        \node[rotulo, align=center] at (1.3,2.1) {pontos\\medidos};
+        \draw[mStoneMid, -{Stealth[length=1.6mm]}] (1.8,2.1) -- (2.45,2.3);
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{A ideia do ajustamento: o melhor encaixe}
+  \begin{columns}[c]
+    \begin{column}{0.52\textwidth}
+      Se você medir sua altura cinco vezes:
+      \[ 1{,}71 \quad 1{,}73 \quad 1{,}72 \quad 1{,}70 \quad 1{,}74 \]
+      qual é a sua altura? A \bnum{média}: $1{,}72$\,m.
+      \bigskip
+
+      O \bnum{ajustamento} faz a mesma coisa, só que mais esperto:
+      procura o plano que deixa as distâncias dos pontos até ele
+      \alert{as menores possíveis} --- somando os quadrados dessas distâncias.
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \draw[mTeal, very thick] (3,0) -- (3,4.3);
+        \node[rotulo, above, text=mTeal] at (3,4.3) {plano ajustado};
+        \foreach \y/\dx in {0.3/0.10, 0.7/-0.15, 1.1/0.05, 1.5/0.18, 1.9/-0.08,
+                            2.3/-0.20, 2.7/0.12, 3.1/-0.04, 3.5/0.16, 3.9/-0.12} {
+          \draw[mAmber, thick] (3,\y) -- (3+\dx*2.2,\y);
+          \fill[mRose] (3+\dx*2.2,\y) circle (0.07);
+        }
+        \node[rotulo, align=center, text=mAmber] at (1.2,1.1) {distâncias\\até o plano};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{O que é um plano}
+
+\begin{frame}{A equação do plano}
+  \begin{columns}[c]
+    \begin{column}{0.52\textwidth}
+      Todo plano no espaço pode ser escrito como
+      \[ \boxed{\;A\,x + B\,y + C\,z + D = 0\;} \]
+      São \bnum{quatro números}: $A$, $B$, $C$ e $D$.
+      \bigskip
+      \begin{itemize}
+        \item $(A, B, C)$ é o \bnum{vetor normal}: uma flecha em pé sobre o plano,
+              como um \emph{lápis em pé numa mesa}. Ele diz para onde o plano está virado.
+        \item $D$ \bnum{empurra} o plano para frente ou para trás, sem girá-lo.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \centering
+      \tdplotsetmaincoords{68}{125}
+      \begin{tikzpicture}[tdplot_main_coords, scale=1.05]
+        \filldraw[fill=mTeal!15, draw=mTeal!70]
+          (-1.7,-1.7,0) -- (1.7,-1.7,0) -- (1.7,1.7,0) -- (-1.7,1.7,0) -- cycle;
+        \draw[mTeal!40] (-1.7,0,0) -- (1.7,0,0) (0,-1.7,0) -- (0,1.7,0);
+        \draw[mRose, line width=1.6pt, -{Stealth[length=3mm]}] (0,0,0) -- (0,0,2.0);
+        \node[mRose, font=\small] at (0,0,2.35) {$(A, B, C)$};
+        \draw[mRose] (0.28,0,0) -- (0.28,0,0.28) -- (0,0,0.28);
+        \node[rotulo] at (1.3,-1.3,0.05) {plano};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Testando pontos}
+  Vamos usar um plano de exemplo:
+  \[ x + 2y + 3z - 6 = 0 \qquad\text{ou seja}\qquad (A, B, C, D) = (1, 2, 3, -6) \]
+  Um ponto \bnum{está no plano} quando a conta dá \bnum{zero}:
+  \begin{center}
+  \renewcommand{\arraystretch}{1.12}
+  \begin{tabular}{lll}
+    \toprule
+    ponto & conta & resultado \\
+    \midrule
+    $(6, 0, 0)$ & $6 + 0 + 0 - 6$ & $0$ \quad \textcolor{mTeal}{no plano} \\
+    $(0, 3, 0)$ & $0 + 6 + 0 - 6$ & $0$ \quad \textcolor{mTeal}{no plano} \\
+    $(0, 0, 2)$ & $0 + 0 + 6 - 6$ & $0$ \quad \textcolor{mTeal}{no plano} \\
+    $(1, 1, 2)$ & $1 + 2 + 6 - 6$ & $3$ \quad \textcolor{mRose}{fora do plano} \\
+    \bottomrule
+  \end{tabular}
+  \end{center}
+  Quando o ponto está fora, o resultado mede \emph{o quanto} ele está fora.
+\end{frame}
+
+% ==================================================================
+\section{Por que não dá para calcular os quatro números}
+
+\begin{frame}{Uma surpresa}
+  Multiplique a equação inteira por 2:
+  \[ 2x + 4y + 6z - 12 = 0 \qquad (A, B, C, D) = (2, 4, 6, -12) \]
+  \pause
+  {\centering\small
+  \renewcommand{\arraystretch}{1.05}
+  \begin{tabular}{lll}
+    \toprule
+    ponto & conta & resultado \\
+    \midrule
+    $(6, 0, 0)$ & $12 + 0 + 0 - 12$ & $0$ \quad \textcolor{mTeal}{no plano} \\
+    $(0, 3, 0)$ & $0 + 12 + 0 - 12$ & $0$ \quad \textcolor{mTeal}{no plano} \\
+    $(0, 0, 2)$ & $0 + 0 + 12 - 12$ & $0$ \quad \textcolor{mTeal}{no plano} \\
+    \bottomrule
+  \end{tabular}\par}
+  \medskip
+  \alert{É o mesmo plano!} Os números mudaram, o plano não.
+  \pause
+
+  E o ponto de fora $(1, 1, 2)$? \;$2 + 4 + 12 - 12 = 6$: o ``quanto está fora''
+  \alert{também dobrou}. Guarde isso.
+\end{frame}
+
+\begin{frame}{Infinitas respostas para o mesmo plano}
+  \begin{columns}[c]
+    \begin{column}{0.52\textwidth}
+      Para \emph{qualquer} número $k$ diferente de zero,
+      \[ k \cdot (A, B, C, D) \]
+      descreve \bnum{o mesmo plano}.
+      \bigskip
+
+      Como numa receita: \emph{1 xícara de arroz para 2 de água} é o mesmo que
+      \emph{2 para 4}. O que importa é a \bnum{proporção}.
+      \bigskip
+
+      Perguntar ``quais são os quatro números do plano?'' é como perguntar
+      ``quanto arroz tem a receita?'': \alert{não há uma resposta só}.
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95]
+        \fill[mTeal!12] (-0.3,-0.25) rectangle (5.3,0);
+        \draw[mTeal, very thick] (-0.3,0) -- (5.3,0);
+        \node[rotulo, text=mTeal, left] at (4.2,-0.5) {o mesmo plano};
+        \foreach \x/\h/\lab in {0.6/0.7/{k = \tfrac12}, 1.9/1.4/{k = 1}, 3.3/2.8/{k = 2}} {
+          \draw[mRose, line width=1.4pt, -{Stealth[length=2.6mm]}] (\x,0) -- (\x,\h);
+          \node[rotulo, above] at (\x,\h) {$\lab$};
+        }
+        \draw[mRose, line width=1.4pt, -{Stealth[length=2.6mm]}] (4.6,0) -- (4.6,-1.4);
+        \node[rotulo, right] at (4.6,-1.3) {$k = -1$};
+      \end{tikzpicture}
+      \smallskip
+
+      {\scriptsize\textcolor{mStoneMid}{Lápis de tamanhos diferentes, e até de cabeça\\
+      para baixo: todos em pé sobre o mesmo plano.}}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{A armadilha do zero}
+  E se $k = 0$?
+  \[ 0\cdot x + 0\cdot y + 0\cdot z + 0 = 0 \]
+  \pause
+  Isso é verdade para \alert{qualquer ponto do universo}!
+  \bigskip
+
+  \begin{armadilha}[title={Por que o computador cai nessa}]
+    Lembra que o ``quanto está fora'' é multiplicado por $k$? O computador quer deixar esse
+    número \emph{o menor possível}. O jeito mais fácil: \alert{encolher $k$ até zero}.
+    \medskip
+
+    Com $(0, 0, 0, 0)$ todos os pontos ``encaixam perfeitamente''\ldots\
+    mas isso \alert{não é plano nenhum}.
+  \end{armadilha}
+\end{frame}
+
+\begin{frame}{O que o computador faz de verdade}
+  Com as medidas reais de um \bnum{piso} (50 pontos), deixando os quatro números livres:
+  \bigskip
+  \begin{center}
+  \renewcommand{\arraystretch}{1.35}
+  \begin{tabular}{lcc}
+    \toprule
+    & $C$ & $D$ \\
+    \midrule
+    chute inicial & $1$ & $1{,}6$ \\
+    \onslide<2->{depois de uma rodada de contas} &
+      \onslide<2->{\alert{$0{,}000\,000\,000\,089$}} &
+      \onslide<2->{\alert{$0{,}000\,000\,000\,14$}} \\
+    \bottomrule
+  \end{tabular}
+  \end{center}
+  \bigskip
+  \onslide<2->{A máquina \alert{escorregou para o buraco do zero}. Não é erro de programação:
+  é o que a matemática manda fazer quando nada impede.}
+\end{frame}
+
+\begin{frame}{A linha das respostas certas}
+  \begin{columns}[c]
+    \begin{column}{0.40\textwidth}
+      Imagine cada conjunto $(A, B, C, D)$ como um \bnum{ponto}.
+      \medskip
+
+      Todos os $k\cdot(1, 2, 3, -6)$ caem numa mesma \bnum{reta} que passa pelo zero.
+      \medskip
+
+      Qualquer ponto dela é uma resposta certa, \alert{menos o próprio zero}.
+      \medskip
+
+      {\scriptsize\textcolor{mStoneMid}{Desenho esquemático: são quatro números,
+      aqui mostrados como uma ``sombra'' em duas dimensões.}}
+    \end{column}
+    \begin{column}{0.58\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.82]
+        \def\ang{25}
+        \draw[linhaCerta] (\ang+180:2.7) -- (\ang:5.3);
+        \foreach \k/\lab/\pos in {0.5/{(\tfrac12, 1, \tfrac32, -3)}/below right,
+                                  1/{(1, 2, 3, -6)}/below right,
+                                  2/{(2, 4, 6, -12)}/above left,
+                                  -1/{(-1, -2, -3, 6)}/above left} {
+          \node[pontoP] at (\ang:2.3*\k) {};
+          \node[rotulo, \pos] at (\ang:2.3*\k) {$\lab$};
+        }
+        \node[buraco] (O) at (0,0) {};
+        \node[rotulo, text=mRose, below=5pt, align=center] at (O) {buraco\\$(0, 0, 0, 0)$};
+        \onslide<2->{
+          \node[pontoP, fill=mStoneMid] (G) at (60:2.4) {};
+          \node[rotulo, above] at (G) {chute};
+          \draw[mRose, thick, dashed, -{Stealth[length=2.4mm]}] (G) -- ($(O)!0.13!(G)$);
+          \node[rotulo, text=mRose, left=2pt, align=right] at (58:1.3) {sem regra:\\escorrega};
+        }
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{A moral da história}
+  \begin{ideia}[title={Falta uma regra}]
+    Os quatro números de um plano \bnum{só valem em proporção}. Para o computador devolver
+    \emph{uma} resposta, precisamos dar \bnum{uma regra extra} que escolha
+    \bnum{um único ponto} da linha das respostas certas --- e que o impeça de cair no zero.
+  \end{ideia}
+  \bigskip
+
+  Os especialistas chamam isso de \bnum{fixar a escala} (ou fixar o \emph{gauge}).
+  \bigskip
+
+  Vamos ver \bnum{três regras} diferentes:
+  \begin{enumerate}
+    \item \textcolor{corReducao}{\textbf{Congelar um dos números}} (redução de parâmetros)
+    \item \textcolor{corInjuncao}{\textbf{Exigir lápis de tamanho 1}} (injunção)
+    \item \textcolor{corPseudo}{\textbf{Proibir a direção que não muda nada}} (pseudo-inversa)
+  \end{enumerate}
+\end{frame}
+
+% ==================================================================
+\section{Método 1: congelar um número}
+
+\begin{frame}{Redução de parâmetros: a ideia}
+  \begin{columns}[c]
+    \begin{column}{0.52\textwidth}
+      Escolhemos um dos quatro números e \textcolor{corReducao}{\textbf{congelamos}} o valor dele.
+      Por exemplo, $C = 1$.
+      \bigskip
+
+      No nosso exemplo, dividimos tudo por 3:
+      \[ (1, 2, 3, -6) \;\longrightarrow\; \left(\tfrac13, \tfrac23, 1, -2\right) \]
+      Agora \bnum{só sobram três números para descobrir}, e a resposta é \bnum{única}.
+      \bigskip
+
+      Na receita: ``use \textbf{1 xícara de arroz}''. Pronto, a água fica determinada.
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95]
+        \def\ang{25}
+        \draw[linhaCerta] (\ang+180:0.8) -- (\ang:5.2);
+        \node[buraco] at (0,0) {};
+        \draw[corReducao, very thick] (1.3,-0.7) -- (1.3,2.5) node[above, font=\scriptsize] {$C = 1$};
+        \draw[corReducao, thick, dashed] (3.9,-0.7) -- (3.9,2.9) node[above, font=\scriptsize] {$C = 3$};
+        \node[pontoP, fill=corReducao] at (1.3,{1.3*tan(\ang)}) {};
+        \node[rotulo, right] at (1.3,{1.3*tan(\ang)-0.25}) {$(\tfrac13, \tfrac23, 1, -2)$};
+        \node[pontoP] at (3.9,{3.9*tan(\ang)}) {};
+        \node[rotulo, below right] at (3.9,{3.9*tan(\ang)}) {$(1, 2, 3, -6)$};
+      \end{tikzpicture}
+      \smallskip
+
+      {\scriptsize\textcolor{mStoneMid}{Cada valor congelado cruza a linha\\em exatamente um ponto.}}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Cuidado: congele o número certo}
+  Congelar um número é traçar uma reta de ``valor fixo''. Onde ela cruza a linha das
+  respostas certas está a resposta. Mas o cruzamento pode ser \bnum{firme} ou \alert{frágil}:
+  \medskip
+  \begin{columns}[T]
+    \begin{column}{0.49\textwidth}
+      \centering
+      \textbf{\small Congelar um número grande}\\[4pt]
+      \begin{tikzpicture}[scale=1.05]
+        \clip (-0.3,-0.45) rectangle (4.5,2.75);
+        \draw[linhaCerta] (-0.2,-0.093) -- (4.4,2.05);
+        \draw[corReducao, dashed] ($(2,2.6)+(96:0.2)$) -- ($(2,2.6)+(-84:3.1)$);
+        \draw[corReducao, dashed] ($(2,2.6)+(84:0.2)$) -- ($(2,2.6)+(-96:3.1)$);
+        \draw[corReducao, very thick] (2,-0.45) -- (2,2.75);
+        \node[pontoP, fill=corReducao] at (2,0.933) {};
+        \draw[decorate, decoration={brace, amplitude=3pt, mirror}] (1.8,0.3) -- (2.2,0.3);
+        \node[rotulo, anchor=north west, align=left] at (2.05,0.22) {quase o\\mesmo ponto};
+      \end{tikzpicture}\\[2pt]
+      {\scriptsize Balança $6^\circ$: o cruzamento quase não se move.}
+    \end{column}
+    \begin{column}{0.49\textwidth}
+      \centering
+      \textbf{\small Congelar um número quase zero}\\[4pt]
+      \begin{tikzpicture}[scale=1.05]
+        \clip (-0.3,-0.45) rectangle (4.5,2.75);
+        \draw[linhaCerta] (-0.2,-0.093) -- (4.4,2.05);
+        \draw[corReducao, dashed] (0,-0.25) -- (4.4,{-0.25+4.4*tan(28)});
+        \draw[corReducao, dashed] (0,-0.25) -- (3.6,{-0.25+3.6*tan(30)});
+        \draw[corReducao, very thick] (0,-0.25) -- (4.4,{-0.25+4.4*tan(29)});
+        \node[pontoP, fill=corReducao!45] at (2.25,1.049) {};
+        \node[pontoP, fill=corReducao!45] at (3.82,1.781) {};
+        \node[pontoP, fill=corReducao] at (2.84,1.324) {};
+        \draw[decorate, decoration={brace, amplitude=4pt, mirror}] (2.25,0.35) -- (3.82,0.35);
+        \node[rotulo, below, text=mRose] at (3.04,0.25) {pontos bem diferentes};
+      \end{tikzpicture}\\[2pt]
+      {\scriptsize Balança só $1^\circ$: o cruzamento foge.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Número de condição: o amplificador de errinhos}
+  Computadores guardam os números com casas limitadas: toda conta tem um
+  \bnum{errinho de arredondamento}, lá pela 16ª casa decimal. O \bnum{número de condição}
+  diz \emph{quantas vezes} o sistema de contas pode ampliar esses errinhos --- a reta quase
+  paralela do slide anterior é exatamente um número de condição grande.
+  \begin{center}
+  \renewcommand{\arraystretch}{1.25}
+  \begin{tabular}{lcc}
+    \toprule
+    no piso de verdade & condição & rodadas de contas \\
+    \midrule
+    congelando $C$ (vale $\approx 1$) & \bnum{19} & \bnum{4} \\
+    congelando $B$ (vale $\approx 0{,}0006$) & \alert{3\,300\,000} & \alert{49} \\
+    \bottomrule
+  \end{tabular}
+  \end{center}
+  O plano no fim é o mesmo, mas o caminho com $B$ congelado é bem mais sofrido: é como
+  fixar ``1 xícara de \emph{sal}'' numa receita que quase não usa sal.
+  \textbf{Regra prática: congele o maior.}
+\end{frame}
+
+\begin{frame}{Redução de parâmetros: resumo}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{ideia}[title={Vantagens}]
+        \begin{itemize}
+          \item A ideia mais simples das três
+          \item Sobram só 3 números: sistema pequeno e tranquilo
+          \item Com o número certo congelado, é a mais bem comportada
+        \end{itemize}
+      \end{ideia}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{cuidado}[title={Cuidados}]
+        \begin{itemize}
+          \item Depende de escolher bem \emph{qual} congelar
+          \item O lápis sai de um tamanho qualquer (no piso: $0{,}999\,999\,8$); no fim
+                costumamos ajeitar para tamanho 1
+        \end{itemize}
+      \end{cuidado}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{Método 2: lápis de tamanho 1}
+
+\begin{frame}{Injunção: o lápis precisa ter tamanho 1}
+  \begin{columns}[c]
+    \begin{column}{0.54\textwidth}
+      Em vez de congelar um número, exigimos que o \textcolor{corInjuncao}{\textbf{lápis}}
+      $(A, B, C)$ tenha \textcolor{corInjuncao}{\textbf{comprimento 1}}.
+      \bigskip
+
+      Pelo \bnum{teorema de Pitágoras em 3D}, isso é o mesmo que
+      \[ A^2 + B^2 + C^2 = 1 \]
+      No exemplo, o lápis $(1, 2, 3)$ mede $\sqrt{1 + 4 + 9} = \sqrt{14} \approx 3{,}742$.
+      Dividindo os quatro números por $\sqrt{14}$:
+      \[ (0{,}267;\ 0{,}535;\ 0{,}802;\ -1{,}604) \]
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95]
+        \def\ang{25}
+        \draw[linhaCerta] (\ang+180:3.0) -- (\ang:3.4);
+        \draw[corInjuncao, very thick] (0,0) circle (1.6);
+        \node[buraco] at (0,0) {};
+        \node[pontoP, fill=corInjuncao] (P) at (\ang:1.6) {};
+        \node[pontoP, fill=corInjuncao] (N) at (\ang+180:1.6) {};
+        \node[rotulo, align=center] at (42:2.35) {lápis\\para cima};
+        \node[rotulo, align=center] at (222:2.35) {lápis\\para baixo};
+        \node[font=\scriptsize, text=corInjuncao] at (132:2.2) {tamanho 1};
+      \end{tikzpicture}
+      \smallskip
+
+      {\scriptsize\textcolor{mStoneMid}{O círculo cruza a linha em \textbf{dois} pontos.}}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Dois lápis: para cima ou para baixo?}
+  Os dois lápis de tamanho 1 descrevem o mesmo plano:
+  \[ (0{,}267;\ 0{,}535;\ 0{,}802;\ -1{,}604) \quad\text{e}\quad
+     (-0{,}267;\ -0{,}535;\ -0{,}802;\ 1{,}604) \]
+  Então combinamos uma \bnum{regra de sentido}:
+  \bigskip
+  \begin{itemize}
+    \item \textbf{Pisos} (planos deitados): o lápis aponta \bnum{para cima} ($+z$)
+    \item \textbf{Paredes} (planos em pé): o lápis aponta para \bnum{$+x$}
+  \end{itemize}
+  \bigskip
+  {\small\textcolor{mStoneMid}{Como saber se o plano está deitado ou em pé? Olhando o quanto os
+  pontos variam na altura: quase nada num piso, bastante numa parede.}}
+\end{frame}
+
+\begin{frame}{Bônus: $D$ vira uma distância}
+  Quando o lápis tem tamanho 1, o número $|D|$ é \bnum{exatamente a distância}
+  da estação total até o plano!
+  \bigskip
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{ideia}[title={Piso}]
+        $D = 1{,}609$\\[3pt]
+        O piso está \bnum{1,609\,m abaixo} do instrumento.\\[3pt]
+        {\small É a altura da estação total em cima do tripé!}
+      \end{ideia}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{ideia}[title={Parede}]
+        $D = -3{,}858$\\[3pt]
+        A parede está a \bnum{3,858\,m} da estação.\\[3pt]
+        {\small Um número que dá para conferir com uma trena.}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+  \bigskip
+  Por isso o lápis de tamanho 1 é \bnum{a forma mais usada} de escrever um plano.
+\end{frame}
+
+\begin{frame}{Como o computador obedece à regra}
+  O computador procura o plano que melhor se encaixa \emph{e}, ao mesmo tempo, um
+  \textcolor{corInjuncao}{\textbf{fiscal}} confere a regra $A^2 + B^2 + C^2 = 1$ a cada rodada.
+  \smallskip
+
+  {\small\textcolor{mStoneMid}{Os matemáticos chamam o fiscal de \emph{multiplicador de Lagrange}.}}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{ideia}[title={Vantagens}]
+        \begin{itemize}
+          \item Sai pronto com lápis de tamanho 1
+          \item $D$ já vem como distância
+          \item Não precisa escolher número nenhum
+        \end{itemize}
+      \end{ideia}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{cuidado}[title={Cuidados}]
+        \begin{itemize}
+          \item Sistema maior: 5 equações em vez de 4
+          \item Mistura números de tamanhos muito diferentes (condição
+                $\approx$ \alert{830 milhões}): funciona, mas pede cuidado
+        \end{itemize}
+      \end{cuidado}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{Método 3: proibir a direção que não muda nada}
+
+\begin{frame}{Pseudo-inversa: a ideia}
+  \begin{columns}[c]
+    \begin{column}{0.50\textwidth}
+      Nós \bnum{já sabemos} qual é a direção que não muda o plano: \bnum{esticar ou encolher}
+      os quatro números juntos.
+      \bigskip
+
+      Então deixamos os quatro livres, mas \textcolor{corPseudo}{\textbf{proibimos}} o
+      computador de andar nessa direção. Ele só pode corrigir o chute
+      \textcolor{corPseudo}{\textbf{de lado}}, em ângulo reto.
+      \bigskip
+
+      Assim ele nunca consegue escorregar para o zero.
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=1.15]
+        \def\ang{20}
+        \coordinate (O) at (0,0);
+        \coordinate (G) at (55:2.7);
+        \coordinate (P) at (\ang:{2.7/cos(35)});
+        \draw[linhaCerta] (\ang+180:0.5) -- (\ang:3.9);
+        \draw[mStoneMid, dashed] (O) -- (55:3.4);
+        \node[buraco] at (O) {};
+        % direção proibida: esticar/encolher o chute
+        \draw[mRose, thick, -{Stealth[length=2.2mm]}] ($(O)!0.92!(G)$) -- ($(O)!0.45!(G)$);
+        \node[mRose, font=\large\bfseries] at ($(O)!0.66!(G)$) {$\times$};
+        \node[rotulo, text=mRose, left=4pt, align=right] at ($(O)!0.62!(G)$) {proibido:\\esticar ou\\encolher};
+        % passo permitido, em ângulo reto
+        \coordinate (a) at ($(G)!0.22cm!(O)$);
+        \coordinate (b) at ($(G)!0.22cm!(P)$);
+        \draw[corPseudo] (a) -- ($(a)+(b)-(G)$) -- (b);
+        \draw[corPseudo, very thick, -{Stealth[length=2.6mm]}] (G) -- (P);
+        \node[pontoP, fill=mStoneMid] at (G) {};
+        \node[rotulo, above] at (G) {chute};
+        \node[pontoP, fill=corPseudo] at (P) {};
+        \node[rotulo, below right, text=corPseudo, align=left] at (P) {corrigido\\de lado};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{A armadilha: não dá para adivinhar a direção}
+  E se o computador tentasse \emph{descobrir sozinho} a direção livre, procurando onde o
+  sistema ``quase não reage''? O problema: esse ``quase não reage'' muda de tamanho
+  durante as contas.
+  \begin{center}
+  \renewcommand{\arraystretch}{1.2}
+  \begin{tabular}{ll}
+    \toprule
+    na primeira rodada & $0{,}000\,000\,23$ \\
+    no fim & $0{,}000\,000\,000\,000\,000\,01$ \\
+    \bottomrule
+  \end{tabular}
+  \end{center}
+  Não existe um limite fixo que funcione no começo \emph{e} no fim.
+  \smallskip
+
+  \begin{armadilha}
+    Se o limite errar, o computador \alert{não enxerga a direção livre} e cai de volta no
+    buraco do zero. Por isso a direção precisa ser \bnum{informada}, não adivinhada.
+  \end{armadilha}
+\end{frame}
+
+\begin{frame}{Pseudo-inversa: resumo}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{ideia}[title={Vantagens}]
+        \begin{itemize}
+          \item Os quatro números continuam livres, nenhum é privilegiado
+          \item Sistema de contas muito tranquilo (condição $\approx$ \bnum{6})
+          \item É a ideia usada em redes geodésicas ``livres''
+        \end{itemize}
+      \end{ideia}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{cuidado}[title={Cuidados}]
+        \begin{itemize}
+          \item É preciso saber qual é a direção livre
+          \item A ideia mais avançada das três
+          \item O lápis sai de um tamanho qualquer (no piso: $1{,}000\,2$); no fim ajeitamos
+                para tamanho 1
+        \end{itemize}
+      \end{cuidado}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{Fechamento}
+
+\begin{frame}{Três regras, um só plano}
+  \begin{columns}[c]
+    \begin{column}{0.40\textwidth}
+      Partindo do mesmo chute, cada regra pousa num \bnum{ponto diferente}\ldots
+      \bigskip
+
+      \ldots mas todos estão \bnum{na mesma linha}. Ou seja: \bnum{o mesmo plano}.
+      \bigskip
+      \begin{itemize}
+        \item[\textcolor{corReducao}{$\blacksquare$}] congelar um número
+        \item[\textcolor{corInjuncao}{$\blacksquare$}] lápis de tamanho 1
+        \item[\textcolor{corPseudo}{$\blacksquare$}] proibir a direção livre
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.58\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=1.55]
+        \def\ang{20}
+        \def\R{2.4}
+        \coordinate (O) at (0,0);
+        \coordinate (G) at (60:\R);
+        \coordinate (P1) at (\ang:\R);
+        \coordinate (P2) at ({\R*cos(60)},{\R*cos(60)*tan(\ang)});
+        \coordinate (P3) at (\ang:{\R/cos(40)});
+        \draw[mStoneMid!60, dashed] (72:\R) arc (72:8:\R);
+        \draw[linhaCerta] (\ang+180:0.35) -- (\ang:3.75);
+        \node[buraco] at (O) {};
+        \draw[corReducao, very thick, -{Stealth[length=2.4mm]}] (G) -- (P2);
+        \draw[corInjuncao, very thick, -{Stealth[length=2.4mm]}] (G) arc (60:{\ang+1.5}:\R);
+        \draw[corPseudo, very thick, -{Stealth[length=2.4mm]}] (G) -- (P3);
+        \node[pontoP, fill=mStoneMid] at (G) {};
+        \node[rotulo, above] at (G) {chute};
+        \node[pontoP, fill=corReducao] at (P2) {};
+        \node[pontoP, fill=corInjuncao] at (P1) {};
+        \node[pontoP, fill=corPseudo] at (P3) {};
+        \node[rotulo, anchor=north west] at ($(\ang:0.5)+(0,-0.12)$) {linha das respostas certas};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Os números do piso nos três métodos}
+  \centering
+  \small
+  \renewcommand{\arraystretch}{1.2}
+  \begin{tabular}{lccc}
+    \toprule
+    & \textcolor{corReducao}{\textbf{congelar $C$}}
+    & \textcolor{corInjuncao}{\textbf{tamanho 1}}
+    & \textcolor{corPseudo}{\textbf{pseudo-inversa}} \\
+    \midrule
+    \multicolumn{4}{l}{\textcolor{mStoneMid}{\scriptsize COMO SAEM DAS CONTAS}} \\
+    $C$ & $0{,}999\,999$ & $1{,}000\,000$ & $1{,}000\,203$ \\
+    $D$ & $1{,}608\,905$ & $1{,}608\,906$ & $1{,}609\,233$ \\
+    tamanho do lápis & $0{,}999\,999\,8$ & $1{,}000\,000\,0$ & $1{,}000\,203\,4$ \\
+    \midrule
+    \multicolumn{4}{l}{\onslide<2->{\textcolor{mTeal}{\scriptsize DEPOIS DE AJEITAR O LÁPIS PARA TAMANHO 1}}} \\
+    \onslide<2->{$C$} & \onslide<2->{\bnum{$1{,}000\,000$}} & \onslide<2->{\bnum{$1{,}000\,000$}} & \onslide<2->{\bnum{$1{,}000\,000$}} \\
+    \onslide<2->{$D$} & \onslide<2->{\bnum{$1{,}608\,906$}} & \onslide<2->{\bnum{$1{,}608\,906$}} & \onslide<2->{\bnum{$1{,}608\,906$}} \\
+    \bottomrule
+  \end{tabular}
+  \bigskip
+
+  \onslide<2->{\normalsize Iguais em pelo menos \bnum{14 casas decimais}. A regra é só uma
+  \emph{convenção}, como escolher entre metros e centímetros: \alert{o piso é o mesmo}.}
+\end{frame}
+
+\begin{frame}{Afinal: o piso e a parede estão retos?}
+  Com o plano ajustado, a pergunta do começo tem resposta:
+  \bigskip
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{ideia}[title={Piso}]
+        Cai cerca de \bnum{0,8\,mm a cada metro}.\\[3pt]
+        {\small Em 5 metros, uns 4 milímetros.}
+      \end{ideia}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{ideia}[title={Parede}]
+        Fora do prumo cerca de \bnum{1\,mm por metro de altura}.\\[3pt]
+        {\small Numa parede de 3 metros, uns 3 milímetros.}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+  \bigskip
+  {\small\textcolor{mStoneMid}{Estimativas usando todas as medidas. Descobrir quais medidas
+  estão ruins --- e se esses milímetros são reais ou só errinho --- é assunto para outra aula.}}
+\end{frame}
+
+\begin{frame}{Para levar para casa}
+  \begin{enumerate}
+    \setlength{\itemsep}{10pt}
+    \item Os quatro números de um plano \bnum{só valem em proporção}: multiplicar tudo por $k$
+          não muda o plano. Por isso não existe um único $(A, B, C, D)$ para calcular.
+    \item Sem uma regra extra, o computador \alert{escorrega para $(0, 0, 0, 0)$}, que
+          ``encaixa'' em tudo e não é plano nenhum.
+    \item \textcolor{corReducao}{\textbf{Congelar um número}},
+          \textcolor{corInjuncao}{\textbf{exigir lápis de tamanho 1}} ou
+          \textcolor{corPseudo}{\textbf{proibir a direção livre}}:
+          três regras diferentes, \bnum{o mesmo plano}.
+  \end{enumerate}
+  \bigskip
+  \begin{ideia}[title={Experimente}]
+    No simulador \texttt{ajusta\_planos}, escolha a regra no passo 1 e abra a aba
+    \textbf{Comparar Gauges} para ver os três lado a lado.
+  \end{ideia}
+\end{frame}
+
+% ==================================================================
+\appendix
+
+\begin{frame}[standout]
+  Apêndice\\[6pt]
+  {\normalsize Para quem quer ir além: as contas por trás de cada método}
+\end{frame}
+
+\begin{frame}{A1 · O modelo combinado e o colapso}
+  \small
+  Observações: coordenadas $L_b = (x_i, y_i, z_i)$ com MVC $\Sigma_{XYZ}$ e pesos
+  $P = \Sigma_{XYZ}^{-1}$. Uma equação de condição por ponto:
+  \[ F_i(X_a, L_a) = A\,x_i + B\,y_i + C\,z_i + D = 0, \qquad i = 1, \dots, m \]
+  \vspace{-4pt}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \begin{itemize}
+        \item $A = \partial F/\partial X$, $m\times4$, linha $[x_i\ y_i\ z_i\ 1]$
+        \item $B = \partial F/\partial L$, $m\times3m$, linha $n_0^T$ no bloco $i$
+        \item $M = B P^{-1} B^T$, com $M_{ii} = n_0^T \Sigma_i\, n_0$
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{itemize}
+        \item $W = F(X_0, L_b)$
+        \item $N = A^T M^{-1} A$, \;$4\times4$
+        \item $u = -A^T M^{-1} W$, \;$N X = u$
+      \end{itemize}
+    \end{column}
+  \end{columns}
+  \medskip
+  \begin{armadilha}[title={O colapso}]
+    Na 1ª iteração $W = A X_0$ exatamente, logo $u = -N X_0$, $X = -X_0$ e $X_a = 0$
+    --- \emph{para qualquer} $P$. No piso sobrou só $C \approx 8{,}9\cdot10^{-11}$.
+  \end{armadilha}
+\end{frame}
+
+\begin{frame}{A2 · Injunção $A^2 + B^2 + C^2 = 1$}
+  \small
+  Linearizando a injunção em torno de $X_0$: \; $C_c\, X = -w_c$, com
+  \[ C_c = [\,2A_0\ \ 2B_0\ \ 2C_0\ \ 0\,], \qquad w_c = A_0^2 + B_0^2 + C_0^2 - 1 \]
+  Sistema aumentado (KKT), $5\times5$, com o multiplicador de Lagrange $\lambda$:
+  \[
+    \begin{bmatrix} N & C_c^T \\ C_c & 0 \end{bmatrix}
+    \begin{bmatrix} X \\ \lambda \end{bmatrix}
+    =
+    \begin{bmatrix} u \\ -w_c \end{bmatrix}
+  \]
+  \begin{itemize}
+    \item Inversa generalizada: $Q = \left[\mathrm{KKT}^{-1}\right]_{1:4,\,1:4}$, \quad
+          $\Sigma_{X_a} = \hat\sigma_0^2\, Q$
+    \item $\Sigma_{X_a}$ tem posto 3; a direção nula é a \textbf{escala}
+    \item No piso: $\mathrm{cond}(\mathrm{KKT}) \approx 8{,}3\cdot10^{8}$, em boa parte pela
+          disparidade de escala entre $N$ ($\sim10^{8}$) e a linha da injunção ($\sim2$)
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{A3 · Redução de parâmetros}
+  \small
+  Congela-se o parâmetro de índice $k$: $X_k \equiv 0$. Com
+  $A_r$ = $A$ sem a coluna $k$:
+  \[ N_r = A_r^T M^{-1} A_r \quad (3\times3,\ \text{não singular}), \qquad
+     X_r = -N_r^{-1} A_r^T M^{-1} W \]
+  \begin{itemize}
+    \item $Q$ = $N_r^{-1}$ espalhada para $4\times4$, com linha e coluna $k$ nulas
+    \item $\Sigma_{X_a}$ tem posto 3; a direção nula é o \textbf{eixo do parâmetro congelado}
+          --- não a escala
+    \item Qualidade do gauge: $|X_{0,k}| \,/\, \lVert X_0 \rVert$ (cosseno entre o eixo
+          congelado e a direção de escala)
+    \item Escolha automática: $k = \arg\max \{|A_0|, |B_0|, |C_0|\}$ --- nunca $D$, pois
+          $\max \ge 1/\sqrt3$
+  \end{itemize}
+  \begin{cuidado}[title={No piso}]
+    $k = C$: qualidade $0{,}53$, $\mathrm{cond}(N_r) \approx 19$, 4 iterações.
+    $k = B$: qualidade $4{,}1\cdot10^{-4}$, $\mathrm{cond}(N_r) \approx 3{,}3\cdot10^{6}$,
+    49 iterações --- e, com o limite padrão de 20, \alert{não converge}.
+  \end{cuidado}
+\end{frame}
+
+\begin{frame}{A4 · Pseudo-inversa (injunção mínima)}
+  \small
+  O espaço nulo de $N$ é \textbf{conhecido}: $E = X_0$, a direção de escala. Impõe-se a
+  injunção mínima $E^T X = 0$.
+  \begin{itemize}
+    \item $U$: base ortonormal $4\times3$ de $E^\perp$, pelo refletor de Householder
+          $H = I - 2vv^T/v^Tv$, \; $v = E/\lVert E\rVert + \operatorname{sinal}(E_1)\,\hat e_1$
+    \item $X = U\,(U^T N U)^{-1}\,U^T u = N^{+} u$, \qquad $Q = N^{+}$, \qquad
+          $\Sigma_{X_a} = \hat\sigma_0^2\, N^{+}$
+    \item $\Sigma_{X_a}$ tem posto 3; a direção nula é a \textbf{escala}
+  \end{itemize}
+  \medskip
+  \begin{armadilha}[title={Por que não detectar o posto por limiar}]
+    No piso, $\lambda_{\min}/\lambda_{\max}$ de $N$ vale $2{,}3\cdot10^{-7}$ na primeira
+    iteração e $\sim10^{-17}$ na convergência. Um corte fixo que acerte uma ponta erra a
+    outra; mantendo o autovalor pequeno, $N^{+} = N^{-1}$ e a solução colapsa de novo.
+  \end{armadilha}
+\end{frame}
+
+\begin{frame}{A5 · O que não depende do gauge}
+  \small
+  Nos três métodos:
+  \begin{itemize}
+    \item graus de liberdade $= m - 3$ \;(4 incógnitas menos a liberdade de escala)
+    \item $\Sigma_{X_a}$ tem posto 3 --- muda só \emph{qual} direção é nula
+    \item $V$, $V^T P V$, $\hat\sigma_0^2$, as redundâncias $r_i$ e os testes $w$ são idênticos
+  \end{itemize}
+  \medskip
+  A normalização $\hat X = \pm X / \lVert n \rVert$ tem jacobiano $J$, e
+  \[ \Sigma_{\hat X} = J\, \Sigma_{X_a} J^T \]
+  é \textbf{a mesma} nos três. No piso: $\max|\Delta \hat X| \lesssim 2\cdot10^{-15}$ e
+  $\max|\Delta \Sigma_{\hat X}|$ relativo $\lesssim 10^{-12}$.
+  \begin{ideia}[title={No simulador}]
+    Aba \textbf{Matrizes}: as matrizes específicas de cada estratégia (KKT, $N_r$, $E$, $U$,
+    $N^{+}$). Aba \textbf{Comparar Gauges}: os três lado a lado, com as divergências medidas.
+  \end{ideia}
+\end{frame}
+
+\end{document}

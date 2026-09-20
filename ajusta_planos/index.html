@@ -41,16 +41,21 @@
                 </h2>
 
                 <label class="field-label">Amostras (estação total sem prisma)</label>
-                <div class="space-y-1.5">
+                <p class="text-[10px] text-stone-400 leading-tight mb-1.5">Seis planos da mesma sala,
+                    medidos da mesma estação.</p>
+                <div class="grid grid-cols-2 gap-1.5">
                     <button onclick="app.loadSample('parede_frontal.csv')"
-                        class="btn w-full py-1.5 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-xs font-semibold">&#9646;
-                        Parede frontal</button>
+                        class="btn w-full py-1.5 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-xs font-semibold">&#9646; Frontal</button>
+                    <button onclick="app.loadSample('parede_traseira_7col.csv')"
+                        class="btn w-full py-1.5 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-xs font-semibold">&#9646; Traseira</button>
                     <button onclick="app.loadSample('parede_esquerda_7col.csv')"
-                        class="btn w-full py-1.5 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-xs font-semibold">&#9646;
-                        Parede esquerda</button>
+                        class="btn w-full py-1.5 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-xs font-semibold">&#9646; Esquerda</button>
+                    <button onclick="app.loadSample('parede_direita_7col.csv')"
+                        class="btn w-full py-1.5 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-xs font-semibold">&#9646; Direita</button>
                     <button onclick="app.loadSample('piso_7col.csv')"
-                        class="btn w-full py-1.5 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-xs font-semibold">&#9647;
-                        Piso</button>
+                        class="btn w-full py-1.5 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-xs font-semibold">&#9647; Piso</button>
+                    <button onclick="app.loadSample('teto_7col.csv')"
+                        class="btn w-full py-1.5 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-xs font-semibold">&#9647; Teto</button>
                 </div>
 
                 <div class="mt-3 pt-3 border-t border-stone-100">
