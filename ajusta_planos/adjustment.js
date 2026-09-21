@@ -215,6 +215,67 @@
         return (lo + hi) / 2;
     }
 
+    // Beta incompleta regularizada I_x(a,b), pela fração continuada de Lentz.
+    // Base da distribuição t, usada nos intervalos de confiança do volume (volume.js).
+    function betacf(a, b, x) {
+        const EPS = 1e-14, FPMIN = 1e-300, ITMAX = 300;
+        const qab = a + b, qap = a + 1, qam = a - 1;
+        let c = 1, d = 1 - qab * x / qap;
+        if (Math.abs(d) < FPMIN) d = FPMIN;
+        d = 1 / d;
+        let h = d;
+        for (let m = 1; m <= ITMAX; m++) {
+            const m2 = 2 * m;
+            let aa = m * (b - m) * x / ((qam + m2) * (a + m2));
+            d = 1 + aa * d; if (Math.abs(d) < FPMIN) d = FPMIN;
+            c = 1 + aa / c; if (Math.abs(c) < FPMIN) c = FPMIN;
+            d = 1 / d; h *= d * c;
+            aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
+            d = 1 + aa * d; if (Math.abs(d) < FPMIN) d = FPMIN;
+            c = 1 + aa / c; if (Math.abs(c) < FPMIN) c = FPMIN;
+            d = 1 / d;
+            const del = d * c;
+            h *= del;
+            if (Math.abs(del - 1) < EPS) break;
+        }
+        return h;
+    }
+
+    function incompleteBeta(a, b, x) {
+        if (x <= 0) return 0;
+        if (x >= 1) return 1;
+        const front = Math.exp(logGamma(a + b) - logGamma(a) - logGamma(b) +
+            a * Math.log(x) + b * Math.log(1 - x));
+        // A fração continuada converge rápido só de um lado; do outro usa-se a simetria
+        return (x < (a + 1) / (a + b + 2))
+            ? front * betacf(a, b, x) / a
+            : 1 - front * betacf(b, a, 1 - x) / b;
+    }
+
+    function tCDF(t, dof) {
+        const x = dof / (dof + t * t);
+        const p = 0.5 * incompleteBeta(dof / 2, 0.5, x);
+        return t >= 0 ? 1 - p : p;
+    }
+
+    // Quantil da t de Student. Parte do quantil normal — que é o limite com dof grande — e
+    // refina por bissecção, como chi2Inv.
+    function tInv(p, dof) {
+        if (p <= 0) return -Infinity;
+        if (p >= 1) return Infinity;
+        if (!(dof > 0)) return NaN;
+        let lo = -1, hi = 1;
+        const chute = Math.abs(normInv(p)) + 1;
+        lo = -chute; hi = chute;
+        while (tCDF(lo, dof) > p) lo *= 2;
+        while (tCDF(hi, dof) < p) hi *= 2;
+        for (let i = 0; i < 200; i++) {
+            const mid = (lo + hi) / 2;
+            if (tCDF(mid, dof) < p) lo = mid; else hi = mid;
+        }
+        return (lo + hi) / 2;
+    }
+
     function normInv(p) {
         const a1 = -39.69683028665376, a2 = 220.9460984245205, a3 = -275.9285104469687,
             a4 = 138.3577518672690, a5 = -30.66479806614716, a6 = 2.506628277459239;
@@ -734,6 +795,7 @@
     return {
         linalg,
         logGamma, regularizedGammaP, chi2CDF, chi2Inv, normInv,
+        incompleteBeta, tCDF, tInv,
         plane3points, initialPlanePCA, classifyPlane,
         GAUGES, PARAM_NAMES, resolvePinIndex, pinQuality, solveGauge, compareGauges,
         adjustPlane, detectOutliers, detectThreeSigma, detectDataSnooping, detectRANSAC,

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estimativa de Volume — Seis Faces Ajustadas</title>
+    <meta name="description"
+        content="Estimativa do volume de uma sala a partir das seis faces ajustadas pelo Método Combinado, com a incerteza obtida por propagação de covariâncias e intervalos de confiança de 1%, 5% e 10%.">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📦</text></svg>">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body class="text-stone-800 antialiased min-h-screen flex flex-col">
+
+    <header class="bg-stone-900 text-stone-50 py-4 shadow-md">
+        <div class="max-w-[1500px] mx-auto px-4 sm:px-6 flex justify-between items-center gap-4">
+            <div>
+                <h1 class="text-xl md:text-2xl font-bold tracking-tight">Estimativa de Volume</h1>
+                <p class="text-stone-400 text-xs md:text-sm mt-1">Seis faces ajustadas, volume por fórmula
+                    algébrica e incerteza por propagação de covariâncias</p>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+                <a href="../index.html"
+                    class="text-xs text-stone-300 hover:text-white border border-stone-700 rounded px-3 py-1.5 transition-colors">&#8592;
+                    Portal</a>
+                <a href="index.html"
+                    class="text-xs text-stone-300 hover:text-white border border-stone-700 rounded px-3 py-1.5 transition-colors">&#8592;
+                    Ajustamento</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-[1500px] mx-auto px-4 sm:px-6 py-6 flex-grow w-full space-y-6">
+
+        <!-- ==================== 1 · DADOS ==================== -->
+        <section class="bg-white p-5 rounded-xl border border-stone-200 shadow-sm">
+            <h2 class="text-sm font-bold text-stone-500 uppercase tracking-wider mb-3 border-b pb-2">
+                <span class="text-teal-600">1</span> &nbsp;Dados das seis faces
+            </h2>
+            <div class="flex flex-wrap gap-2 items-center mb-3">
+                <button onclick="volApp.loadExample()" id="btnExample"
+                    class="btn py-1.5 px-4 bg-teal-600 text-white rounded shadow hover:bg-teal-700 text-xs font-bold">&#9635;
+                    Usar exemplo (as seis amostras)</button>
+                <button onclick="volApp.openUploadModal()"
+                    class="btn py-1.5 px-4 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-xs font-semibold">&#8679;
+                    Carregar 6 faces</button>
+                <label class="flex items-center gap-1.5 cursor-pointer text-xs text-stone-600 ml-2">
+                    <input type="checkbox" id="chkChecks" checked class="accent-teal-600"
+                        onchange="volApp.onChecksToggle()">
+                    Executar conferências geométricas
+                </label>
+            </div>
+            <div id="dataSummary" class="text-xs text-stone-500 italic">Nenhuma face carregada ainda.</div>
+            <div id="checkList" class="mt-3 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-5 gap-y-1"></div>
+        </section>
+
+        <!-- ==================== 2 · AJUSTAMENTO ==================== -->
+        <section class="bg-white p-5 rounded-xl border border-stone-200 shadow-sm">
+            <h2 class="text-sm font-bold text-stone-500 uppercase tracking-wider mb-3 border-b pb-2 flex
+                       justify-between items-center">
+                <span><span class="text-teal-600">2</span> &nbsp;Ajustamento de cada face</span>
+                <button onclick="volApp.adjustAll()" id="btnAdjustAll" disabled
+                    class="btn py-1 px-3 bg-teal-600 text-white rounded shadow hover:bg-teal-700 text-[11px] font-bold normal-case tracking-normal">&#9654;
+                    Ajustar todas</button>
+            </h2>
+            <p class="text-[11px] text-stone-500 mb-3">Todas as faces usam a <strong>injunção unitária</strong>
+                (A² + B² + C² = 1), que é o gauge em que a MVC dos parâmetros pode ser propagada diretamente.
+                Cada face pode usar uma combinação diferente de detecção de outliers.</p>
+            <div id="facePanels" class="space-y-3"></div>
+        </section>
+
+        <!-- ==================== 3 · RESUMO ==================== -->
+        <section class="bg-white p-5 rounded-xl border border-stone-200 shadow-sm">
+            <h2 class="text-sm font-bold text-stone-500 uppercase tracking-wider mb-3 border-b pb-2">
+                <span class="text-teal-600">3</span> &nbsp;Resumo dos seis planos
+            </h2>
+            <div id="summaryTable" class="table-container text-xs text-stone-500 italic">
+                Ajuste as seis faces para ver o resumo.</div>
+        </section>
+
+        <!-- ==================== 4 · VOLUME ==================== -->
+        <section class="bg-white p-5 rounded-xl border border-stone-200 shadow-sm">
+            <h2 class="text-sm font-bold text-stone-500 uppercase tracking-wider mb-3 border-b pb-2 flex
+                       justify-between items-center">
+                <span><span class="text-teal-600">4</span> &nbsp;Volume geométrico</span>
+                <button onclick="volApp.computeVolume()" id="btnVolume" disabled
+                    class="btn py-1 px-3 bg-indigo-600 text-white rounded shadow hover:bg-indigo-700 text-[11px] font-bold normal-case tracking-normal">&#8721;
+                    Calcular Volume</button>
+            </h2>
+            <div id="volumeHint" class="text-xs text-stone-500 italic">Ajuste as seis faces primeiro.</div>
+            <div id="volumeBody" style="display:none">
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    <div>
+                        <div id="volumeFormula" class="bg-stone-50 border border-stone-200 rounded-lg p-4
+                             text-[13px] overflow-x-auto"></div>
+                        <div id="volumeNumbers" class="mt-4"></div>
+                    </div>
+                    <div>
+                        <div id="roomView" style="width:100%;height:380px;border:1px solid #e7e5e4;
+                             border-radius:0.5rem;overflow:hidden"></div>
+                        <p class="text-[11px] text-stone-500 italic mt-1">Arraste para rotacionar &middot; roda
+                            para zoom. O losango vermelho na origem é a estação total.</p>
+                        <div id="vertexTable" class="mt-3 table-container"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== 5 · PROPAGAÇÃO ==================== -->
+        <section class="bg-white p-5 rounded-xl border border-stone-200 shadow-sm">
+            <h2 class="text-sm font-bold text-stone-500 uppercase tracking-wider mb-3 border-b pb-2">
+                <span class="text-teal-600">5</span> &nbsp;Propagação estatística e intervalos de confiança
+            </h2>
+            <div id="propHint" class="text-xs text-stone-500 italic">Calcule o volume primeiro.</div>
+            <div id="propBody" style="display:none">
+                <div id="propFormula" class="bg-stone-50 border border-stone-200 rounded-lg p-4 text-[13px]
+                     overflow-x-auto mb-4"></div>
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    <div id="propContrib"></div>
+                    <div id="propIntervals"></div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="text-center text-[11px] text-stone-400 py-4">
+        Modelo Combinado (Gemael) &middot; injunção unitária &middot; propagação de covariâncias
+    </footer>
+
+    <!-- ==================== MODAL DE UPLOAD ==================== -->
+    <div id="uploadModal" style="display:none"
+        class="fixed inset-0 bg-stone-900/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-base font-bold mb-1">Carregar as seis faces</h3>
+            <p class="text-xs text-stone-500 mb-4">Um CSV de 7 colunas por face, no mesmo formato do
+                simulador (G,M,S do azimute &middot; G,M,S do zenital &middot; distância inclinada).
+                <strong>A ordem importa</strong>: cada arquivo tem de ir no seu slot. As conferências
+                geométricas avisam se algo parecer trocado.</p>
+            <div id="uploadSlots" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+            <div id="uploadStatus" class="text-xs mt-4"></div>
+            <div class="flex justify-end gap-2 mt-5">
+                <button onclick="volApp.closeUploadModal()"
+                    class="btn py-1.5 px-4 bg-stone-100 text-stone-700 border border-stone-300 rounded
+                           hover:bg-stone-200 text-xs font-semibold">Cancelar</button>
+                <button onclick="volApp.confirmUpload()" id="btnConfirmUpload" disabled
+                    class="btn py-1.5 px-4 bg-teal-600 text-white rounded shadow hover:bg-teal-700 text-xs
+                           font-bold">Usar estes arquivos</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="io.js"></script>
+    <script src="adjustment.js"></script>
+    <script src="volume.js"></script>
+    <script src="room3d.js"></script>
+    <script src="volume_app.js"></script>
+    <script>volApp.init();</script>
+</body>
+
+</html>

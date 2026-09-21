@@ -113,6 +113,41 @@ planes, nearer +X for vertical ones, classified by the Z spread of the internal 
 vectors) and rescales to `‖n‖ = 1`, propagating the MVC through the Jacobian of that
 transformation. It is what makes results from different gauges directly comparable.
 
+## Volume estimation
+
+`volume.html` (reachable from the **Estimativa de Volume** button in the simulator header) closes
+the six faces into a polyhedron and estimates the room's volume **with its uncertainty**. The
+point of the page is that the volume is an *algebraic* function of the 24 parameters, so the
+uncertainty comes from covariance propagation rather than simulation.
+
+Opposing faces are paired by their **normals**, not by filename — the names mislead: `frontal`
+(−Y) opposes `direita` (+Y), and `esquerda` (+X) opposes `traseira` (−X). Each of the 8 vertices
+solves `M v = -d` for one plane per pair; the six faces are planar by construction, so the
+divergence theorem over the triangulated boundary is exact:
+
+```
+V = (1/6) | sum_{t=1..12} det[ p_t1  p_t2  p_t3 ] |
+```
+
+The Jacobian is analytic — differentiating `M v = -d` gives
+`dv/dx_i = -M^-1 e_r [v_x, v_y, v_z, 1]` — and `sigma_V^2 = J S J^T` with `S` block-diagonal,
+since the six faces are independent surveys. All faces use the **unitary constraint** gauge, the
+one whose MVC propagates directly.
+
+`Sigma_Xa` has rank 3 in that gauge, and it does not matter: the null direction is the parameter
+scale, stretching a plane's parameters does not move the plane, so that direction sits exactly in
+the null space of `J`. `test_volume.js` asserts it.
+
+On the six samples: **V = 271.3049 m³, sigma_V = 0.0849 m³** (0.031 %). The naive product of the
+three face separations gives 271.3384 m³ — off by 0.033 m³, because the room is not a perfect box
+and only the polyhedron formula accounts for that.
+
+The confidence intervals are shown in both the normal and the Student-t columns. The t column
+uses **Welch–Satterthwaite effective degrees of freedom** (81.7 here), not the 227 of the naive
+sum: the six faces have very different `sigma_0`, and whichever dominates the variance also
+dominates the dof. The ceiling alone carries 54 % of the variance because it is the roughest
+surface in the set — which is the page's real lesson about where an uncertainty comes from.
+
 ## Files
 
 | File | Role |
@@ -122,7 +157,11 @@ transformation. It is what makes results from different gauges directly comparab
 | `viewer3d.js` | three.js scene: points, error ellipsoids, fitted plane, residual stems |
 | `surface2d.js` | residual surface: TIN / IDW / ordinary kriging, heatmap and contours |
 | `app.js` | state, tabs, tables, workflow |
+| `volume.js` | face pairing, vertices, volume, analytic Jacobian, covariance propagation |
+| `volume.html` + `volume_app.js` | the volume page and its five panels |
+| `room3d.js` | three.js view of the reconstructed room |
 | `test_adjust.js` | `node ajusta_planos/test_adjust.js` — checked against an independent numpy run |
+| `test_volume.js` | `node ajusta_planos/test_volume.js` — analytic boxes, Jacobian vs finite differences, gauge invariance |
 
 The page needs to be served over HTTP (the sample CSVs are read with `fetch`):
 `python3 -m http.server` from the repository root.
