@@ -1,0 +1,1275 @@
+% Por que precisamos do geoide — alturas, números geopotenciais, IHRF e o Everest.
+% Aula para o ensino médio, em "baby steps", com apêndice técnico.
+%
+% Compilar (nesta pasta):  latexmk -pdf geoide_e_alturas.tex
+% Limpar auxiliares:       latexmk -c
+%
+% Acompanha o simulador historia_modelos_terrestres/ (abas Geóide e Teluróide).
+% Segue o mesmo formato das aulas de ajusta_planos/explanations/.
+%
+% Fontes dos fatos e números citados (conferidos em 2026-09-21):
+%   W0 = 62 636 853,4 m²/s²; coordenadas no ITRF; meta de ±1e-2 m²/s² (~1 mm):
+%     IAG Resolution No. 1, IUGG General Assembly 2015 (Praga).
+%     Sánchez et al., "Towards a first realization of the IHRS"; GGOS/IHRS Realization.
+%   Grandes Lagos usam altitudes DINÂMICAS (IGLD 1985) justamente porque a água parada
+%     tem altitudes ortométricas diferentes; NAVD 88 usa ortométricas de Helmert:
+%     NOAA/NGS, "North American Vertical Datum and International Great Lakes Datum".
+%   Everest: 8 848 m (Survey of India, 1954, neve); 8 844,43 m (China, 2005, rocha, com
+%     radar de penetração no gelo); Nepal ao cume em 22/05/2019 (Khim Lal Gautam);
+%     China em maio de 2020; anúncio conjunto em 08/12/2020 de 8 848,86 m, referido a um
+%     geoide gravimétrico calculado com base no IHRS.
+%   Ondulações extremas (-106 m no Índico, +85 m na Nova Guiné): mesmas do simulador,
+%     models/geoide.js.
+
+\documentclass[aspectratio=169,11pt]{beamer}
+
+\usetheme[progressbar=frametitle, sectionpage=progressbar, numbering=fraction]{metropolis}
+\metroset{block=fill}
+
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[brazilian]{babel}
+\usepackage{icomma}
+\usepackage{amsmath, amssymb, mathtools}
+\usepackage{booktabs}
+\usepackage[most]{tcolorbox}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, calc, positioning, decorations.pathreplacing,
+                decorations.pathmorphing, patterns, babel}
+
+% ------------------------------------------------------------------ paleta (a mesma das outras aulas)
+\definecolor{mStone}{HTML}{1C1917}
+\definecolor{mStoneMid}{HTML}{78716C}
+\definecolor{mStoneLight}{HTML}{F5F5F4}
+\definecolor{mTeal}{HTML}{0D9488}
+\definecolor{mRose}{HTML}{E11D48}
+\definecolor{mAmber}{HTML}{D97706}
+\definecolor{mIndigo}{HTML}{4F46E5}
+\definecolor{mSky}{HTML}{0284C7}
+
+% Cada superfície tem sua cor, a mesma em toda figura desta aula
+\colorlet{corElip}{mIndigo}     % elipsoide — a forma lisa, o que o GNSS usa
+\colorlet{corGeoide}{mTeal}     % geoide — a superfície que a água escolhe
+\colorlet{corTerreno}{mAmber}   % terreno — a Terra de verdade
+\colorlet{corAgua}{mSky}        % a água, e tudo que ela decide
+
+\setbeamercolor{normal text}{fg=mStone, bg=white}
+\setbeamercolor{palette primary}{fg=white, bg=mStone}
+\setbeamercolor{frametitle}{fg=white, bg=mStone}
+\setbeamercolor{alerted text}{fg=mRose}
+\setbeamercolor{example text}{fg=mTeal}
+\setbeamercolor{progress bar}{fg=mTeal, bg=mTeal!20}
+\setbeamercolor{progress bar in head/foot}{fg=mTeal, bg=mTeal!20}
+\setbeamercolor{progress bar in section page}{fg=mTeal, bg=mTeal!20}
+\setbeamercolor{title separator}{fg=mTeal}
+\setbeamercolor{block title}{fg=white, bg=mTeal}
+\setbeamercolor{block body}{fg=mStone, bg=mTeal!8}
+
+% ------------------------------------------------------------------ caixas
+\newtcolorbox{ideia}[1][]{enhanced, colback=mTeal!7, colframe=mTeal, boxrule=0.6pt, arc=2pt,
+  left=6pt, right=6pt, top=4pt, bottom=4pt, fonttitle=\bfseries\small, coltitle=white, #1}
+\newtcolorbox{cuidado}[1][]{enhanced, colback=mAmber!8, colframe=mAmber, boxrule=0.6pt, arc=2pt,
+  left=6pt, right=6pt, top=4pt, bottom=4pt, fonttitle=\bfseries\small, coltitle=white, #1}
+\newtcolorbox{armadilha}[1][]{enhanced, colback=mRose!6, colframe=mRose, boxrule=0.6pt, arc=2pt,
+  left=6pt, right=6pt, top=4pt, bottom=4pt, fonttitle=\bfseries\small, coltitle=white, #1}
+
+% ------------------------------------------------------------------ estilos TikZ
+\tikzset{
+  seta/.style={-{Stealth[length=2.4mm]}, thick},
+  rotulo/.style={font=\scriptsize, text=mStone},
+  elip/.style={corElip, very thick},
+  geoide/.style={corGeoide, very thick},
+  terreno/.style={corTerreno, very thick},
+  nivel/.style={corGeoide!55, thick},
+}
+
+\newcommand{\bnum}[1]{\textbf{\textcolor{mTeal}{#1}}}
+\newcommand{\hgnss}{\textcolor{corElip}{h}}
+\newcommand{\Horto}{\textcolor{corGeoide}{H}}
+\newcommand{\Nond}{\textcolor{mRose}{N}}
+
+\title{Por que a água às vezes corre para cima?}
+\subtitle{O geoide, os sistemas de altitude, e a altura do Everest}
+\author{}
+\institute{Simulador de Modelos Terrestres}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+% ==================================================================
+\begin{frame}{O que vamos ver}
+  \setbeamertemplate{section in toc}[sections numbered]
+  \begin{columns}[T]
+    \begin{column}{0.58\textwidth}
+      \tableofcontents
+    \end{column}
+    \begin{column}{0.38\textwidth}
+      \begin{ideia}[title={Duas partes}]
+        \small
+        \textbf{Parte 1} --- por que a altura precisa da gravidade, e o que é o geoide.
+        \medskip
+
+        \textbf{Parte 2} --- um zero para o mundo todo, e como isso resolveu a altura do
+        Everest depois de décadas de briga.
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{Uma pergunta que parece boba}
+
+\begin{frame}{``Qual é a altura daqui?''}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      Parece a pergunta mais simples do mundo. Mas experimente responder para um mesmo
+      lugar, com instrumentos diferentes:
+      \bigskip
+
+      \centering
+      \small
+      \renewcommand{\arraystretch}{1.3}
+      \begin{tabular}{lr}
+        \toprule
+        o celular (GPS) diz & $812{,}0$\,m \\
+        a placa na estrada diz & $787{,}5$\,m \\
+        o mapa antigo diz & $788{,}1$\,m \\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{cuidado}[title={Nenhum deles está errado}]
+        Os três mediram bem. Eles só estão contando a altura \alert{a partir de lugares
+        diferentes}.
+      \end{cuidado}
+      \bigskip
+
+      Altura é sempre \bnum{altura a partir de alguma coisa}. Enquanto ninguém disser
+      \emph{a partir de quê}, a pergunta não tem resposta.
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Precisamos combinar onde fica o zero}
+  \begin{columns}[c]
+    \begin{column}{0.48\textwidth}
+      Todo mundo já combinou isso uma vez: ``altura acima do \bnum{nível do mar}''.
+      \bigskip
+
+      Só que o mar \alert{não é plano}. Ele sobe, desce, tem maré, tem vento, tem água
+      mais quente de um lado do que do outro.
+      \bigskip
+
+      E onde não há mar --- no meio de Goiás, no Himalaia --- \alert{onde fica o nível do
+      mar?}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95]
+        \fill[corAgua!18] (0,0) rectangle (6.2,-0.9);
+        \draw[corAgua, thick, decorate,
+              decoration={snake, amplitude=0.6mm, segment length=3mm}] (0,0) -- (6.2,0);
+        \fill[corTerreno!25] (3.4,-0.9) .. controls (4.2,1.6) and (5.0,0.4) ..
+                             (6.2,1.9) -- (6.2,-0.9) -- cycle;
+        \draw[terreno] (3.4,-0.9) .. controls (4.2,1.6) and (5.0,0.4) .. (6.2,1.9);
+        \node[rotulo, text=corAgua] at (1.4,0.42) {o mar, que não fica quieto};
+        \node[rotulo, align=center] at (5.3,-0.45) {e aqui dentro?};
+        \draw[mRose, seta] (5.3,-0.18) -- (5.3,0.9);
+        \node[rotulo, text=mRose, right] at (5.4,1.2) {?};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{O cano que não funciona}
+  \begin{columns}[T]
+    \begin{column}{0.42\textwidth}
+      Uma obra precisa levar água de \textbf{A} até \textbf{B}, a 30\,km de distância.
+      \medskip
+
+      O GPS mede os dois pontos e dá a \alert{mesma altura}:
+      \[ h_A = h_B = 812{,}00\ \text{m} \]
+      Então a água deveria ficar parada.
+      \medskip
+
+      \onslide<2->{Só que na obra \alert{a água corre de A para B}.}
+    \end{column}
+    \begin{column}{0.54\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.86]
+        \draw[corElip, dashed, thick] (0,0) -- (6.4,0);
+        \node[rotulo, text=corElip, right] at (5.0,-0.32) {mesma altura pelo GPS};
+        \fill[mStone] (0.5,0) circle (0.08) node[above, rotulo] {A};
+        \fill[mStone] (5.9,0) circle (0.08) node[above, rotulo] {B};
+        \onslide<2->{
+          \draw[corAgua, line width=2pt, -{Stealth[length=3mm]}] (0.9,0.28) -- (5.5,0.28);
+          \node[rotulo, text=corAgua, above] at (3.2,0.42) {a água vai para lá};
+          \draw[corGeoide, very thick] (0,-1.5) .. controls (2.2,-1.2) and (4.2,-1.9) ..
+                                       (6.4,-1.75);
+          \node[rotulo, text=corGeoide, below] at (3.2,-1.95) {o ``zero'' de verdade não é plano};
+          \draw[corGeoide!60] (0.5,0) -- (0.5,-1.42);
+          \draw[corGeoide!60] (5.9,0) -- (5.9,-1.78);
+        }
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+  \onslide<2->{
+    \medskip
+    \begin{armadilha}[title={O que isso significa}]
+      A altura que o GPS dá é uma \alert{distância geométrica}, medida a partir de uma
+      forma lisa inventada. A água não obedece a formas inventadas: ela obedece à
+      \bnum{gravidade}.
+    \end{armadilha}
+  }
+\end{frame}
+
+% ==================================================================
+\section{Três superfícies, três alturas}
+
+\begin{frame}{A Terra de verdade é cheia de calombos}
+  \begin{columns}[c]
+    \begin{column}{0.48\textwidth}
+      A superfície onde a gente pisa --- o \textcolor{corTerreno}{\textbf{terreno}} ---
+      tem montanhas de 8\,km e fossas de 11\,km.
+      \bigskip
+
+      Ninguém consegue escrever uma fórmula para ela. Então a geodésia faz o que sempre
+      se faz em ciência: \bnum{inventa formas simples que chegam perto}, uma de cada vez.
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.92]
+        \draw[terreno] (0,0) .. controls (0.8,0.9) and (1.4,-0.4) .. (2.2,0.35)
+                       .. controls (2.9,1.0) and (3.4,0.1) .. (4.0,1.5)
+                       .. controls (4.6,0.2) and (5.4,0.7) .. (6.2,0.1);
+        \fill[corTerreno!18] (0,0) .. controls (0.8,0.9) and (1.4,-0.4) .. (2.2,0.35)
+                       .. controls (2.9,1.0) and (3.4,0.1) .. (4.0,1.5)
+                       .. controls (4.6,0.2) and (5.4,0.7) .. (6.2,0.1)
+                       -- (6.2,-0.8) -- (0,-0.8) -- cycle;
+        \node[rotulo, text=corTerreno, above] at (4.0,1.55) {terreno};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Forma nº 1: o elipsoide --- a Terra lisa de mentirinha}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      Uma bola levemente achatada nos polos, descrita por \bnum{dois números só}:
+      \[ a = 6\,378\,137\ \text{m}, \qquad f = 1/298{,}257 \]
+      \medskip
+      É \alert{pura geometria}: nenhuma pedra, nenhuma montanha, nenhuma gravidade.
+      Uma fórmula, e pronto.
+      \medskip
+
+      É esta a forma que o \bnum{GPS} usa. A altura que o celular mostra é a distância
+      até ela: a \textcolor{corElip}{\textbf{altitude elipsoidal $h$}}.
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95]
+        \draw[elip] (3,0) ellipse (2.6 and 2.1);
+        \draw[mStoneMid, dashed] (0.4,0) -- (5.6,0);
+        \draw[mStoneMid, dashed] (3,-2.1) -- (3,2.1);
+        \draw[corElip, {Stealth[length=2mm]}-{Stealth[length=2mm]}] (3,0) -- (5.6,0);
+        \node[rotulo, text=corElip, above] at (4.4,0.05) {$a$};
+        \node[rotulo, text=corElip, right] at (3.05,1.15) {$b$};
+        \draw[corElip, {Stealth[length=2mm]}-{Stealth[length=2mm]}] (3,0) -- (3,2.1);
+        \node[rotulo, below] at (3,-2.35) {achatado nos polos (bem pouco)};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{O GPS não sabe onde é ``para baixo''}
+  \begin{columns}[c]
+    \begin{column}{0.52\textwidth}
+      Um receptor GNSS resolve um problema puramente geométrico: \emph{onde estou, em
+      relação a um punhado de satélites?}
+      \medskip
+
+      Ele devolve latitude, longitude e $h$ --- e \alert{nunca mediu a gravidade}.
+      Não tem como: não há nada dentro dele que sinta peso.
+      \medskip
+
+      \begin{cuidado}[title={A consequência}]
+        $h$ diz a que \emph{distância} você está do elipsoide. Não diz se a água vai subir
+        ou descer indo daqui até ali.
+      \end{cuidado}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \foreach \x/\y in {0.4/2.9, 2.2/3.4, 4.2/3.1, 5.6/2.4} {
+          \fill[mStoneMid] (\x,\y) circle (0.11);
+          \draw[mStoneMid!60] (\x,\y) -- (3.0,0.55);
+        }
+        \fill[mStone] (3.0,0.5) rectangle (3.3,0.75);
+        \draw[corElip, very thick] (0.2,0) .. controls (2,0.25) and (4,0.25) .. (5.9,0);
+        \draw[corElip, {Stealth[length=2mm]}-{Stealth[length=2mm]}] (3.15,0.2) -- (3.15,0.5);
+        \node[rotulo, text=corElip, right] at (3.25,0.35) {$h$};
+        \node[rotulo, text=corElip, below] at (3.0,-0.2) {elipsoide};
+        \node[rotulo] at (2.0,2.2) {satélites};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Forma nº 2: o que a água faz quando é deixada em paz}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      Encha uma bacia e espere. A água para numa superfície bem definida ---
+      a que \bnum{não tem nenhuma ladeira}.
+      \bigskip
+
+      Agora imagine isso no planeta inteiro: tire o vento, a maré, as correntes, e deixe o
+      oceano se acalmar. A superfície que sobra é uma superfície especial.
+      \bigskip
+
+      E ela \bnum{continua por baixo dos continentes}: é onde a água pararia se houvesse
+      canaletas cortando a terra toda.
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95]
+        \fill[corTerreno!25] (0,0) .. controls (1.2,0.15) and (1.8,1.4) .. (3.1,1.45)
+              .. controls (4.4,1.5) and (5.0,0.2) .. (6.2,0.1) -- (6.2,-1.2) -- (0,-1.2) -- cycle;
+        \draw[terreno] (0,0) .. controls (1.2,0.15) and (1.8,1.4) .. (3.1,1.45)
+              .. controls (4.4,1.5) and (5.0,0.2) .. (6.2,0.1);
+        \draw[corAgua, dashed, very thick] (0,-0.25) -- (6.2,-0.25);
+        \fill[corAgua!35] (2.55,-0.25) rectangle (2.95,1.46);
+        \fill[corAgua!35] (0,-0.25) rectangle (0.6,-0.05);
+        \node[rotulo, text=corAgua, below right] at (0.1,-0.4) {a mesma superfície, por baixo de tudo};
+        \node[rotulo, text=corTerreno, above] at (3.1,1.5) {terreno};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Essa superfície tem nome: geoide}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \begin{ideia}[title={Geoide}]
+        A superfície em que a gravidade tem sempre \bnum{o mesmo valor de potencial} ---
+        aquela que coincide com o nível médio dos mares em repouso, e que segue por baixo
+        dos continentes.
+      \end{ideia}
+      \medskip
+
+      O nome foi cunhado por \textbf{J. B. Listing} em 1873: do grego \emph{ge} (Terra)
+      $+$ \emph{eidos} (forma). Literalmente: \emph{``a forma da Terra''}.
+      \medskip
+
+      Ele é \alert{ondulado}: onde há mais massa, o geoide sobe; onde há menos, afunda.
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.92]
+        \draw[elip, dashed] (3,0) ellipse (2.15 and 1.80);
+        \draw[geoide] plot[smooth cycle, tension=0.8]
+          coordinates {(5.35,0.55) (4.45,1.55) (2.95,2.35) (1.35,1.35) (0.45,0.05)
+                       (1.05,-1.30) (2.55,-2.15) (4.35,-1.20)};
+        \node[rotulo, text=corElip, right] at (4.85,-1.75) {elipsoide};
+        \node[rotulo, text=corGeoide, above] at (2.95,2.40) {geoide};
+      \end{tikzpicture}
+      \smallskip
+
+      {\scriptsize\textcolor{mStoneMid}{As ondulações estão \emph{muito} exageradas:\\
+      de verdade elas são milhares de vezes menores.}}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Quanto o geoide realmente ondula}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      A distância entre o geoide e o elipsoide é a \textcolor{mRose}{\textbf{ondulação
+      geoidal $N$}}. No planeta inteiro ela vai de:
+      \medskip
+      \centering
+      \small
+      \renewcommand{\arraystretch}{1.25}
+      \begin{tabular}{lr}
+        \toprule
+        Depressão do Oceano Índico & $-106$\,m \\
+        Domo da Nova Guiné & $+85$\,m \\
+        Alto da Islândia & $+68$\,m \\
+        Baía de Hudson & $-58$\,m \\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{cuidado}[title={Parece muito? É pouquíssimo.}]
+        $106$ metros num raio de $6\,371$\,\textbf{quilômetros}.
+        \medskip
+
+        É como um calombo de \bnum{1 milímetro} numa bola de basquete --- e mesmo assim
+        ninguém pode ignorá-lo numa obra.
+      \end{cuidado}
+      \medskip
+
+      {\small É por isso que toda figura de geoide que você já viu está com o relevo
+      exagerado umas 10\,000 vezes.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{A equação mais importante desta aula}
+  \begin{columns}[T]
+    \begin{column}{0.42\textwidth}
+      Três superfícies, empilhadas:
+      \begin{itemize}
+        \item \textcolor{corTerreno}{\textbf{terreno}} --- onde você está
+        \item \textcolor{corGeoide}{\textbf{geoide}} --- o zero físico
+        \item \textcolor{corElip}{\textbf{elipsoide}} --- o zero geométrico
+      \end{itemize}
+      \medskip
+      \[ \boxed{\; \hgnss = \Horto + \Nond \;} \]
+      \begin{itemize}
+        \item $\hgnss$: o que o GPS dá
+        \item $\Horto$: a altitude que a placa mostra
+        \item $\Nond$: a ondulação, de um modelo
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.54\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=1.0]
+        \draw[terreno] (0,2.0) .. controls (1.6,2.5) and (3.2,1.6) .. (6.4,2.2);
+        \node[rotulo, text=corTerreno, above left] at (6.4,2.25) {terreno};
+        \draw[geoide] (0,0.75) .. controls (2.2,1.1) and (4.2,0.4) .. (6.4,0.7);
+        \node[rotulo, text=corGeoide, below left] at (6.4,0.6) {geoide};
+        \draw[elip] (0,-0.5) -- (6.4,-0.5);
+        \node[rotulo, text=corElip, above left] at (6.4,-0.45) {elipsoide};
+        % o ponto e as tres medidas
+        \fill[mStone] (2.6,2.27) circle (0.09);
+        \node[rotulo, above] at (2.6,2.36) {você está aqui};
+        \draw[corGeoide, {Stealth[length=2mm]}-{Stealth[length=2mm]}] (2.45,2.27) -- (2.45,0.93);
+        \node[rotulo, text=corGeoide, left] at (2.38,1.6) {$H$};
+        \draw[mRose, {Stealth[length=2mm]}-{Stealth[length=2mm]}] (2.9,0.93) -- (2.9,-0.5);
+        \node[rotulo, text=mRose, right] at (2.97,0.2) {$N$};
+        \draw[corElip, {Stealth[length=2mm]}-{Stealth[length=2mm]}] (3.6,2.13) -- (3.6,-0.5);
+        \node[rotulo, text=corElip, right] at (3.67,0.85) {$h$};
+        \draw[mStoneMid, dotted] (2.6,2.27) -- (3.6,2.13);
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Voltando ao cano que não funcionava}
+  \centering
+  \small
+  \renewcommand{\arraystretch}{1.35}
+  \begin{tabular}{lrrr}
+    \toprule
+    & \textcolor{corElip}{$h$ (GPS)} & \textcolor{mRose}{$N$ (modelo)}
+    & \textcolor{corGeoide}{$H = h - N$} \\
+    \midrule
+    ponto A & $812{,}00$\,m & $-8{,}40$\,m & \textcolor{corGeoide}{$\mathbf{820{,}40}$\,m} \\
+    ponto B & $812{,}00$\,m & $-8{,}12$\,m & \textcolor{corGeoide}{$\mathbf{820{,}12}$\,m} \\
+    \midrule
+    diferença & $0{,}00$\,m & & \alert{$\mathbf{0{,}28}$\,m} \\
+    \bottomrule
+  \end{tabular}
+  \bigskip
+
+  A água desce \bnum{28 centímetros} de A para B --- exatamente o que se via na obra.
+  \medskip
+
+  \begin{ideia}[title={O que o geoide resolveu}]
+    O GPS estava certo, e a água também. Faltava a \bnum{tradução} entre os dois:
+    a ondulação $N$.
+  \end{ideia}
+\end{frame}
+
+% ==================================================================
+\section{O que quer dizer ``estar no mesmo nível''}
+
+\begin{frame}{Superfície de nível: onde a água não corre}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      O geoide não é uma superfície especial e solitária. Ele é \bnum{uma de uma família
+      inteira}.
+      \medskip
+
+      Acima e abaixo dele existem outras superfícies com a mesma propriedade: soltar uma
+      bolinha ali, e ela não rola. São as \bnum{superfícies de nível}.
+      \medskip
+
+      O geoide é simplesmente aquela que escolhemos chamar de \alert{zero}.
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.82]
+        \foreach \y/\amp in {0/0.30, 0.75/0.27, 1.5/0.24, 2.25/0.21, 3.0/0.18} {
+          \draw[nivel] (0,\y) .. controls (2.1,\y+\amp) and (4.2,\y-\amp) .. (6.3,\y+0.5*\amp);
+        }
+        \draw[geoide] (0,0) .. controls (2.1,0.30) and (4.2,-0.30) .. (6.3,0.15);
+        \node[rotulo, text=corGeoide, below] at (5.2,-0.15) {geoide};
+        \node[rotulo, align=left, text=mStoneMid] at (2.0,3.7) {superfícies de nível};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{O fio de prumo aponta para o geoide, não para o elipsoide}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      Um fio de prumo fica perpendicular à superfície de nível que passa por ele ---
+      ou seja, \bnum{perpendicular ao geoide}.
+      \medskip
+
+      A perpendicular ao \emph{elipsoide} é outra direção. O ângulo entre as duas é o
+      \bnum{desvio da vertical}.
+      \medskip
+
+      Em terreno plano ele é de poucos segundos de arco. Perto de uma cordilheira,
+      \alert{a montanha puxa o prumo para si} e o desvio fica bem maior.
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.84]
+        \draw[geoide] (0,1.2) .. controls (2.0,1.75) and (4.0,0.9) .. (6.0,1.35);
+        \node[rotulo, text=corGeoide, right] at (5.2,0.98) {geoide};
+        \draw[elip] (0,0) -- (6.0,0);
+        \node[rotulo, text=corElip, right] at (5.2,-0.25) {elipsoide};
+        \fill[mStone] (2.6,1.62) circle (0.08);
+        % normal ao elipsoide
+        \draw[corElip, thick, dashed] (2.6,1.62) -- (2.6,3.2);
+        % normal ao geoide (inclinada)
+        \draw[corGeoide, very thick] (2.6,1.62) -- (3.05,3.15);
+        \draw[mRose, thick] (2.6,2.45) arc (90:73:0.85);
+        \node[rotulo, text=mRose, left] at (2.05,2.28) {desvio};
+        \draw[mRose, seta] (2.15,2.38) -- (2.58,2.55);
+        \node[rotulo, text=corElip, above, align=center] at (1.95,3.15)
+              {normal ao\\elipsoide};
+        \draw[corElip, seta, dashed] (2.20,3.20) -- (2.56,3.20);
+        \node[rotulo, text=corGeoide, right] at (3.12,3.15) {prumo};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{E aqui vem a surpresa: elas não são paralelas}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      Duas superfícies de nível vizinhas \alert{não guardam a mesma distância} uma da
+      outra em todo lugar.
+      \medskip
+
+      Onde a gravidade é mais forte --- nos polos --- elas ficam \bnum{mais juntas}.
+      Onde é mais fraca --- no Equador --- ficam \bnum{mais afastadas}.
+      \medskip
+
+      {\small A gravidade varia cerca de $0{,}5\,\%$ do Equador ao polo: o mesmo saco de
+      cimento pesa meio por cento a mais lá em cima.}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.80]
+        \draw[geoide] (3,0) ellipse (2.5 and 2.05);
+        \draw[nivel] (3,0) ellipse (2.92 and 2.30);
+        \draw[nivel] (3,0) ellipse (3.32 and 2.53);
+        \draw[mRose, {Stealth[length=1.8mm]}-{Stealth[length=1.8mm]}] (3,2.05) -- (3,2.30);
+        \draw[mRose, {Stealth[length=1.8mm]}-{Stealth[length=1.8mm]}] (5.5,0) -- (5.92,0);
+        \node[rotulo, text=mRose, above] at (3,2.60) {mais juntas};
+        \node[rotulo, text=mRose, right, align=left] at (6.15,0) {mais\\afastadas};
+        \node[rotulo] at (3,-2.45) {(exagerado)};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Por que isso estraga a ideia ingênua de altura}
+  Se as superfícies de nível não são paralelas, então \alert{``subir 1 metro'' não quer
+  dizer sempre a mesma coisa}.
+  \bigskip
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{armadilha}[title={O nivelamento que não fecha}]
+        Meça a diferença de altura entre dois pontos indo por um caminho, e depois por
+        outro. \alert{Dá diferente} --- mesmo com instrumentos perfeitos.
+        \medskip
+
+        Não é erro de medida: é o mundo sendo assim.
+      \end{armadilha}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{ideia}[title={A saída}]
+        Parar de medir altura em \emph{metros subidos} e passar a medir
+        \bnum{o esforço para subir}.
+        \medskip
+
+        Esse esforço não depende do caminho --- e é a próxima seção.
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{A altura medida em esforço}
+
+\begin{frame}{Subir cansa --- e é isso que importa}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      Carregue um saco de cimento escada acima. O que cansa não é ``ter subido 3 metros'':
+      é o \bnum{trabalho} que você fez contra a gravidade.
+      \medskip
+
+      Onde a gravidade é mais forte, os mesmos 3 metros \alert{cansam mais}.
+      \medskip
+
+      A geodésia moderna adota exatamente essa medida. Ela chama de
+      \bnum{número geopotencial}.
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95]
+        \foreach \i in {0,...,3} {
+          \draw[mStoneMid, thick] (\i*0.65,\i*0.5) -- (\i*0.65+0.65,\i*0.5)
+                                  -- (\i*0.65+0.65,\i*0.5+0.5);
+        }
+        \fill[corTerreno] (2.05,1.62) circle (0.17);
+        \draw[corTerreno, line width=1.6pt] (2.05,1.45) -- (2.05,0.95);
+        \draw[corTerreno, thick] (2.05,1.30) -- (1.70,1.05) (2.05,1.30) -- (2.40,1.05);
+        \draw[corTerreno, thick] (2.05,0.95) -- (1.80,0.5) (2.05,0.95) -- (2.35,0.5);
+        \draw[mRose, seta, line width=1.4pt] (3.4,2.3) -- (3.4,0.55);
+        \node[rotulo, text=mRose, right] at (3.5,1.5) {gravidade};
+        \node[rotulo, align=center] at (1.5,2.6) {o que cansa é o \emph{trabalho},\\não a distância};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{O número geopotencial}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      Dê um nome ao ``nível de energia'' de cada superfície de nível: chame de $W$.
+      O do geoide é $W_0$.
+      \medskip
+
+      O \bnum{número geopotencial} de um ponto é a diferença:
+      \[ \boxed{\; C = W_0 - W \;} \]
+      \medskip
+
+      Em palavras: \emph{o trabalho que é preciso fazer, por quilo carregado, para levar
+      alguma coisa do geoide até ali} --- medido em $\text{m}^2/\text{s}^2$, que é
+      energia por quilo, \alert{e não em metros}.
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{ideia}[title={As três propriedades que salvam tudo}]
+        \begin{enumerate}
+          \item $C$ é \bnum{único} para cada ponto;
+          \item \alert{não depende do caminho} percorrido para chegar lá;
+          \item dois pontos com o mesmo $C$ estão \bnum{mesmo} no mesmo nível ---
+                a água entre eles fica parada.
+        \end{enumerate}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{De ``esforço'' de volta para metros}
+  Ninguém quer uma placa de estrada escrita em $\text{m}^2/\text{s}^2$. Então divide-se
+  $C$ por uma gravidade --- e a escolha da gravidade \alert{dá nomes diferentes}:
+  \medskip
+  \centering
+  \small
+  \renewcommand{\arraystretch}{1.5}
+  \begin{tabular}{p{3.6cm}lp{4.6cm}}
+    \toprule
+    dividindo $C$ por & resulta & onde se usa \\
+    \midrule
+    a gravidade \textbf{real} média & altitude
+      \textcolor{corGeoide}{\textbf{ortométrica}} $H$ &
+      a altitude ``acima do nível do mar'' clássica \\
+    a gravidade \textbf{teórica} do elipsoide & altitude \textbf{normal} $H^{*}$ &
+      adotada por muitos países, inclusive o Brasil \\
+    uma gravidade \textbf{constante} & altitude \textbf{dinâmica} &
+      quando o que importa é a água, não a distância \\
+    \bottomrule
+  \end{tabular}
+  \medskip
+
+  As três saem do \bnum{mesmo $C$}. Mudou só a régua usada para traduzi-lo.
+\end{frame}
+
+\begin{frame}{Um caso real: os Grandes Lagos}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      O Lago Superior é um só corpo de água parada. Mesmo assim, as pontas dele têm
+      \alert{altitudes ortométricas diferentes}.
+      \medskip
+
+      Isso não é erro: é a consequência de as superfícies de nível não serem paralelas.
+      Mas é um pesadelo para quem opera eclusas, hidrelétricas e cartas náuticas.
+      \medskip
+
+      Por isso o datum dos Grandes Lagos --- o \textbf{IGLD 1985} --- abandonou as
+      altitudes ortométricas e usa \bnum{altitudes dinâmicas}.
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95]
+        \fill[corAgua!25] (0.2,0) rectangle (5.6,0.85);
+        \draw[corAgua, very thick] (0.2,0.85) -- (5.6,0.85);
+        \node[rotulo, text=corAgua] at (2.9,0.42) {água parada};
+        \draw[corGeoide, dashed] (0.2,1.35) -- (5.6,1.62);
+        \node[rotulo, text=corGeoide, above, align=center] at (2.9,1.55)
+              {superfície de nível\\(inclinada em relação à água)};
+        \node[rotulo, text=mRose, below] at (1.0,-0.1) {$H = 183{,}2$};
+        \node[rotulo, text=mRose, below] at (4.8,-0.1) {$H = 183{,}0$};
+        \node[rotulo, below] at (2.9,-0.55) {mesmo lago, ``alturas'' diferentes};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Como se conhece o geoide}
+  \begin{columns}[T]
+    \begin{column}{0.46\textwidth}
+      \begin{itemize}
+        \item \textbf{Gravímetros em campo} --- medem $g$ ponto a ponto, no chão, em
+              navios, em aviões.
+        \item \textbf{Satélites dedicados} --- \textbf{GRACE} (NASA/DLR) mede a distância
+              entre dois satélites gêmeos, que se afasta e se aproxima conforme a massa lá
+              embaixo; \textbf{GOCE} (ESA) levou um gradiômetro em órbita baixa.
+        \item \textbf{Modelos globais} --- o \textbf{EGM2008} junta tudo numa fórmula com
+              milhões de termos.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.92]
+        \draw[geoide] (3,0) ellipse (1.75 and 1.45);
+        \draw[mStoneMid, dashed] (3,0) ellipse (2.85 and 2.35);
+        \fill[mStone] (1.05,1.05) rectangle (1.45,1.25);
+        \fill[mStone] (1.75,1.55) rectangle (2.15,1.75);
+        \draw[mRose, {Stealth[length=1.6mm]}-{Stealth[length=1.6mm]}] (1.5,1.16) -- (1.72,1.5);
+        \node[rotulo, right, align=left] at (2.45,2.25)
+              {GRACE: dois satélites\\que ``se sentem''};
+        \draw[corTerreno, seta] (4.75,-2.15) -- (4.18,-1.30);
+        \node[rotulo, text=corTerreno, right] at (4.6,-2.3) {gravímetro no chão};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}[standout]
+  Parte 2\\[6pt]
+  {\normalsize Um zero só para o mundo inteiro}
+\end{frame}
+
+% ==================================================================
+\section{Cada país com o seu próprio zero}
+
+\begin{frame}{O zoológico dos zeros}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      Cada país escolheu, lá atrás, \bnum{um marégrafo} num porto seu, mediu o nível médio
+      do mar por alguns anos e cravou: \emph{``aqui é o zero''}.
+      \medskip
+
+      Todos fizeram a coisa certa. Mas:
+      \begin{itemize}
+        \item cada mar está num nível um pouco diferente;
+        \item cada país mediu numa época diferente;
+        \item o mar subiu desde então.
+      \end{itemize}
+      \medskip
+
+      Resultado: os zeros do mundo diferem entre si por até \alert{uns 2 metros}.
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95]
+        \fill[corTerreno!18] (0,0.62) rectangle (6.3,2.0);
+        \draw[terreno] (0,2.0) -- (6.3,2.0);
+        \foreach \x/\y/\lab in {0.78/0.44/A, 2.36/0.12/B, 3.94/0.52/C, 5.52/0.24/D} {
+          \draw[corAgua, very thick] (\x-0.6,\y) -- (\x+0.6,\y);
+          \draw[mStoneMid, thin] (\x,\y) -- (\x,2.0);
+          \fill[mStone] (\x-0.09,2.0) rectangle (\x+0.09,2.22);
+          \node[rotulo, below] at (\x,-0.14) {país \lab};
+        }
+        \draw[mStoneMid, dashed] (0,0.32) -- (6.3,0.32);
+        \node[rotulo, align=center] at (3.15,2.75) {cada marégrafo crava um zero diferente};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{A ponte que não encaixa}
+  \begin{columns}[c]
+    \begin{column}{0.50\textwidth}
+      Enquanto cada país trabalhava sozinho, isso não incomodava ninguém.
+      \medskip
+
+      Hoje incomoda muito:
+      \begin{itemize}
+        \item obras que cruzam fronteiras --- pontes, túneis, dutos;
+        \item bacias hidrográficas compartilhadas;
+        \item medir a subida do nível do mar \alert{no planeta}, e não em cada porto;
+        \item o GNSS dá $h$ em qualquer lugar do mundo --- e aí é preciso um $N$ que
+              também valha no mundo todo.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95]
+        \fill[corTerreno!22] (0,0) rectangle (2.1,1.3);
+        \fill[corTerreno!22] (4.2,0) rectangle (6.3,1.3);
+        \draw[terreno] (0,1.3) -- (2.1,1.3);
+        \draw[terreno] (4.2,1.55) -- (6.3,1.55);
+        \draw[mStone, line width=2pt] (2.1,1.3) -- (4.2,1.3);
+        \draw[mRose, line width=2pt] (4.2,1.55) -- (4.2,1.3);
+        \node[rotulo, text=mRose, above, align=center] at (3.1,1.95)
+              {degrau de $25$\,cm};
+        \draw[mRose, seta] (3.6,1.92) -- (4.14,1.48);
+        \node[rotulo, below] at (3.15,0.9) {rio de fronteira};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{IHRS e IHRF: o zero combinado}
+
+\begin{frame}{A ideia: em vez de um porto, um número}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      Escolher um marégrafo sempre vai favorecer alguém e deixar o resto do mundo torto.
+      \medskip
+
+      Então a comunidade geodésica fez outra coisa: escolheu \bnum{um valor de potencial}
+      --- um número puro, sem país, sem porto, sem data.
+      \medskip
+
+      Em 2015, na Assembleia Geral da IUGG em Praga, a \textbf{IAG} aprovou a
+      \textbf{Resolução nº 1}, criando o \bnum{IHRS}: o Sistema Internacional de
+      Referência de Altitudes.
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{ideia}[title={O zero do mundo}]
+        \centering
+        \[ W_0 = 62\,636\,853{,}4\ \frac{\text{m}^2}{\text{s}^2} \]
+      \end{ideia}
+      \medskip
+
+      {\small A superfície de nível que tem exatamente esse potencial passa a ser
+      \alert{o geoide oficial do planeta}. Ela não pertence a ninguém --- e serve a todos.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{As peças do IHRS}
+  \centering
+  \small
+  \renewcommand{\arraystretch}{1.45}
+  \begin{tabular}{lp{7.4cm}}
+    \toprule
+    \textbf{o zero} & a superfície de nível com $W_0 = 62\,636\,853{,}4\ \text{m}^2/\text{s}^2$ \\
+    \textbf{a altura} & o \bnum{número geopotencial} $C_P = W_0 - W(P)$ --- e não metros \\
+    \textbf{a posição} & coordenadas no \textbf{ITRF}, o mesmo referencial do GNSS \\
+    \textbf{a meta} & $\pm 0{,}01\ \text{m}^2/\text{s}^2$, que é cerca de
+      \bnum{$\pm 1$ milímetro} de altura \\
+    \bottomrule
+  \end{tabular}
+  \bigskip
+
+  \begin{ideia}[title={Repare na escolha}]
+    A altura oficial do mundo é medida em \bnum{esforço}, não em metros --- exatamente
+    pelo motivo da Parte 1: só o esforço não depende do caminho.
+  \end{ideia}
+\end{frame}
+
+\begin{frame}{Sistema e materialização: IHRS e IHRF}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{ideia}[title={IHRS --- o sistema}]
+        A \bnum{regra}. Diz o que é o zero, o que é ``altura'' e em que referencial as
+        posições são dadas.
+        \medskip
+
+        É um texto. Não dá para medir nada com ele.
+      \end{ideia}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{ideia}[title={IHRF --- o frame}]
+        A \bnum{rede de estações} de verdade, espalhadas pelo planeta, com número
+        geopotencial conhecido.
+        \medskip
+
+        É onde se amarra o trabalho de cada país.
+      \end{ideia}
+    \end{column}
+  \end{columns}
+  \bigskip
+  {\small A mesma dupla existe do lado horizontal: o \emph{sistema} diz como as
+  coordenadas são definidas; o \emph{frame} (o ITRF) é a lista de estações com
+  coordenadas medidas. O IHRF segue a mesma estrutura: uma rede global, densificada por
+  redes regionais e nacionais.}
+\end{frame}
+
+% ==================================================================
+\section{O Everest, enfim resolvido}
+
+\begin{frame}{Duas respostas para a mesma montanha}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      Por décadas, a montanha mais alta do mundo teve \alert{duas alturas oficiais} ---
+      e cada país insistia na sua.
+      \medskip
+      \centering
+      \small
+      \renewcommand{\arraystretch}{1.35}
+      \begin{tabular}{lr}
+        \toprule
+        Nepal (Survey of India, 1954) & $8\,848$\,m \\
+        China (2005) & $8\,844{,}43$\,m \\
+        \midrule
+        diferença & \alert{$3{,}57$\,m} \\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{cuidado}[title={Não era teimosia}]
+        Os dois países mediram com cuidado e competência.
+        \medskip
+
+        Eles discordavam porque estavam respondendo a \bnum{duas perguntas diferentes} ---
+        e contando a partir de \bnum{dois zeros diferentes}.
+      \end{cuidado}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Primeira discordância: até onde é a montanha?}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      O cume do Everest é coberto por uma \bnum{calota de neve e gelo} de alguns metros.
+      \medskip
+
+      \begin{itemize}
+        \item A China mediu até a \textcolor{corTerreno}{\textbf{rocha}}, usando radar que
+              atravessa o gelo: para ela, a montanha termina na pedra.
+        \item O Nepal mediu até a \textcolor{corAgua}{\textbf{neve}}: para ele, o cume é
+              onde o alpinista pisa.
+      \end{itemize}
+      \medskip
+      Essa parte da briga era de \alert{definição}, não de medida.
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95]
+        \fill[corTerreno!30] (0.6,0) -- (2.9,2.55) -- (5.2,0) -- cycle;
+        \draw[terreno] (0.6,0) -- (2.9,2.55) -- (5.2,0);
+        \fill[corAgua!30] (2.35,2.05) .. controls (2.6,3.0) and (3.2,3.0) ..
+                          (3.45,2.05) -- cycle;
+        \draw[corAgua, thick] (2.35,2.05) .. controls (2.6,3.0) and (3.2,3.0) .. (3.45,2.05);
+        \draw[corAgua, dashed] (2.35,2.05) -- (3.45,2.05);
+        \draw[mRose, {Stealth[length=1.8mm]}-{Stealth[length=1.8mm]}] (3.75,2.05) -- (3.75,2.92);
+        \node[rotulo, text=mRose, right] at (3.85,2.5) {a neve};
+        \node[rotulo, text=corAgua, above] at (2.9,3.05) {cume de neve};
+        \node[rotulo, text=corTerreno, right] at (3.5,1.5) {rocha};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Segunda discordância: a partir de onde se conta?}
+  \begin{columns}[T]
+    \begin{column}{0.46\textwidth}
+      Esta é a parte que interessa a esta aula. Cada país carregou seu zero por terra até
+      o Himalaia:
+      \medskip
+      \begin{itemize}
+        \item a \textbf{China} partiu do \bnum{Mar Amarelo}, a leste;
+        \item o \textbf{Nepal} partiu da \bnum{Baía de Bengala}, ao sul.
+      \end{itemize}
+      \medskip
+      Dois marégrafos diferentes, a milhares de quilômetros um do outro, cada um com seu
+      nível médio do mar. \alert{Dois zeros, duas respostas} --- para o mesmo cume.
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95]
+        \fill[corTerreno!22] (0,0) rectangle (6.3,1.5);
+        \fill[corTerreno!35] (2.45,1.5) -- (3.15,2.85) -- (3.85,1.5) -- cycle;
+        \draw[terreno] (2.45,1.5) -- (3.15,2.85) -- (3.85,1.5);
+        \fill[mRose] (3.15,2.85) circle (0.075);
+        \node[rotulo, above] at (3.15,2.95) {Everest};
+        \draw[corAgua, very thick] (0,0.55) -- (0.95,0.55);
+        \node[rotulo, text=corAgua, below, align=center] at (0.5,0.45) {Baía de\\Bengala};
+        \draw[corAgua, very thick] (5.35,0.9) -- (6.3,0.9);
+        \node[rotulo, text=corAgua, below, align=center] at (5.85,0.8) {Mar\\Amarelo};
+        \draw[corAgua, dashed] (0.95,0.55) -- (3.15,0.55);
+        \draw[corAgua, dashed] (5.35,0.9) -- (3.15,0.9);
+        \draw[mRose, {Stealth[length=1.8mm]}-{Stealth[length=1.8mm]}] (3.15,0.55) -- (3.15,0.9);
+        \node[rotulo, text=mRose, left] at (3.0,0.73) {zeros diferentes};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{E ainda: a montanha entorta o próprio zero}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      O Himalaia é uma quantidade enorme de massa empilhada. Essa massa \bnum{puxa o fio
+      de prumo} e \bnum{levanta o geoide} embaixo dela.
+      \medskip
+
+      Ou seja: a superfície de referência sob o Everest \alert{não está onde um modelo
+      global simples colocaria}.
+      \medskip
+
+      Sem medir a gravidade \emph{ali}, a altura sai errada --- por metros, não por
+      centímetros.
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.88]
+        \fill[corTerreno!35] (1.6,1.1) -- (3.0,2.9) -- (4.4,1.1) -- cycle;
+        \draw[terreno] (1.6,1.1) -- (3.0,2.9) -- (4.4,1.1);
+        \fill[corTerreno!18] (0,0.6) rectangle (6.0,1.1);
+        \draw[geoide] (0,0.35) .. controls (1.8,0.4) and (2.2,0.95) .. (3.0,0.95)
+                      .. controls (3.8,0.95) and (4.2,0.4) .. (6.0,0.35);
+        \draw[corElip, dashed] (0,-0.75) -- (6.0,-0.75);
+        \node[rotulo, text=corElip, below] at (4.9,-0.8) {elipsoide};
+        \node[rotulo, text=corGeoide, below, align=center] at (1.05,0.20)
+              {geoide levantado\\pela montanha};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{A campanha conjunta}
+  \centering
+  \small
+  \renewcommand{\arraystretch}{1.4}
+  \begin{tabular}{llp{6.0cm}}
+    \toprule
+    \textbf{22/05/2019} & Nepal & equipe liderada por Khim Lal Gautam chega ao cume com
+      receptor GNSS e radar de penetração, e mede a espessura da neve \\
+    \textbf{maio/2020} & China & equipe chinesa ao cume, com GNSS (incluindo BeiDou),
+      radar e teodolitos \\
+    \textbf{2019--2020} & ambos & nivelamento de precisão, levantamento gravimétrico e
+      cálculo de um \bnum{geoide gravimétrico local} \\
+    \textbf{08/12/2020} & juntos & anúncio conjunto do valor único \\
+    \bottomrule
+  \end{tabular}
+  \bigskip
+
+  Os dois países processaram \bnum{os dados juntos}, em vez de cada um publicar o seu.
+\end{frame}
+
+\begin{frame}{O número que encerrou a discussão}
+  \begin{columns}[c]
+    \begin{column}{0.46\textwidth}
+      \begin{ideia}[title={Everest --- valor oficial desde 08/12/2020}]
+        \centering
+        {\Large \bnum{$8\,848{,}86$ m}}
+        \medskip
+
+        altura do cume de \textbf{neve}, acima de um \textbf{geoide gravimétrico}
+        calculado \alert{com base no IHRS}
+      \end{ideia}
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \centering
+      \small
+      \renewcommand{\arraystretch}{1.25}
+      \begin{tabular}{lr}
+        \toprule
+        Survey of India, 1954 (neve) & $8\,848$\,m \\
+        China, 2005 (rocha) & $8\,844{,}43$\,m \\
+        \midrule
+        \textbf{conjunto, 2020 (neve)} & \bnum{$8\,848{,}86$\,m} \\
+        \bottomrule
+      \end{tabular}
+      \medskip
+
+      {\small A diferença entre o valor de 2020 e o chinês de 2005 --- $4{,}43$\,m ---
+      é, em boa parte, a \textcolor{corAgua}{calota de neve} que um media e o outro não.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{O que mudou não foi a montanha}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{armadilha}[title={O que NÃO aconteceu}]
+        O Everest não cresceu $86$ centímetros em 2020.
+        \medskip
+
+        (Ele cresce, sim --- alguns milímetros por ano, porque a Índia continua empurrando
+        a Ásia. Mas não foi isso.)
+      \end{armadilha}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{ideia}[title={O que aconteceu}]
+        Os dois países passaram a contar \bnum{a partir do mesmo zero} --- um zero que não
+        é o porto de nenhum dos dois, mas o valor de potencial combinado pelo mundo
+        inteiro.
+        \medskip
+
+        E mediram a gravidade local para saber onde esse zero passa, ali, embaixo da
+        montanha.
+      \end{ideia}
+    \end{column}
+  \end{columns}
+  \bigskip
+  \centering
+  Uma disputa de setenta anos terminou quando os dois lados \bnum{concordaram sobre o
+  zero}, não sobre o cume.
+\end{frame}
+
+% ==================================================================
+\section{Fechamento}
+
+\begin{frame}{Para levar para casa}
+  \footnotesize
+  \begin{enumerate}
+    \setlength{\itemsep}{3.5pt}
+    \item Altura só existe \bnum{a partir de alguma coisa}. Sem dizer de onde se conta,
+          a pergunta ``qual é a altura?'' não tem resposta.
+    \item O \textcolor{corElip}{\textbf{elipsoide}} é geometria pura --- é o que o GPS usa,
+          e ele \alert{não sabe para onde a água corre}.
+    \item O \textcolor{corGeoide}{\textbf{geoide}} é a superfície de nível que o mar
+          escolheria. É o zero \emph{físico}, e vale a regra
+          $\hgnss = \Horto + \Nond$.
+    \item As superfícies de nível \alert{não são paralelas}: ``subir 1 metro'' não é
+          sempre a mesma coisa. O que se salva é o \bnum{número geopotencial}
+          $C = W_0 - W$, o esforço, que não depende do caminho.
+    \item O \bnum{IHRS} escolheu um zero para o planeta ---
+          $W_0 = 62\,636\,853{,}4\ \text{m}^2/\text{s}^2$ --- e o \bnum{IHRF} é a rede que
+          o materializa.
+    \item O Everest ficou em \bnum{$8\,848{,}86$\,m} não porque alguém mediu melhor, mas
+          porque China e Nepal passaram a contar do mesmo lugar.
+  \end{enumerate}
+  \smallskip
+  \begin{ideia}[title={Experimente}]
+    \small No simulador \textbf{Modelos Terrestres}: abas \textbf{Geóide} e
+    \textbf{Teluróide}.
+  \end{ideia}
+\end{frame}
+
+% ==================================================================
+\appendix
+
+\begin{frame}[standout]
+  Apêndice\\[6pt]
+  {\normalsize Para quem quer ir além}
+\end{frame}
+
+\begin{frame}{A1 · O campo de gravidade}
+  \small
+  O potencial de gravidade $W$ soma a atração das massas e o efeito da rotação:
+  \[ W = V + \Phi, \qquad \Phi = \tfrac{1}{2}\,\omega^2 (x^2 + y^2) \]
+  \begin{itemize}
+    \item $V$: potencial gravitacional (newtoniano) de toda a massa da Terra
+    \item $\Phi$: potencial centrífugo, que é o que achata o planeta
+    \item o vetor gravidade é $\vec{g} = \nabla W$, e $|\vec g| \approx 9{,}78$ a
+          $9{,}83\ \text{m/s}^2$ do Equador ao polo
+  \end{itemize}
+  \medskip
+  Uma \textbf{superfície de nível} é o lugar onde $W = \text{const}$; $\vec g$ é sempre
+  perpendicular a ela. O \textbf{geoide} é a superfície $W = W_0$.
+  \medskip
+  A distância entre duas superfícies de nível vizinhas é $\mathrm{d}n = -\mathrm{d}W / g$:
+  onde $g$ é maior, elas ficam mais juntas. É a não-paralelidade da Parte 1, em uma linha.
+\end{frame}
+
+\begin{frame}{A2 · Número geopotencial e os tipos de altitude}
+  \small
+  \[ C_P = W_0 - W_P = \int_{\text{geoide}}^{P} g \; \mathrm{d}n \]
+  A integral é a mesma por qualquer caminho: $C$ é uma função de ponto, e é isso que faz o
+  nivelamento fechar.
+  \medskip
+  \centering
+  \renewcommand{\arraystretch}{1.6}
+  \begin{tabular}{lll}
+    \toprule
+    altitude & fórmula & divisor \\
+    \midrule
+    ortométrica & $H = C / \bar{g}$ & gravidade real média ao longo do prumo \\
+    normal & $H^{*} = C / \bar{\gamma}$ & gravidade normal média (elipsoide) \\
+    dinâmica & $H^{\mathrm{dyn}} = C / \gamma_{45}$ & constante, a normal em $45^{\circ}$ \\
+    \bottomrule
+  \end{tabular}
+  \flushleft
+  \medskip
+  $\bar g$ não é observável sem hipótese sobre a densidade das rochas --- é por isso que a
+  altitude \emph{normal} (Molodensky) é preferida por muitos países: $\bar\gamma$ se
+  calcula exatamente.
+\end{frame}
+
+\begin{frame}{A3 · As duas relações de conversão}
+  \small
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \[ h = H + N \]
+      \textbf{Stokes} --- $H$ ortométrica, $N$ ondulação geoidal, a superfície de
+      referência é o \textbf{geoide}.
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \[ h = H^{*} + \zeta \]
+      \textbf{Molodensky} --- $H^{*}$ normal, $\zeta$ anomalia de altura, a superfície de
+      referência é o \textbf{quase-geoide}.
+    \end{column}
+  \end{columns}
+  \medskip
+  $\zeta \approx N$ no mar (coincidem exatamente) e se afastam nas montanhas, onde a
+  diferença chega à ordem de decímetros a poucos metros.
+  \medskip
+  \begin{ideia}[title={No simulador}]
+    A aba \textbf{Teluróide} mostra a construção de Molodensky: a cada ponto $P$ da
+    superfície física corresponde um $Q$ no teluróide com potencial normal igual ao
+    potencial real em $P$, e $\overline{PQ} = \zeta$.
+  \end{ideia}
+\end{frame}
+
+\begin{frame}{A4 · O que a Resolução nº 1 da IAG (2015) estabelece}
+  \small
+  \begin{enumerate}
+    \item As coordenadas verticais são \textbf{números geopotenciais}
+          $C_P = W_0 - W(P)$, referidos a uma superfície equipotencial do campo de
+          gravidade terrestre.
+    \item O valor convencional adotado é
+          $W_0 = 62\,636\,853{,}4\ \text{m}^2\text{s}^{-2}$, substituindo o valor de 1998
+          ($62\,636\,856{,}0 \pm 0{,}5$), incompatível com os modelos mais recentes.
+    \item A referência espacial do ponto $P$ é dada por coordenadas $X$ do \textbf{ITRF}.
+    \item A realização é o \textbf{IHRF}: rede global com densificações regionais e
+          nacionais, na mesma estrutura do ITRF.
+    \item A exatidão pretendida para os números geopotenciais globais é
+          $\pm 1 \times 10^{-2}\ \text{m}^2\text{s}^{-2}$, cerca de $\pm 1$\,mm em
+          altitude física.
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}{A5 · Fontes}
+  \scriptsize
+  \begin{itemize}
+    \item \textbf{IHRS/IHRF} --- IAG Resolution No.~1, IUGG General Assembly 2015 (Praga).
+          Sánchez et al., \emph{Towards a first realization of the International Height
+          Reference System}; GGOS, \emph{IHRS Realization}; Sánchez \& Sideris,
+          \emph{Vertical datum unification for the IHRS}, Geophys.~J.~Int.~209(2).
+    \item \textbf{Altitudes dinâmicas nos Grandes Lagos} --- NOAA/NGS, \emph{North American
+          Vertical Datum and International Great Lakes Datum}; NOAA, \emph{Dynamic Heights
+          for the International Great Lakes Datum of 2020}. O IGLD 1985 usa altitudes
+          dinâmicas; o NAVD 88 usa ortométricas de Helmert.
+    \item \textbf{Everest} --- $8\,848$\,m: Survey of India, 1954 (neve).
+          $8\,844{,}43$\,m: China, 2005 (rocha, com radar de penetração no gelo).
+          Cume nepalês em 22/05/2019, equipe de Khim Lal Gautam; equipe chinesa em maio de
+          2020; anúncio conjunto em 08/12/2020 de $8\,848{,}86$\,m, referido a geoide
+          gravimétrico calculado com base no IHRS.
+    \item \textbf{Ondulações extremas} --- as mesmas citadas pelo simulador,
+          \texttt{models/geoide.js}, a partir de EGM2008.
+  \end{itemize}
+  \medskip
+  \normalsize
+  \centering
+  Os fatos e números desta aula foram conferidos em 21/09/2026.
+\end{frame}
+
+\end{document}

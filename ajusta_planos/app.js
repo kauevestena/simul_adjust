@@ -14,6 +14,7 @@ const app = {
     init() {
         this.viewer = new PlaneViewer3D('viewer3d');
         this.surface = new PlaneSurface2D.ResidualSurface('surfaceCanvas', 'colorbarCanvas', 'surfaceTooltip');
+        this.hist = new PlanoHist.ResidualHistogram('histCanvas', 'histTooltip');
 
         const scaleSel = document.getElementById('surfScale');
         Object.entries(PlaneSurface2D.SCALES).forEach(([k, v]) => {
@@ -31,6 +32,7 @@ const app = {
         this.updateSettings(true);
         window.addEventListener('resize', () => {
             if (this.activeTab === 'surface') this.surface.render();
+            if (this.activeTab === 'hist') this.hist.render();
         });
 
         this.loadSample('parede_frontal.csv');
@@ -102,7 +104,9 @@ const app = {
         this.renderMatrixTab();
         this.viewer.setData(this.points, this.result);
         this.surface.setResult(this.result);
+        this.hist.setResult(this.result, this.settings);
         this.updateSurface(true);
+        this.updateHistogram();
         this._updateStatus();
         this._updateButtons();
     },
@@ -220,7 +224,9 @@ const app = {
         this._buildMatrixTabs();
         this.viewer.setData(this.points, this.result);
         this.surface.setResult(this.result);
+        this.hist.setResult(this.result, this.settings);
         this.updateSurface(true);
+        this.updateHistogram();
         this._updateButtons();
     },
 
@@ -261,7 +267,7 @@ const app = {
     // ---------------------------------------------------------------- abas
     switchTab(tab) {
         this.activeTab = tab;
-        ['view3d', 'surface', 'table', 'matrices', 'gauges', 'settings'].forEach(t => {
+        ['view3d', 'surface', 'hist', 'table', 'matrices', 'gauges', 'settings'].forEach(t => {
             document.getElementById(`tab-${t}`).style.display = (t === tab) ? '' : 'none';
             const btn = document.getElementById(`tabBtn-${t}`);
             btn.className = 'tab-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all' +
@@ -269,6 +275,7 @@ const app = {
         });
         if (tab === 'view3d') setTimeout(() => this.viewer.resize(), 30);
         if (tab === 'surface') setTimeout(() => this.surface.render(), 30);
+        if (tab === 'hist') setTimeout(() => this.updateHistogram(), 30);
     },
 
     // ---------------------------------------------------------------- tabela
@@ -536,6 +543,56 @@ const app = {
             colorEllipsoid: g('colEllipsoid').value,
             colorPlane: g('colPlane').value
         });
+    },
+
+    // ---------------------------------------------------------------- resíduos 1D
+
+    updateHistogram() {
+        const g = id => document.getElementById(id);
+        const bins = parseInt(g('histBins').value, 10);
+        g('histBinsVal').textContent = bins;
+        this.hist.setOptions({
+            quantidade: g('histQuant').value,
+            bins,
+            curvaNormal: g('histNormal').checked,
+            destacarOutliers: g('histOutliers').checked,
+            linhasCorte: g('histCorte').checked
+        });
+        this.hist.render();
+        this._renderHistInfo();
+    },
+
+    _renderHistInfo() {
+        const alvo = document.getElementById('histInfo');
+        const d = this.hist.dados;
+        if (!d) { alvo.textContent = ''; return; }
+        const q = d.q, e = d.est, u = q.unidade ? ` ${q.unidade}` : '';
+        const f = v => v.toFixed(q.casas);
+
+        // Sob H0 o resíduo normalizado é N(0,1): um desvio bem acima de 1 é a mesma notícia
+        // que o teste global dá, só que visível na forma do histograma.
+        const leitura = q.key === 'w'
+            ? ` Sob a hipótese nula o desvio deveria ser <strong>1,00</strong>; deu ` +
+              `<strong>${e.dp.toFixed(2)}</strong>${e.dp > 1.5 ? ' — as medidas são mais ruidosas que o modelo promete.' : '.'}`
+            : '';
+        const corte = d.cortes && d.cortes.tipo === 'faixa'
+            ? ` O corte ${d.cortes.k}σ não é uma linha só: σ<sub>d</sub> varia entre as visadas, ` +
+              `então ele vai de ${d.cortes.lo.toFixed(2)} a ${d.cortes.hi.toFixed(2)} mm — é justamente ` +
+              `isso que o resíduo normalizado resolve.`
+            : '';
+        const marcadas = d.marcados
+            ? ` · <span class="text-rose-600">${d.marcados} marcada(s)</span>`
+            : ' · nenhuma observação marcada ainda (rode a detecção de outliers)';
+
+        alvo.innerHTML =
+            `<strong>${e.n}</strong> resíduos em <strong>${d.hist.k}</strong> classes de ` +
+            `${f(d.hist.largura)}${u} · média <span class="font-mono">${f(e.media)}</span>${u} · ` +
+            `desvio <span class="font-mono">${f(e.dp)}</span>${u} · ` +
+            `faixa <span class="font-mono">${f(e.min)}</span> a <span class="font-mono">${f(e.max)}</span>${u} · ` +
+            `assimetria <span class="font-mono">${e.assimetria.toFixed(2)}</span> · ` +
+            `curtose <span class="font-mono">${e.curtose.toFixed(2)}</span>${marcadas}` +
+            `<br><span class="text-stone-400">Sturges sugere ${e.sturges} classes para ${e.n} observações.` +
+            `${leitura}${corte}</span>`;
     },
 
     onSurfaceModeChange() {

@@ -113,6 +113,27 @@ planes, nearer +X for vertical ones, classified by the Z spread of the internal 
 vectors) and rescales to `‖n‖ = 1`, propagating the MVC through the Jacobian of that
 transformation. It is what makes results from different gauges directly comparable.
 
+## The three views of one residual set
+
+The **Resíduos 1D** tab is the distributional read the other two views cannot give: 3D shows
+where the residuals are, 2D shows their shape over the plane, 1D shows whether they look like
+noise. Bin count is a 4-to-20 slider, and the quantity is selectable:
+
+- **`d` (mm)**, the orthogonal residual, with the **fitted** normal drawn over it;
+- **`w`**, Baarda's normalized residual, with the **theoretical N(0,1)** — which under the null
+  hypothesis is exactly what you should see.
+
+On `piso_7col.csv` the `w` histogram is the clearest statement in the whole simulator: the
+N(0,1) curve is tall and narrow, the bars are wide and flat (standard deviation 4.10 against the
+1.00 the model promises). That mismatch *is* the failed global test, in a picture. The same
+data in `d` has skewness 1.49 and kurtosis 5.17, against 0.32 and 0.10 for `parede_frontal.csv`.
+
+The cut-off is drawn differently in each: an exact dashed line at `±critW` for `w`, and a
+**shaded band** for `d`. That is not decoration — the kσ rule compares `|d| / σ_d` per
+observation, and σ_d varies by up to 333 % within one sample, so a single vertical line in
+millimetres would be a lie. The pair of views makes its own argument for why the normalized
+residual exists.
+
 ## Volume estimation
 
 `volume.html` (reachable from the **Estimativa de Volume** button in the simulator header) closes
@@ -142,6 +163,14 @@ On the six samples: **V = 271.3049 m³, sigma_V = 0.0849 m³** (0.031 %). The na
 three face separations gives 271.3384 m³ — off by 0.033 m³, because the room is not a perfect box
 and only the polyhedron formula accounts for that.
 
+A sixth panel, **Resultado Final**, crowns the two before it: the volume and the 99 % interval
+alone, as the single figure a client is handed, with both translated into objects anyone can
+picture — the room is 28.6 VW Gol, and the whole 99 % spread is under 5 % of one of them. Every
+reference declares the assumption behind it (a Gol's 3.90 × 1.66 × 1.47 m box, rice at
+850 kg/m³), because "38 bags of rice" is only worth printing if the reader can check it. It is
+the one panel that uses Brazilian decimal commas: the rest of the page is working notes, that
+one is the deliverable.
+
 The confidence intervals are shown in both the normal and the Student-t columns. The t column
 uses **Welch–Satterthwaite effective degrees of freedom** (81.7 here), not the 227 of the naive
 sum: the six faces have very different `sigma_0`, and whichever dominates the variance also
@@ -156,6 +185,7 @@ surface in the set — which is the page's real lesson about where an uncertaint
 | `adjustment.js` | combined model + constraint, statistics, outlier detection, normalization |
 | `viewer3d.js` | three.js scene: points, error ellipsoids, fitted plane, residual stems |
 | `surface2d.js` | residual surface: TIN / IDW / ordinary kriging, heatmap and contours |
+| `histogram1d.js` | residual histogram: binning, moments, reference normal, stacked bars |
 | `app.js` | state, tabs, tables, workflow |
 | `volume.js` | face pairing, vertices, volume, analytic Jacobian, covariance propagation |
 | `volume.html` + `volume_app.js` | the volume page and its five panels |

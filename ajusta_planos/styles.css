@@ -59,7 +59,8 @@ input[type="color"].field { padding: 1px; height: 28px; cursor: pointer; }
 .surface-wrap { position: relative; }
 #surfaceCanvas { width: 100%; height: 460px; display: block; border: 1px solid #e7e5e4; border-radius: 0.5rem; background: #fff; }
 #colorbarCanvas { width: 100%; height: 44px; display: block; }
-#surfaceTooltip {
+#histCanvas { width: 100%; height: 460px; display: block; border: 1px solid #e7e5e4; border-radius: 0.5rem; background: #fff; }
+#surfaceTooltip, #histTooltip {
     display: none; position: absolute; pointer-events: none; z-index: 20;
     background: #1c1917; color: #fff; font-size: 0.68rem; line-height: 1.35;
     padding: 0.35rem 0.5rem; border-radius: 0.25rem; box-shadow: 0 4px 10px rgba(0,0,0,0.18);

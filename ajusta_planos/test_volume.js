@@ -240,4 +240,61 @@ console.log('\nAs seis amostras reais');
     ok(`parede no slot do piso: ${acusados.length} conferências acusam a troca`);
 }
 
+// ---------------------------------------------------------------- equivalências tangíveis
+// O quadro "Resultado Final" traduz metros cúbicos em objetos conhecidos. Cada contagem tem
+// de ser reversível: n × volume da referência tem de devolver o volume de entrada.
+console.log('\nEquivalências tangíveis');
+{
+    Vol.REFERENCIAS.forEach(r => {
+        assert.ok(r.volume > 0, `${r.key}: volume precisa ser positivo`);
+        assert.ok(r.base && r.base.length > 5, `${r.key}: falta a base do número`);
+        assert.ok(r.artigo === 'um' || r.artigo === 'uma', `${r.key}: falta o artigo`);
+        assert.ok(r.singular && r.plural, `${r.key}: falta singular ou plural`);
+        assert.ok(r.escala === 'volume' || r.escala === 'incerteza', `${r.key}: escala inválida`);
+    });
+    ok(`as ${Vol.REFERENCIAS.length} referências têm volume e base declarada`);
+
+    const alvo = 271.3049;
+    const todas = Vol.equivalencias(alvo);
+    assert.strictEqual(todas.length, Vol.REFERENCIAS.length, 'sem filtro vêm todas');
+    let pior = 0;
+    todas.forEach(e => { pior = Math.max(pior, Math.abs(e.n * e.ref.volume - alvo) / alvo); });
+    approx(pior, 0, 1e-12, 'n × volume da referência reconstrói o volume (erro relativo)');
+
+    // Saem da maior referência para a menor
+    for (let i = 1; i < todas.length; i++) {
+        assert.ok(todas[i - 1].ref.volume >= todas[i].ref.volume, 'lista fora de ordem');
+    }
+    ok('equivalências vêm da maior referência para a menor');
+
+    // Os filtros de escala separam os dois conjuntos
+    assert.ok(Vol.equivalencias(alvo, 'volume').every(e => e.ref.escala === 'volume'));
+    assert.ok(Vol.equivalencias(0.2, 'incerteza').every(e => e.ref.escala === 'incerteza'));
+    ok('o filtro de escala separa referências de sala e de incerteza');
+
+    // O destaque tem de cair numa contagem legível nos dois casos reais
+    const dv = Vol.equivalenciaDestaque(alvo, 'volume');
+    assert.strictEqual(dv.ref.key, 'gol', `destaque do volume foi ${dv.ref.key}`);
+    assert.ok(dv.n > 1 && dv.n < 500, `contagem ilegível: ${dv.n}`);
+    ok(`volume da sala em destaque: ${dv.n.toFixed(1)} ${dv.ref.plural}`);
+
+    const di = Vol.equivalenciaDestaque(0.2188, 'incerteza');
+    assert.strictEqual(di.ref.key, 'arroz', `destaque da incerteza foi ${di.ref.key}`);
+    ok(`margem de 99% em destaque: ${di.n.toFixed(1)} ${di.ref.plural}`);
+
+    // Quando a preferida daria uma contagem absurda, o destaque troca de referência
+    const minusculo = Vol.equivalenciaDestaque(1e-5, 'incerteza');
+    assert.ok(minusculo.ref.key !== 'arroz' || minusculo.n >= 1,
+        'com volume minúsculo o destaque não pode ficar abaixo de 1 saco');
+    const enorme = Vol.equivalenciaDestaque(1e6, 'volume');
+    assert.ok(enorme.n >= 1, 'com volume enorme o destaque ainda tem de ser contável');
+    ok('o destaque troca de referência quando a contagem ficaria ilegível');
+
+    // O gancho do quadro: a faixa inteira de dúvida cabe numa fração de um carro
+    const gol = Vol.REFERENCIAS.find(r => r.key === 'gol').volume;
+    const fracao = 2 * 0.2188 / gol;
+    assert.ok(fracao < 0.1, `a faixa de 99% deveria ser fração pequena de um Gol, deu ${fracao}`);
+    ok(`faixa inteira de 99% = ${(100 * fracao).toFixed(1)}% de um VW Gol`);
+}
+
 console.log(`\n${passed} verificações OK\n`);

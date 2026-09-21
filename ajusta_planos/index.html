@@ -225,6 +225,9 @@
                     <button id="tabBtn-surface" onclick="app.switchTab('surface')"
                         class="tab-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all">&#9636; Resíduos
                         2D</button>
+                    <button id="tabBtn-hist" onclick="app.switchTab('hist')"
+                        class="tab-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all">&#9613; Resíduos
+                        1D</button>
                     <button id="tabBtn-table" onclick="app.switchTab('table')"
                         class="tab-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all">&#9776; Tabela de
                         Dados</button>
@@ -398,6 +401,44 @@
                     </div>
                     <canvas id="colorbarCanvas"></canvas>
                     <p id="surfaceInfo" class="text-[11px] text-stone-500 leading-tight"></p>
+                </div>
+
+                <!-- ---------------- Resíduos 1D (histograma) ---------------- -->
+                <div id="tab-hist" style="display:none">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mb-3 items-end">
+                        <div>
+                            <label class="field-label" for="histQuant">Grandeza</label>
+                            <select id="histQuant" class="field" onchange="app.updateHistogram()">
+                                <option value="d">Resíduo ortogonal d (mm)</option>
+                                <option value="w">Resíduo normalizado w (Baarda)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="field-label" for="histBins">Número de classes</label>
+                            <div class="flex items-center gap-2">
+                                <input id="histBins" type="range" min="4" max="20" step="1" value="10"
+                                    style="flex:1" oninput="app.updateHistogram()">
+                                <span id="histBinsVal"
+                                    class="font-mono text-xs text-stone-700 min-w-[1.5rem] text-right">10</span>
+                            </div>
+                        </div>
+                        <div class="xl:col-span-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-stone-600">
+                            <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox"
+                                    id="histNormal" checked class="accent-teal-600"
+                                    onchange="app.updateHistogram()"> Curva normal</label>
+                            <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox"
+                                    id="histOutliers" checked class="accent-teal-600"
+                                    onchange="app.updateHistogram()"> Destacar marcadas</label>
+                            <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox"
+                                    id="histCorte" checked class="accent-teal-600"
+                                    onchange="app.updateHistogram()"> Linhas de corte</label>
+                        </div>
+                    </div>
+                    <div class="surface-wrap">
+                        <canvas id="histCanvas"></canvas>
+                        <div id="histTooltip"></div>
+                    </div>
+                    <p id="histInfo" class="text-[11px] text-stone-500 leading-tight mt-2"></p>
                 </div>
 
                 <!-- ---------------- Tabela de dados ---------------- -->
@@ -690,6 +731,7 @@
     <script src="adjustment.js"></script>
     <script src="viewer3d.js"></script>
     <script src="surface2d.js"></script>
+    <script src="histogram1d.js"></script>
     <script src="app.js"></script>
 </body>
 

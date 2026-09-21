@@ -8,6 +8,7 @@ const io = require('./io.js');
 const A = require('./adjustment.js');
 const { linalg } = A;
 const raw = require('./samples/raw_to_csv.js');
+const Hist = require('./histogram1d.js');
 
 const SAMPLES = path.join(__dirname, 'samples');
 const S = Object.assign({}, io.DEFAULT_SETTINGS);
@@ -555,6 +556,127 @@ console.log('\nAmostras de samples/');
         assert.ok(Math.sign(-n[3]) === g.lado, `${name}: plano do lado errado da estação (D = ${n[3]})`);
         ok(`${name}: ${g.tipo}, ${res.m} pts, |D| = ${Math.abs(n[3]).toFixed(3)} m`);
     });
+}
+
+// ---------------------------------------------------------------- histograma dos resíduos
+// A vista 1D bina os resíduos e desenha uma normal de referência por cima. Toda contagem tem
+// de fechar com o número de observações, e a curva tem de ter a mesma área das barras.
+console.log('\nHistograma dos resíduos (vista 1D)');
+{
+    // clampBins prende nas duas pontas
+    assert.strictEqual(Hist.clampBins(1), Hist.MIN_BINS);
+    assert.strictEqual(Hist.clampBins(99), Hist.MAX_BINS);
+    assert.strictEqual(Hist.clampBins(12), 12);
+    assert.strictEqual(Hist.clampBins(NaN), Hist.DEFAULTS.bins);
+    ok(`número de classes preso entre ${Hist.MIN_BINS} e ${Hist.MAX_BINS}`);
+
+    // Momentos contra um vetor de valores conhecidos
+    const v = [2, 4, 4, 4, 5, 5, 7, 9];
+    const e = Hist.describe(v);
+    assert.strictEqual(e.n, 8);
+    approx(e.media, 5, 1e-12, 'média de um vetor conhecido');
+    approx(e.dp, Math.sqrt(32 / 7), 1e-12, 'desvio amostral (n−1)');
+    approx(e.min, 2, 1e-12, 'mínimo');
+    approx(e.max, 9, 1e-12, 'máximo');
+    // Simétrico em torno da média: assimetria nula
+    const sim = Hist.describe([-2, -1, 0, 1, 2]);
+    approx(sim.assimetria, 0, 1e-12, 'assimetria nula num vetor simétrico');
+    // Curtose de Fisher: 0 na normal, negativa numa uniforme discreta
+    assert.ok(sim.curtose < 0, `uniforme deveria ter curtose negativa, deu ${sim.curtose}`);
+    ok('curtose em excesso negativa numa distribuição achatada');
+
+    // Todos os valores iguais não podem quebrar a binagem
+    const igual = Hist.binResiduals([3, 3, 3, 3], 8);
+    assert.strictEqual(igual.bins.reduce((s, b) => s + b.n, 0), 4, 'valores iguais somem');
+    assert.ok(igual.largura > 0, 'largura tem de ser positiva mesmo com valores iguais');
+    ok('binagem sobrevive a valores todos iguais');
+
+    // O máximo cai no ÚLTIMO bin, não fora dele
+    const b10 = Hist.binResiduals([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 5);
+    assert.strictEqual(b10.bins[b10.bins.length - 1].idx.includes(10), true,
+        'o valor máximo tem de cair no último bin');
+    ok('o valor igual ao máximo cai no último bin');
+}
+
+{
+    // Nos dados reais: contagens fecham para toda a faixa da barrinha, nas duas grandezas
+    const amostras = ['piso_7col.csv', 'parede_frontal.csv', 'parede_direita_7col.csv', 'teto_7col.csv'];
+    let combinacoes = 0;
+    amostras.forEach(nome => {
+        const pts = loadSample(nome);
+        const res = A.adjustPlane(pts, S);
+        // Marca alguns pontos, para exercitar o empilhamento
+        const det = A.detectOutliers(pts, res, 'snooping', S);
+        pts.forEach(p => { p.flagged = false; });
+        det.flagged.forEach(i => { if (pts[i]) pts[i].flagged = true; });
+
+        Object.values(Hist.QUANTIDADES).forEach(q => {
+            const valores = res.obsData.map(q.valor);
+            const flags = res.obsData.map(o => !!o.point.flagged);
+            for (let k = Hist.MIN_BINS; k <= Hist.MAX_BINS; k++) {
+                const h = Hist.binResiduals(valores, k, flags);
+                combinacoes++;
+                assert.strictEqual(h.bins.length, k, `${nome}/${q.key}: esperava ${k} classes`);
+                assert.strictEqual(h.bins.reduce((s, b) => s + b.n, 0), res.m,
+                    `${nome}/${q.key}/${k}: as contagens não somam ${res.m}`);
+                h.bins.forEach(b => {
+                    assert.ok(b.nOut <= b.n, 'marcadas não podem exceder o total da classe');
+                    assert.strictEqual(b.idx.length, b.n, 'índices e contagem divergem');
+                    assert.ok(b.hi > b.lo, 'classe de largura não positiva');
+                });
+                // As classes são contíguas e cobrem exatamente [min, max]
+                assert.ok(Math.abs(h.bins[0].lo - h.min) < 1e-9, 'a primeira classe não começa no mínimo');
+                assert.ok(Math.abs(h.bins[h.bins.length - 1].hi - h.max) < 1e-9, 'a última classe não fecha no máximo');
+                for (let i = 1; i < h.bins.length; i++) {
+                    assert.ok(Math.abs(h.bins[i].lo - h.bins[i - 1].hi) < 1e-9, 'classes não contíguas');
+                }
+            }
+        });
+    });
+    ok(`contagens fecham em ${combinacoes} combinações de amostra, grandeza e nº de classes`);
+
+    // A assimetria e a curtose reproduzem o que se mede fora do módulo
+    const piso = A.adjustPlane(loadSample('piso_7col.csv'), S);
+    const dPiso = Hist.describe(piso.obsData.map(o => o.d * 1000));
+    approx(dPiso.assimetria, 1.49, 0.02, `piso: assimetria de d = ${dPiso.assimetria.toFixed(2)}`);
+    approx(dPiso.curtose, 5.17, 0.02, `piso: curtose de d = ${dPiso.curtose.toFixed(2)}`);
+
+    const frontal = A.adjustPlane(loadSample('parede_frontal.csv'), S);
+    const dFrontal = Hist.describe(frontal.obsData.map(o => o.d * 1000));
+    approx(dFrontal.assimetria, 0.32, 0.02, `parede frontal: assimetria = ${dFrontal.assimetria.toFixed(2)}`);
+    assert.ok(Math.abs(dFrontal.assimetria) < Math.abs(dPiso.assimetria),
+        'a parede frontal tem de ser mais simétrica que o piso');
+    ok('o histograma distingue o piso assimétrico da parede quase normal');
+
+    // Sob H0 o resíduo normalizado seria N(0,1); aqui é bem mais largo, e é por isso que o
+    // teste global reprova
+    const wPiso = Hist.describe(piso.obsData.map(o => o.w));
+    assert.ok(wPiso.dp > 2, `desvio de w deveria exceder 1 com folga, deu ${wPiso.dp}`);
+    assert.strictEqual(piso.globalPass, false);
+    ok(`w do piso tem desvio ${wPiso.dp.toFixed(2)} contra o 1,00 de H0 — o teste global reprova`);
+}
+
+{
+    // A curva normal é escalada à ÁREA DAS BARRAS: integrá-la tem de devolver n × largura,
+    // senão ela não pousa sobre o histograma.
+    const n = 50, largura = 0.8, mu = 1.5, sigma = 2.0;
+    const x0 = mu - 12 * sigma, x1 = mu + 12 * sigma, passos = 20000;
+    const pts = Hist.normalCurve(mu, sigma, n, largura, x0, x1, passos);
+    assert.strictEqual(pts.length, passos + 1);
+    const h = (x1 - x0) / passos;
+    let area = 0;                                   // trapézios
+    for (let i = 1; i < pts.length; i++) area += (pts[i].y + pts[i - 1].y) / 2 * h;
+    approx(area / (n * largura), 1, 1e-6, 'a área sob a curva normal iguala a área das barras');
+
+    // O pico fica na média e vale n·largura/(σ√2π)
+    const pico = pts.reduce((m, p) => p.y > m.y ? p : m);
+    approx(pico.x, mu, (x1 - x0) / passos * 2, 'o pico da curva cai na média');
+    approx(pico.y, n * largura / (sigma * Math.sqrt(2 * Math.PI)), 1e-6, 'altura do pico');
+
+    // Sigma zero ou n zero não podem gerar NaN na tela
+    assert.deepStrictEqual(Hist.normalCurve(0, 0, 10, 1, -1, 1), []);
+    assert.deepStrictEqual(Hist.normalCurve(0, 1, 0, 1, -1, 1), []);
+    ok('curva normal degenerada devolve vazio em vez de NaN');
 }
 
 console.log(`\n${passed} verificações OK\n`);

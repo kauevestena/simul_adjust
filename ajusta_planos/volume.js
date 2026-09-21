@@ -287,6 +287,72 @@
         return { itens, pares: par, planos };
     }
 
+    // --- equivalências tangíveis --------------------------------------------------------
+
+    // Objetos de volume conhecido, para traduzir metros cúbicos em algo que o cliente enxerga.
+    // Cada um traz a base do número, porque "X sacos de arroz" só vale se der para conferir.
+    const REFERENCIAS = [
+        {
+            key: 'gol', escala: 'volume', preferido: true,
+            artigo: 'um', singular: 'VW Gol', plural: 'VW Gol',
+            volume: 3.897 * 1.656 * 1.472,
+            base: 'caixa externa de 3,90 × 1,66 × 1,47 m'
+        },
+        {
+            key: 'caixa', escala: 'volume',
+            artigo: 'uma', singular: 'caixa d\u2019água de mil litros', plural: 'caixas d\u2019água de mil litros',
+            volume: 1.0,
+            base: '1000 litros'
+        },
+        {
+            key: 'botijao', escala: 'incerteza',
+            artigo: 'um', singular: 'botijão de gás P13', plural: 'botijões de gás P13',
+            volume: Math.PI * 0.17 * 0.17 * 0.58,
+            base: 'cilindro de 34 cm de diâmetro por 58 cm de altura'
+        },
+        {
+            key: 'balde', escala: 'incerteza',
+            artigo: 'um', singular: 'balde de 20 litros', plural: 'baldes de 20 litros',
+            volume: 0.020,
+            base: '20 litros'
+        },
+        {
+            key: 'arroz', escala: 'incerteza', preferido: true,
+            artigo: 'um', singular: 'saco de arroz de 5 kg', plural: 'sacos de arroz de 5 kg',
+            volume: 5 / 850,
+            base: '5 kg a 850 kg/m³, a densidade aparente do arroz'
+        },
+        {
+            key: 'pinscher', escala: 'incerteza',
+            artigo: 'um', singular: 'pinscher de 3 kg', plural: 'pinschers de 3 kg',
+            volume: 0.003,
+            base: '3 kg à densidade da água'
+        }
+    ];
+
+    // Quantos de cada referência cabem em `v` (m³). `escala` filtra o conjunto; sem ela, vêm
+    // todas. A lista sai da maior referência para a menor.
+    function equivalencias(v, escala) {
+        return REFERENCIAS
+            .filter(r => !escala || r.escala === escala)
+            .map(r => ({ ref: r, n: v / r.volume }))
+            .sort((a, b) => b.ref.volume - a.ref.volume);
+    }
+
+    // A referência que encabeça o quadro: a marcada como preferida, desde que a contagem caia
+    // numa faixa legível; senão, a que der a contagem mais próxima de uma dezena confortável.
+    function equivalenciaDestaque(v, escala) {
+        const todas = equivalencias(v, escala);
+        if (!todas.length) return null;
+        const legivel = e => e.n >= 1 && e.n <= 500;
+        const pref = todas.find(e => e.ref.preferido && legivel(e));
+        if (pref) return pref;
+        const dentro = todas.filter(legivel);
+        const alvo = 30;
+        return (dentro.length ? dentro : todas)
+            .reduce((m, e) => Math.abs(Math.log(e.n / alvo)) < Math.abs(Math.log(m.n / alvo)) ? e : m);
+    }
+
     // --- conveniência: o cálculo inteiro de uma vez -------------------------------------
 
     // `faces` = [{ X: [A,B,C,D], Sigma: 4x4, dof }] na ordem dos slots
@@ -303,7 +369,8 @@
     }
 
     return {
-        SLOTS, TOL, unit, pairFaces, separation, buildRoom, naiveBox,
-        jacobian, propagate, intervals, geometryChecks, estimate
+        SLOTS, TOL, REFERENCIAS, unit, pairFaces, separation, buildRoom, naiveBox,
+        jacobian, propagate, intervals, geometryChecks, estimate,
+        equivalencias, equivalenciaDestaque
     };
 });

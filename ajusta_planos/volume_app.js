@@ -394,6 +394,7 @@ const volApp = {
         }
         this.renderVolume();
         this.renderProp();
+        this.renderFinal();
         this._updateButtons();
     },
 
@@ -535,6 +536,72 @@ const volApp = {
                 exatamente um hexaedro de faces planas.</p>`;
     },
 
+    // ------------------------------------------------------------------ painel 6: entrega
+
+    // Só o volume e a faixa de 99%, que é o que o cliente leva. O resto da página é a memória
+    // de cálculo; aqui vale a informação sozinha, ancorada em objetos que dão para imaginar.
+    renderFinal() {
+        const e = this.est;
+        const iv = e.intervalos.find(x => x.alpha === 1);
+        document.getElementById('finalHint').style.display = 'none';
+        const alvo = document.getElementById('finalBody');
+        alvo.style.display = '';
+
+        // Vírgula decimal só aqui: os outros painéis são memória de cálculo, este é a entrega
+        const br = (v, casas) => v.toFixed(casas).replace('.', ',');
+        const nf = (n) => n >= 100 ? br(n, 0) : br(n, 1);
+        const conta = (eq) => `${nf(eq.n)} ${eq.n >= 2 ? eq.ref.plural : eq.ref.singular}`;
+
+        const eqVol = PlanoVolume.equivalenciaDestaque(e.volume, 'volume');
+        const eqInc = PlanoVolume.equivalenciaDestaque(iv.margemT, 'incerteza');
+        const outrasVol = PlanoVolume.equivalencias(e.volume, 'volume').filter(x => x.ref !== eqVol.ref);
+        const outrasInc = PlanoVolume.equivalencias(iv.margemT, 'incerteza').filter(x => x.ref !== eqInc.ref);
+
+        // O gancho: a faixa inteira de dúvida, nos dois sentidos, comparada à referência grande
+        const faixaEmRefGrande = 2 * iv.margemT / eqVol.ref.volume;
+
+        const lista = (arr) => arr.map(x =>
+            `<li>${conta(x)} <span class="text-stone-400">— ${x.ref.base}</span></li>`).join('');
+
+        alvo.innerHTML = `
+            <div class="text-center">
+                <p class="text-xs uppercase tracking-[0.2em] text-stone-400 font-bold">Volume da sala</p>
+                <p class="text-5xl sm:text-6xl font-bold text-stone-900 font-mono mt-2 mb-1">
+                    ${br(e.volume, 2)} <span class="text-2xl sm:text-3xl text-stone-500">m³</span></p>
+                <p class="text-base text-stone-700">
+                    &plusmn; ${br(iv.margemT, 2)} m³
+                    <span class="text-stone-400">·</span>
+                    <span class="font-semibold">${iv.confianca}% de confiança</span></p>
+                <p class="text-sm text-stone-500 font-mono mt-1">
+                    entre ${br(iv.t_lo, 2)} e ${br(iv.t_hi, 2)} m³</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
+                <div class="border border-stone-200 rounded-lg p-5">
+                    <p class="text-[10px] uppercase tracking-wider text-stone-400 font-bold">O tamanho da sala</p>
+                    <p class="text-2xl font-bold text-teal-700 mt-1">${conta(eqVol)}</p>
+                    <p class="text-[11px] text-stone-400 mt-0.5">${eqVol.ref.base}</p>
+                    <ul class="text-[11px] text-stone-600 mt-3 space-y-0.5 list-disc list-inside">${lista(outrasVol)}</ul>
+                </div>
+                <div class="border border-stone-200 rounded-lg p-5">
+                    <p class="text-[10px] uppercase tracking-wider text-stone-400 font-bold">A margem de erro</p>
+                    <p class="text-2xl font-bold text-indigo-700 mt-1">${conta(eqInc)}</p>
+                    <p class="text-[11px] text-stone-400 mt-0.5">${eqInc.ref.base}</p>
+                    <ul class="text-[11px] text-stone-600 mt-3 space-y-0.5 list-disc list-inside">${lista(outrasInc)}</ul>
+                </div>
+            </div>
+
+            <p class="text-center text-sm text-stone-700 mt-7 max-w-3xl mx-auto leading-relaxed">
+                A sala tem o volume de <strong>${conta(eqVol)}</strong>. A dúvida inteira, somando os dois
+                lados da faixa, não chega a <strong class="whitespace-nowrap">${br(100 * faixaEmRefGrande, 0)}%
+                de ${eqVol.ref.artigo} ${eqVol.ref.singular}</strong>.</p>
+            <p class="text-center text-[11px] text-stone-400 mt-3 max-w-3xl mx-auto">
+                Faixa de ${iv.confianca}% pela t de Student com ${br(e.propagacao.nuEf, 0)} graus de
+                liberdade efetivos, a partir de ${this.faces.reduce((s, f) => s + f.result.m, 0)}
+                observações nas seis faces. Cobre a incerteza das medidas propagada pelo modelo, não erro
+                de modelo.</p>`;
+    },
+
     // ------------------------------------------------------------------ estado dos botões
 
     _allAdjusted() { return this.faces.every(f => f.result && f.normalized); },
@@ -562,6 +629,8 @@ const volApp = {
             document.getElementById('propHint').style.display = '';
             document.getElementById('propHint').textContent = 'Calcule o volume primeiro.';
             document.getElementById('propBody').style.display = 'none';
+            document.getElementById('finalHint').style.display = '';
+            document.getElementById('finalBody').style.display = 'none';
         }
     }
 };
