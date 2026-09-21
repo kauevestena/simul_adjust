@@ -1,0 +1,1590 @@
+% O método combinado de ajustamento, explicado do zero.
+% Aula para o ensino médio, com apêndice técnico. É o PRELÚDIO de quatro_parametros.tex.
+%
+% Compilar (nesta pasta):  latexmk -pdf metodo_combinado.tex
+% Limpar auxiliares:       latexmk -c
+%
+% Todos os números do exemplo do corrimão saem de explanations/corrimao.js, que refaz as contas
+% com a mesma sequência de adjustPlane() em ../adjustment.js. Rode-o antes de mexer em qualquer
+% valor citado aqui:  node ajusta_planos/explanations/corrimao.js
+% Os números do piso (50 pontos) vêm do simulador, sobre samples/piso_7col.csv.
+
+\documentclass[aspectratio=169,11pt]{beamer}
+
+\usetheme[progressbar=frametitle, sectionpage=progressbar, numbering=fraction]{metropolis}
+\metroset{block=fill}
+
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[brazilian]{babel}
+\usepackage{icomma}
+\usepackage{amsmath, amssymb, mathtools}
+\usepackage{booktabs}
+\usepackage[most]{tcolorbox}
+\usepackage{tikz}
+\usepackage{tikz-3dplot}
+\usetikzlibrary{arrows.meta, calc, positioning, decorations.pathreplacing, fit, babel}
+
+% ------------------------------------------------------------------ paleta (a mesma do simulador)
+\definecolor{mStone}{HTML}{1C1917}
+\definecolor{mStoneMid}{HTML}{78716C}
+\definecolor{mStoneLight}{HTML}{F5F5F4}
+\definecolor{mTeal}{HTML}{0D9488}
+\definecolor{mRose}{HTML}{E11D48}
+\definecolor{mAmber}{HTML}{D97706}
+\definecolor{mIndigo}{HTML}{4F46E5}
+
+% Cada matriz tem sua cor, a mesma em toda figura, fórmula e tabela desta aula
+\colorlet{corA}{mTeal}    % A — o que muda quando cutucamos os PARÂMETROS
+\colorlet{corB}{mRose}    % B — o que muda quando cutucamos as MEDIDAS
+\colorlet{corW}{mAmber}   % W — o quanto o chute está errado
+\colorlet{corP}{mIndigo}  % Sigma, P, M — a parte das precisões
+
+\setbeamercolor{normal text}{fg=mStone, bg=white}
+\setbeamercolor{palette primary}{fg=white, bg=mStone}
+\setbeamercolor{frametitle}{fg=white, bg=mStone}
+\setbeamercolor{alerted text}{fg=mRose}
+\setbeamercolor{example text}{fg=mTeal}
+\setbeamercolor{progress bar}{fg=mTeal, bg=mTeal!20}
+\setbeamercolor{progress bar in head/foot}{fg=mTeal, bg=mTeal!20}
+\setbeamercolor{progress bar in section page}{fg=mTeal, bg=mTeal!20}
+\setbeamercolor{title separator}{fg=mTeal}
+\setbeamercolor{block title}{fg=white, bg=mTeal}
+\setbeamercolor{block body}{fg=mStone, bg=mTeal!8}
+
+% ------------------------------------------------------------------ caixas
+\newtcolorbox{ideia}[1][]{enhanced, colback=mTeal!7, colframe=mTeal, boxrule=0.6pt, arc=2pt,
+  left=6pt, right=6pt, top=4pt, bottom=4pt, fonttitle=\bfseries\small, coltitle=white, #1}
+\newtcolorbox{cuidado}[1][]{enhanced, colback=mAmber!8, colframe=mAmber, boxrule=0.6pt, arc=2pt,
+  left=6pt, right=6pt, top=4pt, bottom=4pt, fonttitle=\bfseries\small, coltitle=white, #1}
+\newtcolorbox{armadilha}[1][]{enhanced, colback=mRose!6, colframe=mRose, boxrule=0.6pt, arc=2pt,
+  left=6pt, right=6pt, top=4pt, bottom=4pt, fonttitle=\bfseries\small, coltitle=white, #1}
+
+% ------------------------------------------------------------------ estilos TikZ
+\tikzset{
+  pontoP/.style={circle, fill=mRose, inner sep=1.6pt},
+  seta/.style={-{Stealth[length=2.4mm]}, thick},
+  rotulo/.style={font=\scriptsize, text=mStone},
+  celula/.style={draw=mStoneMid, minimum width=8mm, minimum height=5.5mm, inner sep=1pt,
+                 font=\scriptsize},
+  passo/.style={draw, rounded corners=2pt, minimum height=7mm, inner xsep=4pt, font=\scriptsize,
+                align=center, thick},
+}
+
+\newcommand{\bnum}[1]{\textbf{\textcolor{mTeal}{#1}}}
+\newcommand{\mat}[2]{\textcolor{#1}{\mathbf{#2}}}
+\newcommand{\matA}{\mat{corA}{A}}
+\newcommand{\matB}{\mat{corB}{B}}
+\newcommand{\matW}{\mat{corW}{W}}
+\newcommand{\matM}{\mat{corP}{M}}
+\newcommand{\matP}{\mat{corP}{P}}
+\newcommand{\matN}{\mathbf{N}}
+
+\title{O que fazer quando as medidas não combinam?}
+\subtitle{O método combinado de ajustamento --- com as matrizes apresentadas devagar}
+\author{}
+\institute{Simulador de Ajustamento de Planos}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+% ==================================================================
+\begin{frame}{O que vamos ver}
+  \setbeamertemplate{section in toc}[sections numbered]
+  \begin{columns}[T]
+    \begin{column}{0.60\textwidth}
+      \tableofcontents
+    \end{column}
+    \begin{column}{0.36\textwidth}
+      \begin{ideia}[title={Esta aula tem continuação}]
+        \small Depois desta vem \emph{``Por que não dá para calcular os quatro números de um
+        plano?''}, que usa tudo o que montarmos aqui.
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{Medidas demais}
+
+\begin{frame}{O corrimão está como o projeto pediu?}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      O projeto de uma escada manda que ela suba \bnum{60 centímetros a cada metro}
+      andado --- inclinação de 60\,\%.
+      \bigskip
+
+      Para conferir, medimos \bnum{seis pontos} do corrimão com uma trena:
+      \begin{itemize}
+        \item $x$: o quanto andou na horizontal
+        \item $z$: o quanto subiu
+      \end{itemize}
+      \medskip
+
+      Se os seis pontos caíssem numa reta perfeita, bastava usar dois deles e pronto.
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=1.02]
+        \fill[mStoneLight] (-0.2,-0.3) rectangle (6.2,0);
+        \draw[mStoneMid, thick] (-0.2,0) -- (6.2,0);
+        % degraus
+        \foreach \i in {0,...,5} {
+          \draw[mStone!25, thick] (0.5+\i*0.62, \i*0.372) -- (1.12+\i*0.62, \i*0.372)
+                                  -- (1.12+\i*0.62, \i*0.372+0.372);
+        }
+        % corrimao
+        \draw[mStone, line width=1.4pt] (0.5,0.55) -- (4.25,2.80);
+        \foreach \x/\z in {0.50/0.55, 1.12/0.93, 1.75/1.29, 2.41/1.71, 3.04/2.07, 3.68/2.47} {
+          \fill[mRose] (\x,\z) circle (0.075);
+        }
+        \draw[mTeal, {Stealth[length=2mm]}-{Stealth[length=2mm]}] (0.5,-0.55) -- (3.68,-0.55);
+        \node[rotulo, below, text=mTeal] at (2.1,-0.6) {$x$};
+        \draw[mTeal, {Stealth[length=2mm]}-{Stealth[length=2mm]}] (4.9,0.55) -- (4.9,2.47);
+        \node[rotulo, right, text=mTeal] at (4.95,1.5) {$z$};
+        \node[rotulo, above left] at (4.3,2.8) {corrimão};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Mas medir é sempre um pouco errado}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      Meça a mesma coisa duas vezes e saem \bnum{dois números}.
+      \medskip
+
+      \begin{itemize}
+        \item A trena \alert{cede} quanto mais esticada: erra uns 5\,mm perto, e mais
+              3\,mm a cada metro de distância.
+        \item A altura sai de uma régua curta: erra uns \bnum{5\,mm} sempre.
+      \end{itemize}
+      \medskip
+
+      Repare: \alert{as duas medidas erram}. Não há por que culpar só a altura.
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \small
+      \renewcommand{\arraystretch}{1.15}
+      \begin{tabular}{crrr}
+        \toprule
+        ponto & $x$ (m) & $z$ (m) & erro de $x$ \\
+        \midrule
+        1 & 0,00 & 0,000 & 5,0\,mm \\
+        2 & 0,62 & 0,372 & 6,9\,mm \\
+        3 & 1,25 & 0,742 & 8,8\,mm \\
+        4 & 1,91 & 1,155 & 10,7\,mm \\
+        5 & 2,54 & 1,520 & 12,6\,mm \\
+        6 & 3,18 & 1,915 & 14,5\,mm \\
+        \bottomrule
+      \end{tabular}
+      \smallskip
+
+      {\scriptsize\textcolor{mStoneMid}{O erro de $z$ é 5,0\,mm em todos.}}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Quinze retas, quinze respostas}
+  \begin{columns}[c]
+    \begin{column}{0.46\textwidth}
+      Dois pontos já definem uma reta. Com seis pontos dá para formar
+      \bnum{15 pares} --- e cada par dá uma reta \alert{diferente}.
+      \bigskip
+
+      Qual delas é a do corrimão?
+      \bigskip
+
+      \begin{cuidado}[title={A tentação}]
+        \small Escolher dois pontos ``bonitos'' e jogar fora os outros quatro.
+        Foi trabalho medido e jogado no lixo --- e sem saber se os dois escolhidos
+        eram os bons.
+      \end{cuidado}
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \centering
+      \begin{tikzpicture}[xscale=1.55, yscale=1.18]
+        \draw[mStoneMid, -{Stealth[length=2mm]}] (-0.12,0) -- (3.55,0) node[right, rotulo] {$x$};
+        \draw[mStoneMid, -{Stealth[length=2mm]}] (-0.12,0) -- (-0.12,2.15) node[above, rotulo] {$z$};
+        % o leque de retas, com as diferenças de inclinação bem exageradas
+        \foreach \incl in {0.52, 0.56, 0.60, 0.64, 0.68} {
+          \draw[mStoneMid!70] (-0.05,{0.957+(-0.05-1.55)*\incl}) -- (3.45,{0.957+(3.45-1.55)*\incl});
+        }
+        \foreach \x/\z in {0.00/0.000, 0.62/0.372, 1.25/0.742, 1.91/1.155, 2.54/1.520, 3.18/1.915} {
+          \fill[mRose] (\x,\z) circle (0.055);
+        }
+      \end{tikzpicture}
+      \smallskip
+
+      {\scriptsize\textcolor{mStoneMid}{Nenhuma delas passa pelos seis pontos.\\
+      As diferenças estão exageradas para dar para ver.}}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Medidas a mais não são estorvo: são riqueza}
+  \begin{columns}[c]
+    \begin{column}{0.52\textwidth}
+      Se medíssemos só dois pontos, teríamos \emph{uma} resposta --- e
+      \alert{nenhum jeito de saber se ela presta}.
+      \bigskip
+
+      Com seis pontos temos quatro medidas ``sobrando''. E é exatamente essa
+      sobra que permite:
+      \begin{itemize}
+        \item combinar todas numa resposta melhor que qualquer par;
+        \item dizer \bnum{o quanto} confiar nessa resposta;
+        \item desconfiar de uma medida que destoa das outras.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{ideia}[title={O nome disso}]
+        \textbf{Ajustamento}: achar o único conjunto de valores que melhor concilia
+        medidas demais, que entre si não combinam.
+      \end{ideia}
+      \medskip
+
+      \begin{ideia}[title={O que vamos construir}]
+        Uma \bnum{receita} que faz isso sozinha, com qualquer número de medidas ---
+        seis aqui, cinquenta na próxima aula.
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{A ideia dos mínimos quadrados}
+
+\begin{frame}{Você já fez isso: a média}
+  \begin{columns}[c]
+    \begin{column}{0.52\textwidth}
+      Se você medir sua altura cinco vezes:
+      \[ 1{,}71 \quad 1{,}73 \quad 1{,}72 \quad 1{,}70 \quad 1{,}74 \]
+      qual é a sua altura? A \bnum{média}: $1{,}72$\,m.
+      \bigskip
+
+      Ninguém joga fora quatro medidas. E ninguém acha estranho que \emph{nenhuma}
+      das cinco seja igual à resposta.
+      \bigskip
+
+      \alert{A média é o menor ajustamento que existe.} O resto desta aula é a mesma
+      ideia, para casos em que não basta somar e dividir.
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \centering
+      \begin{tikzpicture}[x=580mm, y=6.5mm]
+        \draw[mTeal, line width=1.3pt] (1.72,-0.5) -- (1.72,3.5);
+        \node[rotulo, above, text=mTeal] at (1.72,3.5) {média: 1,72};
+        % o rótulo fica sempre do lado oposto ao traço que vai até a média
+        \foreach \v/\lin/\lab/\lado in {1.71/0/{1,71}/left, 1.73/1/{1,73}/right,
+                                        1.72/2/{1,72}/left, 1.70/3/{1,70}/left,
+                                        1.74/4/{1,74}/right} {
+          \draw[corW, thick] (\v,\lin*0.7+0.25) -- (1.72,\lin*0.7+0.25);
+          \fill[mRose] (\v,\lin*0.7+0.25) circle (1.1pt);
+          \node[rotulo, \lado=2pt] at (\v,\lin*0.7+0.25) {\lab};
+        }
+        \node[rotulo, below, text=corW, align=center] at (1.7245,-0.5)
+              {o que cada medida\\cedeu para a média};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Resíduo: o quanto cada medida teve que ceder}
+  \begin{columns}[c]
+    \begin{column}{0.48\textwidth}
+      Escolhida uma reta, cada ponto medido fica um pouquinho fora dela.
+      \medskip
+
+      Chamamos de \bnum{resíduo} a correção que aquela medida teve de aceitar para
+      caber na resposta final.
+      \medskip
+
+      Aqui cada ponto tem \alert{dois} resíduos: um em $x$ e um em $z$ --- porque as
+      duas medidas erram.
+      \medskip
+
+      {\small\textcolor{mStoneMid}{Resíduo não é ``erro da medida''. É o preço da
+      conciliação: o quanto aquela medida cedeu para o conjunto fechar.}}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \centering
+      \begin{tikzpicture}[xscale=1.55, yscale=1.35]
+        \draw[mTeal, line width=1.3pt] (-0.1,-0.06) -- (3.45,2.07);
+        \node[rotulo, text=mTeal, above left] at (3.45,2.07) {reta escolhida};
+        \foreach \x/\z/\dx/\dz in {0.00/0.000/0.00/-0.05, 0.62/0.372/0.02/-0.02,
+                                   1.25/0.742/-0.10/0.06, 1.91/1.155/0.12/-0.05,
+                                   2.54/1.520/-0.10/0.03, 3.18/1.915/0.08/-0.02} {
+          \draw[corW, thick] (\x,\z) -- (\x-\dx,\z-\dz);
+          \fill[mRose] (\x,\z) circle (0.055);
+        }
+        \node[rotulo, text=corW, right, align=left] at (1.2,0.35) {resíduos\\(exagerados)};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Por que somar os quadrados}
+  A reta boa é a que deixa os resíduos pequenos. Mas pequenos \emph{como}?
+  \medskip
+  \begin{columns}[T]
+    \begin{column}{0.31\textwidth}
+      \begin{armadilha}[title={Somar os resíduos}]
+        \small $+8$ e $-8$ dão zero. Uma reta péssima ganharia nota perfeita.
+      \end{armadilha}
+    \end{column}
+    \begin{column}{0.31\textwidth}
+      \begin{cuidado}[title={Somar sem sinal}]
+        \small Funciona, mas trata um erro de 8\,mm como oito de 1\,mm --- e a conta
+        fica dura de resolver.
+      \end{cuidado}
+    \end{column}
+    \begin{column}{0.33\textwidth}
+      \begin{ideia}[title={Somar os quadrados}]
+        \small Sinal some, \alert{erro grande dói muito mais}, e a conta sai fechada.
+      \end{ideia}
+    \end{column}
+  \end{columns}
+  \bigskip
+  \centering
+  \small
+  \renewcommand{\arraystretch}{1.1}
+  \begin{tabular}{lccc}
+    \toprule
+    resíduos (mm) & soma & soma sem sinal & \textcolor{mTeal}{soma dos quadrados} \\
+    \midrule
+    $+8$ \; $-8$ & $0$ \;\textcolor{mRose}{(!)} & $16$ & \textcolor{mTeal}{$128$} \\
+    $+2$ \; $-2$ \; $+2$ \; $-2$ & $0$ \;\textcolor{mRose}{(!)} & $8$ & \textcolor{mTeal}{$16$} \\
+    \bottomrule
+  \end{tabular}
+  \medskip
+
+  É daí que vem o nome: \bnum{mínimos quadrados}.
+\end{frame}
+
+\begin{frame}{Quem mede melhor tem mais voz}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      Nem toda medida merece o mesmo tanto de confiança. A do ponto 6 saiu de uma
+      trena esticada em 3 metros; a do ponto 1, de uma trena quase frouxa.
+      \medskip
+
+      Então não somamos os quadrados crus: dividimos cada resíduo pelo
+      \bnum{erro esperado daquela medida} antes de elevar ao quadrado.
+      \[ \text{peso} = \frac{1}{\sigma^2} \]
+      Medida três vezes melhor pesa \bnum{nove vezes mais}.
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95]
+        \foreach \i/\s/\h in {1/5.0/2.40, 2/6.9/1.26, 3/8.8/0.77, 4/10.7/0.52, 5/12.6/0.38, 6/14.5/0.29} {
+          \fill[corP!75] (\i*0.78-0.25,0) rectangle (\i*0.78+0.25,\h);
+          \node[rotulo, below] at (\i*0.78,-0.05) {\i};
+          \node[rotulo, above, font=\tiny] at (\i*0.78,\h) {\s};
+        }
+        \draw[mStoneMid] (0.2,0) -- (5.2,0);
+        \node[rotulo, below] at (2.7,-0.45) {ponto \quad ($\sigma_x$ em mm sobre a barra)};
+        \node[rotulo, text=corP, above right, align=left] at (2.4,1.85) {altura da barra\\= peso da medida};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{Matrizes sem susto}
+
+\begin{frame}{Matriz é uma tabela. Só isso.}
+  \begin{columns}[c]
+    \begin{column}{0.46\textwidth}
+      Uma \bnum{matriz} é uma tabela de números, com linhas e colunas.
+      Um \bnum{vetor} é uma tabela de uma coluna só --- uma lista.
+      \bigskip
+
+      Dizemos o tamanho como ``linhas $\times$ colunas'':
+      a tabela ao lado é \bnum{$6 \times 2$}.
+      \bigskip
+
+      {\small\textcolor{mStoneMid}{Você já usou matrizes: uma tabela de notas por
+      bimestre, uma planilha, o quadro de horários.}}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \centering
+      \begin{tikzpicture}[node distance=0pt]
+        \foreach \i/\v in {0/0{,}00, 1/0{,}62, 2/1{,}25, 3/1{,}91, 4/2{,}54, 5/3{,}18} {
+          \node[celula, fill=corA!12] at (0,-\i*0.56) {$\v$};
+          \node[celula, fill=corA!12] at (0.85,-\i*0.56) {$1$};
+        }
+        \draw[decorate, decoration={brace, amplitude=4pt}, mStoneMid]
+          (1.35,0.3) -- (1.35,-2.9);
+        \node[rotulo, right] at (1.5,-1.3) {6 linhas};
+        \draw[decorate, decoration={brace, amplitude=4pt, mirror}, mStoneMid]
+          (-0.45,-3.2) -- (1.3,-3.2);
+        \node[rotulo, below] at (0.42,-3.4) {2 colunas};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Multiplicar tabela por lista: uma conta de cada vez}
+  Multiplicar uma matriz por um vetor é só \bnum{fazer uma conta por linha}:
+  pegue a linha, multiplique casadinho com a lista e some.
+  \bigskip
+  \begin{columns}[c]
+    \begin{column}{0.52\textwidth}
+      \[
+        \underbrace{\begin{bmatrix} \textcolor{corA}{1{,}25} & \textcolor{corA}{1} \end{bmatrix}}_{\text{linha 3}}
+        \cdot
+        \underbrace{\begin{bmatrix} a \\ b \end{bmatrix}}_{\text{a lista}}
+        \;=\;
+        \textcolor{corA}{1{,}25}\cdot a \;+\; \textcolor{corA}{1}\cdot b
+      \]
+      \medskip
+
+      E isso é exatamente a altura que a reta $z = a\,x + b$ prevê no ponto 3.
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{ideia}[title={Por que isso importa}]
+        A tabela guarda os \emph{dados}; a lista guarda as \emph{incógnitas}.
+        A multiplicação junta as duas coisas sem escrever a conta seis vezes.
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Seis contas numa linha só}
+  \[
+    \mat{corA}{A} \cdot \begin{bmatrix} a \\ b \end{bmatrix}
+    \;=\;
+    \begin{bmatrix}
+      \textcolor{corA}{0{,}00} & \textcolor{corA}{1} \\
+      \textcolor{corA}{0{,}62} & \textcolor{corA}{1} \\
+      \textcolor{corA}{1{,}25} & \textcolor{corA}{1} \\
+      \textcolor{corA}{1{,}91} & \textcolor{corA}{1} \\
+      \textcolor{corA}{2{,}54} & \textcolor{corA}{1} \\
+      \textcolor{corA}{3{,}18} & \textcolor{corA}{1}
+    \end{bmatrix}
+    \begin{bmatrix} a \\ b \end{bmatrix}
+    =
+    \begin{bmatrix}
+      0{,}00\,a + b \\ 0{,}62\,a + b \\ 1{,}25\,a + b \\
+      1{,}91\,a + b \\ 2{,}54\,a + b \\ 3{,}18\,a + b
+    \end{bmatrix}
+  \]
+  \medskip
+  Seis equações escritas numa linha. Com 50 pontos e 4 incógnitas ---
+  o caso da próxima aula --- \alert{escrever tudo à mão é inviável}.
+  \bigskip
+
+  \begin{ideia}[title={A matriz não é a dificuldade: é a organização}]
+    Nada aqui é mais difícil do que ``multiplica e soma''. A tabela só evita
+    repetir a mesma frase dezenas de vezes.
+  \end{ideia}
+\end{frame}
+
+\begin{frame}{Mais duas palavras: transposta e inversa}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \textbf{Transposta} ($\mathbf{A}^T$): virar a tabela de lado --- as linhas viram
+      colunas.
+      \medskip
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \node[celula, fill=corA!12] at (0,0) {$0{,}62$};
+        \node[celula, fill=corA!12] at (0.85,0) {$1$};
+        \node[celula, fill=corA!12] at (0,-0.56) {$1{,}25$};
+        \node[celula, fill=corA!12] at (0.85,-0.56) {$1$};
+        \node[seta, mStoneMid] at (1.7,-0.28) {};
+        \draw[seta, mStoneMid] (1.45,-0.28) -- (2.15,-0.28);
+        \node[celula, fill=corA!12] at (2.6,0) {$0{,}62$};
+        \node[celula, fill=corA!12] at (3.45,0) {$1{,}25$};
+        \node[celula, fill=corA!12] at (2.6,-0.56) {$1$};
+        \node[celula, fill=corA!12] at (3.45,-0.56) {$1$};
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \textbf{Inversa} ($\mathbf{N}^{-1}$): a tabela que \bnum{desfaz} a outra.
+      É o mais perto que existe de ``dividir por uma matriz''.
+      \[ \mathbf{N}\,X = u \quad\Longrightarrow\quad X = \mathbf{N}^{-1} u \]
+      \medskip
+      \begin{cuidado}[title={Guarde esta frase}]
+        \small Nem toda matriz tem inversa --- assim como não dá para dividir por zero.
+        Quando isso acontece, \alert{o problema não tem resposta única}.
+      \end{cuidado}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{Três formatos de problema}
+
+\begin{frame}{Nem todo problema tem o mesmo formato}
+  Ajustamento sempre é o mesmo espírito --- conciliar medidas demais --- mas a forma de
+  escrever a relação entre \bnum{o que se mediu} e \bnum{o que se quer saber} muda.
+  \bigskip
+  \centering
+  \small
+  \renewcommand{\arraystretch}{1.35}
+  \begin{tabular}{llp{5.3cm}}
+    \toprule
+    modelo & relação & exemplo \\
+    \midrule
+    paramétrico & $L_a = F(X_a)$ &
+      nivelamento: cada desnível medido é a diferença entre duas altitudes procuradas \\
+    condicionado & $F(L_a) = 0$ &
+      triângulo: os três ângulos medidos têm de somar $180°$ --- não há incógnita nenhuma \\
+    \textcolor{mTeal}{\textbf{combinado}} & $\textcolor{mTeal}{F(X_a, L_a) = 0}$ &
+      \textcolor{mTeal}{o corrimão, e o plano da próxima aula} \\
+    \bottomrule
+  \end{tabular}
+  \medskip
+
+  O combinado é o \bnum{mais geral}: os outros dois são casos particulares dele.
+\end{frame}
+
+\begin{frame}{Por que o corrimão precisa do combinado}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      A tentação é escrever
+      \[ z = a\,x + b \]
+      e dizer ``$z$ é o que eu meço, $a$ e $b$ é o que eu quero''. Isso é o modelo
+      \emph{paramétrico} --- e é o que uma planilha faz.
+      \medskip
+
+      \begin{armadilha}[title={O problema}]
+        Essa forma trata $x$ como se fosse \alert{exato}. Mas $x$ foi medido com a
+        mesma trena imperfeita, e erra até 14,5\,mm.
+      \end{armadilha}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      No modelo \bnum{combinado} não escolhemos culpado. Escrevemos só a
+      \bnum{regra que tem de valer}:
+      \[ \boxed{\;F_i = a\,x_i + b - z_i = 0\;} \]
+      \medskip
+      \begin{itemize}
+        \item de um lado, as incógnitas $a$ e $b$;
+        \item do outro, as medidas $x_i$ e $z_i$ --- \bnum{as duas livres para ceder};
+        \item nada precisa ser isolado.
+      \end{itemize}
+      \medskip
+      {\small É esse ``tudo misturado numa igualdade a zero'' que dá nome ao método.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{O valor de $F$ mede o desencaixe}
+  Com um chute qualquer para a reta, $F_i$ deixa de dar zero --- e o quanto sobra
+  diz \bnum{o quanto aquele ponto está fora}.
+  \bigskip
+  \begin{columns}[c]
+    \begin{column}{0.52\textwidth}
+      \centering
+      \small
+      \renewcommand{\arraystretch}{1.15}
+      \begin{tabular}{crrr}
+        \toprule
+        ponto & $a\,x_i + b$ & $z_i$ & $F_i$ \\
+        \midrule
+        1 & $-0{,}0022$ & $0{,}0000$ & $-2{,}22$\,mm \\
+        3 & $0{,}7501$  & $0{,}7420$ & $+8{,}06$\,mm \\
+        4 & $1{,}1473$  & $1{,}1550$ & $-7{,}74$\,mm \\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{ideia}[title={Essa coluna tem nome}]
+        A lista de todos os $F_i$ calculados no chute inicial é a matriz
+        $\matW$ --- \emph{o quanto o chute está errado}.
+      \end{ideia}
+      \medskip
+      {\small Ela vai reaparecer daqui a pouco, já com essa cor.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{A receita, passo a passo}
+
+\begin{frame}{O mapa da receita}
+  \centering
+  \begin{tikzpicture}[node distance=5mm]
+    \node[passo, draw=mStoneMid, fill=mStoneLight] (c) {chute inicial\\$X_0$};
+    \node[passo, draw=corA, fill=corA!10, right=of c] (A) {$\matA$\\cutuca as\\incógnitas};
+    \node[passo, draw=corB, fill=corB!10, right=of A] (B) {$\matB$\\cutuca as\\medidas};
+    \node[passo, draw=corW, fill=corW!10, right=of B] (W) {$\matW$\\erro do\\chute};
+    \node[passo, draw=corP, fill=corP!10, right=of W] (M) {$\matM$\\junta os\\errinhos};
+    \node[passo, draw=mStone, fill=mStone!8, below=8mm of A] (N) {$\matN X = u$\\resolve};
+    \node[passo, draw=mStone, fill=mStone!8, right=of N] (X) {$X$\\a correção};
+    \node[passo, draw=corW, fill=corW!10, right=of X] (V) {$V$\\os resíduos};
+    \node[passo, draw=mTeal, fill=mTeal!12, right=of V] (R) {repete até\\parar de mudar};
+    \draw[seta, mStoneMid] (c) -- (A);
+    \draw[seta, mStoneMid] (M.south) -- ++(0,-0.45) -| (N.north);
+    \draw[seta, mStoneMid] (N) -- (X);
+    \draw[seta, mStoneMid] (X) -- (V);
+    \draw[seta, mStoneMid] (V) -- (R);
+    \draw[seta, mTeal] (R.south) -- ++(0,-0.5) -| (c.south);
+  \end{tikzpicture}
+  \bigskip
+
+  Dez passos, nenhum deles mais difícil do que ``multiplica e soma''.
+  Vamos um a um, com os números do corrimão.
+\end{frame}
+
+\begin{frame}{Passo 0 · Um chute inicial}
+  \begin{columns}[c]
+    \begin{column}{0.52\textwidth}
+      A receita não adivinha do nada: ela \bnum{melhora um chute}.
+      \medskip
+
+      Qualquer reta razoável serve. Usamos a que sai de uma planilha comum:
+      \[ a_0 = 0{,}601\,820 \qquad b_0 = -0{,}002\,216 \]
+      \medskip
+
+      Chamamos essa dupla de $X_0$.
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{ideia}[title={Por que começar com um chute}]
+        Porque a regra $F$ não é uma continha direta: o erro esperado de cada ponto
+        \emph{depende da inclinação}, que é justamente o que não sabemos.
+        \medskip
+
+        Chuta-se, corrige-se, repete-se.
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Passo 1 · Cutucar as incógnitas: a matriz $\matA$}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      Pergunta: \emph{se eu mexer um tiquinho em $a$, o quanto muda o desencaixe
+      $F_i$ daquele ponto?}
+      \[ F_i = a\,x_i + b - z_i \]
+      \begin{itemize}
+        \item mexendo em $a$, muda $x_i$ vezes mais;
+        \item mexendo em $b$, muda $1$ vez.
+      \end{itemize}
+      \medskip
+      Então a linha de $\matA$ daquele ponto é $[\,x_i \;\; 1\,]$ --- e ela não
+      precisou de nenhuma conta nova.
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \[
+        \matA =
+        \begin{bmatrix}
+          \textcolor{corA}{0{,}00} & \textcolor{corA}{1} \\
+          \textcolor{corA}{0{,}62} & \textcolor{corA}{1} \\
+          \textcolor{corA}{1{,}25} & \textcolor{corA}{1} \\
+          \textcolor{corA}{1{,}91} & \textcolor{corA}{1} \\
+          \textcolor{corA}{2{,}54} & \textcolor{corA}{1} \\
+          \textcolor{corA}{3{,}18} & \textcolor{corA}{1}
+        \end{bmatrix}
+        \quad 6\times2
+      \]
+      \smallskip
+
+      {\scriptsize\textcolor{mStoneMid}{Uma linha por ponto medido,\\uma coluna por incógnita.}}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Passo 2 · Cutucar as medidas: a matriz $\matB$}
+  \begin{columns}[T]
+    \begin{column}{0.44\textwidth}
+      Mesma pergunta, agora para as \emph{medidas}:
+      \[ F_i = a\,x_i + b - z_i \]
+      \begin{itemize}
+        \item mexendo em $x_i$, muda $a$ vezes mais;
+        \item mexendo em $z_i$, muda $-1$ vez.
+      \end{itemize}
+      \medskip
+      A linha de $\matB$ é $[\,a \;\; -1\,]$ --- mas ela mora numa tabela
+      \bnum{$6 \times 12$}, porque há 12 medidas ao todo, e o desencaixe do ponto~3
+      não depende das medidas do ponto~5.
+    \end{column}
+    \begin{column}{0.52\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.50]
+        \foreach \i in {0,...,5} {
+          \draw[mStoneMid!40] (0,-\i) rectangle (12,-\i-1);
+          \fill[corB!35] (\i*2,-\i) rectangle (\i*2+2,-\i-1);
+          \node[font=\tiny, text=mStone] at (\i*2+1,-\i-0.5) {$a \;\; {-}1$};
+        }
+        \foreach \i in {0,...,11} { \draw[mStoneMid!25] (\i,0) -- (\i,-6); }
+        \node[rotulo, above] at (6,0.15) {12 colunas: $x_1\,z_1\,x_2\,z_2\,\ldots\,x_6\,z_6$};
+        \node[rotulo, left, align=right] at (-0.2,-3) {6\\linhas};
+      \end{tikzpicture}
+      \smallskip
+
+      {\scriptsize\textcolor{mStoneMid}{Quase tudo é zero. Essa forma em escada
+      é o que deixa as contas leves.}}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Passo 3 · O erro do chute: a matriz $\matW$}
+  \begin{columns}[c]
+    \begin{column}{0.44\textwidth}
+      É a coluna que já vimos: o valor de $F_i$ calculado com o chute e com as
+      medidas cruas.
+      \medskip
+
+      \[ \matW = F(X_0,\, L_b) \]
+      \medskip
+
+      Se o chute fosse perfeito e as medidas também, $\matW$ seria toda zero ---
+      e não haveria nada a ajustar.
+    \end{column}
+    \begin{column}{0.52\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.92]
+        \draw[mStoneMid] (0,0) -- (6.4,0);
+        \foreach \i/\v/\lab in {1/-2.22/{$-2{,}22$}, 2/-1.09/{$-1{,}09$}, 3/8.06/{$+8{,}06$},
+                                  4/-7.74/{$-7{,}74$}, 5/6.41/{$+6{,}41$}, 6/-3.43/{$-3{,}43$}} {
+          \fill[corW] (\i*0.9-0.15,0) rectangle (\i*0.9+0.15,\v*0.14);
+          \node[rotulo, font=\tiny] at (\i*0.9, {\v > 0 ? \v*0.14+0.24 : \v*0.14-0.24}) {\lab};
+        }
+        \node[rotulo, below] at (3.2,-1.55) {$\matW$, em milímetros};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Passo 4 · As precisões: $\Sigma$ e $\matP$}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      Cada ponto tem duas medidas, cada uma com seu erro esperado. Guardamos isso numa
+      tabelinha $2\times2$, a \bnum{matriz de covariâncias} daquele ponto:
+      \[
+        \Sigma_i =
+        \begin{bmatrix} \textcolor{corP}{\sigma_{x,i}^2} & 0 \\ 0 & \textcolor{corP}{\sigma_{z,i}^2} \end{bmatrix}
+      \]
+      Os zeros fora da diagonal dizem que \emph{errar em $x$ não obriga a errar em $z$}.
+      \medskip
+
+      A matriz de \bnum{pesos} é a inversa: $\matP = \Sigma^{-1}$.
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \small
+      \renewcommand{\arraystretch}{1.2}
+      \begin{tabular}{crr}
+        \toprule
+        ponto & $\sigma_x$ & $\sigma_z$ \\
+        \midrule
+        1 & 5,0\,mm & 5,0\,mm \\
+        3 & 8,8\,mm & 5,0\,mm \\
+        6 & 14,5\,mm & 5,0\,mm \\
+        \bottomrule
+      \end{tabular}
+      \medskip
+
+      \begin{ideia}[title={Na próxima aula}]
+        \small Com estação total, $\Sigma_i$ é $3\times3$ e \alert{tem valores fora da
+        diagonal}: errar o ângulo mexe em $x$ e $y$ ao mesmo tempo.
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Passo 5 · Juntar os dois errinhos num só: $\matM$}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      Cada ponto tem erro em $x$ \emph{e} em $z$, mas o desencaixe $F_i$ é
+      \bnum{um número só}. Qual é o erro \emph{dele}?
+      \medskip
+
+      O erro de $x$ chega em $F$ multiplicado pela inclinação $a$; o de $z$ chega
+      inteiro. E eles se combinam \alert{como catetos}:
+      \[ \textcolor{corP}{M_{ii}} = a^2\sigma_{x,i}^2 + \sigma_{z,i}^2 \]
+      \medskip
+      {\small Na notação geral isso é $\matM = \matB\,\matP^{-1}\matB^{T}$ --- e o nome
+      da figura ao lado é \bnum{Pitágoras}.}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.42]
+        \draw[corP, very thick] (0,0) -- (8.75,0);
+        \draw[corP, very thick] (8.75,0) -- (8.75,5);
+        \draw[mStone, line width=1.3pt] (0,0) -- (8.75,5);
+        \draw[mStoneMid] (8.15,0) rectangle (8.75,0.6);
+        \node[rotulo, below, text=corP] at (4.4,-0.25) {$a\,\sigma_x = 8{,}75$\,mm};
+        \node[rotulo, right, text=corP] at (8.95,2.5) {$\sigma_z = 5{,}0$\,mm};
+        \node[rotulo, text=mStone, rotate=29.7, anchor=south] at (4.4,2.5)
+              {$\sqrt{M_{ii}} = 10{,}08$\,mm};
+      \end{tikzpicture}
+      \smallskip
+
+      {\scriptsize\textcolor{mStoneMid}{Ponto 6. No ponto 1 os catetos são\\
+      3,0 e 5,0\,mm, e a hipotenusa dá 5,84\,mm.}}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Passo 5 · O que $\matM$ diz sobre a medição}
+  \centering
+  \small
+  \renewcommand{\arraystretch}{1.2}
+  \begin{tabular}{crrrr}
+    \toprule
+    ponto & $\sigma_x$ & $a\,\sigma_x$ & $\sigma_z$ & $\sqrt{M_{ii}}$ \\
+    \midrule
+    1 & 5,0\,mm  & 3,01\,mm & 5,0\,mm & \textcolor{corP}{\textbf{5,84\,mm}} \\
+    2 & 6,9\,mm  & 4,13\,mm & 5,0\,mm & \textcolor{corP}{\textbf{6,48\,mm}} \\
+    3 & 8,8\,mm  & 5,27\,mm & 5,0\,mm & \textcolor{corP}{\textbf{7,26\,mm}} \\
+    4 & 10,7\,mm & 6,45\,mm & 5,0\,mm & \textcolor{corP}{\textbf{8,17\,mm}} \\
+    5 & 12,6\,mm & 7,60\,mm & 5,0\,mm & \textcolor{corP}{\textbf{9,09\,mm}} \\
+    6 & 14,5\,mm & 8,75\,mm & 5,0\,mm & \textcolor{corP}{\textbf{10,08\,mm}} \\
+    \bottomrule
+  \end{tabular}
+  \bigskip
+
+  O ponto 6 é quase \bnum{duas vezes} menos confiável que o ponto 1 --- e a receita
+  vai levar isso em conta sozinha, sem ninguém precisar avisar.
+\end{frame}
+
+\begin{frame}{Passo 6 · A conta que resolve tudo}
+  Juntando as peças, chega-se a \bnum{duas equações com duas incógnitas}:
+  \[
+    \matN\,X = u,
+    \qquad
+    \matN = \matA^{T}\matM^{-1}\matA,
+    \qquad
+    u = -\,\matA^{T}\matM^{-1}\matW
+  \]
+  \medskip
+  \begin{columns}[c]
+    \begin{column}{0.50\textwidth}
+      \centering
+      \[
+        \matN = \begin{bmatrix} 271\,057 & 129\,116 \\ 129\,116 & 109\,046 \end{bmatrix}
+        \qquad
+        u = \begin{bmatrix} -43{,}0 \\ 10{,}3 \end{bmatrix}
+      \]
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{ideia}[title={Leia assim}]
+        $\matA$ diz \emph{como} cada incógnita mexe no desencaixe, $\matM^{-1}$ diz
+        \emph{quanto vale a opinião} de cada ponto, e $\matW$ diz \emph{onde} está
+        errado. $\matN$ e $u$ são as duas coisas empacotadas.
+      \end{ideia}
+    \end{column}
+  \end{columns}
+  \medskip
+  Essas são as \bnum{equações normais}: o coração de qualquer ajustamento.
+\end{frame}
+
+\begin{frame}{Passo 7 · Resolver, e corrigir o chute}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      Duas equações, duas incógnitas: dá para resolver como no ensino médio,
+      ou de uma vez com a inversa.
+      \[ X = \matN^{-1}u = \begin{bmatrix} -0{,}000\,467 \\ +0{,}000\,648 \end{bmatrix} \]
+      \medskip
+      $X$ não é a resposta: é a \bnum{correção do chute}.
+      \[ X_a = X_0 + X \]
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \small
+      \renewcommand{\arraystretch}{1.3}
+      \begin{tabular}{lrr}
+        \toprule
+        & $a$ & $b$ (mm) \\
+        \midrule
+        chute $X_0$   & $0{,}601\,820$ & $-2{,}216$ \\
+        correção $X$  & $-0{,}000\,467$ & $+0{,}648$ \\
+        \midrule
+        $X_a$         & \bnum{$0{,}601\,353$} & \bnum{$-1{,}568$} \\
+        \bottomrule
+      \end{tabular}
+      \medskip
+
+      {\scriptsize\textcolor{mStoneMid}{Ainda não é a resposta final: falta repetir.}}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Passo 8 · Quem cede quanto: os resíduos}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      Sabendo a reta, dá para calcular \bnum{o quanto cada medida precisa ceder}
+      para o conjunto fechar:
+      \[ V = \matP^{-1}\,\matB^{T} K \]
+      A lista $K$ --- os \emph{correlatos} --- é o ``empurrão'' que cada equação
+      precisou dar. Quem tem erro esperado maior cede mais:
+      \alert{a receita puxa pelo lado mais frouxo}.
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \centering
+      \small
+      \renewcommand{\arraystretch}{1.15}
+      \begin{tabular}{crr}
+        \toprule
+        ponto & $v_x$ (mm) & $v_z$ (mm) \\
+        \midrule
+        1 & $+0{,}71$ & $-1{,}17$ \\
+        2 & $+0{,}50$ & $-0{,}44$ \\
+        3 & $-7{,}10$ & $+3{,}86$ \\
+        4 & $+8{,}28$ & $-2{,}99$ \\
+        5 & $-6{,}84$ & $+1{,}79$ \\
+        6 & $+5{,}28$ & $-1{,}04$ \\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Passo 9 · Repetir até parar de mudar}
+  \begin{columns}[c]
+    \begin{column}{0.50\textwidth}
+      Por que repetir? Porque $\matM$ e $\matB$ \bnum{dependem da inclinação} ---
+      e a inclinação acabou de mudar.
+      \medskip
+
+      Então recomeça-se com o novo $X_a$ no lugar do chute. A cada volta a correção
+      fica menor, e logo é tão pequena que não muda mais nada.
+      \medskip
+
+      {\small Seis voltas bastaram. Da terceira em diante a mudança já é menor que a
+      espessura de um fio de cabelo dividida por mil.}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \small
+      \renewcommand{\arraystretch}{1.2}
+      \begin{tabular}{crl}
+        \toprule
+        volta & maior correção & $a$ \\
+        \midrule
+        1 & $6{,}5\cdot10^{-4}$  & $0{,}601\,353$ \\
+        2 & $2{,}9\cdot10^{-5}$  & $0{,}601\,377\,4$ \\
+        3 & $1{,}9\cdot10^{-8}$  & $0{,}601\,377\,41$ \\
+        4 & $4{,}7\cdot10^{-10}$ & $0{,}601\,377\,413$ \\
+        5 & $6{,}4\cdot10^{-13}$ & $0{,}601\,377\,413$ \\
+        6 & $7{,}8\cdot10^{-15}$ & \bnum{$0{,}601\,377\,413$} \\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{A resposta}
+  \begin{columns}[c]
+    \begin{column}{0.48\textwidth}
+      \begin{ideia}[title={O corrimão medido}]
+        inclinação \bnum{$a = 0{,}601\,377$}\\[3pt]
+        ou seja, \bnum{60{,}138\,\%}\\[3pt]
+        ângulo de \bnum{$31{,}02°$}\\[3pt]
+        altura na origem $b = -1{,}6$\,mm
+      \end{ideia}
+      \medskip
+
+      Todas as seis medidas participaram. Nenhuma foi jogada fora.
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \centering
+      \begin{tikzpicture}[xscale=1.5, yscale=1.3]
+        \draw[mStoneMid, -{Stealth[length=2mm]}] (-0.12,0) -- (3.55,0) node[right, rotulo] {$x$};
+        \draw[mStoneMid, -{Stealth[length=2mm]}] (-0.12,0) -- (-0.12,2.15) node[above, rotulo] {$z$};
+        \draw[mTeal, line width=1.4pt] (-0.05,-0.032) -- (3.45,2.074);
+        \foreach \x/\z in {0.00/0.000, 0.62/0.372, 1.25/0.742, 1.91/1.155, 2.54/1.520, 3.18/1.915} {
+          \fill[mRose] (\x,\z) circle (0.055);
+        }
+        \node[rotulo, text=mTeal, above left] at (3.5,1.95) {$60{,}138\,\%$};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{E se eu tivesse usado a planilha?}
+  \centering
+  \small
+  \renewcommand{\arraystretch}{1.3}
+  \begin{tabular}{lcc}
+    \toprule
+    & linha de tendência & \textcolor{mTeal}{\textbf{ajustamento combinado}} \\
+    \midrule
+    inclinação & $60{,}182\,\%$ & \textcolor{mTeal}{$\mathbf{60{,}138\,\%}$} \\
+    quem pode errar & só $z$ & \textcolor{mTeal}{$x$ e $z$} \\
+    medidas ruins pesam & igual às boas & \textcolor{mTeal}{menos} \\
+    diz o $\pm$ da resposta & \textcolor{mRose}{não} & \textcolor{mTeal}{sim} \\
+    aponta medida suspeita & \textcolor{mRose}{não} & \textcolor{mTeal}{sim} \\
+    \bottomrule
+  \end{tabular}
+  \bigskip
+
+  A diferença nas inclinações é de \bnum{0,044 ponto percentual} --- pequena, porque a
+  escada é bem comportada.
+  \medskip
+
+  \alert{Mas as três últimas linhas da tabela não têm preço}, e é sobre elas a próxima seção.
+\end{frame}
+
+% ==================================================================
+\section{A resposta vem com etiqueta}
+
+\begin{frame}{Uma nota para o encaixe}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      Somamos os resíduos ao quadrado, cada um dividido pelo erro que \emph{se
+      esperava} daquela medida:
+      \[ V^{T}\matP V = \sum_i \frac{v_{x,i}^2}{\sigma_{x,i}^2} + \frac{v_{z,i}^2}{\sigma_{z,i}^2}
+         = \bnum{2{,}8901} \]
+      \medskip
+
+      Esse número sozinho não diz nada: com mais pontos ele naturalmente cresce.
+      Falta dividir por alguma coisa.
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{ideia}[title={Graus de liberdade}]
+        6 equações $-$ 2 incógnitas $= \bnum{4}$
+        \medskip
+
+        São as \emph{medidas a mais}: a sobra que nos deixou conferir alguma coisa.
+      \end{ideia}
+      \medskip
+      {\small Com só dois pontos daria zero --- e não haveria nota nenhuma a dar.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{$\hat\sigma_0^2$: as medidas foram tão boas quanto você prometeu?}
+  \[
+    \hat\sigma_0^2 = \frac{V^{T}\matP V}{\text{graus de liberdade}}
+    = \frac{2{,}8901}{4} = 0{,}7225
+    \qquad\Longrightarrow\qquad \hat\sigma_0 = \bnum{0{,}85}
+  \]
+  \medskip
+  \begin{columns}[T]
+    \begin{column}{0.31\textwidth}
+      \begin{ideia}[title={$\hat\sigma_0 \approx 1$}]
+        \small As medidas erraram tanto quanto você disse que errariam.
+        Tudo conforme o combinado.
+      \end{ideia}
+    \end{column}
+    \begin{column}{0.31\textwidth}
+      \begin{cuidado}[title={$\hat\sigma_0 \gg 1$}]
+        \small Erraram \emph{mais}. Ou o instrumento é pior do que se pensava, ou a
+        superfície não é reta mesmo.
+      \end{cuidado}
+    \end{column}
+    \begin{column}{0.33\textwidth}
+      \begin{ideia}[title={$\hat\sigma_0 \ll 1$}]
+        \small Erraram \emph{menos}. Você foi pessimista ao declarar as precisões.
+      \end{ideia}
+    \end{column}
+  \end{columns}
+  \bigskip
+  \centering
+  No corrimão: \bnum{0,85} --- um pouquinho melhor que o prometido.
+\end{frame}
+
+\begin{frame}{O teste global: 0,85 é perto o bastante de 1?}
+  \begin{columns}[c]
+    \begin{column}{0.44\textwidth}
+      Com apenas 4 graus de liberdade, $\hat\sigma_0$ tem direito de variar bastante
+      só por sorte.
+      \medskip
+
+      A estatística diz \emph{quanto}: para 4 graus de liberdade e 5\,\% de
+      tolerância, $V^{T}\matP V$ pode cair em qualquer lugar entre
+      \bnum{0,48} e \bnum{11,14}.
+      \medskip
+
+      Deu $2{,}89$. \textcolor{mTeal}{\textbf{Passa.}}
+    \end{column}
+    \begin{column}{0.52\textwidth}
+      \centering
+      \begin{tikzpicture}[xscale=0.42, yscale=1]
+        \fill[mTeal!16] (0.48,-0.35) rectangle (11.14,0.35);
+        \draw[mStoneMid, -{Stealth[length=2mm]}] (-0.4,0) -- (13.4,0);
+        \draw[mTeal, thick] (0.48,-0.4) -- (0.48,0.4);
+        \draw[mTeal, thick] (11.14,-0.4) -- (11.14,0.4);
+        \node[rotulo, below, text=mTeal] at (0.48,-0.45) {0,48};
+        \node[rotulo, below, text=mTeal] at (11.14,-0.45) {11,14};
+        \draw[mRose, line width=1.5pt] (2.89,-0.75) -- (2.89,0.75);
+        \node[rotulo, above, text=mRose] at (2.89,0.8) {$2{,}89$};
+        \node[rotulo, above, text=mTeal] at (7.5,0.4) {faixa aceitável};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{O $\pm$ da resposta}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      A mesma matriz $\matN$ que resolveu o problema também diz \bnum{o quanto confiar
+      no resultado}:
+      \[ \Sigma_{X_a} = \hat\sigma_0^2 \; \matN^{-1} \]
+      \medskip
+
+      Na diagonal estão as variâncias; a raiz delas é o erro de cada incógnita:
+      \[ \sigma_a = 0{,}002\,47 \qquad \sigma_b = 3{,}9\,\text{mm} \]
+      {\small Fora da diagonal está a \emph{correlação}: $a$ e $b$ erram juntos.}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{ideia}[title={De graça}]
+        Repare que ninguém mediu nada de novo para obter isso. O $\pm$ \alert{já estava
+        dentro das contas} --- basta não jogá-lo fora.
+      \end{ideia}
+      \medskip
+      \begin{cuidado}[title={A planilha não dá isso}]
+        \small Uma linha de tendência devolve a inclinação e para por aí.
+      \end{cuidado}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Afinal: a escada bate com o projeto?}
+  \centering
+  \begin{tikzpicture}[xscale=6.6, yscale=1]
+    \fill[mTeal!18] (59.891,-0.32) rectangle (60.385,0.32);
+    \draw[mStoneMid, -{Stealth[length=2mm]}] (59.55,0) -- (60.72,0);
+    \draw[mTeal, line width=1.6pt] (60.138,-0.5) -- (60.138,0.5);
+    \node[rotulo, above, text=mTeal] at (60.138,0.55) {medido: $60{,}138\,\%$};
+    \draw[mTeal, thick] (59.891,-0.32) -- (59.891,0.32);
+    \draw[mTeal, thick] (60.385,-0.32) -- (60.385,0.32);
+    \node[rotulo, below, text=mTeal] at (60.32,-0.30) {$\pm\,2\,\sigma$};
+    \draw[mStone, line width=1.3pt, dashed] (60.0,-0.75) -- (60.0,0.48);
+    \node[rotulo, below] at (60.0,-0.78) {projeto: $60\,\%$};
+  \end{tikzpicture}
+  \bigskip
+
+  A diferença é de \bnum{0,138 ponto percentual}, e o erro da medição é de
+  \bnum{0,247}. A diferença vale \alert{0,56 vezes} o erro.
+  \medskip
+
+  \begin{ideia}[title={A resposta honesta}]
+    A escada é \bnum{indistinguível do projeto}. Não é que ela esteja exatamente em
+    60\,\%: é que a nossa medição não tem gume fino o bastante para afirmar que não está ---
+    e dizer isso é parte da resposta.
+  \end{ideia}
+\end{frame}
+
+\begin{frame}{Quem vigia quem: as redundâncias}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      Cada equação recebe um número $r_i$ entre 0 e 1: \bnum{o quanto aquela medida é
+      conferida pelas outras}.
+      \medskip
+      \begin{itemize}
+        \item $r_i$ perto de 1: bem vigiada, um erro nela apareceria;
+        \item $r_i$ perto de 0: ninguém confere, um erro passa batido.
+      \end{itemize}
+      \medskip
+      E há uma coincidência que não é coincidência:
+      \[ \textstyle\sum_i r_i = 4 = \text{graus de liberdade} \]
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95]
+        \foreach \i/\r in {1/0.383, 2/0.718, 3/0.826, 4/0.794, 5/0.703, 6/0.576} {
+          \fill[mTeal!70] (\i*0.78-0.25,0) rectangle (\i*0.78+0.25,\r*2.4);
+          \node[rotulo, below] at (\i*0.78,-0.05) {\i};
+          \node[rotulo, above, font=\tiny] at (\i*0.78,\r*2.4) {\r};
+        }
+        \draw[mStoneMid] (0.2,0) -- (5.2,0);
+        \draw[mStoneMid, dashed] (0.2,2.4) -- (5.2,2.4);
+        \node[rotulo, right] at (5.1,2.4) {$1$};
+      \end{tikzpicture}
+      \smallskip
+
+      {\scriptsize\textcolor{mStoneMid}{Os pontos das pontas são os menos vigiados:\\
+      não têm vizinhos dos dois lados.}}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Caçando um erro grosseiro}
+  E se alguém tivesse lido a régua \alert{3 centímetros errada} no ponto 4?
+  \bigskip
+  \centering
+  \small
+  \renewcommand{\arraystretch}{1.25}
+  \begin{tabular}{lcc}
+    \toprule
+    & medição boa & \textcolor{mRose}{\textbf{com o erro de 3 cm}} \\
+    \midrule
+    $V^{T}\matP V$ & $2{,}89$ & \textcolor{mRose}{$20{,}70$} \\
+    faixa aceitável & \multicolumn{2}{c}{$[\,0{,}48 \,;\, 11{,}14\,]$} \\
+    teste global & \textcolor{mTeal}{passa} & \textcolor{mRose}{\textbf{falha}} \\
+    $\hat\sigma_0$ & $0{,}85$ & \textcolor{mRose}{$2{,}28$} \\
+    \bottomrule
+  \end{tabular}
+  \bigskip
+
+  O teste global \bnum{acende a luz vermelha} --- mas não diz de quem é a culpa.
+\end{frame}
+
+\begin{frame}{O dedo no culpado: o teste $w$}
+  \begin{columns}[T]
+    \begin{column}{0.46\textwidth}
+      Para cada equação calcula-se um número $w$: \bnum{o tamanho do seu empurrão,
+      medido em ``vezes o erro esperado''}.
+      \medskip
+
+      Com 0,1\,\% de tolerância, qualquer $|w|$ acima de \bnum{3,29} é suspeito.
+      \medskip
+
+      O ponto 4 marca \alert{4,36}. Achamos o culpado --- sem nunca ter visto a
+      caderneta de campo.
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95]
+        \fill[mTeal!10] (0.25,-1.58) rectangle (5.15,1.58);
+        \draw[mRose, dashed] (0.25,1.58) -- (5.15,1.58);
+        \draw[mRose, dashed] (0.25,-1.58) -- (5.15,-1.58);
+        \node[rotulo, above right, text=mRose] at (0.3,1.6) {$+3{,}29$};
+        \node[rotulo, below right, text=mRose] at (0.3,-1.6) {$-3{,}29$};
+        \draw[mStoneMid] (0.25,0) -- (5.15,0);
+        \foreach \i/\w in {1/0.258, 2/-0.315, 3/-1.882, 4/4.360, 5/-1.826, 6/-0.745} {
+          \fill[mStoneMid!70] (\i*0.78-0.2,0) rectangle (\i*0.78+0.2,\w*0.48);
+          \node[rotulo, below] at (\i*0.78,-1.95) {\i};
+        }
+        \fill[mRose] (4*0.78-0.2,0) rectangle (4*0.78+0.2,4.360*0.48);
+        \node[rotulo, above, text=mRose] at (4*0.78,2.14) {$4{,}36$};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{O que a etiqueta entrega}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{ideia}[title={Sem ajustamento}]
+        ``A escada tem 60,18\,\%.''
+        \medskip
+
+        Uma frase seca. Não dá para saber se é confiável, se alguma medida estava
+        errada, nem se a diferença para o projeto significa alguma coisa.
+      \end{ideia}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{ideia}[title={Com ajustamento}]
+        ``A escada tem $60{,}138 \pm 0{,}247\,\%$, as seis medidas são coerentes entre si
+        e com a precisão declarada, e o resultado é indistinguível do projeto de
+        60\,\%.''
+      \end{ideia}
+    \end{column}
+  \end{columns}
+  \bigskip
+  \centering
+  A segunda frase é uma \bnum{medição}. A primeira é só um número.
+\end{frame}
+
+% ==================================================================
+\section{E o plano?}
+
+\begin{frame}{Mesma receita, uma dimensão a mais}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      Trocar o corrimão por uma parede muda a regra escrita, mas \bnum{não muda a
+      receita}:
+      \[ F_i = A\,x_i + B\,y_i + C\,z_i + D = 0 \]
+      \medskip
+      \begin{itemize}
+        \item 4 incógnitas em vez de 2;
+        \item 3 medidas por ponto em vez de 2;
+        \item 50 pontos em vez de 6.
+      \end{itemize}
+      \medskip
+      Todo o resto --- $\matA$, $\matB$, $\matW$, $\matM$, $\matN X = u$, os resíduos,
+      $\hat\sigma_0$, o teste $w$ --- é \bnum{exatamente igual}.
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \tdplotsetmaincoords{68}{125}
+      \begin{tikzpicture}[tdplot_main_coords, scale=0.95]
+        \filldraw[fill=mTeal!15, draw=mTeal!70]
+          (-1.7,-1.7,0) -- (1.7,-1.7,0) -- (1.7,1.7,0) -- (-1.7,1.7,0) -- cycle;
+        \draw[mRose, line width=1.5pt, -{Stealth[length=3mm]}] (0,0,0) -- (0,0,1.9);
+        \node[mRose, font=\small] at (0,0,2.25) {$(A, B, C)$};
+        \foreach \px/\py in {-1.1/-0.9, 0.4/-1.2, 1.0/0.6, -0.7/0.9, 0.1/0.2} {
+          \fill[mRose] (\px,\py,0.12) circle (0.055);
+        }
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{O mesmo Pitágoras, em três dimensões}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      No corrimão, os erros de $x$ e $z$ viraram um só pela conta
+      $M_{ii} = a^2\sigma_x^2 + \sigma_z^2$.
+      \medskip
+
+      No plano é a mesma ideia com três medidas, e escreve-se
+      \[ \textcolor{corP}{M_{ii}} = n^{T}\,\Sigma_i\,n, \qquad n = (A, B, C) \]
+      \medskip
+      Lê-se: \emph{o erro do ponto, projetado na direção em que o plano está virado}.
+      Errar \emph{ao longo} da parede não atrapalha; errar \bnum{para dentro dela} sim.
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{ideia}[title={O que muda de verdade}]
+        Com estação total, $\Sigma_i$ tem valores fora da diagonal, porque o mesmo
+        errinho de ângulo mexe em $x$ e $y$ ao mesmo tempo.
+        \medskip
+
+        A fórmula acima já cuida disso sozinha.
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Os números de um piso de verdade}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      50 pontos medidos com estação total, num piso de sala:
+      \medskip
+      \centering
+      \small
+      \renewcommand{\arraystretch}{1.25}
+      \begin{tabular}{lr}
+        \toprule
+        pontos & $50$ \\
+        graus de liberdade & $47$ \\
+        $V^{T}\matP V$ & $723{,}3$ \\
+        $\hat\sigma_0$ & \textcolor{mRose}{$\mathbf{3{,}92}$} \\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{cuidado}[title={$\hat\sigma_0 = 3{,}92$: reprovado?}]
+        O instrumento erra 2\,mm; os pontos ficaram quase 4 vezes mais espalhados que isso.
+        \medskip
+
+        \alert{Não é defeito da medição: é o piso.} Ele cai 0,8\,mm por metro, e essa
+        ondulação é real.
+      \end{cuidado}
+      \medskip
+      {\small Reprovar no teste global é, aqui, a informação mais interessante.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{A surpresa que vem na próxima aula}
+  Montamos $\matA$, $\matB$, $\matW$, $\matM$. Montamos $\matN = \matA^{T}\matM^{-1}\matA$,
+  agora $4\times4$. Vamos resolver $\matN X = u$ e\ldots
+  \bigskip
+  \begin{columns}[c]
+    \begin{column}{0.50\textwidth}
+      \begin{armadilha}[title={$\matN$ não tem inversa}]
+        E a resposta despenca para
+        \[ (A, B, C, D) = (0,\,0,\,0,\,0) \]
+        que ``encaixa'' em todos os pontos do universo --- e não é plano nenhum.
+      \end{armadilha}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      Lembra da frase lá do começo?
+      \medskip
+
+      \begin{ideia}
+        \emph{``Nem toda matriz tem inversa. Quando isso acontece, o problema não tem
+        resposta única.''}
+      \end{ideia}
+      \medskip
+
+      Por que isso acontece --- e os \bnum{três jeitos clássicos} de contornar --- é o
+      assunto da próxima aula.
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{Fechamento}
+
+\begin{frame}{Para levar para casa}
+  \footnotesize
+  \begin{enumerate}
+    \setlength{\itemsep}{5pt}
+    \item Medida a mais não é estorvo: é o que permite \bnum{uma resposta melhor} e,
+          principalmente, \bnum{saber o quanto ela vale}.
+    \item \bnum{Mínimos quadrados}: a reta boa é a que minimiza a soma dos resíduos ao
+          quadrado --- cada um dividido pela precisão da sua medida.
+    \item No \bnum{modelo combinado} nada precisa ser isolado: escreve-se só a regra
+          $F(X_a, L_a) = 0$, e \alert{todas as medidas podem ceder}.
+    \item As matrizes $\matA$, $\matB$, $\matW$, $\matM$ são só \bnum{tabelas de coisas
+          que já entendemos}: o que muda quando cutucamos cada número, e o quanto cada
+          medida merece confiança.
+    \item O ajustamento não entrega um número: entrega um número \bnum{com etiqueta} ---
+          $\pm$, nota de encaixe e suspeita de erro grosseiro.
+  \end{enumerate}
+  \smallskip
+  \begin{ideia}[title={Experimente}]
+    \small No simulador \texttt{ajusta\_planos}, aba \textbf{Matrizes}: todas elas,
+    sobre medições reais.
+  \end{ideia}
+\end{frame}
+
+% ==================================================================
+\appendix
+
+\begin{frame}[standout]
+  Apêndice\\[6pt]
+  {\normalsize Para quem quer ir além: as contas por trás da receita}
+\end{frame}
+
+\begin{frame}{A1 · O modelo combinado e sua dedução}
+  \small
+  Modelo: $F(X_a, L_a) = 0$, com $X_a = X_0 + X$ e $L_a = L_b + V$.
+  Linearizando por Taylor de 1ª ordem:
+  \[ \matA X + \matB V + \matW = 0, \qquad
+     \matA = \frac{\partial F}{\partial X_a}\bigg|_0, \quad
+     \matB = \frac{\partial F}{\partial L_a}\bigg|_0, \quad
+     \matW = F(X_0, L_b) \]
+  Minimiza-se $V^T \matP V$ sujeito a essa restrição, com a lagrangiana
+  \[ \Phi = V^T \matP V - 2K^T(\matA X + \matB V + \matW) \]
+  \begin{columns}[T]
+    \begin{column}{0.46\textwidth}
+      \begin{itemize}
+        \item $\partial\Phi/\partial V = 0 \Rightarrow V = \matP^{-1}\matB^T K$
+        \item $\partial\Phi/\partial X = 0 \Rightarrow \matA^T K = 0$
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \begin{itemize}
+        \item substituindo: $\matM K + \matA X + \matW = 0$, \; $\matM = \matB\matP^{-1}\matB^T$
+        \item eliminando $K$: \; $\matN X = u$, com
+              $\matN = \matA^T\matM^{-1}\matA$ e $u = -\matA^T\matM^{-1}\matW$
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{A2 · Os tamanhos, e por que $\matM$ é diagonal aqui}
+  \small
+  Com $m$ equações de condição, $u$ parâmetros e $n$ observações:
+  \medskip
+  \centering
+  \renewcommand{\arraystretch}{1.15}
+  \begin{tabular}{llll}
+    \toprule
+    matriz & tamanho & corrimão & plano (piso) \\
+    \midrule
+    $\matA$ & $m \times u$ & $6\times2$ & $50\times4$ \\
+    $\matB$ & $m \times n$ & $6\times12$ & $50\times150$ \\
+    $\matW$ & $m \times 1$ & $6\times1$ & $50\times1$ \\
+    $\matP$ & $n \times n$ & $12\times12$ & $150\times150$ \\
+    $\matM$ & $m \times m$ & $6\times6$ & $50\times50$ \\
+    $\matN$ & $u \times u$ & $2\times2$ & $4\times4$ \\
+    \bottomrule
+  \end{tabular}
+  \flushleft
+  \medskip
+  $\matM$ sai \textbf{diagonal} em ambos os casos porque cada equação usa as observações de um
+  único ponto, e pontos distintos não são correlacionados. Guarda-se só a diagonal: no corrimão
+  $M_{ii} = a^2\sigma_{x,i}^2 + \sigma_{z,i}^2$; no plano $M_{ii} = n^T\Sigma_i\,n$.
+\end{frame}
+
+\begin{frame}{A3 · A forma iterada}
+  \small
+  Entre iterações as observações ajustadas já se moveram, e $\matW$ precisa refletir isso.
+  A forma usada é a de Gemael:
+  \[ \matW^{(k)} = F\big(X_0^{(k)},\, L_a^{(k)}\big) - \matB^{(k)} V^{(k)} \]
+  --- exatamente o que faz \texttt{adjustment.js}, linha a linha. Na primeira iteração
+  $V = 0$ e $L_a = L_b$, então $\matW = F(X_0, L_b)$.
+  \medskip
+  \begin{itemize}
+    \item $\matA$ é reavaliada em $L_a$, não em $L_b$;
+    \item $\matB$ e $\matM$ dependem dos parâmetros --- é por isso que há iteração;
+    \item critério de parada: $\max|X| < $ tolerância (no simulador, $10^{-10}$).
+  \end{itemize}
+  \begin{cuidado}[title={No corrimão}]
+    6 iterações. A correção cai de $6{,}5\cdot10^{-4}$ para $7{,}8\cdot10^{-15}$ --- convergência
+    quadrática, típica de Gauss--Newton longe de qualquer degeneração ($\mathrm{cond}(\matN) = 9{,}1$).
+  \end{cuidado}
+\end{frame}
+
+\begin{frame}{A4 · Qualidade, e de onde vem $\Sigma$}
+  \small
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \[ \hat\sigma_0^2 = \frac{V^T\matP V}{m - u}, \qquad
+         \Sigma_{X_a} = \hat\sigma_0^2\,\matN^{-1} \]
+      \begin{itemize}
+        \item teste global: $V^T\matP V \in [\chi^2_{\alpha/2},\, \chi^2_{1-\alpha/2}]$
+        \item redundância: $r_i = q_{K,i} M_{ii}$, com
+              $q_K = \mathrm{diag}(\matM^{-1} - \matM^{-1}\matA\matN^{-1}\matA^T\matM^{-1})$
+        \item $\sum_i r_i = m - u$
+        \item teste $w$: $w_i = K_i / \sqrt{q_{K,i}}$
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      No plano, $\Sigma_i$ não é dado: é \textbf{propagado} das observações brutas
+      (azimute, zenital, distância inclinada) pela jacobiana $J$ daquela transformação:
+      \[ \Sigma_{XYZ} = J\,\Sigma_{\text{obs}}\,J^{T} \]
+      com $\Sigma_{\text{obs}} = \mathrm{diag}(\sigma_{Az}^2, \sigma_{Z}^2, \sigma_{SD}^2)$ ---
+      $2''$ nos ângulos e $2\,\text{mm} + 2\,\text{ppm}$ na distância.
+      É de onde nascem os elipsoides de erro da vista 3D do simulador.
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{A5 · Paramétrico e condicionado são casos do combinado}
+  \small
+  \centering
+  \renewcommand{\arraystretch}{1.5}
+  \begin{tabular}{lll}
+    \toprule
+    modelo & como se obtém & sistema normal \\
+    \midrule
+    paramétrico & $F = F(X_a) - L_a$, logo $\matB = -I$, $\matM = \matP^{-1}$ &
+      $\matA^T\matP\matA\,X = -\matA^T\matP\matW$ \\
+    condicionado & sem parâmetros: $\matA$ não existe &
+      $K = -\matM^{-1}\matW$, \; $V = \matP^{-1}\matB^T K$ \\
+    combinado & o caso geral &
+      $\matA^T\matM^{-1}\matA\,X = -\matA^T\matM^{-1}\matW$ \\
+    \bottomrule
+  \end{tabular}
+  \flushleft
+  \medskip
+  Escrever uma rotina para o combinado dá, de graça, as outras duas. É por isso que
+  \texttt{adjustment.js} implementa só esta.
+\end{frame}
+
+\begin{frame}{A6 · Os números do corrimão, para conferir}
+  \scriptsize
+  \begin{columns}[T]
+    \begin{column}{0.47\textwidth}
+      \textbf{Dados} ($\sigma_x = 5\,\text{mm} + 3\,\text{mm/m}\cdot x$, $\sigma_z = 5$\,mm)
+      \renewcommand{\arraystretch}{1.05}
+      \begin{tabular}{crrrr}
+        \toprule
+        $i$ & $x$ (m) & $z$ (m) & $r_i$ & $w_i$ \\
+        \midrule
+        1 & 0,00 & 0,000 & 0,383 & $0{,}44$ \\
+        2 & 0,62 & 0,372 & 0,718 & $0{,}14$ \\
+        3 & 1,25 & 0,742 & 0,826 & $-1{,}23$ \\
+        4 & 1,91 & 1,155 & 0,794 & $1{,}10$ \\
+        5 & 2,54 & 1,520 & 0,703 & $-0{,}78$ \\
+        6 & 3,18 & 1,915 & 0,576 & $0{,}55$ \\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+    \begin{column}{0.49\textwidth}
+      \textbf{Resultado}
+      \[ \matN = \begin{bmatrix} 271\,392 & 129\,227 \\ 129\,227 & 109\,123 \end{bmatrix},
+         \quad \mathrm{cond} = 9{,}10 \]
+      \[ \Sigma_{X_a} = \begin{bmatrix} 6{,}105\cdot10^{-6} & -7{,}229\cdot10^{-6} \\
+                                        -7{,}229\cdot10^{-6} & 1{,}518\cdot10^{-5} \end{bmatrix} \]
+      $a = 0{,}601\,377\,4$, \; $b = -1{,}60$\,mm, \; $V^T\matP V = 2{,}8901$, \;
+      $\hat\sigma_0 = 0{,}8500$
+      \medskip
+
+      \textbf{Com 3\,cm de erro em $z_4$}: $\hat\sigma_0 = 2{,}2750$, teste global falha,
+      $w_4 = 4{,}36$.
+    \end{column}
+  \end{columns}
+  \medskip
+  \centering
+  \normalsize
+  Tudo isso sai de \texttt{node ajusta\_planos/explanations/corrimao.js}.
+\end{frame}
+
+\end{document}

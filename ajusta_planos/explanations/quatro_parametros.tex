@@ -1,6 +1,11 @@
 % Por que os quatro parâmetros de um plano não podem simplesmente ser calculados
 % Aula para o ensino médio, com apêndice técnico.
 %
+% Esta é a SEGUNDA aula. A anterior é metodo_combinado.tex, que apresenta o modelo
+% combinado do zero (resíduos, pesos, as matrizes A, B, W, M, N, e o controle de
+% qualidade) usando um exemplo de reta 2D. Tudo o que aqui aparece já nomeado sem
+% explicação — A, B, M, N, sigma0, teste w — é explicado lá.
+%
 % Compilar (nesta pasta):  latexmk -pdf quatro_parametros.tex
 % Limpar auxiliares:       latexmk -c
 %
@@ -83,7 +88,17 @@
 % ==================================================================
 \begin{frame}{O que vamos ver}
   \setbeamertemplate{section in toc}[sections numbered]
-  \tableofcontents
+  \begin{columns}[T]
+    \begin{column}{0.60\textwidth}
+      \tableofcontents
+    \end{column}
+    \begin{column}{0.36\textwidth}
+      \begin{ideia}[title={Esta aula tem uma anterior}]
+        \small Em \emph{``O que fazer quando as medidas não combinam?''} está o modelo
+        combinado do zero: resíduos, pesos, as matrizes e o controle de qualidade.
+      \end{ideia}
+    \end{column}
+  \end{columns}
 \end{frame}
 
 % ==================================================================
@@ -798,7 +813,8 @@
   \end{columns}
   \bigskip
   {\small\textcolor{mStoneMid}{Estimativas usando todas as medidas. Descobrir quais medidas
-  estão ruins --- e se esses milímetros são reais ou só errinho --- é assunto para outra aula.}}
+  estão ruins --- e se esses milímetros são reais ou só errinho --- é o assunto da aula
+  anterior, \emph{``O que fazer quando as medidas não combinam?''}.}}
 \end{frame}
 
 \begin{frame}{Para levar para casa}

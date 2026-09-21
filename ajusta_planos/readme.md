@@ -129,8 +129,24 @@ The page needs to be served over HTTP (the sample CSVs are read with `fetch`):
 
 ## Classroom material
 
-`explanations/quatro_parametros.pdf` is a slide deck (Portuguese, aimed at high-school
-students) explaining why the four plane parameters cannot simply be computed and walking
-through the three gauge strategies, with a technical appendix. Rebuild it from
-`explanations/` with `latexmk -pdf quatro_parametros.tex`; the numbers it quotes come from
-this simulator run on the sample CSVs.
+Two slide decks in `explanations/`, in Portuguese, aimed at high-school students, each with a
+technical appendix. They are meant to be shown in this order:
+
+1. **`metodo_combinado.pdf`** — the combined model from scratch: why measuring too much is a
+   resource rather than a nuisance, least squares, weights, and the matrices `A`, `B`, `W`, `M`,
+   `N` introduced one at a time, then quality control (σ̂₀², the χ² global test, the MVC and
+   Baarda's *w* test). It teaches the whole recipe on a deliberately tiny, non-degenerate
+   example — a stair handrail measured with a tape, where *both* coordinates carry error, so
+   `F = a·x + b − z = 0` needs the combined model. The plane only appears at the end, as the
+   cliffhanger.
+2. **`quatro_parametros.pdf`** — why the four plane parameters cannot simply be computed, and
+   the three gauge strategies.
+
+Rebuild either from `explanations/` with `latexmk -pdf <name>.tex`. Every number the second
+deck quotes comes from this simulator run on the sample CSVs; every number the first one quotes
+comes from `explanations/corrimao.js`, which redoes the handrail adjustment with the same
+sequence as `adjustPlane` and prints all of it:
+
+```
+node ajusta_planos/explanations/corrimao.js
+```
