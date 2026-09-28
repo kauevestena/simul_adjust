@@ -1,0 +1,1282 @@
+% Sistemas Geodésicos de Referência — Parte 1: os terrestres.
+% Sistema (idealizado) e frame (materializado), em "baby steps", para o ensino médio.
+% A Parte 2 (sistemas celestes: ICRS e ICRF) fica para outra aula.
+%
+% Compilar (nesta pasta):  latexmk -pdf sgr_terrestres.tex
+% Limpar auxiliares:       latexmk -c
+%
+% Acompanha o simulador sistemas_coordenadas/, cujo descricao.md registra que
+% "sistemas de coordenadas != Sistemas Geodésicos de Referência" — esta aula é
+% exatamente sobre o que aquele simulador deixa de fora.
+% Mesmo formato das aulas de ajusta_planos/explanations/ e
+% historia_modelos_terrestres/explanations/.
+%
+% Fontes dos fatos e números citados (conferidos em 2026-09-22):
+%   SIRGAS2000 — referido ao ITRF2000, época 2000,4; campanha de maio de 2000 com 184
+%     estações GPS nas Américas e Caribe (SIRGAS/DGFI-TUM; IBGE). Oficializado no Brasil
+%     pela Resolução PR nº 01/2005 do IBGE (fevereiro de 2005), com fim do período de
+%     transição em 25/02/2015 (IBGE, nota técnica). Placa sul-americana: pouco mais de
+%     1 cm/ano para noroeste (IBGE/PMRG).
+%   SAD69 x SIRGAS2000 — diferenças horizontais de 58 m no Nordeste a 73 m nos extremos
+%     do país, média em torno de 65 m (IBGE, parâmetros de transformação).
+%   ITRF — gerações ITRF94, 96, 97, 2000, 2005, 2008, 2014, 2020, mais as atualizações
+%     ITRF2020-u2023 e u2024 (IERS; IGN/ITRF). Técnicas: VLBI, SLR, GNSS e DORIS.
+%   WGS 84 (G2296) — em vigor desde janeiro de 2024, sétima atualização em 30 anos,
+%     alinhada ao ITRF2020 e ao IGS20 dentro de 2 cm (NGA; ION Navigation 72(2)).
+%   GDA2020 — época 2020,0; deslocamento de 1,5 m (sudeste) a 1,8 m (oeste) em relação ao
+%     GDA94, pela deriva de ~7 cm/ano da placa australiana (Geoscience Australia).
+
+\documentclass[aspectratio=169,11pt]{beamer}
+
+\usetheme[progressbar=frametitle, sectionpage=progressbar, numbering=fraction]{metropolis}
+\metroset{block=fill}
+
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[brazilian]{babel}
+\usepackage{icomma}
+\usepackage{amsmath, amssymb, mathtools}
+\usepackage{booktabs}
+\usepackage[most]{tcolorbox}
+\usepackage{tikz}
+\usepackage{tikz-3dplot}
+\usetikzlibrary{arrows.meta, calc, positioning, decorations.pathreplacing,
+                decorations.pathmorphing, babel}
+
+% ------------------------------------------------------------------ paleta (a mesma das outras aulas)
+\definecolor{mStone}{HTML}{1C1917}
+\definecolor{mStoneMid}{HTML}{78716C}
+\definecolor{mStoneLight}{HTML}{F5F5F4}
+\definecolor{mTeal}{HTML}{0D9488}
+\definecolor{mRose}{HTML}{E11D48}
+\definecolor{mAmber}{HTML}{D97706}
+\definecolor{mIndigo}{HTML}{4F46E5}
+
+% As três ideias que se repetem em toda figura desta aula
+\colorlet{corSist}{mIndigo}   % o SISTEMA — a regra escrita, idealizada
+\colorlet{corFrame}{mTeal}    % o FRAME — as estações medidas, materializadas
+\colorlet{corTempo}{mAmber}   % o TEMPO — época, velocidade, deriva
+
+\setbeamercolor{normal text}{fg=mStone, bg=white}
+\setbeamercolor{palette primary}{fg=white, bg=mStone}
+\setbeamercolor{frametitle}{fg=white, bg=mStone}
+\setbeamercolor{alerted text}{fg=mRose}
+\setbeamercolor{example text}{fg=mTeal}
+\setbeamercolor{progress bar}{fg=mTeal, bg=mTeal!20}
+\setbeamercolor{progress bar in head/foot}{fg=mTeal, bg=mTeal!20}
+\setbeamercolor{progress bar in section page}{fg=mTeal, bg=mTeal!20}
+\setbeamercolor{title separator}{fg=mTeal}
+\setbeamercolor{block title}{fg=white, bg=mTeal}
+\setbeamercolor{block body}{fg=mStone, bg=mTeal!8}
+
+% ------------------------------------------------------------------ caixas
+\newtcolorbox{ideia}[1][]{enhanced, colback=mTeal!7, colframe=mTeal, boxrule=0.6pt, arc=2pt,
+  left=6pt, right=6pt, top=4pt, bottom=4pt, fonttitle=\bfseries\small, coltitle=white, #1}
+\newtcolorbox{cuidado}[1][]{enhanced, colback=mAmber!8, colframe=mAmber, boxrule=0.6pt, arc=2pt,
+  left=6pt, right=6pt, top=4pt, bottom=4pt, fonttitle=\bfseries\small, coltitle=white, #1}
+\newtcolorbox{armadilha}[1][]{enhanced, colback=mRose!6, colframe=mRose, boxrule=0.6pt, arc=2pt,
+  left=6pt, right=6pt, top=4pt, bottom=4pt, fonttitle=\bfseries\small, coltitle=white, #1}
+\newtcolorbox{regra}[1][]{enhanced, colback=mIndigo!7, colframe=mIndigo, boxrule=0.6pt, arc=2pt,
+  left=6pt, right=6pt, top=4pt, bottom=4pt, fonttitle=\bfseries\small, coltitle=white, #1}
+
+% ------------------------------------------------------------------ estilos TikZ
+\tikzset{
+  seta/.style={-{Stealth[length=2.4mm]}, thick},
+  rotulo/.style={font=\scriptsize, text=mStone},
+  estacao/.style={circle, fill=corFrame, inner sep=1.5pt},
+  eixo/.style={corSist, thick, -{Stealth[length=2.2mm]}},
+}
+
+\newcommand{\bnum}[1]{\textbf{\textcolor{mTeal}{#1}}}
+\newcommand{\sist}[1]{\textcolor{corSist}{\textbf{#1}}}
+\newcommand{\fram}[1]{\textcolor{corFrame}{\textbf{#1}}}
+
+\title{Por que a sua casa mudou de lugar?}
+\subtitle{Sistemas Geodésicos de Referência --- a ideia, e como ela vira realidade}
+\author{}
+\institute{Simulador de Sistemas de Coordenadas}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+% ==================================================================
+\begin{frame}{O que vamos ver}
+  \setbeamertemplate{section in toc}[sections numbered]
+  \begin{columns}[T]
+    \begin{column}{0.58\textwidth}
+      \tableofcontents
+    \end{column}
+    \begin{column}{0.38\textwidth}
+      \begin{ideia}[title={Esta é a Parte 1}]
+        \small Aqui tratamos dos referenciais \textbf{terrestres} --- os que giram junto com
+        a Terra.
+        \medskip
+
+        Os referenciais \textbf{celestes}, que não giram, ficam para a Parte 2.
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{Duas surpresas}
+
+\begin{frame}{A casa que mudou de lugar}
+  \begin{columns}[T]
+    \begin{column}{0.46\textwidth}
+      Um engenheiro pega a planta de um terreno feita em 1995 e compara com o mapa oficial
+      de hoje.
+      \medskip
+
+      O poste da esquina, que nunca saiu do lugar, aparece \alert{a 65 metros de
+      distância} de si mesmo.
+      \medskip
+
+      Ninguém errou a medida. Os dois mapas estão certos --- \bnum{cada um no seu
+      referencial}.
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.88]
+        \fill[mStoneLight] (0,0) rectangle (6.2,3.4);
+        \draw[mStoneMid!50] (0,0) rectangle (6.2,3.4);
+        \foreach \x in {1.55,3.1,4.65} { \draw[mStoneMid!35] (\x,0) -- (\x,3.4); }
+        \foreach \y in {1.13,2.27} { \draw[mStoneMid!35] (0,\y) -- (6.2,\y); }
+        \fill[mStoneMid] (2.4,1.75) circle (0.09);
+        \node[rotulo, above left] at (2.4,1.85) {mapa de 1995};
+        \fill[mRose] (4.0,2.35) circle (0.09);
+        \node[rotulo, below right] at (4.1,2.35) {mapa de hoje};
+        \draw[mRose, {Stealth[length=2mm]}-{Stealth[length=2mm]}] (2.5,1.82) -- (3.9,2.28);
+        \node[rotulo, text=mRose, below right] at (3.0,2.15) {$\approx 65$\,m};
+      \end{tikzpicture}
+      \smallskip
+
+      {\scriptsize\textcolor{mStoneMid}{No Brasil: de 58\,m no Nordeste a 73\,m nos
+      extremos do país.}}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{O que aconteceu de verdade}
+  \begin{columns}[c]
+    \begin{column}{0.52\textwidth}
+      Até 2005, o Brasil usava um referencial chamado \textbf{SAD69}, montado nos anos 1960
+      --- antes de existir satélite para isso.
+      \medskip
+
+      Ele foi \emph{amarrado a um ponto no chão}, em Minas Gerais, e a partir dali espalhado
+      pelo continente com medidas de ângulo e distância.
+      \medskip
+
+      Hoje o Brasil usa o \bnum{SIRGAS2000}, que é amarrado ao \alert{centro de massa da
+      Terra}.
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{armadilha}[title={A lição desconfortável}]
+        Uma coordenada, sozinha, \alert{não quer dizer nada}.
+        \medskip
+
+        ``Latitude $-25{,}43$'' é uma frase incompleta, do mesmo jeito que ``a temperatura
+        é 30'' sem dizer se é Celsius ou Fahrenheit.
+      \end{armadilha}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Segunda surpresa: o terreno não fica parado}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      Poderia-se pensar que agora está resolvido. Não está.
+      \medskip
+
+      A placa sul-americana carrega o Brasil inteiro para \bnum{noroeste}, a pouco mais de
+      \bnum{1 centímetro por ano}.
+      \medskip
+
+      Parece nada. Mas o SIRGAS2000 está congelado no ano 2000 --- e já se passaram mais de
+      \alert{25 anos}.
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \fill[corFrame!15] (0.2,0.2) .. controls (1.0,1.9) and (2.6,2.6) .. (3.4,3.2)
+             .. controls (4.4,2.2) and (4.2,1.0) .. (3.2,0.2) -- cycle;
+        \draw[corFrame!70, thick] (0.2,0.2) .. controls (1.0,1.9) and (2.6,2.6) .. (3.4,3.2)
+             .. controls (4.4,2.2) and (4.2,1.0) .. (3.2,0.2) -- cycle;
+        \foreach \x/\y in {1.5/1.1, 2.3/2.0, 3.0/1.3, 2.0/2.5} {
+          \draw[corTempo, seta, line width=1.1pt] (\x,\y) -- (\x-0.55,\y+0.42);
+        }
+        \node[rotulo, text=corFrame, below] at (2.1,0.55) {placa sul-americana};
+        \node[rotulo, text=corTempo, align=center] at (0.95,3.3) {noroeste,\\$1$\,cm por ano};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Vinte e seis anos de deriva}
+  \centering
+  \begin{tikzpicture}[scale=0.9]
+    \draw[mStoneMid, seta] (0,0) -- (11.2,0);
+    \foreach \x/\lab in {0.6/2000, 3.2/2010, 5.8/2020, 8.4/2026} {
+      \draw[mStoneMid] (\x,-0.12) -- (\x,0.12);
+      \node[rotulo, below] at (\x,-0.2) {\lab};
+    }
+    \fill[corFrame] (0.6,0) circle (0.1);
+    \node[rotulo, text=corFrame, above, align=center] at (0.6,0.2) {época $2000{,}4$\\(a ``foto'')};
+    \fill[mRose] (8.4,0) circle (0.1);
+    \node[rotulo, text=mRose, above, align=center] at (8.4,0.2) {hoje};
+    \draw[corTempo, {Stealth[length=2mm]}-{Stealth[length=2mm]}, line width=1.2pt]
+      (0.6,-0.95) -- (8.4,-0.95);
+    \node[rotulo, text=corTempo, below] at (4.5,-1.0) {$26$ anos $\times\ 1$\,cm/ano $\approx\ \mathbf{30}$\,cm};
+  \end{tikzpicture}
+  \bigskip
+
+  \begin{ideia}[title={A segunda lição}]
+    Uma coordenada moderna precisa de \bnum{duas informações}, não uma:
+    \emph{em qual referencial} e \emph{em qual data}.
+  \end{ideia}
+\end{frame}
+
+% ==================================================================
+\section{A ideia central: sistema e materialização}
+
+\begin{frame}{Uma pausa: como se define o metro}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \begin{regra}[title={A definição --- o sistema}]
+        ``O metro é a distância que a luz percorre no vácuo em
+        $1/299\,792\,458$ de segundo.''
+      \end{regra}
+      \medskip
+      Bonito. Mas ninguém mede um terreno com essa frase.
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{ideia}[title={A materialização --- o frame}]
+        A trena que você segura, a régua do laboratório, o padrão guardado no instituto de
+        metrologia.
+      \end{ideia}
+      \medskip
+      Coisas de verdade, feitas para \bnum{obedecer} à definição --- sempre com algum
+      errinho.
+    \end{column}
+  \end{columns}
+  \bigskip
+  \centering
+  \alert{Em geodésia é exatamente a mesma dupla.} E ela tem nomes próprios.
+\end{frame}
+
+\begin{frame}{Sistema e frame}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{regra}[title={Sistema --- \emph{idealizado}}]
+        A \bnum{regra escrita}. Diz onde fica a origem, para onde apontam os eixos, qual é o
+        tamanho do metro e como tudo isso deve se comportar no tempo.
+        \medskip
+
+        É um \textbf{texto}. Perfeito, abstrato --- e \alert{inútil sozinho}.
+      \end{regra}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{ideia}[title={Frame --- \emph{materializado}}]
+        A \bnum{lista de pontos de verdade}, com coordenadas medidas, que obedecem àquela
+        regra o melhor que se consegue.
+        \medskip
+
+        É uma \textbf{tabela de estações}. Imperfeita, revisável --- e é nela que o seu GPS
+        se apoia.
+      \end{ideia}
+    \end{column}
+  \end{columns}
+  \bigskip
+  \centering
+  {\small Em inglês: \emph{reference system} e \emph{reference frame}. Em português também
+  se diz \emph{sistema} e \emph{realização}.}
+\end{frame}
+
+\begin{frame}{Por que os dois são necessários}
+  \begin{columns}[c]
+    \begin{column}{0.50\textwidth}
+      \begin{itemize}
+        \item Sem o \sist{sistema}, cada frame seria uma invenção solta, sem critério para
+              julgar se está bom.
+        \item Sem o \fram{frame}, o sistema seria filosofia: não dá para ligar um receptor
+              e perguntar ``onde estou?'' para um parágrafo.
+      \end{itemize}
+      \medskip
+
+      O frame é a \bnum{ponte} entre a definição e a medição.
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.92]
+        \node[draw=corSist, fill=corSist!10, rounded corners=3pt, thick, align=center,
+              font=\scriptsize, minimum width=3.2cm, minimum height=1.1cm] (S) at (0,2.4)
+              {\textbf{SISTEMA}\\a regra escrita};
+        \node[draw=corFrame, fill=corFrame!10, rounded corners=3pt, thick, align=center,
+              font=\scriptsize, minimum width=3.2cm, minimum height=1.1cm] (F) at (0,0.6)
+              {\textbf{FRAME}\\estações com coordenadas};
+        \node[draw=mStoneMid, fill=mStoneLight, rounded corners=3pt, align=center,
+              font=\scriptsize, minimum width=3.2cm, minimum height=0.9cm] (U) at (0,-1.0)
+              {o seu receptor};
+        \draw[seta, corSist] (S) -- node[right, rotulo] {obedece a} (F);
+        \draw[seta, corFrame] (F) -- node[right, rotulo] {se apoia em} (U);
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{A mesma dupla, em todo lugar}
+  \centering
+  \small
+  \renewcommand{\arraystretch}{1.4}
+  \begin{tabular}{lll}
+    \toprule
+    para que serve & \sist{sistema} & \fram{frame} \\
+    \midrule
+    posição na Terra & ITRS & ITRF2020, ITRF2014, \ldots \\
+    altitudes & IHRS & IHRF \\
+    posição nas Américas & SIRGAS & SIRGAS2000, SIRGAS-CON \\
+    posição pelo GPS & WGS 84 & WGS 84 (G2296), (G2139), \ldots \\
+    comprimento & a definição do metro & a trena no seu bolso \\
+    \bottomrule
+  \end{tabular}
+  \bigskip
+
+  Repare no padrão: o \sist{sistema} não tem número; o \fram{frame} quase sempre tem
+  \bnum{um ano no nome}, porque ele é refeito de tempos em tempos.
+  \medskip
+
+  {\small\textcolor{mStoneMid}{A linha das altitudes é o assunto da aula
+  \emph{``Por que a água às vezes corre para cima?''}, em
+  \texttt{historia\_modelos\_terrestres}.}}
+\end{frame}
+
+\begin{frame}{O erro mais comum do mundo}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \begin{armadilha}[title={``Minhas coordenadas estão em WGS 84''}]
+        Essa frase não é suficiente. \textbf{Qual} WGS 84?
+        \medskip
+
+        Ele já teve \alert{sete realizações} em 30 anos. Entre a primeira e a atual há
+        metros de diferença.
+      \end{armadilha}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{ideia}[title={A frase completa}]
+        ``Coordenadas em \fram{SIRGAS2000}, época \textcolor{corTempo}{\textbf{2000,4}}.''
+        \medskip
+
+        Dois dados: \bnum{qual frame} e \bnum{qual data}. Faltando um dos dois, a
+        coordenada é um número solto.
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{O que um sistema precisa dizer}
+
+\begin{frame}{Quatro perguntas, e só}
+  Para amarrar coordenadas na Terra, a regra escrita precisa responder a quatro coisas:
+  \bigskip
+  \begin{columns}[T]
+    \begin{column}{0.23\textwidth}
+      \begin{regra}[title={1 · Origem}]
+        \small Onde fica o ponto $(0,0,0)$?
+      \end{regra}
+    \end{column}
+    \begin{column}{0.23\textwidth}
+      \begin{regra}[title={2 · Orientação}]
+        \small Para onde apontam os eixos?
+      \end{regra}
+    \end{column}
+    \begin{column}{0.23\textwidth}
+      \begin{regra}[title={3 · Escala}]
+        \small Qual é o tamanho de 1 metro?
+      \end{regra}
+    \end{column}
+    \begin{column}{0.23\textwidth}
+      \begin{regra}[title={4 · Tempo}]
+        \small Como tudo isso muda com o tempo?
+      \end{regra}
+    \end{column}
+  \end{columns}
+  \bigskip
+  \centering
+  As três primeiras são antigas. A quarta é a \bnum{contribuição moderna} --- e é a que
+  mais confunde.
+\end{frame}
+
+\begin{frame}{1 · Origem: no centro, ou num ponto do chão?}
+  \begin{columns}[T]
+    \begin{column}{0.46\textwidth}
+      \textbf{Topocêntrico} (antigo): escolhe-se um marco no chão e declara-se que o
+      elipsoide encosta ali. Serve bem \emph{perto} dele e piora à medida que se afasta.
+      \medskip
+
+      \textbf{Geocêntrico} (moderno): a origem é o \bnum{centro de massa da Terra}, que é
+      exatamente em torno do que os satélites orbitam.
+      \medskip
+
+      {\small É por isso que os 65 metros apareceram: o SAD69 é topocêntrico, o SIRGAS2000
+      é geocêntrico.}
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.86]
+        \draw[mStoneMid!60, thick] (3,0) circle (2.1);
+        \node[rotulo, below] at (3,-2.75) {a Terra};
+        \draw[corSist, thick, dashed] (2.55,0.35) circle (2.05);
+        \fill[corFrame] (3,0) circle (0.1);
+        \fill[corSist] (2.55,0.35) circle (0.08);
+        \fill[mRose] (3.55,1.95) circle (0.075);
+        \node[rotulo, text=corFrame, below] at (3.55,-1.15) {centro de massa};
+        \draw[corFrame, seta] (3.45,-1.05) -- (3.08,-0.12);
+        \node[rotulo, text=corSist, left, align=right] at (1.05,1.55)
+              {elipsoide\\topocêntrico};
+        \draw[corSist, seta] (1.15,1.42) -- (2.45,0.45);
+        \node[rotulo, text=mRose, above] at (2.75,2.45) {o marco escolhido};
+        \draw[mRose, seta] (3.0,2.38) -- (3.48,2.05);
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{2 · Orientação: para onde apontam os eixos}
+  \begin{columns}[T]
+    \begin{column}{0.46\textwidth}
+      Com a origem fixada, faltam as direções:
+      \begin{itemize}
+        \item $Z$ aponta para o \bnum{polo};
+        \item $X$ sai pelo cruzamento do \bnum{equador} com o meridiano de referência;
+        \item $Y$ completa, formando o trio.
+      \end{itemize}
+      \medskip
+      {\small E aqui vem uma sutileza: o polo \emph{também} se mexe, alguns metros ao longo
+      de um século. A regra precisa dizer qual polo.}
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \centering
+      \tdplotsetmaincoords{68}{120}
+      \begin{tikzpicture}[tdplot_main_coords, scale=0.95]
+        \draw[mStoneMid!45] (0,0,0) circle (1.8);
+        \draw[eixo] (0,0,0) -- (0,0,2.5) node[above, rotulo, text=corSist] {$Z$};
+        \draw[eixo] (0,0,0) -- (2.5,0,0) node[below left, rotulo, text=corSist] {$X$};
+        \draw[eixo] (0,0,0) -- (0,2.5,0) node[right, rotulo, text=corSist] {$Y$};
+        \fill[corFrame] (0,0,0) circle (0.07);
+        \node[rotulo, text=corFrame, below] at (0,0,-0.25) {origem};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{3 · Escala, e 4 · Tempo}
+  \begin{columns}[T]
+    \begin{column}{0.46\textwidth}
+      \begin{regra}[title={3 · Escala}]
+        O metro do sistema é o \bnum{metro do SI} --- o mesmo da física, definido pela luz.
+        \medskip
+
+        Parece óbvio, mas não é: se a régua do frame estiver esticada em uma parte por
+        bilhão, a Terra inteira ``cresce'' 6\,mm.
+      \end{regra}
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \begin{regra}[title={4 · Tempo}]
+        Se tudo se move, a regra precisa dizer o que significa ``a Terra parada''.
+        \medskip
+
+        A convenção adotada: \bnum{nenhuma rotação global}. Somadas todas as placas, o
+        planeta não gira em relação ao referencial.
+        \medskip
+
+        {\small As placas se movem umas em relação às outras; o conjunto, não.}
+      \end{regra}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{A regra do ITRS, em quatro linhas}
+  \centering
+  \small
+  \renewcommand{\arraystretch}{1.45}
+  \begin{tabular}{lp{8.1cm}}
+    \toprule
+    \textbf{origem} & o centro de massa de \emph{toda} a Terra --- incluindo oceanos e
+      atmosfera \\
+    \textbf{escala} & o metro do SI \\
+    \textbf{orientação} & herdada de uma convenção internacional fixada em 1984 \\
+    \textbf{tempo} & a orientação não gira: condição de \emph{não-rotação global} em relação
+      aos movimentos horizontais das placas \\
+    \bottomrule
+  \end{tabular}
+  \bigskip
+
+  \begin{cuidado}[title={Repare no que não tem aqui}]
+    Nenhum número de estação. Nenhuma coordenada. \alert{Nada que dê para medir.}
+    Isso é o sistema --- e é por isso que ele não basta.
+  \end{cuidado}
+\end{frame}
+
+% ==================================================================
+\section{Como um sistema vira um frame}
+
+\begin{frame}{Uma rede de estações no mundo todo}
+  \begin{columns}[T]
+    \begin{column}{0.44\textwidth}
+      Para materializar a regra, escolhem-se centenas de pontos espalhados pelo planeta ---
+      pilares de concreto, antenas, telescópios --- e mede-se \bnum{onde cada um está},
+      continuamente, por anos.
+      \medskip
+
+      Quanto mais bem distribuídos, melhor a origem e a orientação ficam amarradas.
+    \end{column}
+    \begin{column}{0.52\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.86]
+        \draw[mStoneMid!50, thick] (3,0) circle (2.2);
+        \foreach \a/\r in {20/1.9, 55/2.05, 95/1.6, 140/2.1, 175/1.75, 215/1.95,
+                           250/1.5, 290/2.0, 325/1.7, 10/1.2, 160/1.1, 260/1.15} {
+          \fill[corFrame] ({3+\r*cos(\a)},{\r*sin(\a)}) circle (0.075);
+        }
+        \node[rotulo, below] at (3,-2.45) {estações do frame};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Quatro técnicas, e não uma}
+  \centering
+  \small
+  \renewcommand{\arraystretch}{1.35}
+  \begin{tabular}{llp{6.2cm}}
+    \toprule
+    \textbf{VLBI} & radiotelescópios & observam quasares a bilhões de anos-luz --- pontos
+      tão distantes que não se mexem. Dão a \bnum{orientação}. \\
+    \textbf{SLR} & laser para satélites & mede a distância a esferas espelhadas em órbita.
+      Dá a \bnum{origem} e a \bnum{escala}. \\
+    \textbf{GNSS} & as antenas de sempre & milhares de estações, baratas e em toda parte.
+      Dão a \bnum{densidade}. \\
+    \textbf{DORIS} & balizas de rádio & cobrem oceanos e lugares remotos onde não há nada
+      mais. \\
+    \bottomrule
+  \end{tabular}
+  \bigskip
+
+  Cada uma é boa numa coisa e ruim em outra. O frame nasce da \alert{combinação} das
+  quatro.
+\end{frame}
+
+\begin{frame}{O produto: coordenada \emph{e} velocidade}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      Se a estação se move, não adianta publicar só onde ela estava. O frame publica,
+      para cada estação, \bnum{dois vetores}:
+      \medskip
+      \begin{itemize}
+        \item a posição numa data escolhida;
+        \item a \bnum{velocidade} com que ela caminha.
+      \end{itemize}
+      \medskip
+      Essa data escolhida tem nome: \bnum{época de referência}.
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \draw[mStoneMid, seta] (0,0) -- (5.6,0) node[right, rotulo] {tempo};
+        \draw[mStoneMid, seta] (0,0) -- (0,2.6) node[above, rotulo] {posição};
+        \draw[corTempo, very thick] (0.3,0.4) -- (5.0,2.25);
+        \foreach \x/\y in {0.3/0.4, 1.5/0.87, 2.7/1.34, 3.9/1.81, 5.0/2.25} {
+          \fill[corFrame] (\x,\y) circle (0.07);
+        }
+        \draw[mStoneMid, dashed] (2.7,0) -- (2.7,1.34);
+        \node[rotulo, below] at (2.7,-0.1) {época};
+        \fill[mRose] (2.7,1.34) circle (0.09);
+        \node[rotulo, text=corTempo, above left] at (4.9,2.2) {a velocidade é a inclinação};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{A equação que carrega a coordenada no tempo}
+  \[ \boxed{\; X(t) \;=\; X(t_0) \;+\; \textcolor{corTempo}{v} \cdot (t - t_0) \;} \]
+  \bigskip
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{itemize}
+        \item $X(t_0)$: a posição publicada, na época $t_0$
+        \item $\textcolor{corTempo}{v}$: a velocidade da estação
+        \item $t$: a data em que você quer a coordenada
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{ideia}[title={No Brasil}]
+        $t_0 = 2000{,}4$, \; $v \approx 1$\,cm/ano para noroeste.
+        \medskip
+
+        Para $t = 2026$: um deslocamento de uns \bnum{26 centímetros}.
+      \end{ideia}
+    \end{column}
+  \end{columns}
+  \bigskip
+  \centering
+  {\small É uma reta --- a mesma matemática de ``distância igual a velocidade vezes tempo''
+  do primeiro ano.}
+\end{frame}
+
+% ==================================================================
+\section{O ITRF na prática}
+
+\begin{frame}{A linhagem do ITRF}
+  \centering
+  \begin{tikzpicture}[scale=0.9]
+    \draw[mStoneMid, seta] (0,0) -- (11.4,0);
+    \foreach \x/\lab in {0.5/{ITRF94}, 1.9/{96}, 3.0/{97}, 4.2/{2000}, 5.5/{2005},
+                         6.8/{2008}, 8.2/{2014}, 9.8/{2020}} {
+      \draw[mStoneMid] (\x,-0.1) -- (\x,0.1);
+      \fill[corFrame] (\x,0) circle (0.085);
+      \node[rotulo, below, rotate=0] at (\x,-0.18) {\lab};
+    }
+    \draw[corTempo, thick] (9.8,0.35) -- (10.9,0.35);
+    \node[rotulo, text=corTempo, right] at (9.55,0.62) {u2023, u2024\ldots};
+  \end{tikzpicture}
+  \bigskip
+
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{ideia}[title={Por que refazer?}]
+        \small Mais anos de dados, modelos melhores --- e \bnum{terremotos}, que mudam de
+        lugar estações inteiras de uma vez.
+      \end{ideia}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{cuidado}[title={Cada versão é um frame novo}]
+        \small Não é ``o ITRF'' melhorado: é \alert{outro} frame. Por isso a coordenada
+        precisa dizer qual.
+      \end{cuidado}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Quanto muda de uma versão para a seguinte}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      Entre gerações recentes do ITRF, as diferenças são de \bnum{poucos milímetros}.
+      \medskip
+
+      Isso parece irrelevante --- e é, para achar um endereço. Mas não é para:
+      \begin{itemize}
+        \item medir a subida do nível do mar (mm por ano);
+        \item acompanhar placas tectônicas;
+        \item sincronizar satélites.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{ideia}[title={A escala das coisas}]
+        \scriptsize
+        \renewcommand{\arraystretch}{1.3}
+        \begin{tabular}{@{}lr@{}}
+          SAD69 $\to$ SIRGAS2000 & $\approx 65$\,m \\
+          GDA94 $\to$ GDA2020 & $\approx 1{,}8$\,m \\
+          deriva de 26 anos & $\approx 0{,}3$\,m \\
+          ITRF2014 $\to$ ITRF2020 & poucos mm \\
+        \end{tabular}
+      \end{ideia}
+      \medskip
+      {\small Quatro ordens de grandeza na mesma tabela.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{Passar de um referencial para outro}
+
+\begin{frame}{Empurrar, girar e esticar}
+  \begin{columns}[T]
+    \begin{column}{0.44\textwidth}
+      Dois frames descrevem o mesmo planeta de jeitos um pouco diferentes. Para passar de um
+      para o outro bastam três tipos de ajuste:
+      \medskip
+      \begin{itemize}
+        \item \textbf{empurrar} --- a origem de um não é exatamente a do outro;
+        \item \textbf{girar} --- os eixos estão levemente tortos entre si;
+        \item \textbf{esticar} --- as réguas diferem um tiquinho.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.52\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.82]
+        % empurrar
+        \draw[corSist, thick] (0,2.4) rectangle (1.2,3.3);
+        \draw[corFrame, thick] (0.35,2.15) rectangle (1.55,3.05);
+        \draw[mRose, seta] (0.6,2.85) -- (0.95,2.6);
+        \node[rotulo, right] at (1.8,2.75) {empurrar (3 números)};
+        % girar
+        \draw[corSist, thick] (0,0.9) rectangle (1.2,1.8);
+        \draw[corFrame, thick, rotate around={14:(0.6,1.35)}] (0,0.9) rectangle (1.2,1.8);
+        \draw[mRose, seta] (1.35,1.2) arc (-35:25:0.5);
+        \node[rotulo, right] at (1.8,1.35) {girar (3 números)};
+        % esticar
+        \draw[corSist, thick] (0.1,-0.6) rectangle (1.1,0.2);
+        \draw[corFrame, thick] (0,-0.75) rectangle (1.2,0.35);
+        \draw[mRose, seta] (0.6,0.05) -- (1.15,0.3);
+        \node[rotulo, right] at (1.8,-0.2) {esticar (1 número)};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+  \bigskip
+  \centering
+  Três mais três mais um: os \bnum{7 parâmetros} da transformação de Helmert.
+\end{frame}
+
+\begin{frame}{O tamanho dos parâmetros conta a história}
+  \centering
+  \small
+  \renewcommand{\arraystretch}{1.35}
+  \begin{tabular}{llp{4.7cm}}
+    \toprule
+    de $\to$ para & deslocamentos & o que isso diz \\
+    \midrule
+    SAD69 $\to$ SIRGAS2000 & dezenas de metros &
+      um é topocêntrico, o outro é geocêntrico \\
+    WGS 84 (G2296) $\to$ ITRF2020 & $\approx 2$\,cm &
+      praticamente o mesmo frame \\
+    ITRF2014 $\to$ ITRF2020 & poucos mm &
+      a mesma família, uma geração depois \\
+    \bottomrule
+  \end{tabular}
+  \bigskip
+
+  \begin{ideia}[title={Um termômetro}]
+    Os 7 parâmetros medem \bnum{o quanto dois referenciais discordam}. Parâmetros grandes:
+    concepções diferentes. Parâmetros minúsculos: o mesmo mundo, visto duas vezes.
+  \end{ideia}
+\end{frame}
+
+\begin{frame}{Mas os parâmetros também mudam com o tempo}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      Se os dois frames evoluem de maneiras diferentes, a discordância entre eles
+      \alert{cresce ano a ano}.
+      \medskip
+
+      Então cada um dos 7 parâmetros ganha um companheiro: a sua \bnum{taxa de variação por
+      ano}.
+      \medskip
+
+      $7 + 7 = \bnum{14}$ parâmetros. É assim que as transformações oficiais entre versões
+      do ITRF são publicadas.
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \draw[mStoneMid, seta] (0,0) -- (5.2,0) node[below, rotulo] {tempo};
+        \draw[mStoneMid, seta] (0,0) -- (0,2.4) node[above, rotulo] {discordância};
+        \draw[corTempo, very thick] (0.2,0.25) -- (4.7,2.05);
+        \node[rotulo, text=corTempo, above left] at (4.6,2.0) {cresce sozinha};
+        \draw[mStoneMid, dashed] (0.2,0.25) -- (4.7,0.25);
+        \node[rotulo, above] at (2.3,0.32) {se só houvesse os 7};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Duas armadilhas ao transformar}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{armadilha}[title={Transformar não muda a época}]
+        Levar coordenadas do ITRF2014 para o ITRF2020 \alert{não} as traz do ano 2010 para
+        hoje.
+        \medskip
+
+        Mudar de frame e mudar de época são \bnum{duas operações diferentes}, e quase sempre
+        é preciso fazer as duas.
+      \end{armadilha}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{armadilha}[title={Parâmetros valem numa região}]
+        Os parâmetros SAD69 $\to$ SIRGAS2000 usados no Brasil não servem na Argentina.
+        \medskip
+
+        Referenciais antigos eram \alert{deformados de maneira irregular}, então a
+        transformação é um remendo local, não uma lei universal.
+      \end{armadilha}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{Preso à placa, ou preso ao planeta?}
+
+\begin{frame}{Um dilema honesto}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{ideia}[title={O que a ciência quer}]
+        Um referencial preso ao \bnum{planeta inteiro}, em que as placas realmente se
+        movem --- porque é assim que se estuda a Terra.
+        \medskip
+
+        É o ITRF.
+      \end{ideia}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{cuidado}[title={O que o cartório quer}]
+        Um referencial em que a \bnum{esquina do terreno não muda de número} --- porque
+        matrícula de imóvel não pode mudar sozinha todo ano.
+        \medskip
+
+        É um referencial preso à placa.
+      \end{cuidado}
+    \end{column}
+  \end{columns}
+  \bigskip
+  \centering
+  Os dois desejos são legítimos, e \alert{incompatíveis}. Cada país escolhe o seu lado ---
+  e paga o preço.
+\end{frame}
+
+\begin{frame}{Referenciais presos à placa}
+  \begin{columns}[T]
+    \begin{column}{0.46\textwidth}
+      A ideia: montar o frame \bnum{grudado na placa} onde o país fica. Aí, para quem mora
+      ali, as coordenadas param de andar.
+      \par\medskip
+      \centering
+      \small
+      \renewcommand{\arraystretch}{1.25}
+      \begin{tabular}{ll}
+        \toprule
+        ETRS89 & Europa \\
+        NAD83 & América do Norte \\
+        GDA2020 & Austrália \\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.88]
+        \draw[mStoneMid!50, thick] (3,0) circle (1.9);
+        \fill[corFrame!20] (2.3,0.5) ellipse (1.05 and 0.72);
+        \draw[corFrame, thick] (2.3,0.5) ellipse (1.05 and 0.72);
+        \node[rotulo, text=corFrame] at (2.3,0.5) {a placa};
+        \foreach \a in {0,45,90,135,180,225,270,315} {
+          \draw[corSist, thick] ({3+1.9*cos(\a)},{1.9*sin(\a)}) --
+                                ({3+2.15*cos(\a)},{2.15*sin(\a)});
+        }
+        \node[rotulo, text=corSist, below] at (3,-2.45) {o frame global (ITRF)};
+        \draw[corTempo, seta, line width=1.2pt] (2.3,1.4) -- (1.75,1.85);
+        \node[rotulo, text=corTempo, above] at (1.6,1.9) {ela anda};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{A Austrália, o caso mais espetacular}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      A placa australiana é a mais veloz do mundo: cerca de \bnum{7 centímetros por ano}
+      para nordeste.
+      \medskip
+
+      O referencial anterior, o GDA94, estava congelado em 1994. Em 26 anos o país inteiro
+      tinha saído de posição em quase \alert{dois metros}.
+      \medskip
+
+      Em 2017 a Austrália anunciou oficialmente o \bnum{GDA2020}, congelado na época
+      2020,0.
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \draw[mStoneMid, seta] (0,0) -- (5.4,0);
+        \foreach \x/\lab in {0.5/1994, 4.6/2020} {
+          \draw[mStoneMid] (\x,-0.12) -- (\x,0.12);
+          \node[rotulo, below] at (\x,-0.2) {\lab};
+        }
+        \fill[corFrame] (0.5,0) circle (0.1);
+        \fill[mRose] (4.6,0) circle (0.1);
+        \node[rotulo, text=corFrame, above] at (0.5,0.2) {GDA94};
+        \node[rotulo, text=mRose, above] at (4.6,0.2) {GDA2020};
+        \draw[corTempo, {Stealth[length=2mm]}-{Stealth[length=2mm]}, line width=1.2pt]
+          (0.5,-0.95) -- (4.6,-0.95);
+        \node[rotulo, text=corTempo, below, align=center] at (2.55,-1.0)
+          {$26$ anos $\times\ 7$\,cm/ano\\$\approx\ \mathbf{1{,}8}$\,m};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{O preço de congelar}
+  \begin{columns}[c]
+    \begin{column}{0.52\textwidth}
+      Congelar resolve o problema do cartório --- e cria outro.
+      \medskip
+
+      O GNSS trabalha no frame \bnum{global}, que continua andando. Então, a cada ano, a
+      distância entre ``o que o receptor diz'' e ``o que o referencial nacional diz''
+      \alert{aumenta 7 centímetros}.
+      \medskip
+
+      Em vinte anos, mais de um metro. E aí é preciso congelar de novo.
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{ideia}[title={A saída moderna}]
+        Não congelar. Publicar a coordenada \bnum{sempre com a sua época} e deixar o
+        software carregar o tempo, com a equação
+        $X(t) = X(t_0) + v\,(t-t_0)$.
+        \medskip
+
+        É para onde o mundo caminha.
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{WGS 84: o mais famoso e o mais mal compreendido}
+
+\begin{frame}{O que o WGS 84 realmente é}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      É o referencial em que o \bnum{GPS} transmite as órbitas dos seus satélites. Quem o
+      mantém é a agência cartográfica militar dos Estados Unidos.
+      \medskip
+
+      Quase todo aparelho de consumo mostra coordenadas ``em WGS 84'' --- e é daí que vem a
+      fama.
+      \medskip
+
+      {\small Cuidado com a confusão mais comum: \textbf{WGS 84} é um referencial;
+      \textbf{GPS} é um sistema de satélites. Não são a mesma coisa.}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{cuidado}[title={Sete realizações em 30 anos}]
+        A original, de 1984, valia para alguns \emph{metros}.
+        \medskip
+
+        A atual --- \bnum{WGS 84 (G2296)}, em vigor desde janeiro de 2024 --- está alinhada
+        ao ITRF2020 dentro de \bnum{2 centímetros}.
+      \end{cuidado}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Por que isso importa para você}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      Hoje, WGS 84 e ITRF são praticamente o mesmo frame: a diferença cabe na palma da mão.
+      \medskip
+
+      Então, para achar um restaurante, tanto faz.
+      \medskip
+
+      Mas num levantamento topográfico, numa obra, num limite de propriedade --- 2
+      centímetros \alert{são} a diferença entre estar certo e estar errado.
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{ideia}[title={A regra prática}]
+        Quanto \bnum{mais precisa} a aplicação, mais importa dizer o nome completo do frame
+        e a época.
+        \medskip
+
+        Navegação de carro: ``WGS 84'' basta.\\[3pt]
+        Marco de divisa: nunca basta.
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{O caso brasileiro: SIRGAS2000}
+
+\begin{frame}{Antes: Córrego Alegre e SAD69}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      O Brasil teve dois referenciais topocêntricos antes do atual:
+      \medskip
+      \begin{itemize}
+        \item \textbf{Córrego Alegre}, dos anos 1950;
+        \item \textbf{SAD69}, o \emph{South American Datum} de 1969, adotado em todo o
+              continente.
+      \end{itemize}
+      \medskip
+      Os dois foram construídos com \bnum{ângulos e distâncias medidos no chão}, marco a
+      marco, atravessando o país. Um trabalho gigantesco --- e inevitavelmente deformado ao
+      longo de milhares de quilômetros.
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.88]
+        \foreach \x/\y in {0.4/0.3, 1.5/0.9, 2.4/0.4, 3.4/1.1, 4.4/0.6,
+                           0.9/1.9, 2.0/2.3, 3.0/1.8, 4.1/2.4, 5.0/1.6} {
+          \fill[mStoneMid] (\x,\y) circle (0.07);
+        }
+        \draw[mStoneMid!70] (0.4,0.3) -- (1.5,0.9) -- (2.4,0.4) -- (3.4,1.1) -- (4.4,0.6);
+        \draw[mStoneMid!70] (0.9,1.9) -- (2.0,2.3) -- (3.0,1.8) -- (4.1,2.4) -- (5.0,1.6);
+        \draw[mStoneMid!70] (0.4,0.3) -- (0.9,1.9) (2.4,0.4) -- (3.0,1.8)
+                            (4.4,0.6) -- (5.0,1.6) (1.5,0.9) -- (2.0,2.3);
+        \node[rotulo, below] at (2.7,-0.05) {triangulação: marco a marco};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Maio de 2000: a campanha}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      Em maio de 2000, \bnum{184 estações GPS} foram observadas ao mesmo tempo em todas as
+      Américas e no Caribe.
+      \medskip
+
+      Em vez de caminhar pelo chão somando ângulos, todas as estações foram amarradas
+      \alert{de uma vez só}, pelos satélites, ao mesmo referencial global.
+      \medskip
+
+      Dessa campanha nasceu o \bnum{SIRGAS2000}.
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.88]
+        \foreach \sx/\sy in {1.2/3.0, 3.0/3.35, 4.6/2.9} {
+          \fill[mStoneMid] (\sx-0.16,\sy-0.09) rectangle (\sx+0.16,\sy+0.09);
+        }
+        \foreach \x/\y in {0.7/0.5, 1.6/1.3, 2.5/0.7, 3.4/1.5, 4.3/0.9, 5.0/1.7} {
+          \fill[corFrame] (\x,\y) circle (0.08);
+          \draw[corFrame!45] (\x,\y) -- (1.2,2.9);
+          \draw[corFrame!45] (\x,\y) -- (3.0,3.26);
+          \draw[corFrame!45] (\x,\y) -- (4.6,2.81);
+        }
+        \node[rotulo, below] at (2.9,0.15) {tudo amarrado ao mesmo tempo};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{A identidade completa do SIRGAS2000}
+  \centering
+  \small
+  \renewcommand{\arraystretch}{1.4}
+  \begin{tabular}{lp{7.6cm}}
+    \toprule
+    \textbf{sistema} & SIRGAS --- \emph{Sistema de Referência Geocêntrico para as Américas} \\
+    \textbf{frame} & SIRGAS2000, a realização de 2000 \\
+    \textbf{amarrado a} & ITRF2000 --- é uma \bnum{densificação} do frame global nas
+      Américas \\
+    \textbf{época} & \textcolor{corTempo}{\textbf{2000,4}} \\
+    \textbf{elipsoide} & GRS80 \\
+    \bottomrule
+  \end{tabular}
+  \bigskip
+
+  \begin{ideia}[title={Repare na linha do meio}]
+    O SIRGAS2000 não inventou um referencial próprio: ele \bnum{traz o frame global para
+    perto}, com estações nossas. É assim que todo referencial nacional moderno funciona.
+  \end{ideia}
+\end{frame}
+
+\begin{frame}{A troca oficial, e os dez anos de convivência}
+  \centering
+  \small
+  \renewcommand{\arraystretch}{1.4}
+  \begin{tabular}{llp{6.4cm}}
+    \toprule
+    \textbf{maio/2000} & campanha & 184 estações nas Américas e no Caribe \\
+    \textbf{fev/2005} & Resolução IBGE nº 01/2005 & o SIRGAS2000 passa a ser o referencial
+      oficial do Brasil \\
+    \textbf{2005--2015} & transição & SAD69 e Córrego Alegre continuam válidos, convivendo
+      com o novo \\
+    \textbf{25/02/2015} & fim da transição & só o SIRGAS2000 vale \\
+    \bottomrule
+  \end{tabular}
+  \bigskip
+
+  Dez anos de prazo não foi exagero: era preciso reconverter \bnum{todo o acervo
+  cartográfico do país}.
+\end{frame}
+
+\begin{frame}{E hoje?}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      O SIRGAS2000 é um frame \bnum{congelado na época 2000,4}. Já se passaram mais de 25
+      anos, e a placa não parou.
+      \medskip
+
+      A coordenada oficial de um marco continua a mesma --- de propósito, para não
+      bagunçar cartórios e cartografia.
+      \medskip
+
+      Mas ela já difere do que um bom receptor mede hoje em quase \alert{30 centímetros}.
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{ideia}[title={O mesmo dilema da Austrália}]
+        Congelar dá estabilidade jurídica e cria uma dívida técnica que cresce 1\,cm por ano.
+        \medskip
+
+        É por isso que existem modelos de velocidade: para levar a coordenada de uma época
+        à outra quando a precisão exige.
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{Fechamento}
+
+\begin{frame}{Para levar para casa}
+  \footnotesize
+  \begin{enumerate}
+    \setlength{\itemsep}{3.5pt}
+    \item Uma coordenada sozinha não quer dizer nada. Ela precisa dizer \bnum{em qual frame}
+          e \bnum{em qual época}.
+    \item \sist{Sistema} é a regra escrita --- origem, orientação, escala e evolução no
+          tempo. É um texto, e \alert{não dá para medir nada com ele}.
+    \item \fram{Frame} é a materialização: uma lista de estações de verdade, com coordenada
+          \emph{e} velocidade. É nele que o seu receptor se apoia.
+    \item O frame é refeito de tempos em tempos --- ITRF94, \ldots, ITRF2020 --- porque
+          chegam mais dados, melhores modelos e terremotos.
+    \item Passar de um frame a outro custa \bnum{7 parâmetros} (empurrar, girar, esticar),
+          ou \bnum{14} quando a discordância cresce com o tempo --- e o tamanho deles mede
+          o quanto os dois discordam.
+    \item Congelar o referencial numa época dá estabilidade e acumula dívida:
+          $1$\,cm/ano no Brasil, $7$\,cm/ano na Austrália.
+  \end{enumerate}
+  \smallskip
+  \begin{ideia}[title={Na Parte 2}]
+    \small Os referenciais \textbf{celestes}: os que não giram com a Terra.
+  \end{ideia}
+\end{frame}
+
+% ==================================================================
+\appendix
+
+\begin{frame}[standout]
+  Apêndice\\[6pt]
+  {\normalsize Para quem quer ir além}
+\end{frame}
+
+\begin{frame}{A1 · A definição do ITRS}
+  \small
+  Convenções do \emph{International Terrestrial Reference System}:
+  \begin{itemize}
+    \item \textbf{origem}: o geocentro, entendido como o centro de massa de todo o sistema
+          Terra, incluindo oceanos e atmosfera;
+    \item \textbf{escala}: o metro do SI, consistente com o tempo-coordenada geocêntrico;
+    \item \textbf{orientação}: a do BIH na época 1984,0;
+    \item \textbf{evolução temporal}: condição de \emph{não-rotação global} (NNR) em relação
+          aos movimentos tectônicos horizontais sobre toda a Terra.
+  \end{itemize}
+  \medskip
+  O ITRS é definido pela IUGG; o ITRF é calculado pelo IERS, combinando as soluções dos
+  centros de cada técnica.
+  \medskip
+  \begin{cuidado}[title={A condição NNR}]
+    Não é uma medida, é uma \textbf{escolha}. Sem ela, nada impediria o referencial de girar
+    junto com uma média qualquer das placas --- e a orientação ficaria indeterminada.
+  \end{cuidado}
+\end{frame}
+
+\begin{frame}{A2 · O que cada técnica amarra}
+  \small
+  \centering
+  \renewcommand{\arraystretch}{1.4}
+  \begin{tabular}{llll}
+    \toprule
+    técnica & observa & origem & orientação/escala \\
+    \midrule
+    VLBI & quasares extragalácticos & --- & \textbf{orientação}, escala \\
+    SLR & satélites com retrorrefletores & \textbf{origem} & escala \\
+    GNSS & constelações GPS, Galileo, \ldots & --- & densificação \\
+    DORIS & balizas de rádio em terra & --- & cobertura oceânica \\
+    \bottomrule
+  \end{tabular}
+  \flushleft
+  \medskip
+  A origem do ITRF vem essencialmente do \textbf{SLR}, porque os satélites orbitam o centro
+  de massa; a orientação vem do \textbf{VLBI}, porque os quasares são o único alvo
+  suficientemente fixo. A escala sai da combinação de SLR e VLBI. O GNSS não define nenhuma
+  das duas --- ele as \emph{herda} e as espalha por milhares de estações.
+\end{frame}
+
+\begin{frame}{A3 · Helmert: 7 e 14 parâmetros}
+  \small
+  Com rotações pequenas (o caso entre frames modernos), a forma linearizada é
+  \[
+    X_2 = X_1 + T + D\,X_1 + R\,X_1,
+    \qquad
+    R = \begin{bmatrix} 0 & -R_3 & R_2 \\ R_3 & 0 & -R_1 \\ -R_2 & R_1 & 0 \end{bmatrix}
+  \]
+  com $T$ (3 translações), $D$ (fator de escala) e $R_1, R_2, R_3$ (3 rotações): \textbf{7
+  parâmetros}.
+  \medskip
+
+  Cada um deles varia no tempo, então publica-se também $\dot T$, $\dot D$, $\dot R$ ---
+  \textbf{14 parâmetros} --- e os valores usados na época $t$ são
+  \[ P(t) = P(t_0) + \dot{P}\,(t - t_0) \]
+  \begin{cuidado}[title={Ordem das operações}]
+    Transformação de frame e propagação de época são independentes e \textbf{ambas}
+    necessárias. Fazer só uma é o erro mais comum em conversões de acervo.
+  \end{cuidado}
+\end{frame}
+
+\begin{frame}{A4 · Época, velocidade e modelos}
+  \small
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \[ X(t) = X(t_0) + v\,(t - t_0) \]
+      A velocidade $v$ pode vir de:
+      \begin{itemize}
+        \item observação contínua da própria estação (o ideal);
+        \item um \textbf{modelo de velocidades} regional, como o VEMOS para a América
+              Latina;
+        \item um modelo global de placas.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      A notação de época é decimal: \textbf{2000,4} é o começo de maio de 2000.
+      \medskip
+
+      Termos que o modelo linear \emph{não} cobre, e que os frames modernos tratam à parte:
+      saltos por terremoto, deformação pós-sísmica, ajuste isostático glacial e cargas
+      sazonais.
+    \end{column}
+  \end{columns}
+  \medskip
+  \begin{ideia}[title={No simulador}]
+    A pasta \texttt{sistemas\_coordenadas} mostra como converter entre $(\varphi, \lambda, h)$,
+    ECEF, ENU e plano local. Todas essas conversões pressupõem um frame \textbf{e} uma época
+    --- que é justamente o que esta aula acrescenta.
+  \end{ideia}
+\end{frame}
+
+\begin{frame}{A5 · Fontes}
+  \scriptsize
+  \begin{itemize}
+    \item \textbf{ITRS/ITRF} --- IERS, \emph{ITRF solutions}; IGN/ITRF, \emph{ITRF2020} e as
+          atualizações \emph{ITRF2020-u2023} e \emph{u2024}. Gerações: ITRF94, 96, 97, 2000,
+          2005, 2008, 2014, 2020. Técnicas: VLBI, SLR, GNSS, DORIS.
+    \item \textbf{WGS 84} --- NGA, \emph{WGS 84 (G2296) TRF Update}; \emph{Thirty Years of
+          Maintaining WGS 84 with GPS}, NAVIGATION 72(2), 2025. Em vigor desde janeiro de
+          2024, sétima atualização em 30 anos, alinhada ao ITRF2020 e ao IGS20 dentro de
+          2\,cm.
+    \item \textbf{SIRGAS2000} --- SIRGAS/DGFI-TUM e IBGE: referido ao ITRF2000, época
+          2000,4, campanha de maio de 2000 com 184 estações nas Américas e no Caribe.
+          Resolução PR nº 01/2005 do IBGE (fev./2005); fim do período de transição em
+          25/02/2015 (nota técnica do IBGE). Deriva da placa sul-americana: pouco mais de
+          1\,cm/ano para noroeste.
+    \item \textbf{SAD69 $\to$ SIRGAS2000} --- IBGE, parâmetros de transformação: diferenças
+          horizontais de 58\,m no Nordeste a 73\,m nos extremos do país, média em torno de
+          65\,m.
+    \item \textbf{GDA2020} --- Geoscience Australia: época 2020,0; deslocamento de 1,5\,m
+          (sudeste) a 1,8\,m (oeste) em relação ao GDA94, pela deriva de $\approx 7$\,cm/ano
+          da placa australiana.
+  \end{itemize}
+  \medskip
+  \normalsize
+  \centering
+  Os fatos e números desta aula foram conferidos em 22/09/2026.
+\end{frame}
+
+\end{document}

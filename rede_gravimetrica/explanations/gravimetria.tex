@@ -1,0 +1,2700 @@
+% Gravimetria — da lei de Newton à integral de Stokes, e o referencial da gravidade (IGRS/IGRF).
+% A base sobre gravidade (Parte 1) em linguagem de ensino fundamental; o resto para o ensino
+% médio, em "baby steps", com apêndice técnico.
+% Molodensky, teluróide e quase-geoide ficam para outra aula.
+%
+% Compilar (nesta pasta):  latexmk -pdf gravimetria.tex
+% Limpar auxiliares:       latexmk -c
+%
+% Acompanha o simulador rede_gravimetrica/ (rede do Paraná, estações absolutas de Curitiba e
+% Valinhos). Mesmo formato de sistemas_coordenadas/explanations/sgr_terrestres.tex (ITRS/ITRF) e
+% de historia_modelos_terrestres/explanations/geoide_e_alturas.tex (IHRS/IHRF): esta aula é o
+% terceiro vértice, o referencial da GRAVIDADE.
+%
+% Fontes dos fatos e números citados (conferidos em 2026-09-28):
+%   IGRS/IGRF — IAG Resolution No. 2 (IUGG, Praga, 2015) e No. 4 (IUGG, Montreal, 2019).
+%     Wziontek et al., "Status of the International Gravity Reference System and Frame",
+%     J Geod 95:7 (2021): sistema = aceleração instantânea de queda livre em unidades SI +
+%     maré zero, atmosfera padrão ISO 2533:1975 e polo de referência do IERS; frame = medidas
+%     absolutas rastreáveis ao SI com correções convencionais, exatidão relativa 1e-8 ou melhor;
+%     estações de referência, de comparação e núcleo; comparações-chave do CIPM/CCM; banco AGrav
+%     (BGI/BKG); IGSN71 a 1e-6 m/s²; FG5/FG5-X poucos µGal, A10 5–10 µGal; alturas efetivas
+%     1,21 / 1,27 / 0,68 m; gradiente normal -308,6 µGal/m; atmosfera 0,3 µGal/hPa; hidrologia
+%     não corrigida; absolutas a cada dois meses sem monitoramento contínuo.
+%     BGI, página "International Gravity Reference Frame". SIRGAS, webinar de 05/03/2021: AGGO
+%     (La Plata) como estação de referência do IGRF na região.
+%   IGSN71 — 1 854 estações, ±0,1 mGal, adotada na XV Assembleia Geral da IUGG (Moscou, 1971);
+%     correção de ~-14 mGal no datum de Potsdam (Morelli et al. 1974; NOAA, Gravity Datums).
+%   Histórico (Viena 1900, Potsdam 1909, 10 absolutas + ~1 200 pendulares + ~24 000 relativas na
+%     IGSN71, 20 localidades IGSN71 no Brasil, RENEGA com o JILAG-3, 7 estações, melhor que
+%     10 µGal): tese em rede_gravimetrica/source_info/tese.txt, cap. 1 (Gemael et al. 1990;
+%     Torge et al. 1994). Na tabela da tese os estados de Viçosa e Vassouras estão trocados;
+%     aqui: Viçosa (MG), Vassouras (RJ), com as latitudes da tese.
+%   Extremos de g — Hirt et al. 2013, GRL: Huascarán 9,76392 m/s², Oceano Ártico 9,83366 m/s².
+%   MAPGEO2015 — IBGE/EPUSP: remover-calcular-restaurar, Stokes por FFT, 947 953 pontos,
+%     SRTM, EIGEN-6C4 até grau 200, grade 5', ±0,17 m em 592 pontos GNSS/nivelamento.
+%     hgeoHNOR2020 — IBGE (2021), Relatórios Metodológicos v. 47, altitudes normais do REALT 2018.
+%   Rede do Paraná — rede_gravimetrica/data (solução AJUSTAMENTOINTEGRADO, ~15 µGal; linha 01
+%     Curitiba -> São Mateus do Sul = 17,165 mGal).
+%   Números derivados (γ de Somigliana/GRS80 em Belém, Porto Alegre, Curitiba e nas estações da
+%     RENEGA; anomalias ar-livre e Bouguer de Curitiba; feijão de 1,3 g; força entre dois alunos;
+%     zeros de S(ψ) em 39,0° e 117,7°) recalculados por script para esta aula.
+
+\documentclass[aspectratio=169,11pt]{beamer}
+
+\usetheme[progressbar=frametitle, sectionpage=progressbar, numbering=fraction]{metropolis}
+\metroset{block=fill}
+
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[brazilian]{babel}
+\usepackage{icomma}
+\usepackage{amsmath, amssymb, mathtools}
+\usepackage{booktabs}
+\usepackage[most]{tcolorbox}
+\usepackage{xspace}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, calc, positioning, decorations.pathreplacing,
+                decorations.pathmorphing, patterns, babel}
+
+% ------------------------------------------------------------------ paleta (a mesma das outras aulas)
+\definecolor{mStone}{HTML}{1C1917}
+\definecolor{mStoneMid}{HTML}{78716C}
+\definecolor{mStoneLight}{HTML}{F5F5F4}
+\definecolor{mTeal}{HTML}{0D9488}
+\definecolor{mRose}{HTML}{E11D48}
+\definecolor{mAmber}{HTML}{D97706}
+\definecolor{mIndigo}{HTML}{4F46E5}
+\definecolor{mSky}{HTML}{0284C7}
+
+% As ideias que se repetem em toda figura desta aula
+\colorlet{corIdeal}{mIndigo}    % o IDEALIZADO — elipsoide, gravidade normal, o sistema IGRS
+\colorlet{corMedido}{mTeal}     % o MEDIDO — g, gravímetros, o frame IGRF
+\colorlet{corMassa}{mAmber}     % a MASSA — rocha, montanha, a causa de tudo
+\colorlet{corGeoide}{mSky}      % o GEOIDE — superfícies de nível, a água
+% e mRose para a DIFERENÇA entre o medido e o ideal: anomalia, ondulação, alertas
+
+\setbeamercolor{normal text}{fg=mStone, bg=white}
+\setbeamercolor{palette primary}{fg=white, bg=mStone}
+\setbeamercolor{frametitle}{fg=white, bg=mStone}
+\setbeamercolor{alerted text}{fg=mRose}
+\setbeamercolor{example text}{fg=mTeal}
+\setbeamercolor{progress bar}{fg=mTeal, bg=mTeal!20}
+\setbeamercolor{progress bar in head/foot}{fg=mTeal, bg=mTeal!20}
+\setbeamercolor{progress bar in section page}{fg=mTeal, bg=mTeal!20}
+\setbeamercolor{title separator}{fg=mTeal}
+\setbeamercolor{block title}{fg=white, bg=mTeal}
+\setbeamercolor{block body}{fg=mStone, bg=mTeal!8}
+
+% ------------------------------------------------------------------ caixas
+\newtcolorbox{ideia}[1][]{enhanced, colback=mTeal!7, colframe=mTeal, boxrule=0.6pt, arc=2pt,
+  left=6pt, right=6pt, top=4pt, bottom=4pt, fonttitle=\bfseries\small, coltitle=white, #1}
+\newtcolorbox{cuidado}[1][]{enhanced, colback=mAmber!8, colframe=mAmber, boxrule=0.6pt, arc=2pt,
+  left=6pt, right=6pt, top=4pt, bottom=4pt, fonttitle=\bfseries\small, coltitle=white, #1}
+\newtcolorbox{armadilha}[1][]{enhanced, colback=mRose!6, colframe=mRose, boxrule=0.6pt, arc=2pt,
+  left=6pt, right=6pt, top=4pt, bottom=4pt, fonttitle=\bfseries\small, coltitle=white, #1}
+\newtcolorbox{regra}[1][]{enhanced, colback=mIndigo!7, colframe=mIndigo, boxrule=0.6pt, arc=2pt,
+  left=6pt, right=6pt, top=4pt, bottom=4pt, fonttitle=\bfseries\small, coltitle=white, #1}
+
+% ------------------------------------------------------------------ estilos TikZ
+\tikzset{
+  seta/.style={-{Stealth[length=2.4mm]}, thick},
+  seta2/.style={{Stealth[length=2mm]}-{Stealth[length=2mm]}},
+  rotulo/.style={font=\scriptsize, text=mStone},
+  nivel/.style={corGeoide!55, thick},
+  caixa/.style={draw, rounded corners=3pt, thick, align=center, font=\scriptsize},
+  pessoa/.pic={
+    \fill (0,0.40) circle (0.075);
+    \draw[line width=0.9pt] (0,0.33) -- (0,0.13);
+    \draw[line width=0.9pt] (0,0.13) -- (-0.08,0) (0,0.13) -- (0.08,0);
+    \draw[line width=0.9pt] (-0.11,0.26) -- (0.11,0.26);
+  },
+}
+
+\newcommand{\bnum}[1]{\textbf{\textcolor{mTeal}{#1}}}
+\newcommand{\sist}[1]{\textcolor{corIdeal}{\textbf{#1}}}
+\newcommand{\fram}[1]{\textcolor{corMedido}{\textbf{#1}}}
+\newcommand{\mGal}{\ensuremath{\,\mathrm{mGal}}\xspace}
+\newcommand{\uGal}{\ensuremath{\,\mu\mathrm{Gal}}\xspace}
+\newcommand{\mss}{\ensuremath{\,\mathrm{m/s^2}}\xspace}
+\newcommand{\gmed}{\textcolor{corMedido}{g}}
+\newcommand{\gam}{\textcolor{corIdeal}{\gamma}}
+\newcommand{\anom}{\textcolor{mRose}{\Delta g}}
+
+\title{Por que um quilo não pesa o mesmo em todo lugar?}
+\subtitle{Gravidade, gravimetria e o referencial da gravidade (IGRS e IGRF) --- de Newton a
+Stokes}
+\author{}
+\institute{Simulador de Rede Gravimétrica}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+% ==================================================================
+\begin{frame}{O que vamos ver}
+  \setbeamertemplate{section in toc}[sections numbered]
+  \footnotesize
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \tableofcontents[sections={1-8}]
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \tableofcontents[sections={9-15}]
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Quatro partes}
+  \begin{columns}[T]
+    \begin{column}{0.47\textwidth}
+      \begin{regra}[title={Parte 1 · O que é a gravidade}]
+        \small Por que as coisas caem, a lei de Newton, o número 9,8 --- e por que ele muda.
+      \end{regra}
+      \smallskip
+      \begin{regra}[title={Parte 3 · O referencial}]
+        \small De Potsdam ao \textbf{IGRS} e ao \textbf{IGRF}: um ``zero'' para a gravidade.
+      \end{regra}
+    \end{column}
+    \begin{column}{0.47\textwidth}
+      \begin{regra}[title={Parte 2 · Como se mede}]
+        \small Pêndulos, quedas no vácuo, molas e esferas que flutuam.
+      \end{regra}
+      \smallskip
+      \begin{regra}[title={Parte 4 · Da gravidade ao geoide}]
+        \small Anomalias, a fórmula de Bruns e a \textbf{integral de Stokes}.
+      \end{regra}
+    \end{column}
+  \end{columns}
+  \bigskip
+  \centering
+  A Parte 1 começa \bnum{do zero de verdade}. Se você já sabe, ela passa rápido --- mas não
+  pule: as ideias dela voltam todas no fim.
+\end{frame}
+
+% ==================================================================
+\section{Duas surpresas}
+
+\begin{frame}{Um quilo de feijão, duas cidades}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      Compre um pacote de \bnum{1 kg de feijão} em Belém, quase em cima do Equador, e
+      pendure numa balança de mola --- daquelas de gancho, de feira.
+      \medskip
+
+      Ela marca \textbf{1\,000 g}.
+      \medskip
+
+      Leve o \emph{mesmo} pacote para Porto Alegre e pendure na \emph{mesma} balança. Ela
+      marca uns \alert{1\,001,3 g}.
+      \medskip
+
+      Ninguém colocou feijão a mais.
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \draw[mStoneMid, line width=2pt] (0.3,3.5) -- (5.7,3.5);
+        % Belém
+        \draw[mStone, thick] (1.5,3.5) -- (1.5,3.25);
+        \draw[mStone, thick, decorate, decoration={coil, aspect=0.45, segment length=1.7mm,
+              amplitude=1.8mm}] (1.5,3.25) -- (1.5,2.05);
+        \draw[mStone, thick] (1.5,2.05) -- (1.5,1.85);
+        \fill[corMassa!35] (1.05,1.85) rectangle (1.95,0.95);
+        \draw[corMassa, thick] (1.05,1.85) rectangle (1.95,0.95);
+        \node[rotulo] at (1.5,1.4) {1 kg};
+        \node[rotulo, font=\scriptsize\bfseries] at (1.5,0.6) {Belém};
+        \node[rotulo, text=corMedido] at (1.5,0.25) {marca 1\,000,0 g};
+        % Porto Alegre
+        \draw[mStone, thick] (4.5,3.5) -- (4.5,3.25);
+        \draw[mStone, thick, decorate, decoration={coil, aspect=0.45, segment length=2.0mm,
+              amplitude=1.8mm}] (4.5,3.25) -- (4.5,1.85);
+        \draw[mStone, thick] (4.5,1.85) -- (4.5,1.65);
+        \fill[corMassa!35] (4.05,1.65) rectangle (4.95,0.75);
+        \draw[corMassa, thick] (4.05,1.65) rectangle (4.95,0.75);
+        \node[rotulo] at (4.5,1.2) {1 kg};
+        \node[rotulo, font=\scriptsize\bfseries] at (4.5,0.4) {Porto Alegre};
+        \node[rotulo, text=mRose] at (4.5,0.05) {marca 1\,001,3 g};
+        \draw[mStoneMid, dashed] (1.95,0.95) -- (4.05,0.95);
+        \draw[mRose, seta2] (3.2,0.95) -- (3.2,0.75);
+      \end{tikzpicture}
+      \smallskip
+
+      {\scriptsize\textcolor{mStoneMid}{A diferença está exagerada no desenho. O número vem da
+      gravidade teórica de cada latitude.}}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{O feijão não mudou. O que mudou?}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      Numa \bnum{balança de pratos}, o feijão é comparado com pesinhos de metal. Os dois são
+      puxados pela Terra do mesmo jeito --- então ela marca 1 kg em Belém, em Porto Alegre e
+      até na Lua.
+      \par\medskip
+      \centering
+      \begin{tikzpicture}[scale=0.85]
+        \fill[mStoneMid] (3,2.2) -- (2.75,0.3) -- (3.25,0.3) -- cycle;
+        \draw[mStone, line width=1.5pt] (1.0,2.2) -- (5.0,2.2);
+        \fill[mStone] (3,2.2) circle (0.07);
+        \foreach \x in {1.0,5.0} {
+          \draw[mStone] (\x,2.2) -- (\x-0.55,1.1) (\x,2.2) -- (\x+0.55,1.1);
+          \draw[mStone, thick] (\x-0.65,1.1) -- (\x+0.65,1.1);
+        }
+        \fill[corMassa!35] (0.65,1.12) rectangle (1.35,1.6);
+        \draw[corMassa, thick] (0.65,1.12) rectangle (1.35,1.6);
+        \node[rotulo] at (1.0,1.36) {feijão};
+        \fill[mStoneMid] (4.6,1.12) rectangle (4.95,1.42);
+        \fill[mStoneMid] (5.05,1.12) rectangle (5.35,1.34);
+        \node[rotulo, below] at (5.0,1.0) {pesinhos};
+        \node[rotulo, below] at (3,0.25) {sempre equilibrada};
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{ideia}[title={Duas palavras diferentes}]
+        \bnum{Massa}: quanto feijão existe. Não muda nunca.
+        \medskip
+
+        \bnum{Peso}: com que força a Terra puxa esse feijão. \alert{Muda de lugar para lugar.}
+      \end{ideia}
+      \medskip
+
+      A balança de mola mede o \emph{puxão}. E o puxão, para um mesmo feijão, depende de uma
+      coisa só: \bnum{a gravidade do lugar}.
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Segunda surpresa: o chão respira}
+  \begin{columns}[T]
+    \begin{column}{0.46\textwidth}
+      A mesma Lua que faz a maré do mar puxa também as \bnum{rochas}.
+      \medskip
+
+      Duas vezes por dia, o chão debaixo dos seus pés sobe e desce \bnum{algumas dezenas de
+      centímetros}. Você não sente nada --- sobe tudo junto, a casa, a rua, você.
+      \medskip
+
+      Mas um gravímetro sente: a gravidade medida no mesmo ponto \alert{oscila o dia
+      inteiro}.
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.82]
+        \draw[mStoneMid, seta] (0,0) -- (6.4,0) node[right, rotulo] {h};
+        \draw[mStoneMid, seta] (0,-1.6) -- (0,1.7) node[above, rotulo] {gravidade medida};
+        \foreach \t/\lab in {12/12, 24/24, 36/36, 48/48} {
+          \draw[mStoneMid] ({\t/8},-0.08) -- ({\t/8},0.08);
+          \node[rotulo, below] at ({\t/8},-0.1) {\lab};
+        }
+        \draw[corMedido, very thick, domain=0:48, samples=220, smooth, variable=\t]
+          plot ({\t/8}, {0.85*sin(\t*28.986) + 0.35*sin(\t*14.493 + 60)});
+        \node[rotulo, text=corMedido, align=center] at (3.2,-1.95)
+          {o mesmo ponto, o mesmo aparelho,\\dois dias seguidos};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{A tese desta aula}
+  Um valor de gravidade precisa responder a três perguntas:
+  \bigskip
+  \begin{columns}[T]
+    \begin{column}{0.31\textwidth}
+      \begin{regra}[title={Onde?}]
+        \small\raggedright A posição --- e a altura exata do instrumento acima do chão.
+      \end{regra}
+    \end{column}
+    \begin{column}{0.31\textwidth}
+      \begin{regra}[title={Quando?}]
+        \small\raggedright O dia e a hora --- e o que foi descontado da maré, do ar, do polo.
+      \end{regra}
+    \end{column}
+    \begin{column}{0.31\textwidth}
+      \begin{regra}[title={Em qual referencial?}]
+        \small\raggedright Que regra e que rede de estações dão sentido ao número.
+      \end{regra}
+    \end{column}
+  \end{columns}
+  \bigskip
+  \begin{ideia}[title={Aonde vamos chegar}]
+    A regra para a gravidade se chama \sist{IGRS}; a rede que a materializa, \fram{IGRF}.
+    Mas, antes, é preciso entender o que é a gravidade --- \bnum{começando do começo}.
+  \end{ideia}
+\end{frame}
+
+% ==================================================================
+\begin{frame}[standout]
+  Parte 1\\[6pt]
+  {\normalsize O que é a gravidade --- começando do zero}
+\end{frame}
+
+\section{Por que as coisas caem?}
+
+\begin{frame}{Para onde é ``para baixo''?}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      Solte uma bola. Ela cai. Solte de novo: cai de novo. Sempre para baixo, e sempre
+      \bnum{cada vez mais rápido}.
+      \medskip
+
+      Mas o que é ``para baixo''? Para quem mora no Japão, do outro lado do planeta, ``para
+      baixo'' aponta para o lado contrário do nosso!
+      \medskip
+
+      A resposta: para baixo é sempre \bnum{na direção do centro da Terra}. A Terra puxa
+      tudo para o seu meio.
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \fill[corMassa!12] (3,0) circle (1.55);
+        \draw[mStoneMid, thick] (3,0) circle (1.55);
+        \fill[corMassa] (3,0) circle (0.07);
+        \foreach \a in {90, 25, 155, 220, 320} {
+          \pic[mStone, rotate=\a-90, scale=1.1] at ({3+1.55*cos(\a)},{1.55*sin(\a)}) {pessoa};
+          \draw[mRose, seta] ({3+1.35*cos(\a)},{1.35*sin(\a)}) -- ({3+0.45*cos(\a)},{0.45*sin(\a)});
+        }
+        \node[rotulo, above] at (3,2.1) {você};
+        \node[rotulo, below] at (1.75,-1.75) {no Japão};
+        \node[rotulo, text=mRose, align=center] at (3,-2.55) {``para baixo'' é sempre para o centro};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Pesado e leve caem juntos}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      Há uns 400 anos, \textbf{Galileu Galilei} percebeu algo que parece errado: \bnum{uma
+      coisa pesada e uma leve caem juntas}, se nada atrapalhar.
+      \medskip
+
+      Na Terra, a pena demora porque o \alert{ar} a segura.
+      \medskip
+
+      Em 2 de agosto de 1971, na Lua --- onde não há ar ---, o astronauta \textbf{David
+      Scott}, da Apollo 15, soltou um martelo e uma pena ao mesmo tempo. Os dois chegaram
+      \bnum{juntos} ao chão.
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \foreach \x/\lab in {0/{na Terra (com ar)}, 3.4/{na Lua (sem ar)}} {
+          \draw[mStoneMid!60] (\x,0) rectangle (\x+2.8,3.4);
+          \draw[mStoneMid, dashed] (\x+0.2,3.0) -- (\x+2.6,3.0);
+          \node[rotulo, below] at (\x+1.4,-0.05) {\lab};
+          \draw[mStoneMid, thick] (\x,0.3) -- (\x+2.8,0.3);
+        }
+        % Terra: martelo embaixo, pena em cima
+        \fill[mStoneMid] (0.75,0.55) rectangle (0.85,1.05);
+        \fill[mStone] (0.6,1.0) rectangle (1.0,1.18);
+        \fill[corMassa!70, rotate around={25:(2.0,2.35)}] (2.0,2.35) ellipse (0.07 and 0.3);
+        % Lua: os dois juntos
+        \fill[mStoneMid] (4.15,0.55) rectangle (4.25,1.05);
+        \fill[mStone] (4.0,1.0) rectangle (4.4,1.18);
+        \fill[corMassa!70, rotate around={25:(5.4,0.85)}] (5.4,0.85) ellipse (0.07 and 0.3);
+        \node[rotulo] at (1.0,1.55) {martelo};
+        \node[rotulo, left] at (1.8,2.4) {pena};
+        \node[rotulo, text=corMedido] at (4.8,1.85) {juntos!};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Massa e peso, agora no espaço}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      Uma pessoa com 40 kg de massa sobe numa balança de banheiro em vários lugares do
+      Sistema Solar:
+      \par\medskip
+      \centering
+      \small
+      \renewcommand{\arraystretch}{1.3}
+      \begin{tabular}{lr}
+        \toprule
+        onde & a balança marca \\
+        \midrule
+        Terra & $40$ kg \\
+        Lua & $6{,}6$ kg \\
+        Marte & $15$ kg \\
+        Júpiter\,$^{*}$ & \alert{$101$ kg} \\
+        \bottomrule
+      \end{tabular}
+
+      {\scriptsize\textcolor{mStoneMid}{$^{*}$ se desse para ficar em pé em Júpiter.}}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{ideia}[title={A mesma pessoa em todo lugar}]
+        Em todos esses lugares ela tem a \bnum{mesma massa}: 40 kg de gente.
+        \medskip
+
+        O que muda é o \alert{puxão} de cada astro --- e a balança de banheiro, que é uma
+        balança de mola, só enxerga o puxão.
+      \end{ideia}
+      \medskip
+
+      Então a pergunta certa não é ``quanto eu peso?'', e sim \bnum{``quanto este lugar
+      puxa?''}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{Tudo puxa tudo}
+
+\begin{frame}{A grande ideia de Newton (1687)}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      Conta a história que \textbf{Isaac Newton} viu uma maçã cair e se perguntou: \emph{será
+      que a força que puxa a maçã é a mesma que segura a Lua?}
+      \medskip
+
+      Era. Em 1687 ele publicou a resposta:
+      \medskip
+      \begin{ideia}
+        \centering \bnum{Tudo que tem massa puxa tudo que tem massa.}
+      \end{ideia}
+      \medskip
+
+      A Terra puxa você, e você puxa a Terra --- \alert{com a mesma força}. Só que a Terra é
+      tão pesada que nem sai do lugar.
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \fill[corMassa!25] (1.3,0.4) circle (1.1);
+        \draw[corMassa, thick] (1.3,0.4) circle (1.1);
+        \node[rotulo] at (1.3,0.4) {Terra};
+        \fill[corMassa!60] (5.0,0.4) circle (0.2);
+        \node[rotulo, below] at (5.0,0.1) {você};
+        \draw[mRose, seta, line width=1.3pt] (4.75,0.4) -- (3.55,0.4);
+        \draw[mRose, seta, line width=1.3pt] (2.45,0.4) -- (3.45,0.4);
+        \node[rotulo, text=mRose, align=center] at (3.5,1.25)
+          {o mesmo puxão,\\nos dois sentidos};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{O canhão de Newton}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      Newton imaginou um canhão no alto de uma montanha altíssima.
+      \begin{itemize}
+        \item Tiro fraco: a bala cai perto.
+        \item Mais forte: cai mais longe.
+        \item Forte o bastante: enquanto a bala cai, \bnum{o chão se curva para longe dela}
+              na mesma medida. Ela cai para sempre --- e nunca chega.
+      \end{itemize}
+      Isso é uma \bnum{órbita}. A Lua está caindo em direção à Terra \alert{neste exato
+      momento}. E errando.
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95]
+        \fill[corMassa!15] (3,0) circle (1.5);
+        \draw[mStoneMid, thick] (3,0) circle (1.5);
+        \fill[mStoneMid] (2.8,1.47) -- (3,1.85) -- (3.2,1.47) -- cycle;
+        \draw[corMedido, thick, dashed] (3,0) circle (1.85);
+        \draw[mRose, thick, -{Stealth[length=2mm]}] (3,1.85) .. controls (3.4,1.87) .. (3.75,1.30);
+        \draw[mRose, thick, -{Stealth[length=2mm]}] (3,1.85) .. controls (4.2,1.9) and (4.6,1.2) .. (4.41,0.51);
+        \draw[mRose, thick, -{Stealth[length=2mm]}] (3,1.85) .. controls (4.9,1.9) and (5.2,0.0) .. (4.15,-0.96);
+        \node[rotulo, text=mRose] at (3.55,2.15) {fraco};
+        \node[rotulo, text=mRose, right] at (4.95,1.0) {mais forte};
+        \node[rotulo, text=corMedido, align=center] at (3,-2.35) {rápido o bastante:\\dá a volta e nunca chega};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{As duas regras do puxão}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{regra}[title={Regra 1 · Mais massa, mais puxão}]
+        Dobre a massa de um dos corpos: o puxão \bnum{dobra}.
+        \medskip
+
+        Triplique: o puxão \bnum{triplica}.
+      \end{regra}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{regra}[title={Regra 2 · Mais longe, muito menos puxão}]
+        Dobre a distância: o puxão cai para \bnum{um quarto}.
+        \medskip
+
+        Triplique: para \bnum{um nono}.
+      \end{regra}
+    \end{column}
+  \end{columns}
+  \bigskip
+  \centering
+  \small
+  \renewcommand{\arraystretch}{1.3}
+  \begin{tabular}{lcccc}
+    \toprule
+    distância & $1$ & $2$ & $3$ & $4$ \\
+    puxão & $1$ & $1/4$ & $1/9$ & $1/16$ \\
+    \bottomrule
+  \end{tabular}
+  \medskip
+
+  A segunda regra tem nome: \bnum{inverso do quadrado da distância}. Por que ``ao
+  quadrado''? O próximo slide mostra.
+\end{frame}
+
+\begin{frame}{Por que ``ao quadrado''? O spray de tinta}
+  \begin{columns}[T]
+    \begin{column}{0.44\textwidth}
+      Aperte um spray de tinta a \textbf{1 palmo} da parede: ele pinta \bnum{1 quadradinho}.
+      \medskip
+
+      Afaste para \textbf{2 palmos}: a mesma tinta se espalha por um quadrado com o dobro da
+      largura \emph{e} o dobro da altura --- \bnum{4 quadradinhos}.
+      \medskip
+
+      Cada um recebe \alert{um quarto} da tinta.
+      \medskip
+
+      O puxão da gravidade se espalha pelo espaço do mesmo jeito.
+    \end{column}
+    \begin{column}{0.52\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \fill[mRose] (0,1.6) circle (0.1);
+        \node[rotulo, left] at (-0.1,1.6) {spray};
+        \draw[mRose!50] (0,1.6) -- (5.6,3.2) (0,1.6) -- (5.6,0.0);
+        \draw[corMedido, very thick] (2.8,0.8) -- (2.8,2.4);
+        \draw[corMedido, very thick] (5.6,0.0) -- (5.6,3.2);
+        \node[rotulo, below] at (2.8,0.7) {1 palmo};
+        \node[rotulo, below] at (5.6,-0.1) {2 palmos};
+        % o que se vê na parede
+        \fill[corMedido!35] (2.45,-1.75) rectangle (3.15,-1.05);
+        \draw[corMedido] (2.45,-1.75) rectangle (3.15,-1.05);
+        \foreach \i in {0,1} { \foreach \j in {0,1} {
+          \fill[corMedido!15] ({4.9+0.7*\i},{-2.1+0.7*\j}) rectangle ({5.6+0.7*\i},{-1.4+0.7*\j});
+          \draw[corMedido] ({4.9+0.7*\i},{-2.1+0.7*\j}) rectangle ({5.6+0.7*\i},{-1.4+0.7*\j});
+        } }
+        \node[rotulo, align=center] at (2.8,-2.2) {1 quadradinho};
+        \node[rotulo, align=center] at (5.6,-2.45) {4 quadradinhos};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{A lei da gravitação universal}
+  \[ \boxed{\; F \;=\; G\,\frac{m_1\, m_2}{d^{\,2}} \;} \]
+  \medskip
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \begin{itemize}
+        \item $F$: o puxão entre os dois corpos
+        \item $m_1$, $m_2$: as massas --- em cima, multiplicando: é a \bnum{regra 1}
+        \item $d$: a distância --- embaixo, ao quadrado: é a \bnum{regra 2}
+        \item $G$: um número fixo, o mesmo em todo o Universo
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{ideia}[title={G é minúsculo}]
+        \[ G = 6{,}674 \times 10^{-11} \]
+
+        É por isso que só coisas \bnum{gigantescas} --- planetas, estrelas --- têm um puxão
+        que se sente.
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Por que você não sente o puxão do colega}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      Dois alunos de 50 kg, a 1 metro um do outro:
+      \[ F = 6{,}674 \times 10^{-11} \times \frac{50 \times 50}{1^2}
+           \approx 0{,}000\,000\,17 \text{ N} \]
+      É o peso de um \alert{grãozinho de poeira} --- menos de um centésimo de miligrama.
+      \medskip
+
+      E a Terra? A massa dela é
+      \[ M \approx 6\,000\,000\,000\,000\,000\,000\,000\,000 \text{ kg} \]
+      A massa gigantesca \bnum{compensa} o $G$ minúsculo.
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \pic[mStone, scale=2.6] at (1.0,0) {pessoa};
+        \pic[mStone, scale=2.6] at (4.6,0) {pessoa};
+        \draw[mRose, -{Stealth[length=1.2mm]}] (1.45,0.75) -- (1.7,0.75);
+        \draw[mRose, -{Stealth[length=1.2mm]}] (4.15,0.75) -- (3.9,0.75);
+        \draw[mStoneMid, seta2] (1.0,-0.35) -- (4.6,-0.35);
+        \node[rotulo, below] at (2.8,-0.4) {1 metro};
+        \node[rotulo, text=mRose, align=center] at (2.8,1.65) {um puxão\\que ninguém sente};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Cavendish, o homem que pesou a Terra (1798)}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      Mais de cem anos depois de Newton, \textbf{Henry Cavendish} pendurou uma barra com duas
+      bolinhas de chumbo num fio fino. Depois aproximou delas duas bolas grandes, de
+      \bnum{158 kg} cada.
+      \medskip
+
+      O puxão entre as bolas \bnum{torceu o fio} --- um tiquinho só. Medindo essa torção,
+      ele calculou a \bnum{densidade da Terra}; com ela, a massa do planeta. E da mesma
+      medida sai o valor de $G$.
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \draw[mStone, line width=1.4pt] (1.0,1.2) -- (5.0,1.2);
+        \fill[mStoneMid] (1.0,1.2) circle (0.14);
+        \fill[mStoneMid] (5.0,1.2) circle (0.14);
+        \fill[corMassa] (1.3,2.15) circle (0.4);
+        \fill[corMassa] (4.7,0.25) circle (0.4);
+        \draw[mStone, fill=white] (3,1.2) circle (0.09);
+        \node[rotulo, above] at (3,1.35) {fio};
+        \draw[mRose, -{Stealth[length=1.6mm]}, thick] (1.05,1.37) -- (1.15,1.68);
+        \draw[mRose, -{Stealth[length=1.6mm]}, thick] (4.95,1.03) -- (4.85,0.72);
+        \node[rotulo, text=corMassa, right] at (1.75,2.2) {158 kg};
+        \node[rotulo, text=corMassa, left] at (4.25,0.2) {158 kg};
+        \node[rotulo, align=center] at (3,-0.45) {visto de cima};
+      \end{tikzpicture}
+      \medskip
+      \begin{cuidado}[title={A surpresa}]
+        \small A Terra é, em média, \bnum{5,5 vezes} mais densa que a água --- o dobro das
+        rochas da superfície. O miolo do planeta é pesado.
+      \end{cuidado}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{O número 9,8 e a Terra que gira}
+
+\begin{frame}{Do puxão para o 9,8}
+  \begin{columns}[T]
+    \begin{column}{0.58\textwidth}
+      Quanto a Terra puxa \emph{cada quilo} que está na superfície? Use a lei de Newton com
+      a massa $M$ e o raio $R$ da Terra:
+      \[ g = \frac{G\,M}{R^2} \]
+      \[ g = \frac{6{,}674 \times 10^{-11} \times 5{,}972 \times 10^{24}}{(6\,371\,000)^2}
+           \approx \bnum{9{,}82}\ \frac{\text{m}}{\text{s}^2} \]
+      Repare: a \emph{sua} massa sumiu da conta.
+      \medskip
+
+      Por isso a pena e o martelo caem juntos: \bnum{$g$ não depende de quem cai}.
+    \end{column}
+    \begin{column}{0.38\textwidth}
+      \begin{ideia}[title={O número tem nome}]
+        $g$ é a \bnum{aceleração da gravidade}: quanto a velocidade de uma coisa em queda
+        aumenta a cada segundo.
+        \medskip
+
+        É \emph{o} número desta aula. Todo o resto é sobre ele: como muda, como se mede, e
+        o que ele esconde.
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{O que quer dizer 9,8 metros por segundo, por segundo}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      A cada segundo de queda, a velocidade \bnum{aumenta 9,8 m/s} --- uns 35 km/h. Sem o ar
+      para frear:
+      \par\medskip
+      \centering
+      \small
+      \renewcommand{\arraystretch}{1.3}
+      \begin{tabular}{rrr}
+        \toprule
+        tempo & velocidade & já caiu \\
+        \midrule
+        $0$ s & $0$ km/h & $0$ m \\
+        $1$ s & $35$ km/h & $4{,}9$ m \\
+        $2$ s & $71$ km/h & $19{,}6$ m \\
+        $3$ s & \alert{$106$ km/h} & $44{,}1$ m \\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \draw[mStoneMid, thick] (1.0,0.3) -- (1.0,-3.2);
+        \foreach \y/\lab in {0/{0 s}, -0.33/{1 s}, -1.31/{2 s}, -2.94/{3 s}} {
+          \fill[corMassa] (1.5,\y) circle (0.13);
+          \draw[mStoneMid] (0.9,\y) -- (1.1,\y);
+          \node[rotulo, left] at (0.85,\y) {\lab};
+        }
+        \draw[mRose, seta2] (2.1,-0.33) -- (2.1,-1.31);
+        \draw[mRose, seta2] (2.1,-1.31) -- (2.1,-2.94);
+        \node[rotulo, text=mRose, right, align=left] at (2.25,-2.1)
+          {cada segundo cai\\mais que o anterior};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{A Terra gira: o efeito carrossel}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      Num carrossel, você sente um empurrão \bnum{para fora}.
+      \medskip
+
+      A Terra é um carrossel gigante: dá uma volta por dia. No Equador, o chão anda a quase
+      \bnum{1\,700 km/h}!
+      \medskip
+
+      Isso cria um empurrãozinho para fora de uns $0{,}034$\mss{} no Equador --- menos de
+      meio por cento de $g$ --- e \alert{zero nos polos}, que só giram em torno de si
+      mesmos.
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \fill[corMassa!12] (3,0) circle (1.7);
+        \draw[mStoneMid, thick] (3,0) circle (1.7);
+        \draw[mStoneMid, dashed] (3,-2.2) -- (3,2.2);
+        \draw[mStoneMid, -{Stealth[length=2mm]}] (2.55,2.0) arc (200:520:0.45 and 0.12);
+        \draw[mStoneMid!60] (1.3,0) -- (4.7,0);
+        \foreach \a in {0, 35, 65, 180, 215} {
+          \draw[mRose, seta, line width=1.1pt] ({3+1.7*cos(\a)},{1.7*sin(\a)})
+            -- ({3+1.7*cos(\a)+0.75*cos(\a)},{1.7*sin(\a)});
+        }
+        \node[rotulo, text=mRose, align=center] at (3,-2.5) {para fora --- maior no Equador};
+        \node[rotulo, above right] at (3.05,2.1) {eixo};
+        \node[rotulo, below] at (4.1,-0.02) {Equador};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Gravidade = gravitação + rotação}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \begin{itemize}
+        \item \textcolor{corMassa}{\textbf{Gravitação}}: o puxão das massas --- o de Newton.
+        \item \textbf{Efeito da rotação}: o empurrãozinho para fora.
+        \item \fram{Gravidade}: a soma dos dois. É o que a balança e o fio de prumo sentem.
+      \end{itemize}
+      \medskip
+      \begin{ideia}[title={Por isso a Terra é achatada}]
+        \small Esse empurrãozinho, agindo por bilhões de anos, alargou o planeta na cintura:
+        o raio no Equador é \bnum{21 km maior} que nos polos.
+      \end{ideia}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95]
+        \draw[mStoneMid, thick] (3,0) circle (1.7);
+        \draw[mStoneMid, dashed] (3,-1.9) -- (3,1.9);
+        \fill[mStone] (3,0) circle (0.05);
+        \coordinate (P) at ({3+1.7*cos(45)},{1.7*sin(45)});
+        \fill[mStone] (P) circle (0.07);
+        \draw[corMassa, seta, line width=1.2pt] (P) -- ++(-0.99,-0.99);
+        \draw[mStoneMid, seta, line width=1.1pt] (P) -- ++(0.42,0);
+        \draw[corMedido, seta, line width=1.4pt] (P) -- ++(-0.57,-0.99);
+        \draw[mStoneMid, dashed] ($(P)+(0.42,0)$) -- ($(P)+(-0.57,-0.99)$);
+        \node[rotulo, text=corMassa, left] at ($(P)+(-1.0,-0.95)$) {gravitação};
+        \node[rotulo, text=mStoneMid, right] at ($(P)+(0.42,0.1)$) {rotação};
+        \node[rotulo, text=corMedido, right] at ($(P)+(-0.45,-1.15)$) {gravidade};
+        \node[rotulo, text=mStoneMid] at (3,-2.2) {(a rotação está exagerada)};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{A gravidade muda de lugar para lugar}
+
+\begin{frame}{Equador e polos}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \begin{itemize}
+        \item No Equador: $g \approx 9{,}780$\mss
+        \item Nos polos: $g \approx 9{,}832$\mss
+      \end{itemize}
+      Uma diferença de \bnum{meio por cento}. Dois motivos, que se somam:
+      \begin{enumerate}
+        \item no Equador, a rotação empurra para fora;
+        \item no Equador, você está \bnum{21 km mais longe} do centro --- e mais longe,
+              lembra, é menos puxão.
+      \end{enumerate}
+      \medskip
+      {\small É o feijão da primeira surpresa: Porto Alegre está mais longe do Equador que
+      Belém.}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95]
+        \fill[corMassa!12] (3,0) ellipse (2.2 and 1.75);
+        \draw[mStoneMid, thick] (3,0) ellipse (2.2 and 1.75);
+        \fill[mStone] (3,0) circle (0.05);
+        \draw[corMedido, seta, line width=1.2pt] (5.2,0) -- (4.5,0);
+        \draw[corMedido, seta, line width=1.8pt] (3,1.75) -- (3,0.85);
+        \node[rotulo, text=corMedido, right] at (5.25,0.3) {$9{,}780$};
+        \node[rotulo, text=corMedido, above] at (3,1.8) {$9{,}832$};
+        \draw[mRose, seta2] (3,-0.45) -- (5.13,-0.45);
+        \draw[mRose, seta2] (2.85,0) -- (2.85,-1.75);
+        \node[rotulo, text=mRose, below] at (4.1,-0.5) {mais longe};
+        \node[rotulo, text=mRose, left] at (2.8,-0.9) {mais perto};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{A primeira pista: um relógio que atrasou (1672)}
+  \begin{columns}[T]
+    \begin{column}{0.54\textwidth}
+      Em 1672, o astrônomo francês \textbf{Jean Richer} levou um relógio de pêndulo de
+      Paris para Caiena, na Guiana Francesa, perto do Equador.
+      \medskip
+
+      Lá, o relógio passou a atrasar cerca de \alert{2 minutos e meio por dia}.
+      \medskip
+
+      Nada estava quebrado: com a gravidade mais fraca, \bnum{o pêndulo balança mais
+      devagar}.
+      \medskip
+
+      Newton usou esse relógio como uma das provas de que a Terra é achatada.
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \foreach \x/\lab/\ang/\cor in {1.1/Paris/28/corMedido, 4.1/Caiena/28/mRose} {
+          \draw[mStoneMid, line width=2pt] (\x-0.6,3.0) -- (\x+0.6,3.0);
+          \draw[mStoneMid!50, dashed] (\x,3.0) ++(-90-\ang:2.2) arc (-90-\ang:-90+\ang:2.2);
+          \draw[mStone, thick] (\x,3.0) -- ++(-90+18:2.2) coordinate (b);
+          \fill[\cor] (b) circle (0.16);
+          \node[rotulo, font=\scriptsize\bfseries] at (\x,0.3) {\lab};
+        }
+        \node[rotulo, text=corMedido] at (1.1,-0.05) {hora certa};
+        \node[rotulo, text=mRose] at (4.1,-0.05) {atrasa};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Subir diminui a gravidade}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      Subir é se afastar do centro --- e mais longe, menos puxão.
+      \medskip
+
+      A cada \bnum{3 metros} (um andar), $g$ diminui cerca de \bnum{um milionésimo}. Parece
+      nada, mas os gravímetros de hoje percebem uma subida de \alert{poucos milímetros}.
+      \medskip
+
+      Por isso o lugar de gravidade mais fraca da Terra não é o Equador ao nível do mar: é
+      o \bnum{cume do Huascarán}, no Peru, a 6\,768 m de altitude.
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{ideia}[title={Os extremos do planeta}]
+        \centering
+        \small
+        \renewcommand{\arraystretch}{1.3}
+        \begin{tabular}{lr}
+          cume do Huascarán & $9{,}7639$\mss \\
+          Oceano Ártico & $9{,}8337$\mss \\
+          \midrule
+          diferença & $\approx 0{,}7\,\%$ \\
+        \end{tabular}
+      \end{ideia}
+      \medskip
+      {\scriptsize\textcolor{mStoneMid}{Hirt et al. (2013), a partir de satélites e modelos
+      de relevo com 200 m de resolução.}}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Rochas pesadas puxam mais}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      Debaixo do chão também há diferenças.
+      \begin{itemize}
+        \item Rocha densa --- minério de ferro, basalto --- puxa \bnum{um pouquinho mais}.
+        \item Sedimento, sal, água, petróleo: \alert{um pouquinho menos}.
+      \end{itemize}
+      Então, medindo $g$ em muitos pontos da superfície, dá para ``enxergar'' o que está
+      enterrado \bnum{sem cavar}.
+      \medskip
+
+      É a ideia da \bnum{gravimetria}: medir $g$ para descobrir o que ele esconde.
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \fill[corMassa!10] (0,0) rectangle (6.2,-2.2);
+        \draw[mStoneMid, thick] (0,0) -- (6.2,0);
+        \fill[corMassa!70] (3.1,-1.2) ellipse (0.8 and 0.45);
+        \node[rotulo, text=white] at (3.1,-1.2) {rocha densa};
+        \draw[corMedido, very thick, domain=0.2:6.0, samples=80, smooth, variable=\x]
+          plot (\x, {1.0 + 1.1*exp(-((\x-3.1)/0.95)^2)});
+        \foreach \x in {0.6,1.4,2.2,3.1,4.0,4.8,5.6} {
+          \fill[corMedido] (\x,{1.0 + 1.1*exp(-((\x-3.1)/0.95)^2)}) circle (0.06);
+          \draw[mStoneMid!40] (\x,0) -- (\x,{1.0 + 1.1*exp(-((\x-3.1)/0.95)^2)});
+        }
+        \node[rotulo, text=corMedido, right] at (4.2,2.05) {$g$ medido};
+        \node[rotulo, below] at (1.2,-1.9) {subsolo};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Uma unidade do tamanho certo: o Gal}
+  \begin{columns}[T]
+    \begin{column}{0.46\textwidth}
+      Metros por segundo ao quadrado é uma unidade grande demais para essas diferenças. Os
+      geodesistas usam o \bnum{Gal}, em homenagem a Galileu:
+      \medskip
+      \begin{itemize}
+        \item $1$ Gal $= 1$ cm/s$^2$
+        \item $1$ mGal $= 0{,}000\,01$\mss
+        \item $1\ \mu$Gal $= 0{,}000\,000\,01$\mss
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \begin{ideia}[title={A escadinha dos tamanhos}]
+        \scriptsize
+        \renewcommand{\arraystretch}{1.35}
+        \begin{tabular}{@{}lr@{}}
+          a gravidade inteira & $\approx 980\,000$\mGal \\
+          do Equador ao polo & $\approx 5\,200$\mGal \\
+          subir um andar (3 m) & $\approx 1$\mGal \\
+          a maré do chão & algumas centenas de \uGal \\
+          subir 3 milímetros & $\approx 1$\uGal \\
+        \end{tabular}
+      \end{ideia}
+      \medskip
+      {\small Nove ordens de grandeza na mesma tabela.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\begin{frame}[standout]
+  Parte 2\\[6pt]
+  {\normalsize Como se mede a gravidade}
+\end{frame}
+
+\section{Como se mede a gravidade}
+
+\begin{frame}{Três jeitos de medir $g$}
+  \begin{columns}[T]
+    \begin{column}{0.31\textwidth}
+      \begin{regra}[title={Uma queda}]
+        \small\raggedright \textbf{Absoluto.} Dá o valor inteiro de $g$, a partir do metro e do segundo.
+      \end{regra}
+    \end{column}
+    \begin{column}{0.31\textwidth}
+      \begin{regra}[title={Uma mola}]
+        \small\raggedright \textbf{Relativo.} Dá só a \emph{diferença} de $g$ entre dois lugares.
+      \end{regra}
+    \end{column}
+    \begin{column}{0.31\textwidth}
+      \begin{regra}[title={Uma esfera}]
+        \small\raggedright \textbf{Supercondutor.} Vigia as \emph{mudanças} de $g$, sem parar, num lugar
+        só.
+      \end{regra}
+    \end{column}
+  \end{columns}
+  \bigskip
+  \centering
+  E há um quarto jeito, de longe: \bnum{satélites}. Um de cada vez --- começando pelo mais
+  antigo de todos.
+\end{frame}
+
+\begin{frame}{O pêndulo: três séculos de gravimetria}
+  \begin{columns}[T]
+    \begin{column}{0.54\textwidth}
+      Um pêndulo balança mais devagar onde a gravidade é mais fraca --- foi o que atrasou o
+      relógio de Richer. A regra é:
+      \[ T = 2\pi \sqrt{\frac{L}{g}} \]
+      Um pêndulo de 1 metro leva uns \bnum{2 segundos} para ir e voltar. Medindo $L$ e $T$,
+      sai $g$.
+      \medskip
+
+      Em \textbf{Potsdam}, entre 1898 e 1904, pêndulos mediram $g$ com enorme cuidado.
+      Esse valor virou o \alert{ponto de partida do mundo} por 60 anos.
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95]
+        \draw[mStoneMid, line width=2pt] (1.8,3.2) -- (4.2,3.2);
+        \draw[mStoneMid!50, dashed] (3,3.2) ++(-120:2.6) arc (-120:-60:2.6);
+        \draw[mStone, thick] (3,3.2) -- ++(-75:2.6) coordinate (b);
+        \fill[corMassa] (b) circle (0.18);
+        \draw[mStoneMid, dotted] (3,3.2) -- (3,0.4);
+        \draw[corMedido, seta2] (2.55,3.2) -- (2.55,0.6);
+        \node[rotulo, text=corMedido, left] at (2.5,1.9) {$L$};
+        \node[rotulo, text=mRose, align=center] at (3,0.05) {um vaivém: $T$};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Absoluto: soltar algo no vácuo e cronometrar}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      Dentro de uma câmara de vácuo, um prisma espelhado é solto e \bnum{cai uns 20 cm} ---
+      em dois décimos de segundo.
+      \medskip
+
+      Um \textbf{laser} mede onde ele está, milhares de vezes durante a queda: isso é o
+      \bnum{metro}. Um \textbf{relógio atômico} marca os instantes: isso é o
+      \bnum{segundo}.
+      \medskip
+
+      Com posição e tempo, sai $g$. E sai \alert{direto das unidades}, sem depender de
+      nenhuma outra estação no mundo.
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \draw[mStoneMid, thick, fill=mStoneLight] (1.6,0.9) rectangle (3.2,4.1);
+        \node[rotulo, text=mStoneMid, rotate=90] at (1.35,2.5) {câmara de vácuo};
+        \fill[corMedido] (2.1,3.3) -- (2.7,3.3) -- (2.4,2.9) -- cycle;
+        \draw[mRose, seta] (3.45,3.3) -- (3.45,1.9);
+        \node[rotulo, text=mRose, right, align=left] at (3.55,2.6) {cai\\$\approx 20$ cm};
+        \draw[mRose, dashed] (2.4,0.2) -- (2.4,2.9);
+        \draw[mStone, thick, fill=white] (1.8,-0.35) rectangle (3.0,0.35);
+        \node[rotulo] at (2.4,0) {laser};
+        \node[rotulo, text=corMedido, below] at (2.4,-0.4) {o metro};
+        \draw[mStone, thick, fill=white] (4.6,0.1) circle (0.42);
+        \draw[mStone, thick] (4.6,0.1) -- (4.6,0.4) (4.6,0.1) -- (4.8,0.0);
+        \node[rotulo, text=corMedido, below, align=center] at (4.6,-0.4) {relógio atômico:\\o segundo};
+        \draw[mStoneMid] (3.0,0) -- (4.18,0.08);
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Quão bem se mede hoje}
+  \begin{columns}[T]
+    \begin{column}{0.54\textwidth}
+      \centering
+      \small
+      \renewcommand{\arraystretch}{1.4}
+      \begin{tabular}{llr}
+        \toprule
+        gravímetro & onde & incerteza \\
+        \midrule
+        FG5, FG5-X & laboratório & poucos \uGal \\
+        A10 & campo & $5$ a $10$\uGal \\
+        quântico & novo & mede sem parar \\
+        \bottomrule
+      \end{tabular}
+      \medskip
+      \flushleft
+      {\small O \textbf{quântico} não solta um prisma: solta uma nuvem de \emph{átomos}
+      resfriados quase ao zero absoluto --- e mede a queda deles com laser.}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{ideia}[title={Poucos $\mu$Gal é quanto?}]
+        É \bnum{um bilionésimo} de $g$.
+        \medskip
+
+        Como medir a distância de São Paulo ao Rio de Janeiro com erro de \bnum{menos de um
+        milímetro}.
+        \medskip
+
+        Ou perceber que alguém levantou o gravímetro \bnum{1 centímetro}.
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Relativo: a balança de banheiro caprichadíssima}
+  \begin{columns}[T]
+    \begin{column}{0.54\textwidth}
+      Suba numa balança de banheiro dentro de um elevador. Quando ele arranca para cima, o
+      número \bnum{aumenta}: a mola sente mais puxão.
+      \medskip
+
+      O gravímetro relativo é isso, feito com um capricho enorme: \bnum{uma massa
+      pendurada numa mola}. Mais gravidade, mais a mola estica.
+      \medskip
+
+      Modelos famosos: \textbf{LaCoste \& Romberg}, com a ``mola de comprimento zero'' dos
+      anos 1930, e \textbf{Scintrex}, com mola de quartzo. Cabem numa mochila e medem em
+      minutos.
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \foreach \x/\len/\lab/\cor in {0.9/1.3/{$g$ menor}/corMedido, 3.9/1.75/{$g$ maior}/mRose} {
+          \draw[mStoneMid, thick, fill=mStoneLight] (\x-0.9,0) rectangle (\x+0.9,3.4);
+          \draw[mStone, line width=1.5pt] (\x-0.5,3.1) -- (\x+0.5,3.1);
+          \draw[mStone, thick, decorate, decoration={coil, aspect=0.45, segment length=1.6mm,
+                amplitude=1.6mm}] (\x,3.1) -- (\x,3.1-\len);
+          \fill[corMassa] (\x-0.3,3.1-\len) rectangle (\x+0.3,2.65-\len);
+          \draw[\cor, thick] (\x+0.3,2.87-\len) -- (\x+0.75,2.87-\len);
+          \node[rotulo, text=\cor, below] at (\x,-0.05) {\lab};
+        }
+        \foreach \y in {0.5,0.7,...,1.9} { \draw[mStoneMid] (1.55,\y) -- (1.7,\y); \draw[mStoneMid] (4.55,\y) -- (4.7,\y); }
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{O preço do relativo}
+  \begin{columns}[T]
+    \begin{column}{0.31\textwidth}
+      \begin{armadilha}[title={1 · Só mede diferença}]
+        \small\raggedright Ele diz: ``São Mateus do Sul tem \bnum{17,165 mGal} a mais que
+        Curitiba''. Nunca diz quanto vale $g$ em nenhuma das duas.
+      \end{armadilha}
+    \end{column}
+    \begin{column}{0.31\textwidth}
+      \begin{armadilha}[title={2 · A mola escorrega}]
+        \small\raggedright Com o tempo e a temperatura, a leitura deriva. Por isso se mede
+        ida e volta, fechando circuitos.
+      \end{armadilha}
+    \end{column}
+    \begin{column}{0.31\textwidth}
+      \begin{armadilha}[title={3 · Precisa de escala}]
+        \small\raggedright Converter a leitura em mGal exige calibrar --- em estações onde
+        $g$ já é conhecido.
+      \end{armadilha}
+    \end{column}
+  \end{columns}
+  \bigskip
+  \begin{cuidado}[title={É o problema do simulador}]
+    Muitas diferenças medidas com relativos, amarradas a poucas estações absolutas,
+    ajustadas por \bnum{mínimos quadrados}: é o que o simulador \textbf{Rede Gravimétrica}
+    faz, com dados reais do Paraná. A diferença de 17,165 mGal é a linha \texttt{01} de lá.
+  \end{cuidado}
+\end{frame}
+
+\begin{frame}{Supercondutor: o gravímetro que nunca dorme}
+  \begin{columns}[T]
+    \begin{column}{0.54\textwidth}
+      Uma esferinha de nióbio, menor que uma bola de pingue-pongue, \bnum{flutua} no campo
+      magnético de bobinas mergulhadas em hélio líquido, a $-269\,^{\circ}$C.
+      \medskip
+
+      Quando $g$ muda, a esfera tenta se mexer, e o aparelho registra a força necessária
+      para mantê-la parada.
+      \medskip
+
+      Ele fica num lugar só e registra \bnum{sem parar, por anos}: vê as marés, a pressão do
+      ar, a chuva entrando no solo.
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.85]
+        \draw[mStoneMid, thick, fill=corGeoide!8, rounded corners=8pt] (1.3,0) rectangle (4.1,3.6);
+        \node[rotulo, text=corGeoide] at (2.7,3.3) {hélio líquido};
+        \draw[corIdeal, line width=3pt] (2.1,2.45) -- (3.3,2.45);
+        \draw[corIdeal, line width=3pt] (2.1,0.95) -- (3.3,0.95);
+        \fill[corMedido] (2.7,1.7) circle (0.32);
+        \node[rotulo, text=corIdeal, right] at (3.35,2.45) {bobina};
+        \node[rotulo, text=corIdeal, right] at (3.35,0.95) {bobina};
+        \node[rotulo, text=corMedido, below] at (2.7,-0.1) {a esfera flutua};
+      \end{tikzpicture}
+      \medskip
+      \begin{cuidado}
+        \small Ele não sabe o valor \emph{absoluto} de $g$ --- só as mudanças. Por isso vive
+        em dupla com medidas absolutas repetidas.
+      \end{cuidado}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Os três, lado a lado}
+  \centering
+  \small
+  \renewcommand{\arraystretch}{1.45}
+  \begin{tabular}{llll}
+    \toprule
+    & \textbf{absoluto} & \textbf{relativo} & \textbf{supercondutor} \\
+    \midrule
+    o que dá & o valor inteiro de $g$ & diferença entre dois pontos & variações no tempo \\
+    incerteza & poucos \uGal & $\approx 10$ a $20$\uGal por linha & bem menos de $1$\uGal \\
+    como é & caixa grande, horas & mochila, minutos & fixo, num laboratório \\
+    o papel & \bnum{âncora} & \bnum{espalha} & \bnum{vigia} \\
+    \bottomrule
+  \end{tabular}
+  \bigskip
+
+  Nenhum resolve tudo sozinho. De novo, a força está na \alert{combinação}.
+\end{frame}
+
+\begin{frame}{E do espaço?}
+  \begin{columns}[T]
+    \begin{column}{0.54\textwidth}
+      \begin{itemize}
+        \item \textbf{GRACE} (2002--2017) e \textbf{GRACE-FO} (desde 2018): dois satélites
+              gêmeos, a uns 220 km um do outro, medem a distância entre si com precisão de
+              \bnum{mícrons}. Passando sobre mais massa, o da frente é puxado antes --- e se
+              afasta.
+        \item \textbf{GOCE} (2009--2013): voou baixíssimo, a uns 250 km, com um
+              \emph{gradiômetro} --- mede quanto $g$ muda de um lado para o outro do
+              satélite.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{ideia}[title={Quem vê o quê}]
+        \textbf{Satélites}: as formas grandes, de centenas de quilômetros --- no planeta
+        inteiro, oceanos incluídos.
+        \medskip
+
+        \textbf{Gravímetros no chão}: os detalhes, onde há gente para medir.
+      \end{ideia}
+      \medskip
+      {\small Essa divisão de trabalho volta na Parte 4.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{Um valor de \texorpdfstring{$g$}{g} tem data e hora}
+
+\begin{frame}{O que faz $g$ mudar no mesmo lugar}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \centering
+      \footnotesize
+      \renewcommand{\arraystretch}{1.3}
+      \begin{tabular}{@{}lr@{}}
+        \toprule
+        efeito & tamanho \\
+        \midrule
+        maré do chão (Lua e Sol) & centenas de \uGal \\
+        peso da maré do mar & alguns \uGal{} (litoral) \\
+        pressão do ar & $0{,}3$\uGal{} por hPa \\
+        passeio do polo & alguns \uGal \\
+        água no solo & vários \uGal \\
+        \bottomrule
+      \end{tabular}
+      \medskip
+      \flushleft
+      {\small Uma frente fria que baixa a pressão em 20 hPa já muda $g$ em 6\uGal{} --- mais
+      que a incerteza de um bom absoluto.}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \draw[mStoneMid, seta] (0,-0.2) -- (6.1,-0.2) node[below, rotulo] {tempo};
+        \draw[corMedido, thick, domain=0:5.8, samples=200, smooth, variable=\x]
+          plot (\x, {2.9 + 0.55*sin(\x*360/1.2)});
+        \node[rotulo, text=corMedido, above right] at (0,3.45) {marés};
+        \draw[corIdeal, thick, domain=0:5.8, samples=80, smooth, variable=\x]
+          plot (\x, {1.6 + 0.18*sin(\x*60) + 0.08*sin(\x*170)});
+        \node[rotulo, text=corIdeal, above right] at (0,1.85) {pressão do ar};
+        \draw[corGeoide, thick] (0,0.45) -- (3.2,0.45) .. controls (3.4,0.45) and (3.45,0.95) ..
+          (3.7,0.95) .. controls (4.5,0.95) and (5.2,0.75) .. (5.8,0.65);
+        \node[rotulo, text=corGeoide, above right] at (0,0.6) {água no solo};
+        \node[rotulo, text=corGeoide, above] at (3.55,1.0) {chuva};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{A altura do gravímetro também conta}
+  \begin{columns}[T]
+    \begin{column}{0.54\textwidth}
+      Cada gravímetro absoluto mede a uma altura diferente acima do marco no chão: o FG5, a
+      uns \bnum{1,21 m}; o A10, a uns \bnum{0,68 m}.
+      \medskip
+
+      Entre as duas alturas, $g$ muda uns \alert{160\uGal} --- mais de dez vezes a
+      incerteza dos aparelhos!
+      \medskip
+
+      Por isso todo valor diz \bnum{a que altura} se refere e \bnum{qual gradiente
+      vertical} foi usado para levá-lo até o marco. O gradiente ``normal'' é
+      $-308{,}6$\uGal{} por metro; o de verdade se mede no lugar.
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95]
+        \fill[corMassa!15] (0,-0.5) rectangle (5.4,0);
+        \draw[mStoneMid, thick] (0,0) -- (5.4,0);
+        \fill[mStone] (2.55,0) rectangle (2.85,0.1);
+        \node[rotulo, below] at (2.7,-0.05) {marco};
+        \draw[corMedido, thick] (0.6,0.1) rectangle (1.6,3.2);
+        \node[rotulo, text=corMedido] at (1.1,3.45) {FG5};
+        \fill[corMedido] (1.1,2.42) circle (0.07);
+        \draw[mRose, thick] (3.8,0.1) rectangle (4.8,1.9);
+        \node[rotulo, text=mRose] at (4.3,2.15) {A10};
+        \fill[mRose] (4.3,1.36) circle (0.07);
+        \draw[mStoneMid, dashed] (1.1,2.42) -- (2.7,2.42);
+        \draw[mStoneMid, dashed] (4.3,1.36) -- (2.7,1.36);
+        \draw[mStoneMid, seta2] (2.7,0.1) -- (2.7,2.42);
+        \node[rotulo, fill=white, inner sep=1pt] at (2.7,1.9) {1,21 m};
+        \node[rotulo, fill=white, inner sep=1pt] at (2.7,0.75) {0,68 m};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{A ficha de um valor de gravidade}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \begin{ideia}[title={Uma medida absoluta completa diz}]
+        \begin{enumerate}
+          \item a \bnum{época}: dia e hora;
+          \item a \bnum{posição}, em coordenadas do ITRF;
+          \item a \bnum{altitude} do marco, e em qual sistema;
+          \item o \bnum{valor de $g$}, já corrigido;
+          \item a \bnum{altura acima do marco} a que ele vale;
+          \item o \bnum{gradiente vertical} usado.
+        \end{enumerate}
+      \end{ideia}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{armadilha}[title={``$g = 978\,760{,}387$ mGal''}]
+        Sozinho, é uma frase incompleta --- como ``latitude $-25{,}43$'' sem dizer o
+        referencial.
+        \medskip
+
+        Medido quando? A que altura? Com que correções?
+      \end{armadilha}
+      \medskip
+      {\small Essa ficha não foi inventada para esta aula: é a lista que o \fram{IGRF}
+      exige de cada medida. É o assunto da Parte 3.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\begin{frame}[standout]
+  Parte 3\\[6pt]
+  {\normalsize Um referencial para a gravidade}
+\end{frame}
+
+\section{Um referencial para a gravidade}
+
+\begin{frame}{Por que a gravidade precisa de um referencial}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      Um gravímetro relativo só mede diferenças: ``daqui para lá, $+17$ mGal''.
+      \medskip
+
+      Para transformar diferenças em valores, alguém precisa dizer \bnum{quanto vale $g$ no
+      ponto de partida}.
+      \medskip
+
+      Se cada país escolhe o seu ponto de partida --- e o mede com o seu instrumento ---, os
+      mapas de gravidade \alert{não se encaixam na fronteira}.
+      \medskip
+
+      {\small É o mesmo problema do zero das altitudes, agora para a gravidade.}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \foreach \x/\y [count=\i] in {0.4/0.6, 1.8/1.5, 3.2/0.9, 4.5/2.0, 5.8/1.2} {
+          \coordinate (n\i) at (\x,\y);
+        }
+        \foreach \a/\b/\d in {1/2/{+17}, 2/3/{$-6$}, 3/4/{+22}, 4/5/{+9}} {
+          \draw[corMedido, seta] (n\a) -- (n\b) node[midway, fill=white, inner sep=1pt, rotulo, text=corMedido] {\d};
+        }
+        \foreach \i in {2,...,5} { \fill[corMedido] (n\i) circle (0.08); }
+        \fill[mRose] (n1) circle (0.12);
+        \node[rotulo, text=mRose, below, align=center] at (0.5,0.4) {partida:\\$g = $ ?};
+        \node[rotulo, align=center] at (3.1,-0.6) {diferenças bem medidas,\\valores ainda soltos};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Viena, Potsdam, e um erro de 14 mGal}
+  \centering
+  \begin{tikzpicture}[scale=0.9]
+    \draw[mStoneMid, seta] (0,0) -- (13.2,0);
+    \foreach \ano/\x in {1900/0.6, 1909/1.4, 1971/7.0, 2015/11.0} {
+      \draw[mStoneMid] (\x,-0.1) -- (\x,0.1);
+      \fill[corMedido] (\x,0) circle (0.085);
+      \node[rotulo, below] at (\x,-0.18) {\ano};
+    }
+    \node[rotulo, above, align=center] at (0.45,0.2) {Viena\\$\approx 10$ mGal};
+    \node[rotulo, above, align=center] at (2.2,0.2) {Potsdam\\$\approx 3$ mGal};
+    \node[rotulo, above, align=center] at (7.0,0.2) {IGSN71\\$0{,}1$ mGal};
+    \node[rotulo, above, align=center] at (11.0,0.2) {IGRS/IGRF\\$\approx 0{,}01$ mGal};
+  \end{tikzpicture}
+  \bigskip
+
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{ideia}[title={Potsdam, 1909}]
+        \small \bnum{Um único valor absoluto}, medido com pêndulos, e uma rede de diferenças
+        amarrada a ele. Durante 60 anos, todo mundo partiu dali.
+      \end{ideia}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{armadilha}[title={O erro herdado}]
+        \small Décadas depois, medidas absolutas espalhadas pelo mundo mostraram: o valor de
+        Potsdam estava \alert{uns 14 mGal alto}. O mundo inteiro herdou o erro --- porque
+        todos partiam do mesmo ponto.
+      \end{armadilha}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{IGSN71: a rede que durou meio século}
+  \begin{columns}[T]
+    \begin{column}{0.54\textwidth}
+      Na Assembleia Geral da IUGG em Moscou, em \bnum{1971}, o mundo adotou a
+      \textbf{IGSN71} --- \emph{International Gravity Standardization Net 1971}:
+      \begin{itemize}
+        \item \bnum{1\,854 estações}, com incerteza de $\pm 0{,}1$ mGal;
+        \item montada com 10 medidas absolutas, uns 1\,200 pêndulos e uns 24\,000 relativos;
+        \item corrigiu Potsdam em $-14$ mGal.
+      \end{itemize}
+      No Brasil, \bnum{20 localidades} ganharam estações da IGSN71 --- a base da rede
+      gravimétrica nacional.
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.86]
+        \draw[mStoneMid!50, thick] (3,0) circle (2.2);
+        \foreach \a/\r in {20/1.9, 55/2.05, 95/1.6, 140/2.1, 175/1.75, 215/1.95,
+                           250/1.5, 290/2.0, 325/1.7, 10/1.2, 160/1.1, 260/1.15,
+                           75/0.9, 120/1.45, 200/0.6, 300/0.95, 350/1.55, 235/2.1} {
+          \fill[corMedido] ({3+\r*cos(\a)},{\r*sin(\a)}) circle (0.06);
+        }
+        \node[rotulo, below] at (3,-2.45) {uma rede de diferenças, no mundo todo};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Por que a IGSN71 ficou velha}
+  \begin{columns}[T]
+    \begin{column}{0.54\textwidth}
+      \begin{enumerate}
+        \setlength{\itemsep}{4pt}
+        \item \textbf{A régua ficou pior que o medido.} $0{,}1$ mGal são $100$\uGal; um
+              gravímetro absoluto de hoje erra \bnum{poucos \uGal}.
+        \item \textbf{Parada no tempo.} Ela supõe que $g$ nunca muda --- mas o chão sobe,
+              a água vai e vem, o gelo derrete.
+        \item \textbf{Rede de diferenças.} Tudo depende de poucos valores absolutos. Hoje,
+              cada gravímetro absoluto mede $g$ sozinho, direto do metro e do segundo.
+      \end{enumerate}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{ideia}[title={A pergunta mudou}]
+        Não é mais \emph{``qual rede usar?''}.
+        \medskip
+
+        É \bnum{``como garantir que todos os gravímetros absolutos do mundo concordam?''}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{IGRS: o sistema}
+
+\begin{frame}{2015: um referencial novo}
+  \begin{columns}[T]
+    \begin{column}{0.46\textwidth}
+      Na Assembleia Geral da IUGG em Praga, em 2015, a \textbf{IAG} aprovou a
+      \bnum{Resolução nº 2}: criar um referencial global para a gravidade \emph{baseado em
+      medidas absolutas}.
+      \medskip
+
+      Um grupo de trabalho passou quatro anos (2015--2019) desenhando os detalhes. As
+      siglas ficaram: \sist{IGRS}, o sistema, e \fram{IGRF}, o frame.
+      \medskip
+
+      {\small A Resolução nº 1 do mesmo ano criou o IHRS, das altitudes.}
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \centering
+      \small
+      \renewcommand{\arraystretch}{1.4}
+      \begin{tabular}{lll}
+        \toprule
+        para que serve & \sist{sistema} & \fram{frame} \\
+        \midrule
+        posição & ITRS & ITRF2020, \ldots \\
+        altitude & IHRS & IHRF \\
+        \textbf{gravidade} & \textbf{IGRS} & \textbf{IGRF} \\
+        comprimento & o metro & a trena \\
+        \bottomrule
+      \end{tabular}
+      \medskip
+
+      {\small A mesma dupla, de novo: a \sist{regra escrita} e as \fram{estações de
+      verdade}.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{IGRS: a regra, em uma frase}
+  \begin{regra}
+    \centering
+    A gravidade é a \bnum{aceleração instantânea de queda livre}, expressa em \bnum{unidades
+    do SI}.
+  \end{regra}
+  \bigskip
+  \begin{columns}[T]
+    \begin{column}{0.31\textwidth}
+      \textbf{instantânea}\\[2pt]
+      {\small o valor daquele momento --- com maré, pressão e tudo.}
+    \end{column}
+    \begin{column}{0.31\textwidth}
+      \textbf{de queda livre}\\[2pt]
+      {\small exatamente o que o gravímetro absoluto mede: algo caindo.}
+    \end{column}
+    \begin{column}{0.31\textwidth}
+      \textbf{no SI}\\[2pt]
+      {\small metro e segundo --- o laser e o relógio atômico.}
+    \end{column}
+  \end{columns}
+  \bigskip
+  \centering
+  Repare: a definição não depende de nenhuma estação. \alert{O próprio metro e o próprio
+  segundo são a referência.}
+\end{frame}
+
+\begin{frame}{\ldots\ e três combinados}
+  Para que valores medidos em dias, lugares e aparelhos diferentes possam ser comparados, o
+  sistema fixa três combinados:
+  \medskip
+  \begin{columns}[T]
+    \begin{column}{0.31\textwidth}
+      \begin{regra}[title={Maré: ``maré zero''}]
+        \scriptsize Tira-se toda a atração da Lua e do Sol --- até a parte que nunca vai
+        embora ---, mas fica a pequena deformação permanente que ela já causou na Terra.
+      \end{regra}
+    \end{column}
+    \begin{column}{0.31\textwidth}
+      \begin{regra}[title={Ar: ISO 2533:1975}]
+        \scriptsize O ar também puxa. Combina-se uma \emph{atmosfera padrão}: uma pressão
+        ``normal'' para cada altitude. Desconta-se só a diferença do dia.
+      \end{regra}
+    \end{column}
+    \begin{column}{0.31\textwidth}
+      \begin{regra}[title={Polo: o do IERS}]
+        \scriptsize O eixo da Terra passeia alguns metros. Combina-se qual é o polo
+        ``parado'': o polo de referência do IERS.
+      \end{regra}
+    \end{column}
+  \end{columns}
+  \bigskip
+  \centering
+  Juntos, eles definem a grandeza ``aceleração da gravidade''. E \alert{não devem mudar
+  nunca} --- é assim que o sistema fica estável por décadas.
+\end{frame}
+
+\begin{frame}{O que mudou de verdade}
+  \centering
+  \footnotesize
+  \renewcommand{\arraystretch}{1.3}
+  \begin{tabular}{lp{4.5cm}p{5.2cm}}
+    \toprule
+    & \textbf{IGSN71} (1971) & \sist{IGRS} / \fram{IGRF} \\
+    \midrule
+    a base & rede de diferenças, presa a poucas absolutas & medidas absolutas, rastreáveis
+      ao SI \\
+    incerteza & $0{,}1$ mGal ($100$\uGal) & $10^{-8}$ de $g$ ou melhor ($\approx 10$\uGal) \\
+    o tempo & valores fixos, como se $g$ nunca mudasse & valor instantâneo $+$ correções
+      combinadas \\
+    o que garantir & o nível \emph{e} a escala da rede & só o nível: que os absolutos
+      concordem \\
+    \bottomrule
+  \end{tabular}
+  \medskip
+
+  \begin{cuidado}[title={Repare no que não tem na definição do IGRS}]
+    \small Nenhuma estação, nenhum valor de $g$: \alert{nada que dê para medir}. Como no
+    ITRS, isso é o sistema --- e é por isso que ele não basta.
+  \end{cuidado}
+\end{frame}
+
+% ==================================================================
+\section{IGRF: o frame}
+
+\begin{frame}{IGRF: a gravidade de verdade, em estações de verdade}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      O IGRF é o conjunto global de \bnum{estações com valores absolutos de $g$}:
+      \begin{itemize}
+        \item medidos com gravímetros absolutos, rastreáveis ao SI;
+        \item corrigidos com os mesmos modelos: marés, carga oceânica, atmosfera, polo;
+        \item levados a uma altura de referência sobre o marco;
+        \item com exatidão de \bnum{uma parte em 100 milhões} ou melhor --- uns 10\uGal.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{cuidado}[title={Frame muda, sistema não}]
+        \small Os \emph{modelos} de correção podem melhorar com o tempo: eles são do
+        \fram{frame}. Os \emph{combinados} do \sist{sistema}, não.
+      \end{cuidado}
+      \medskip
+      \begin{ideia}[title={E a água no solo?}]
+        \small Não se corrige: ainda não existe uma referência ``normal'' para ela.
+        Registra-se e acompanha-se.
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Três tipos de estação}
+  \centering
+  \begin{tikzpicture}[scale=1.0, caixa/.append style={font=\footnotesize}]
+    \node[caixa, draw=corMedido, fill=corMedido!10, minimum width=4.6cm, minimum height=2.5cm,
+          text width=4.3cm] (R) at (0,0)
+      {\textbf{REFERÊNCIA}\\[3pt] supercondutor + absolutas repetidas, ou um gravímetro
+       quântico ligado sem parar\\[3pt] dá a ``curva de $g$'' do lugar ao longo do tempo};
+    \node[caixa, draw=corIdeal, fill=corIdeal!8, minimum width=4.6cm, minimum height=1.3cm,
+          text width=4.3cm] (C) at (8.0,1.15)
+      {\textbf{COMPARAÇÃO}\\ vários absolutos medem lado a lado, para conferir se concordam};
+    \node[caixa, draw=corMassa, fill=corMassa!8, minimum width=4.6cm, minimum height=1.3cm,
+          text width=4.3cm] (N) at (8.0,-1.15)
+      {\textbf{NÚCLEO}\\ junto de GNSS, SLR ou VLBI: o elo com o ITRF};
+    \draw[seta, corIdeal] ($(R.east)+(0,0.4)$) -- (C.west);
+    \draw[seta, corMassa] ($(R.east)+(0,-0.4)$) -- (N.west);
+    \node[rotulo, text=corIdeal] at (4.0,1.35) {$+$ espaço};
+    \node[rotulo, text=corMassa] at (4.0,-1.35) {$+$ geodésia espacial};
+  \end{tikzpicture}
+  \bigskip
+
+  {\small Onde não há monitoramento contínuo: medidas absolutas \bnum{a cada dois meses}, para
+  enxergar as variações do ano --- quase todas causadas pela água.}
+\end{frame}
+
+\begin{frame}{Ninguém guarda o ``$g$ padrão'' num cofre}
+  \begin{columns}[T]
+    \begin{column}{0.58\textwidth}
+      Por 130 anos, o quilograma foi um cilindro guardado num cofre perto de Paris.
+      Para a aceleração, \alert{não existe objeto padrão}: não dá para guardar ``um $g$''
+      numa gaveta.
+      \medskip
+
+      A saída: os gravímetros absolutos se encontram e \bnum{medem juntos, nos mesmos
+      pilares}. As \textbf{comparações-chave} do CIPM --- o comitê das unidades do SI --- são
+      a espinha dorsal; comparações regionais espalham o nível.
+      \medskip
+
+      Tudo fica registrado no banco de dados \bnum{AGrav} (BGI e BKG).
+    \end{column}
+    \begin{column}{0.38\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \fill[corMassa!15] (0.2,0) rectangle (5.4,0.3);
+        \foreach \x/\cor in {0.8/corMedido, 1.95/mRose, 3.1/corIdeal, 4.25/corMassa} {
+          \fill[mStoneMid] (\x-0.18,0.3) rectangle (\x+0.18,0.55);
+          \draw[\cor, thick, fill=\cor!10] (\x-0.35,0.55) rectangle (\x+0.35,2.2);
+          \fill[\cor] (\x,1.6) circle (0.07);
+        }
+        \draw[mStoneMid, dashed] (0.2,1.6) -- (5.0,1.6);
+        \node[rotulo, align=center] at (2.6,-0.45) {quatro absolutos, os mesmos pilares};
+        \node[rotulo, text=mStoneMid, right] at (4.65,1.6) {?};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{2019: agora é construir}
+  \begin{columns}[T]
+    \begin{column}{0.54\textwidth}
+      Em 2019, na Assembleia Geral da IUGG em Montreal, a \textbf{Resolução nº 4} da IAG
+      pediu às agências de cada país que construam a infraestrutura:
+      \begin{itemize}
+        \item redes de primeira ordem \bnum{compatíveis com o IGRF};
+        \item informação sobre as medidas absolutas que já existem.
+      \end{itemize}
+      O objetivo: \bnum{aposentar de vez a IGSN71}.
+      \medskip
+
+      Nas Américas, o \textbf{AGGO} --- Observatório Geodésico Argentino-Alemão, em La
+      Plata --- é uma estação de referência do IGRF.
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{cuidado}[title={Um frame que cresce}]
+        O IGRF não é refeito de tempos em tempos, como o ITRF. Ele se realiza \bnum{a cada
+        medida absoluta} bem feita, bem documentada e comparada.
+        \medskip
+
+        Cada país que entra traz o referencial para mais perto de si.
+      \end{cuidado}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Cuidado com o homônimo}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \begin{armadilha}[title={Existe outro IGRF}]
+        \textbf{IGRF} também é a sigla do \emph{International Geomagnetic Reference Field},
+        da IAGA: um modelo do \alert{campo magnético} da Terra --- o das bússolas.
+        \medskip
+
+        Nada a ver com gravidade. E numa busca na internet, é ele que aparece primeiro.
+      \end{armadilha}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{ideia}[title={Como não se confundir}]
+        O magnético é refeito a cada cinco anos e leva o número da geração: IGRF-13,
+        IGRF-14, \ldots
+        \medskip
+
+        O gravimétrico vem sempre com o seu par: \bnum{IGRS/IGRF}. Na dúvida, diga ``o frame
+        do IGRS''.
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Para que serve tanto cuidado}
+  \begin{columns}[T]
+    \begin{column}{0.31\textwidth}
+      \begin{ideia}[title={O quilograma}]
+        \small\raggedright Desde 2019, o quilograma é realizado com a \textbf{balança de Kibble}, que
+        compara peso com força elétrica. Ela precisa conhecer $g$ do laboratório com
+        \bnum{uma parte em 100 milhões}.
+      \end{ideia}
+    \end{column}
+    \begin{column}{0.31\textwidth}
+      \begin{ideia}[title={A Terra que muda}]
+        \small\raggedright O norte da Europa ainda sobe até 1 cm por ano, desde o fim da era do gelo.
+        Aquíferos esvaziam; geleiras derretem. Mudanças de poucos \uGal{} só aparecem com
+        uma referência \bnum{estável por décadas}.
+      \end{ideia}
+    \end{column}
+    \begin{column}{0.31\textwidth}
+      \begin{ideia}[title={Geoide e altitudes}]
+        \small\raggedright O IHRS mede altura em \emph{esforço} contra a gravidade. E o geoide se
+        calcula a partir de medidas de $g$.
+        \medskip
+
+        \alert{É a Parte 4.}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{O caso brasileiro}
+
+\begin{frame}{Da IGSN71 à RENEGA}
+  \begin{columns}[T]
+    \begin{column}{0.42\textwidth}
+      A partir das estações da IGSN71, a \textbf{UFPR} --- depois com o Observatório
+      Nacional, a USP e o IBGE --- montou a rede gravimétrica nacional.
+      \medskip
+
+      Depois, com o gravímetro absoluto \textbf{JILAG-3}, da Universidade de Hannover, a
+      UFPR implantou a \bnum{RENEGA} --- Rede Nacional de Estações Gravimétricas Absolutas:
+      \bnum{7 estações}, melhor que 10\uGal.
+    \end{column}
+    \begin{column}{0.56\textwidth}
+      \centering
+      \scriptsize
+      \renewcommand{\arraystretch}{1.25}
+      \begin{tabular}{lrrr}
+        \toprule
+        estação & lat. & altit. (m) & $g$ (mGal) \\
+        \midrule
+        Teresina (PI) & $-5{,}1^{\circ}$ & $70$ & $978\,016{,}343$ \\
+        Brasília (DF) & $-15{,}7^{\circ}$ & $1\,100$ & $978\,048{,}798$ \\
+        Viçosa (MG) & $-20{,}8^{\circ}$ & $653$ & $978\,460{,}230$ \\
+        Vassouras (RJ) & $-22{,}4^{\circ}$ & $400$ & $978\,637{,}581$ \\
+        \textbf{Valinhos (SP)} & $-23{,}0^{\circ}$ & $850$ & $978\,563{,}778$ \\
+        \textbf{Curitiba (PR)} & $-25{,}5^{\circ}$ & $910$ & $978\,760{,}387$ \\
+        Santa Maria (RS) & $-29{,}7^{\circ}$ & $85$ & $979\,261{,}636$ \\
+        \bottomrule
+      \end{tabular}
+
+      {\scriptsize\textcolor{mStoneMid}{Gemael et al. (1990), via a tese que acompanha o
+      simulador.}}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Lendo a tabela da RENEGA}
+  \begin{columns}[T]
+    \begin{column}{0.54\textwidth}
+      De Teresina a Santa Maria, $g$ aumenta \bnum{1\,245 mGal}. É a latitude: indo para o
+      sul, nos afastamos do Equador.
+      \medskip
+
+      Mas veja Brasília. Estando $10^{\circ}$ mais ao sul que Teresina, deveria ter uns
+      \bnum{336 mGal a mais}. Tem só \alert{32}.
+      \medskip
+
+      Os outros $\approx 300$ sumiram na \bnum{altitude}: Brasília está 1\,030 m mais alta, e
+      \[ 1\,030 \text{ m} \times 0{,}3086 \tfrac{\text{mGal}}{\text{m}} \approx 318 \text{ mGal} \]
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{ideia}[title={Latitude soma, altitude tira}]
+        Em Brasília, as duas quase se cancelam.
+        \medskip
+
+        É a Parte 1 inteira --- Equador, polos, subir e descer --- escrita em
+        \bnum{números medidos}.
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{A rede do simulador: trazer o referencial para perto}
+  \begin{columns}[T]
+    \begin{column}{0.46\textwidth}
+      No Paraná, gravímetros relativos --- três LaCoste \& Romberg e um Scintrex --- mediram
+      diferenças de $g$ entre \bnum{19 cidades}, em \bnum{25 linhas}, e amarraram tudo a duas
+      estações da RENEGA: \fram{Curitiba} e \fram{Valinhos}.
+      \medskip
+
+      Resultado do ajustamento: precisão média de uns \bnum{15\uGal}.
+      \medskip
+
+      É o mesmo gesto do SIRGAS2000 com o ITRF: \bnum{densificar} --- trazer o referencial
+      para perto, com estações nossas.
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=1.0]
+        \coordinate (GUA) at (0.20,2.26);
+        \coordinate (TOL) at (0.62,1.69);
+        \coordinate (FBE) at (1.19,0.47);
+        \coordinate (GOI) at (1.21,2.17);
+        \coordinate (PVI) at (1.67,3.17);
+        \coordinate (LSU) at (1.71,1.07);
+        \coordinate (CLE) at (1.76,0.18);
+        \coordinate (IRE) at (1.97,1.96);
+        \coordinate (MGA) at (2.10,2.86);
+        \coordinate (BIT) at (2.42,0.39);
+        \coordinate (GPV) at (2.49,1.08);
+        \coordinate (LDA) at (2.74,2.96);
+        \coordinate (ORT) at (2.93,2.15);
+        \coordinate (SMS) at (3.38,0.66);
+        \coordinate (PGR) at (3.56,1.36);
+        \coordinate (JTA) at (3.75,2.79);
+        \coordinate (JAG) at (3.92,2.11);
+        \coordinate (CWB) at (4.29,1.05);
+        \coordinate (VAL) at (6.15,3.27);
+        \foreach \a/\b in {CWB/SMS, SMS/BIT, BIT/CLE, CLE/FBE, TOL/FBE, TOL/GUA, GOI/TOL,
+                           LSU/TOL, GPV/LSU, GPV/BIT, GPV/PGR, PGR/CWB, ORT/PGR, LDA/ORT,
+                           JAG/PGR, JAG/JTA, LDA/JTA, LDA/MGA, MGA/IRE, GPV/IRE, MGA/PVI,
+                           PVI/GOI, GOI/GUA, JAG/CWB, VAL/JAG} {
+          \draw[corMedido!55, thick] (\a) -- (\b);
+        }
+        \foreach \p in {GUA, TOL, FBE, GOI, PVI, LSU, CLE, IRE, MGA, BIT, GPV, LDA, ORT, SMS,
+                        PGR, JTA, JAG} {
+          \fill[corMedido] (\p) circle (0.065);
+        }
+        \foreach \p in {CWB, VAL} {
+          \fill[mRose] ($(\p)+(-0.11,-0.11)$) rectangle ($(\p)+(0.11,0.11)$);
+        }
+        \node[rotulo, text=mRose, below right] at (CWB) {Curitiba};
+        \node[rotulo, text=mRose, below] at ($(VAL)+(0,-0.12)$) {Valinhos};
+        \node[rotulo, text=mStoneMid, align=left] at (5.7,1.85)
+          {\textcolor{mRose}{$\blacksquare$} absolutas\\ \textcolor{corMedido}{---} linhas relativas};
+      \end{tikzpicture}
+      \smallskip
+
+      {\scriptsize\textcolor{mStoneMid}{As linhas e cidades do simulador, em posição
+      aproximada.}}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\begin{frame}[standout]
+  Parte 4\\[6pt]
+  {\normalsize Da gravidade à forma da Terra}
+\end{frame}
+
+\section{Gravidade normal e anomalias}
+
+\begin{frame}{A Terra de mentirinha também tem gravidade}
+  \begin{columns}[T]
+    \begin{column}{0.54\textwidth}
+      Lembra do \sist{elipsoide} --- a Terra lisa de mentirinha? Dê a ele a \bnum{massa} da
+      Terra e a \bnum{rotação} da Terra, e faça a superfície dele ser uma superfície de
+      nível.
+      \medskip
+
+      Ele passa a ter uma gravidade que se calcula \bnum{exatamente}, em qualquer lugar: a
+      \sist{gravidade normal} $\gam$: o $g$ que a Terra \emph{teria} se fosse lisa e
+      arrumada por dentro.
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{regra}[title={Alguns valores de $\gamma$ (m/s$^2$)}]
+        \centering
+        \small
+        \renewcommand{\arraystretch}{1.3}
+        \begin{tabular}{@{}lr@{}}
+          Equador ($0^{\circ}$) & $9{,}780\,327$ \\
+          Curitiba ($-25^{\circ}27'$) & $9{,}789\,872$ \\
+          latitude $45^{\circ}$ & $9{,}806\,199$ \\
+          polos ($90^{\circ}$) & $9{,}832\,186$ \\
+        \end{tabular}
+      \end{regra}
+    \end{column}
+  \end{columns}
+  \medskip
+  Para o elipsoide GRS80:
+  \[ \gam = 9{,}780327\,\bigl(1 + 0{,}0053024\,\sin^2\varphi
+             - 0{,}0000058\,\sin^2 2\varphi\bigr)\ \text{m/s}^2 \]
+\end{frame}
+
+\begin{frame}{Anomalia: a diferença que conta}
+  \begin{columns}[T]
+    \begin{column}{0.46\textwidth}
+      \[ \boxed{\; \anom = \gmed - \gam \;} \]
+      O que se \fram{mede} menos o que a Terra lisa \sist{teria}.
+      \medskip
+
+      O que sobra --- a \textcolor{mRose}{\textbf{anomalia da gravidade}} --- é tudo o que a
+      Terra lisa não tem: montanhas, rochas densas, bacias de sedimento.
+      \medskip
+      \begin{armadilha}
+        \small Anomalia \alert{não é erro}. É exatamente a informação que se quer.
+      \end{armadilha}
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \fill[mRose!15, domain=0.2:6.2, samples=100, smooth, variable=\x]
+          plot (\x, {1.4 + 0.12*\x + 0.55*exp(-((\x-2.2)/0.6)^2) - 0.45*exp(-((\x-4.5)/0.7)^2)})
+          -- plot[domain=6.2:0.2, variable=\x] (\x, {1.4 + 0.12*\x}) -- cycle;
+        \draw[corIdeal, very thick, domain=0.2:6.2] plot (\x, {1.4 + 0.12*\x});
+        \draw[corMedido, very thick, domain=0.2:6.2, samples=100, smooth, variable=\x]
+          plot (\x, {1.4 + 0.12*\x + 0.55*exp(-((\x-2.2)/0.6)^2) - 0.45*exp(-((\x-4.5)/0.7)^2)});
+        \node[rotulo, text=corMedido] at (2.2,2.6) {$g$ medido};
+        \node[rotulo, text=corIdeal, right] at (5.1,2.35) {$\gamma$ normal};
+        \node[rotulo, text=mRose] at (2.2,1.85) {$+$};
+        \node[rotulo, text=mRose] at (4.5,1.75) {$-$};
+        \fill[corMassa!70] (2.2,0.35) ellipse (0.5 and 0.25);
+        \fill[corGeoide!30] (4.5,0.35) ellipse (0.6 and 0.25);
+        \node[rotulo] at (2.2,-0.05) {rocha densa};
+        \node[rotulo] at (4.5,-0.05) {sedimento leve};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Antes de comparar: descer até o geoide}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      $g$ foi medido lá em cima, a uma altitude $H$. $\gamma$ vale lá embaixo, na superfície
+      de referência. Antes de subtrair, é preciso ``descer'' o $g$:
+      \begin{itemize}
+        \item \textbf{ar-livre}: subiu, perdeu --- devolve-se $0{,}3086$ mGal por metro,
+              como se não houvesse nada no meio;
+        \item \textbf{Bouguer}: mas havia rocha, puxando para baixo --- tira-se
+              $0{,}1119$ mGal por metro de rocha (com 2\,670 kg/m$^3$);
+        \item \textbf{terreno}: e os morros e vales ao redor.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \fill[corMassa!25] (0,0) -- (0,1.1) .. controls (1.2,1.3) and (1.6,2.5) .. (2.6,2.5)
+              -- (4.2,2.5) .. controls (5.0,2.5) and (5.5,1.4) .. (6.2,1.3) -- (6.2,0) -- cycle;
+        \draw[corMassa, very thick] (0,1.1) .. controls (1.2,1.3) and (1.6,2.5) .. (2.6,2.5)
+              -- (4.2,2.5) .. controls (5.0,2.5) and (5.5,1.4) .. (6.2,1.3);
+        \fill[corMassa!55] (2.6,0) rectangle (4.2,2.5);
+        \node[rotulo, text=white, align=center] at (3.4,1.0) {placa de\\Bouguer};
+        \draw[corGeoide, very thick] (0,0) -- (6.2,0);
+        \node[rotulo, text=corGeoide, below] at (5.2,-0.05) {geoide};
+        \fill[corMedido] (3.4,2.5) circle (0.09);
+        \node[rotulo, text=corMedido, above] at (3.4,2.6) {$g$ medido aqui};
+        \draw[mRose, seta2] (4.5,0) -- (4.5,2.5);
+        \node[rotulo, text=mRose, right] at (4.55,1.9) {$H$};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Exemplo: a estação absoluta de Curitiba}
+  \begin{columns}[T]
+    \begin{column}{0.54\textwidth}
+      \centering
+      \small
+      \renewcommand{\arraystretch}{1.3}
+      \begin{tabular}{lr}
+        \toprule
+        & mGal \\
+        \midrule
+        \fram{$g$ medido} (RENEGA) & $978\,760{,}4$ \\
+        \sist{$\gamma$ normal} ($\varphi = -25^{\circ}27'$) & $978\,987{,}2$ \\
+        $g - \gamma$, sem descer & \alert{$-226{,}8$} \\
+        \midrule
+        $+$ ar-livre ($0{,}3086 \times 910$ m) & $+280{,}8$ \\
+        anomalia ar-livre & \textcolor{mRose}{$\mathbf{+54{,}0}$} \\
+        $-$ Bouguer ($0{,}1119 \times 910$ m) & $-101{,}8$ \\
+        anomalia de Bouguer & \textcolor{mRose}{$\mathbf{-47{,}8}$} \\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{ideia}[title={Lendo os números}]
+        \small Sem descer, a altitude esconde tudo: parece faltar 227 mGal.
+        \medskip
+
+        Ar-livre positiva: há massa --- o planalto --- acima do geoide.
+        \medskip
+
+        Bouguer negativa: tirada a rocha visível, o que sobra embaixo é \alert{mais leve}
+        que o normal --- como é típico sob as regiões altas dos continentes.
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Montanhas têm raízes}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      Um iceberg aparece pouco acima da água porque tem uma parte enorme escondida embaixo.
+      \medskip
+
+      Com montanhas é parecido: a crosta, mais leve, ``flutua'' sobre o manto, mais pesado.
+      Onde há montanha em cima, há uma \bnum{raiz} de crosta leve embaixo.
+      \medskip
+
+      Sob as grandes cordilheiras, a anomalia de Bouguer é \alert{fortemente negativa}: é a
+      \bnum{isostasia}. A ideia nasceu do prumo desviado perto do Himalaia; a gravimetria a
+      confirmou no mundo inteiro.
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \fill[mStoneMid!35] (0,-2.6) rectangle (6.2,-1.0);
+        \node[rotulo] at (5.3,-2.3) {manto};
+        \fill[corMassa!30] (0,-1.0) -- (1.8,-1.0) .. controls (2.3,-1.0) and (2.4,-2.3) ..
+          (3.1,-2.3) .. controls (3.8,-2.3) and (3.9,-1.0) .. (4.4,-1.0) -- (6.2,-1.0) --
+          (6.2,0) -- (4.4,0) -- (3.1,1.6) -- (1.8,0) -- (0,0) -- cycle;
+        \draw[corMassa, thick] (0,0) -- (1.8,0) -- (3.1,1.6) -- (4.4,0) -- (6.2,0);
+        \node[rotulo] at (0.9,-0.5) {crosta};
+        \node[rotulo, text=corMassa] at (3.1,-1.75) {raiz};
+        \draw[mRose, very thick, domain=0.1:6.1, samples=80, smooth, variable=\x]
+          plot (\x, {2.6 - 0.8*exp(-((\x-3.1)/0.9)^2)});
+        \node[rotulo, text=mRose, right] at (4.3,2.45) {Bouguer};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{Do potencial ao geoide}
+
+\begin{frame}{O morro de energia}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      Na aula do geoide, chamamos de $W$ o ``nível de energia'' de cada lugar: quanto mais
+      alto, mais trabalho custa chegar lá.
+      \medskip
+
+      Lugares com o mesmo $W$ formam uma \bnum{superfície de nível} --- onde a água não
+      corre. O geoide é a que tem
+      \[ W_0 = 62\,636\,853{,}4\ \text{m}^2/\text{s}^2 \quad \text{(IHRS)} \]
+      E a gravidade? É a \bnum{inclinação} desse morro de energia: aponta para onde $W$ muda
+      mais depressa --- sempre perpendicular às superfícies de nível.
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.85]
+        \foreach \y/\amp in {0/0.30, 0.8/0.27, 1.6/0.24, 2.4/0.21, 3.2/0.18} {
+          \draw[nivel] (0,\y) .. controls (2.1,\y+\amp) and (4.2,\y-\amp) .. (6.3,\y+0.5*\amp);
+        }
+        \draw[corGeoide, very thick] (0,0) .. controls (2.1,0.30) and (4.2,-0.30) .. (6.3,0.15);
+        \node[rotulo, text=corGeoide, below] at (5.3,-0.1) {geoide, $W_0$};
+        \foreach \x in {1.2, 3.1, 5.0} {
+          \draw[corMedido, seta] (\x,3.35) -- (\x,2.55);
+        }
+        \node[rotulo, text=corMedido, above] at (3.1,3.45) {$g$, perpendicular};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Duas Terras, dois potenciais}
+  \begin{columns}[T]
+    \begin{column}{0.54\textwidth}
+      A Terra de verdade tem potencial \fram{$W$}. A Terra de mentirinha tem potencial
+      \sist{$U$}, que se calcula exatamente --- e combina-se que, na superfície do
+      elipsoide, $U_0 = W_0$.
+      \medskip
+
+      A diferença é o \textcolor{mRose}{\textbf{potencial perturbador}}:
+      \[ \boxed{\; \textcolor{mRose}{T} = \textcolor{corMedido}{W} - \textcolor{corIdeal}{U} \;} \]
+      $T$ é o ``relevo invisível'' de energia que as massas fora do lugar criam. E é
+      pequeno: é ele que vamos transformar em geoide.
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{ideia}[title={Mesma lógica de antes}]
+        Medido menos teórico, duas vezes:
+        \medskip
+
+        para a gravidade: $\anom = \gmed - \gam$
+        \medskip
+
+        para o potencial: $\textcolor{mRose}{T} = \textcolor{corMedido}{W} -
+        \textcolor{corIdeal}{U}$
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Bruns: de energia para metros (1878)}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      No elipsoide, a Terra real tem um pouquinho de energia a mais: $T$. Para ``gastar''
+      essa energia a mais, é preciso subir até o geoide, contra a gravidade $\gamma$.
+      \medskip
+
+      Energia por quilo para subir $N$ metros: $\gamma \cdot N$. Então:
+      \[ \boxed{\; \textcolor{mRose}{N} = \frac{\textcolor{mRose}{T}}{\gam} \;} \]
+      É a \textbf{fórmula de Bruns} (Heinrich Bruns, 1878) --- a mesma ideia do ``de esforço
+      para metros'' da aula do geoide.
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \draw[corIdeal, very thick] (0,0) -- (6,0);
+        \node[rotulo, text=corIdeal, below] at (5.1,-0.05) {elipsoide, $U_0$};
+        \draw[corGeoide, very thick] (0,0.7) .. controls (2,1.5) and (3.8,1.5) .. (6,0.9);
+        \node[rotulo, text=corGeoide, above] at (4.9,1.25) {geoide, $W_0$};
+        \draw[mRose, seta2] (2.9,0) -- (2.9,1.32);
+        \node[rotulo, text=mRose, right] at (2.95,0.6) {$N$};
+      \end{tikzpicture}
+      \medskip
+      \begin{cuidado}
+        \small Achou $T$, achou o geoide. Mas ninguém mede $T$: mede-se $g$. Como sair de
+        $\Delta g$ e chegar em $T$?
+      \end{cuidado}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{A ponte entre $\Delta g$ e $T$}
+  A anomalia e o potencial perturbador estão ligados por uma regra que vale em todo ponto
+  da superfície:
+  \[ \boxed{\; \anom = -\frac{\partial \textcolor{mRose}{T}}{\partial r}
+                 - \frac{2}{r}\,\textcolor{mRose}{T} \;} \]
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      Em palavras: a anomalia é \bnum{quanto $T$ muda quando se sobe}, mais um pedacinho do
+      próprio $T$.
+      \medskip
+
+      É a \textbf{equação fundamental da geodésia física}.
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{ideia}
+        \small Acima do geoide, onde não há massa, $T$ varia de um jeito suave e bem
+        comportado. Então, conhecendo $\Delta g$ \bnum{em toda a superfície}, existe
+        \bnum{um único} $T$ que serve.
+        \medskip
+
+        Encontrá-lo foi o trabalho de Stokes.
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{A integral de Stokes}
+
+\begin{frame}{George Gabriel Stokes, 1849}
+  \begin{columns}[T]
+    \begin{column}{0.54\textwidth}
+      Em 1849, \textbf{George Gabriel Stokes} --- um jovem físico de Cambridge, o mesmo das
+      equações de Navier--Stokes e do teorema de Stokes --- publicou \emph{On the variation
+      of gravity at the surface of the Earth}.
+      \medskip
+
+      Ele resolveu o problema: \alert{conhecendo a anomalia da gravidade na Terra inteira,
+      calcula-se o geoide em qualquer lugar.}
+      \medskip
+
+      A fórmula estava pronta. Faltava o resto: medidas de gravidade no planeta todo, e
+      máquinas para somar tudo. Isso levou \bnum{décadas}.
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{regra}[title={O problema de Stokes, em uma linha}]
+        \textbf{Entra}: $\Delta g$ na superfície inteira.
+        \medskip
+
+        \textbf{Sai}: $N$ em qualquer ponto.
+      \end{regra}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{A ideia: cada pedacinho da Terra vota}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      Para calcular $N$ num ponto $P$:
+      \begin{enumerate}
+        \item divida a Terra em pedacinhos;
+        \item cada pedacinho tem a sua anomalia $\Delta g$;
+        \item cada um contribui para $N$ em $P$ com um \bnum{peso} que só depende da
+              distância angular $\psi$ entre ele e $P$;
+        \item some tudo.
+      \end{enumerate}
+      Como uma votação em que \bnum{todo mundo vota} --- mas os vizinhos votam com mais
+      força.
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95]
+        \fill[corMassa!10] (3,0) circle (1.9);
+        \draw[mStoneMid, thick] (3,0) circle (1.9);
+        \fill[mStone] (3,0) circle (0.05);
+        \coordinate (P) at ({3+1.9*cos(70)},{1.9*sin(70)});
+        \coordinate (Q) at ({3+1.9*cos(165)},{1.9*sin(165)});
+        \draw[mStoneMid] (3,0) -- (P);
+        \draw[mStoneMid] (3,0) -- (Q);
+        \draw[mRose, thick] (3,0) ++(70:0.55) arc (70:165:0.55);
+        \node[rotulo, text=mRose] at ($(3,0)+(117:0.8)$) {$\psi$};
+        \fill[mRose] (P) circle (0.09);
+        \node[rotulo, above right] at (P) {$P$: onde se quer $N$};
+        \draw[corMedido, line width=4pt] ($(3,0)+(158:1.9)$) arc (158:172:1.9);
+        \node[rotulo, text=corMedido, left, align=right] at ($(Q)+(-0.1,0.1)$)
+          {pedacinho\\com $\Delta g$};
+        \node[rotulo, text=mStoneMid] at (3.3,-0.25) {centro};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{A integral de Stokes}
+  \[ \boxed{\; \textcolor{mRose}{N} \;=\; \frac{R}{4\pi\,\gam} \iint_{\sigma} \anom \;
+     S(\psi)\; \mathrm{d}\sigma \;} \]
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \begin{itemize}
+        \item $\textcolor{mRose}{N}$: o geoide --- o que se quer
+        \item $R$: o raio médio da Terra
+        \item $\gam$: a gravidade normal
+        \item $\anom$: as anomalias --- o que se \emph{mede}
+        \item $S(\psi)$: a \bnum{função de Stokes} --- o peso de cada pedacinho
+        \item $\iint_\sigma \ldots \mathrm{d}\sigma$: some sobre a \bnum{esfera inteira}
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{ideia}[title={No computador, é uma soma}]
+        \[ N(P) \approx \frac{R}{4\pi\gamma} \sum_i \Delta g_i \; S(\psi_i)\; \Delta\sigma_i \]
+        Milhões de parcelas: \bnum{uma para cada pedacinho} da Terra.
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{A função de Stokes: o peso de cada vizinho}
+  \begin{columns}[T]
+    \begin{column}{0.56\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=1.0]
+        \draw[mStoneMid, seta] (0,0) -- (6.4,0) node[below, rotulo] {$\psi$};
+        \draw[mStoneMid, seta] (0,-0.5) -- (0,3.1) node[above, rotulo] {peso $S(\psi)$};
+        \foreach \p in {0,30,60,90,120,150,180} {
+          \draw[mStoneMid] ({\p/30},-0.06) -- ({\p/30},0.06);
+          \node[rotulo, below] at ({\p/30},-0.5) {$\p^{\circ}$};
+        }
+        \begin{scope}
+          \clip (0,-0.7) rectangle (6.2,2.85);
+          \draw[corMedido, very thick, domain=2.5:180, samples=160, smooth, variable=\p]
+            plot ({\p/30}, {0.18*(1/sin(\p/2) - 6*sin(\p/2) + 1 - 5*cos(\p)
+                  - 3*cos(\p)*ln(sin(\p/2) + sin(\p/2)^2))});
+        \end{scope}
+        \fill[mRose] ({39.0/30},0) circle (0.05);
+        \fill[mRose] ({117.7/30},0) circle (0.05);
+        \node[rotulo, text=mRose, above] at ({39.0/30},0.05) {$39^{\circ}$};
+        \node[rotulo, text=mRose, above] at ({117.7/30},0.05) {$118^{\circ}$};
+        \node[rotulo, text=corMedido, right] at (0.35,2.55) {perto: peso enorme};
+        \node[rotulo, text=corMedido, align=center] at (5.3,1.0) {do outro lado\\do mundo};
+        \node[rotulo, text=mStoneMid] at (3.0,-1.25) {distância angular até $P$};
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.40\textwidth}
+      Perto de $P$, o peso é \bnum{enorme}: as anomalias vizinhas mandam.
+      \medskip
+
+      Ele cai depressa, fica negativo entre uns $39^{\circ}$ e $118^{\circ}$, e volta a subir
+      do outro lado do planeta.
+      \medskip
+
+      \alert{Nunca desaparece.} Para o geoide sob os seus pés contam também as anomalias do
+      outro lado do mundo.
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{As quatro exigências de Stokes}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \begin{cuidado}[title={Para a fórmula valer}]
+        \small
+        \begin{enumerate}
+          \item \bnum{nenhuma massa acima do geoide} --- $\Delta g$ tem de estar no geoide,
+                e o espaço acima dele, vazio;
+          \item $\Delta g$ conhecida na \bnum{Terra inteira};
+          \item a Terra tratada como \bnum{quase esfera} (o erro fica pequeno);
+          \item o elipsoide com a \bnum{mesma massa} e o \bnum{mesmo potencial} da Terra, e
+                com centro no centro de massa.
+        \end{enumerate}
+      \end{cuidado}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{armadilha}[title={O calcanhar de Aquiles}]
+        \small A exigência 1 é impossível ao pé da letra: \alert{montanhas existem}.
+        \medskip
+
+        Para usar Stokes, é preciso ``empurrar'' as massas para dentro do geoide com as
+        reduções --- e isso exige \alert{supor a densidade das rochas}.
+        \medskip
+
+        Fugir dessa suposição é o que leva à teoria de \textbf{Molodensky}. É assunto da
+        próxima aula.
+      \end{armadilha}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Na prática: remover, calcular, restaurar}
+  \begin{columns}[T]
+    \begin{column}{0.46\textwidth}
+      A exigência 2 --- a Terra inteira --- se resolve dividindo o trabalho:
+      \begin{enumerate}
+        \item \textbf{remover} as formas grandes, que já vêm de um modelo global feito com
+              satélites, e o efeito do relevo;
+        \item \textbf{calcular} Stokes só com o que sobrou --- pequeno e local ---, usando a
+              gravimetria do chão só em volta de $P$;
+        \item \textbf{restaurar}: somar de volta o que foi removido.
+      \end{enumerate}
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \draw[corIdeal, thick, domain=0:6, samples=80, smooth, variable=\x]
+          plot (\x, {0.4*sin(\x*55)});
+        \node[rotulo, text=corIdeal, right] at (6.05,0) {satélites};
+        \draw[corMedido, thick, domain=0:6, samples=120, smooth, variable=\x]
+          plot (\x, {-1.0 + 0.22*sin(\x*190 + 40)});
+        \node[rotulo, text=corMedido, right, align=left] at (6.05,-1.0) {chão +\\Stokes};
+        \draw[corMassa, thick, domain=0:6, samples=240, smooth, variable=\x]
+          plot (\x, {-1.9 + 0.08*sin(\x*700) + 0.05*sin(\x*1300 + 20)});
+        \node[rotulo, text=corMassa, right] at (6.05,-1.9) {relevo};
+        \draw[mStoneMid] (-0.1,-2.3) -- (6.1,-2.3);
+        \draw[corGeoide, very thick, domain=0:6, samples=240, smooth, variable=\x]
+          plot (\x, {-3.2 + 0.4*sin(\x*55) + 0.22*sin(\x*190 + 40) + 0.08*sin(\x*700)
+                     + 0.05*sin(\x*1300 + 20)});
+        \node[rotulo, text=corGeoide, right] at (6.05,-3.2) {geoide};
+        \node[rotulo, text=mStoneMid] at (3.0,-2.55) {soma};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{O geoide do Brasil: MAPGEO2015}
+  \begin{columns}[T]
+    \begin{column}{0.56\textwidth}
+      \centering
+      \small
+      \renewcommand{\arraystretch}{1.3}
+      \begin{tabular}{lp{4.3cm}}
+        \toprule
+        quem & IBGE e Escola Politécnica da USP \\
+        método & remover-calcular-restaurar; Stokes por FFT \\
+        gravimetria & $947\,953$ pontos no Brasil e vizinhos \\
+        formas grandes & modelo global EIGEN-6C4, até grau 200 \\
+        relevo & SRTM \\
+        grade & $5'$ (uns 9 km) \\
+        acerto & $\pm 0{,}17$ m (592 pontos GNSS/nivelamento) \\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+    \begin{column}{0.40\textwidth}
+      \begin{ideia}[title={E depois dele}]
+        \small Em 2021, o IBGE publicou o \textbf{hgeoHNOR2020}, ajustado às altitudes
+        \emph{normais} do reajustamento da rede altimétrica de 2018.
+        \medskip
+
+        Altitude normal é o mundo de Molodensky --- e da próxima aula.
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{O laço se fecha}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=1.0, caixa/.append style={font=\footnotesize}]
+        \node[caixa, draw=corIdeal, fill=corIdeal!8, text width=2.1cm] (A) at (0,2.0)
+          {\textbf{IGRS / IGRF}\\o referencial};
+        \node[caixa, draw=corMedido, fill=corMedido!10, text width=2.1cm] (B) at (3.8,2.0)
+          {$g$ confiável,\\em \uGal};
+        \node[caixa, draw=mRose, fill=mRose!8, text width=2.1cm] (C) at (3.8,0)
+          {$\Delta g = g - \gamma$\\$\to$ Stokes $\to N$};
+        \node[caixa, draw=corGeoide, fill=corGeoide!8, text width=2.1cm] (D) at (0,0)
+          {$h = H + N$\\altitudes, IHRS};
+        \draw[seta, mStoneMid] (A) -- (B);
+        \draw[seta, mStoneMid] (B) -- (C);
+        \draw[seta, mStoneMid] (C) -- (D);
+        \draw[seta, mStoneMid] (D) -- (A);
+        \node[rotulo, align=center] at (1.8,1.0) {e a altura\\precisa de $g$};
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{ideia}[title={Por que o µGal importa}]
+        \small Um erro sistemático de só $0{,}1$ mGal, espalhado por uma região grande,
+        desloca o geoide em \alert{centímetros}.
+        \medskip
+
+        Sem um referencial de gravidade sólido, não há geoide de centímetros --- nem
+        altitudes de centímetros.
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{Fechamento}
+
+\begin{frame}{Para levar para casa}
+  \footnotesize
+  \begin{enumerate}
+    \setlength{\itemsep}{1pt}
+    \item Gravidade é o puxão das massas mais o empurrãozinho da rotação. Vai de
+          $9{,}78$\mss{} no Equador a $9{,}83$ nos polos.
+    \item \bnum{Massa} não muda de lugar; \bnum{peso} muda --- o mesmo feijão ``pesa'' 1,3 g
+          a mais em Porto Alegre.
+    \item Absolutos medem $g$ direto do metro e do segundo; relativos medem diferenças e
+          \emph{espalham} o valor; supercondutores vigiam o tempo.
+    \item Um valor de $g$ precisa de ficha: \bnum{onde, quando, a que altura, com quais
+          correções}.
+    \item \sist{IGRS}: queda livre instantânea, no SI, com maré zero, atmosfera ISO e polo do
+          IERS. \fram{IGRF}: estações absolutas a $10^{-8}$, comparadas e registradas no
+          AGrav. Juntos, aposentam a IGSN71.
+    \item $\Delta g = g - \gamma$; Bruns: $N = T/\gamma$; \bnum{Stokes}: somar $\Delta g$ do
+          planeta inteiro, pesado por $S(\psi)$, dá o geoide.
+  \end{enumerate}
+  \begin{ideia}
+    \scriptsize \textbf{Na próxima aula:} Molodensky, teluróide e quase-geoide --- o que fazer
+    quando as montanhas não saem do caminho. \textbf{Experimente:} no simulador \textbf{Rede
+    Gravimétrica}, fixe Curitiba e Valinhos e ajuste a rede do Paraná.
+  \end{ideia}
+\end{frame}
+
+% ==================================================================
+\appendix
+
+\begin{frame}[standout]
+  Apêndice\\[6pt]
+  {\normalsize Para quem quer ir além}
+\end{frame}
+
+\begin{frame}{A1 · Newton, o potencial e a gravidade}
+  \small
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      Em forma vetorial, a atração sobre a massa unitária em $\vec r$ é
+      \[ \vec b = -\frac{G M}{r^2}\,\hat r = \nabla V, \qquad V = \frac{GM}{r} \]
+      e, para uma Terra qualquer, com densidade $\rho$:
+      \[ V(P) = G \iiint_{\text{Terra}} \frac{\rho}{\ell}\, \mathrm{d}v \]
+      ($\ell$: distância de $P$ ao elemento $\mathrm{d}v$).
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      Com a rotação:
+      \[ W = V + \Phi, \qquad \Phi = \tfrac{1}{2}\,\omega^2 (x^2 + y^2) \]
+      \[ \vec g = \nabla W, \qquad g = |\nabla W| \]
+      Fora das massas, $V$ é \textbf{harmônico}.
+      \[ \nabla^2 V = 0 \quad \text{(Laplace, fora)} \]
+      \[ \nabla^2 V = -4\pi G \rho \quad \text{(Poisson, dentro)} \]
+    \end{column}
+  \end{columns}
+  \medskip
+  \begin{cuidado}[title={Por que isso importa para Stokes}]
+    $T = W - U$ é harmônico fora das massas (a parte centrífuga se cancela, pois $U$ tem a
+    mesma rotação). É isso que torna o problema de contorno bem posto.
+  \end{cuidado}
+\end{frame}
+
+\begin{frame}{A2 · Gravidade normal: GRS80 e Somigliana}
+  \small
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \centering
+      \renewcommand{\arraystretch}{1.25}
+      \begin{tabular}{ll}
+        \toprule
+        $a$ & $6\,378\,137$ m \\
+        $GM$ & $3\,986\,005 \times 10^{8}$ m$^3$/s$^2$ \\
+        $J_2$ & $108\,263 \times 10^{-8}$ \\
+        $\omega$ & $7\,292\,115 \times 10^{-11}$ rad/s \\
+        \midrule
+        $\gamma_e$ & $9{,}780\,326\,7715$\mss \\
+        $\gamma_p$ & $9{,}832\,186\,3685$\mss \\
+        $k$ & $0{,}001\,931\,851\,353$ \\
+        $e^2$ & $0{,}006\,694\,380\,022\,90$ \\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      Fórmula fechada de Somigliana:
+      \[ \gamma = \frac{a\gamma_e\cos^2\varphi + b\gamma_p\sin^2\varphi}
+                       {\sqrt{a^2\cos^2\varphi + b^2\sin^2\varphi}} \]
+      \[ \gamma = \gamma_e\,\frac{1 + k\sin^2\varphi}{\sqrt{1 - e^2\sin^2\varphi}} \]
+      com $k = b\gamma_p/(a\gamma_e) - 1$. A série do slide principal concorda com ela
+      melhor que $0{,}1$\mGal.
+      \medskip
+
+      Variação com a altura, perto do elipsoide:
+      \[ \frac{\partial\gamma}{\partial h} \approx -0{,}3086 \ \text{mGal/m} \]
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{A3 · Anomalia, distúrbio e as reduções}
+  \small
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \textbf{Anomalia} ($P$ no geoide, $Q$ no elipsoide, na mesma normal):
+      \[ \Delta g = g_P - \gamma_Q \]
+      \textbf{Distúrbio} (o mesmo ponto): $\delta g = g_P - \gamma_P$ --- natural na era do
+      GNSS, quando se conhece $h$ e não só $H$.
+      \medskip
+
+      Reduções, com $H$ em metros e resultados em mGal:
+      \[ \Delta g_{\mathrm{AL}} = g + 0{,}3086\,H - \gamma \]
+      \[ \Delta g_{\mathrm{B}} = \Delta g_{\mathrm{AL}} - 2\pi G\rho H + c_T \]
+      com $2\pi G\rho = 0{,}1119$ mGal/m para $\rho = 2\,670$ kg/m$^3$ e $c_T$ a correção de
+      terreno.
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{ideia}[title={Curitiba, com mais casas}]
+        \scriptsize
+        \renewcommand{\arraystretch}{1.2}
+        \begin{tabular}{@{}lr@{}}
+          $\varphi$ (RENEGA) & $-25^{\circ}27'15''$ \\
+          $H$ (aprox.) & $910$ m \\
+          $g$ & $978\,760{,}387$ mGal \\
+          $\gamma$ (Somigliana) & $978\,987{,}20$ mGal \\
+          $\Delta g_{\mathrm{AL}}$ & $+54{,}0$ mGal \\
+          $\Delta g_{\mathrm{B}}$ (sem $c_T$) & $-47{,}8$ mGal \\
+        \end{tabular}
+      \end{ideia}
+      \medskip
+      {\scriptsize Para Stokes, na prática, usa-se a condensação de Helmert, com o seu efeito
+      indireto.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{A4 · Bruns e a equação fundamental}
+  \small
+  Com $U_0 = W_0$ e o geoide a uma altura $N$ acima do elipsoide:
+  \[ W_P = U_Q + \frac{\partial U}{\partial n}\,N + T = U_0 - \gamma N + T = W_0
+     \quad\Longrightarrow\quad N = \frac{T}{\gamma} \qquad \text{(Bruns)} \]
+  Derivando ao longo da normal e usando $g_P = -\partial W/\partial n$:
+  \[ \Delta g = -\frac{\partial T}{\partial h} + \frac{1}{\gamma}
+               \frac{\partial\gamma}{\partial h}\, T
+     \;\;\xrightarrow{\ \text{esférica}\ }\;\;
+     \Delta g = -\frac{\partial T}{\partial r} - \frac{2}{r}\, T \]
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      É uma condição de contorno mista (de \textbf{3º tipo}) na superfície: combina $T$ e a
+      sua derivada.
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      O problema de Stokes: achar $T$ harmônico fora da esfera de raio $R$, regular no
+      infinito, que satisfaça essa condição com $\Delta g$ dado.
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{A5 · A integral de Stokes em detalhe}
+  \small
+  \[ S(\psi) = \frac{1}{\sin(\psi/2)} - 6\sin\frac{\psi}{2} + 1 - 5\cos\psi
+               - 3\cos\psi\,\ln\!\Bigl(\sin\frac{\psi}{2} + \sin^2\frac{\psi}{2}\Bigr) \]
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      Em harmônicos esféricos:
+      \[ S(\psi) = \sum_{n=2}^{\infty} \frac{2n+1}{n-1}\, P_n(\cos\psi) \]
+      \[ N = \frac{R}{\gamma}\sum_{n=2}^{\infty} \frac{\Delta g_n}{n-1} \]
+      Os graus $n = 0$ e $n = 1$ \textbf{faltam}: são as exigências 4 (mesma massa e
+      potencial; origem no centro de massa).
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \textbf{Remover-calcular-restaurar}:
+      \[ \Delta g_{\mathrm{res}} = \Delta g - \Delta g_{\mathrm{GGM}} - \Delta g_{\mathrm{rel}} \]
+      \[ N = N_{\mathrm{GGM}} + N_{\Delta g_{\mathrm{res}}} + N_{\mathrm{ind}} \]
+      com $N_{\Delta g_{\mathrm{res}}}$ por Stokes só numa calota (núcleo modificado), e
+      $N_{\mathrm{ind}}$ o efeito indireto das reduções.
+      \medskip
+
+      \textbf{Vening Meinesz}: o mesmo $\Delta g$, com $\mathrm{d}S/\mathrm{d}\psi$, dá o
+      desvio da vertical.
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{A6 · As convenções do IGRS (2020)}
+  \scriptsize
+  \renewcommand{\arraystretch}{1.3}
+  \centering
+  \begin{tabular}{lp{10.2cm}}
+    \toprule
+    marés terrestres & potencial de Tamura (1987), 1\,200 constituintes (ou HW95,
+      Kudryavtsev); fatores de amplitude e fase observados ou de Dehant et al. (1999) \\
+    maré permanente & IAG Res. nº 16 (1983): o efeito indireto não é removido $\Rightarrow$
+      \textbf{maré zero}; $\mathrm{d}g(M_0S_0) = (30{,}49 - 90{,}95\sin^2\varphi -
+      0{,}31\sin^4\varphi)$\uGal \\
+    carga oceânica & modelo FES2004 (ou regional melhor), parâmetros do \emph{Ocean Tide
+      Loading Provider} \\
+    polo & $\delta g = -\delta\,\omega^2 a\; 2\sin\varphi\cos\varphi\,(x\cos\lambda -
+      y\sin\lambda)$, $\delta = 1{,}164$, polo do IERS \\
+    atmosfera & $\Delta g = 0{,}3\,(p_a - p_n)$\uGal, com
+      $p_n = 1013{,}25\,(1 - 0{,}0065\,H/288{,}15)^{5{,}2559}$ hPa (ISO 2533:1975) \\
+    hidrologia & \textbf{não} se corrige (não há referência normal) \\
+    altura & valor na altura instrumental efetiva: FG5 $\approx 1{,}21$ m, FG5-X
+      $\approx 1{,}27$ m, A10 $\approx 0{,}68$ m; transferência com gradiente medido (em
+      pelo menos 3 níveis) ou o normal, $-308{,}6$\uGal/m \\
+    \bottomrule
+  \end{tabular}
+  \medskip
+  \flushleft
+  A ficha mínima de cada observação: época; posição no ITRF; altitude física e sistema; $g$
+  corrigido; altura acima do marco; gradiente vertical usado. Registro no \textbf{AGrav}
+  (BGI/BKG); séries de supercondutores no \textbf{IGETS}.
+\end{frame}
+
+\begin{frame}{A7 · Fontes}
+  \scriptsize
+  \begin{itemize}
+    \setlength{\itemsep}{0pt}
+    \item \textbf{IGRS/IGRF} --- IAG, Resoluções nº 2 (IUGG, Praga, 2015) e nº 4 (IUGG,
+          Montreal, 2019). Wziontek et al., \emph{Status of the International Gravity
+          Reference System and Frame}, J.~Geod.~95:7 (2021). BGI, \emph{International Gravity
+          Reference Frame}. SIRGAS, webinar de 05/03/2021 (AGGO como estação de referência).
+    \item \textbf{IGSN71} --- Morelli et al. (1974), IAG Special Publication 4: 1\,854
+          estações, $\pm 0{,}1$ mGal; correção de $-14$ mGal em Potsdam (NOAA, \emph{Gravity
+          Datums}).
+    \item \textbf{Histórico e RENEGA} --- tese em \texttt{rede\_gravimetrica/source\_info}
+          (cap.~1; Gemael et al., 1990; Torge et al., 1994): Viena (1900), Potsdam (1909),
+          20 localidades da IGSN71 no Brasil, RENEGA com o JILAG-3.
+    \item \textbf{Extremos de $g$} --- Hirt et al. (2013), \emph{New ultrahigh-resolution
+          picture of Earth's gravity field}, GRL 40: Huascarán $9{,}76392$, Ártico
+          $9{,}83366$\mss.
+    \item \textbf{MAPGEO2015} --- IBGE/EPUSP; \emph{The Brazilian gravimetric geoid:
+          MAPGEO2015} (ISG). \textbf{hgeoHNOR2020} --- IBGE, Relatórios Metodológicos v.~47.
+    \item \textbf{Clássicos} --- Newton (1687), \emph{Principia}; Cavendish (1798);
+          Stokes (1849), \emph{Trans.~Camb.~Phil.~Soc.}~8; Bruns (1878), \emph{Die Figur der
+          Erde}. GRS80: Moritz, \emph{Geodetic Reference System 1980}.
+    \item \textbf{Rede do Paraná} --- \texttt{rede\_gravimetrica/data} (solução
+          AJUSTAMENTOINTEGRADO, $\approx 15$\uGal).
+    \item \textbf{Números derivados} --- $\gamma$, anomalias de Curitiba, feijão, força entre
+          alunos e zeros de $S(\psi)$: recalculados para esta aula.
+  \end{itemize}
+  \smallskip
+  \centering
+  \footnotesize Os fatos e números desta aula foram conferidos em 28/09/2026.
+\end{frame}
+
+\end{document}

@@ -1,0 +1,1413 @@
+% Poligonal aberta (Parte 1) e irradiação / levantamento de detalhes (Parte 2).
+% Só planimetria: X e Y. Aula em "baby steps" para o ensino médio, com apêndice técnico.
+%
+% Compilar (nesta pasta):  latexmk -pdf poligonal_e_irradiacao.tex
+% Limpar auxiliares:       latexmk -c
+%
+% TODOS os números do exemplo saem de explanations/poligonal_irradiacao.js, que refaz as
+% contas e, no fim, reproduz os exercícios originais dos livros:
+%     node surveyor_valley/explanations/poligonal_irradiacao.js
+%
+% Fontes (lidas em 2026-09-23, em ~/Documents/material_estudo/livros/topografia):
+%   VEIGA, L. A. K.; ZANETTI, M. A. Z.; FAGGION, P. L. "Fundamentos de Topografia".
+%     UFPR. Capítulo 9: tipos de poligonal (fechada, enquadrada, aberta — figuras 9.2 a
+%     9.4), formas de obter o azimute de partida (figuras 9.5 a 9.11, e a recomendação da
+%     NBR 13133/ABNT de ter dois pontos do SGB em comum), método de irradiação (9.3,
+%     figuras 9.24 e 9.25), caderneta e croqui (figuras 9.26 e 9.27) e o exercício 9.3.1,
+%     cujos resultados o script reproduz ao centímetro.
+%   SILVA, Irineu da. "Topografia para engenharia — teoria e prática de geomática".
+%     Seção 10.3 (cálculo de um ponto lançado / irradiação, o "segundo problema
+%     fundamental da Geodésia"), 10.4 (transporte de azimute), 11.2 (poligonação:
+%     vantagens, tipos, reconhecimento de campo, fontes de erro e centragem forçada com
+%     três tripés).
+%   WOLF, P. R.; GHILANI, C. D. "Elementary Surveying — An Introduction to Geomatics".
+%     Seção 9.1 (open traverse: "should be avoided because they offer no means of checking
+%     for observational errors and mistakes") e seção 10.13 (Use of Open Traverses) com o
+%     Exemplo 10.11, da linha de fechamento — também reproduzido pelo script.
+
+\documentclass[aspectratio=169,11pt]{beamer}
+
+\usetheme[progressbar=frametitle, sectionpage=progressbar, numbering=fraction]{metropolis}
+\metroset{block=fill}
+
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[brazilian]{babel}
+\usepackage{icomma}
+\usepackage{amsmath, amssymb, mathtools}
+\usepackage{booktabs}
+\usepackage[most]{tcolorbox}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, calc, positioning, decorations.pathreplacing,
+                decorations.markings, angles, quotes, babel}
+
+% ------------------------------------------------------------------ paleta (a mesma das outras aulas)
+\definecolor{mStone}{HTML}{1C1917}
+\definecolor{mStoneMid}{HTML}{78716C}
+\definecolor{mStoneLight}{HTML}{F5F5F4}
+\definecolor{mTeal}{HTML}{0D9488}
+\definecolor{mRose}{HTML}{E11D48}
+\definecolor{mAmber}{HTML}{D97706}
+\definecolor{mIndigo}{HTML}{4F46E5}
+
+% As três coisas que se repetem em toda figura desta aula
+\colorlet{corApoio}{mTeal}      % a poligonal — o esqueleto do levantamento
+\colorlet{corDetalhe}{mAmber}   % os detalhes irradiados — a carne
+\colorlet{corAng}{mIndigo}      % ângulos e azimutes
+
+\setbeamercolor{normal text}{fg=mStone, bg=white}
+\setbeamercolor{palette primary}{fg=white, bg=mStone}
+\setbeamercolor{frametitle}{fg=white, bg=mStone}
+\setbeamercolor{alerted text}{fg=mRose}
+\setbeamercolor{example text}{fg=mTeal}
+\setbeamercolor{progress bar}{fg=mTeal, bg=mTeal!20}
+\setbeamercolor{progress bar in head/foot}{fg=mTeal, bg=mTeal!20}
+\setbeamercolor{progress bar in section page}{fg=mTeal, bg=mTeal!20}
+\setbeamercolor{title separator}{fg=mTeal}
+\setbeamercolor{block title}{fg=white, bg=mTeal}
+\setbeamercolor{block body}{fg=mStone, bg=mTeal!8}
+
+% ------------------------------------------------------------------ caixas
+\newtcolorbox{ideia}[1][]{enhanced, colback=mTeal!7, colframe=mTeal, boxrule=0.6pt, arc=2pt,
+  left=6pt, right=6pt, top=4pt, bottom=4pt, fonttitle=\bfseries\small, coltitle=white, #1}
+\newtcolorbox{cuidado}[1][]{enhanced, colback=mAmber!8, colframe=mAmber, boxrule=0.6pt, arc=2pt,
+  left=6pt, right=6pt, top=4pt, bottom=4pt, fonttitle=\bfseries\small, coltitle=white, #1}
+\newtcolorbox{armadilha}[1][]{enhanced, colback=mRose!6, colframe=mRose, boxrule=0.6pt, arc=2pt,
+  left=6pt, right=6pt, top=4pt, bottom=4pt, fonttitle=\bfseries\small, coltitle=white, #1}
+\newtcolorbox{regra}[1][]{enhanced, colback=mIndigo!7, colframe=mIndigo, boxrule=0.6pt, arc=2pt,
+  left=6pt, right=6pt, top=4pt, bottom=4pt, fonttitle=\bfseries\small, coltitle=white, #1}
+
+% ------------------------------------------------------------------ estilos TikZ
+\tikzset{
+  seta/.style={-{Stealth[length=2.4mm]}, thick},
+  rotulo/.style={font=\scriptsize, text=mStone},
+  marco/.style={rectangle, fill=mStone, minimum size=4pt, inner sep=0pt},
+  vertice/.style={circle, fill=corApoio, inner sep=2pt},
+  detalhe/.style={circle, fill=corDetalhe, inner sep=1.6pt},
+  lado/.style={corApoio, very thick},
+  raio/.style={corDetalhe, thick},
+  norte/.style={corAng, thick, -{Stealth[length=2mm]}, dashed},
+}
+
+\newcommand{\bnum}[1]{\textbf{\textcolor{mTeal}{#1}}}
+\newcommand{\ang}[1]{\textcolor{corAng}{\textbf{#1}}}
+\newcommand{\gr}[3]{#1\ensuremath{^\circ}\,#2\ensuremath{'}\,#3\ensuremath{''}}
+
+\title{Como um terreno vira um desenho?}
+\subtitle{Poligonal aberta e irradiação --- planimetria, só $X$ e $Y$}
+\author{}
+\institute{Surveyor Valley}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+% ==================================================================
+\begin{frame}{O que vamos ver}
+  \setbeamertemplate{section in toc}[sections numbered]
+  \begin{columns}[T]
+    \begin{column}{0.58\textwidth}
+      \tableofcontents
+    \end{column}
+    \begin{column}{0.38\textwidth}
+      \begin{ideia}[title={Duas partes}]
+        \small
+        \textbf{Parte 1} --- a \textcolor{corApoio}{\textbf{poligonal aberta}}: o esqueleto
+        do levantamento.
+        \medskip
+
+        \textbf{Parte 2} --- a \textcolor{corDetalhe}{\textbf{irradiação}}: a carne, ponto a
+        ponto.
+        \medskip
+
+        Tudo em planimetria: só $X$ e $Y$.
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{O problema}
+
+\begin{frame}{A planta tem de sair de algum lugar}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      Uma planta é uma lista de \bnum{pontos com coordenadas}, ligados por linhas.
+      \medskip
+
+      A esquina da casa, o poste, a árvore, a tampa de poço --- cada um precisa virar um
+      par de números $(X, Y)$.
+      \medskip
+
+      A pergunta desta aula é simples: \alert{de onde vêm esses números?}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.88]
+        \draw[mStoneMid!40] (0,0) rectangle (6.0,3.6);
+        \draw[mStone, thick] (0.8,0.6) rectangle (2.9,2.2);
+        \draw[mStone, thick] (3.6,1.1) rectangle (5.3,2.6);
+        \draw[mStoneMid, thick] (0.3,3.1) -- (5.7,3.1);
+        \node[rotulo, above] at (3.0,3.15) {rua};
+        \foreach \x/\y in {0.8/0.6, 2.9/0.6, 2.9/2.2, 0.8/2.2, 3.6/1.1, 5.3/2.6} {
+          \fill[corDetalhe] (\x,\y) circle (0.075);
+        }
+        \node[rotulo, text=corDetalhe, below] at (1.85,0.45) {cada canto é um $(X,Y)$};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Não dá para medir tudo de um lugar só}
+  \begin{columns}[T]
+    \begin{column}{0.46\textwidth}
+      Se todo o terreno fosse visível de um ponto, bastaria plantar o instrumento ali e
+      medir tudo.
+      \medskip
+
+      Mas o mundo tem \alert{esquinas, muros, casas e morros}. De onde você está, boa parte
+      do terreno simplesmente não se vê.
+      \medskip
+
+      Então é preciso \bnum{caminhar} --- e carregar as coordenadas junto.
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.88]
+        \fill[mStone!12] (2.4,0.9) rectangle (4.3,2.9);
+        \draw[mStone, thick] (2.4,0.9) rectangle (4.3,2.9);
+        \node[rotulo] at (3.35,1.9) {prédio};
+        \node[vertice] (E) at (0.7,1.9) {};
+        \node[rotulo, left] at (0.55,1.9) {você};
+        \foreach \y in {1.1, 1.9, 2.7} { \draw[corApoio!60] (0.85,1.9) -- (2.35,\y); }
+        \foreach \x/\y in {5.3/1.3, 5.6/2.4, 4.9/3.2} {
+          \fill[mRose] (\x,\y) circle (0.075);
+          \draw[mRose, dotted] (0.85,1.9) -- (\x,\y);
+        }
+        \node[rotulo, text=mRose, right, align=left] at (5.0,0.7) {não se vê\\daqui};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Duas camadas: apoio e detalhe}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      Todo levantamento se organiza em duas camadas:
+      \medskip
+      \begin{itemize}
+        \item o \textcolor{corApoio}{\textbf{apoio}}: poucos pontos, medidos com muito
+              cuidado, que servem de base para todo o resto;
+        \item o \textcolor{corDetalhe}{\textbf{detalhe}}: muitos pontos, medidos
+              rapidamente a partir do apoio.
+      \end{itemize}
+      \medskip
+      O apoio é o \bnum{esqueleto}; o detalhe é a \bnum{carne}. Esta aula ensina um método
+      para cada um.
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.88]
+        \node[vertice] (a) at (0.5,0.6) {};
+        \node[vertice] (b) at (2.4,1.9) {};
+        \node[vertice] (c) at (4.6,1.2) {};
+        \draw[lado] (a) -- (b) -- (c);
+        \node[rotulo, text=corApoio, below] at (2.4,0.25) {apoio: a poligonal};
+        \foreach \x/\y in {1.6/2.9, 3.1/3.1, 3.9/2.4, 1.2/1.5, 3.5/0.6, 5.3/2.2} {
+          \fill[corDetalhe] (\x,\y) circle (0.075);
+        }
+        \foreach \x/\y in {1.6/2.9, 3.1/3.1, 3.9/2.4, 1.2/1.5} { \draw[corDetalhe!50] (2.4,1.9) -- (\x,\y); }
+        \foreach \x/\y in {3.5/0.6, 5.3/2.2} { \draw[corDetalhe!50] (4.6,1.2) -- (\x,\y); }
+        \node[rotulo, text=corDetalhe, above] at (3.1,3.25) {detalhe: a irradiação};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{A poligonal: o que é e do que precisa}
+
+\begin{frame}{Caminhar medindo}
+  \begin{columns}[T]
+    \begin{column}{0.46\textwidth}
+      Uma \bnum{poligonal} é um caminho quebrado marcado no terreno. Em cada canto crava-se
+      um piquete ou um marco: são os \bnum{vértices}.
+      \medskip
+
+      Em cada vértice mede-se:
+      \begin{itemize}
+        \item o \ang{ângulo} entre de onde você veio e para onde vai;
+        \item a \textcolor{corApoio}{\textbf{distância}} até o próximo vértice.
+      \end{itemize}
+      \medskip
+      Com isso as coordenadas vão sendo \alert{transportadas} de um vértice ao seguinte.
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \node[marco, label={[rotulo]below:M1}] (m) at (0.4,2.4) {};
+        \node[vertice, label={[rotulo]below:P1}] (p) at (2.2,1.0) {};
+        \node[vertice, label={[rotulo]above:P2}] (q) at (4.4,2.3) {};
+        \node[vertice, label={[rotulo]right:P3}] (r) at (5.9,0.9) {};
+        \draw[lado] (m) -- (p) -- (q) -- (r);
+        \node[rotulo, text=corApoio, above right] at (1.0,1.9) {distância};
+        \node[rotulo, text=corAng] at (2.35,1.62) {ângulo};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Do que a poligonal precisa para começar}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      Medir ângulos e distâncias dá a \emph{forma} do caminho. Mas uma forma solta não tem
+      posição nem direção no mundo.
+      \medskip
+
+      Faltam duas coisas, e só duas:
+      \medskip
+      \begin{enumerate}
+        \item um \bnum{ponto de partida} com coordenadas conhecidas;
+        \item uma \bnum{direção de partida} --- um azimute conhecido.
+      \end{enumerate}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.88]
+        \node[marco, label={[rotulo]left:M2}] (m2) at (0.5,0.6) {};
+        \node[marco, label={[rotulo]below:M1}] (m1) at (2.6,2.3) {};
+        \draw[corAng, thick] (m2) -- (m1);
+        \node[rotulo, text=corAng, above left] at (1.9,1.5) {azimute de partida};
+        \draw[norte] (2.6,2.3) -- (2.6,3.5);
+        \node[rotulo, text=corAng, above] at (2.6,3.5) {N};
+        \node[vertice] (p) at (4.6,1.4) {};
+        \draw[lado] (m1) -- (p);
+        \node[rotulo, text=corApoio, right] at (4.7,1.4) {P1};
+      \end{tikzpicture}
+      \smallskip
+
+      {\scriptsize\textcolor{mStoneMid}{Visa-se um segundo marco conhecido (M2): ele não faz
+      parte do caminho, só dá a direção.}}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{De onde vem a direção de partida}
+  \centering
+  \small
+  \small
+  \renewcommand{\arraystretch}{1.2}
+  \begin{tabular}{lp{7.5cm}}
+    \toprule
+    \textbf{o melhor caso} & dois marcos de coordenadas conhecidas, visíveis do primeiro
+      vértice --- a norma brasileira recomenda que sejam da rede geodésica \\
+    \textbf{muito comum} & um marco conhecido, e a visada a um segundo ponto conhecido
+      qualquer \\
+    \textbf{sem marcos por perto} & transportar coordenadas até lá com uma poligonal
+      auxiliar \\
+    \textbf{o último recurso} & coordenadas arbitradas e o Norte por bússola, giroscópio ou
+      astronomia --- funciona, mas o levantamento fica solto do mundo \\
+    \bottomrule
+  \end{tabular}
+  \medskip
+
+  \begin{cuidado}[title={Uma escolha que fica para sempre}]
+    \small Tudo o que for medido depois \alert{herda} essa direção. Um erro no azimute de
+    partida gira o levantamento inteiro, e nada depois vai denunciá-lo.
+  \end{cuidado}
+\end{frame}
+
+\begin{frame}{Azimute: a direção, em um número}
+  \begin{columns}[T]
+    \begin{column}{0.46\textwidth}
+      \bnum{Azimute} é o ângulo contado \alert{a partir do Norte}, no \alert{sentido
+      horário}, de $0\ensuremath{^\circ}$ a $360\ensuremath{^\circ}$.
+      \medskip
+      \begin{itemize}
+        \item Norte $= \gr{0}{00}{00}$
+        \item Leste $= 90\ensuremath{^\circ}$
+        \item Sul $= 180\ensuremath{^\circ}$
+        \item Oeste $= 270\ensuremath{^\circ}$
+      \end{itemize}
+      \medskip
+      {\small Uma direção, um número --- sem ``nordeste'', sem quadrante, sem letra.}
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95]
+        \draw[mStoneMid!50] (0,0) circle (1.7);
+        \draw[norte] (0,0) -- (0,2.1);
+        \node[rotulo, text=corAng, above] at (0,2.1) {N};
+        \draw[mStoneMid!50] (-1.9,0) -- (1.9,0);
+        \draw[corApoio, very thick, -{Stealth[length=2.5mm]}] (0,0) -- (55:2.0);
+        \node[rotulo, text=corApoio, right] at (55:2.1) {a direção};
+        \draw[corAng, thick] (0,0.95) arc (90:55:0.95);
+        \node[rotulo, text=corAng] at (72:1.25) {Az};
+        \node[rotulo, right] at (1.9,0) {L};
+        \node[rotulo, left] at (-1.9,0) {O};
+        \node[rotulo, below] at (0,-1.8) {S};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{Os três tipos de poligonal}
+
+\begin{frame}{Fechada, enquadrada, aberta}
+  \centering
+  \begin{tikzpicture}[scale=0.82]
+    % fechada
+    \begin{scope}[xshift=0cm]
+      \node[marco] (a) at (1.2,0.4) {};
+      \node[vertice] (b) at (2.5,1.4) {};
+      \node[vertice] (c) at (1.6,2.6) {};
+      \node[vertice] (d) at (0.3,1.7) {};
+      \draw[lado] (a) -- (b) -- (c) -- (d) -- (a);
+      \node[rotulo, below] at (1.3,-0.1) {\textbf{fechada}};
+      \node[rotulo, below] at (1.3,-0.5) {volta ao próprio início};
+    \end{scope}
+    % enquadrada
+    \begin{scope}[xshift=4.8cm]
+      \node[marco] (a) at (0.1,0.5) {};
+      \node[vertice] (b) at (1.2,1.7) {};
+      \node[vertice] (c) at (2.2,0.9) {};
+      \node[marco] (d) at (3.2,2.1) {};
+      \draw[lado] (a) -- (b) -- (c) -- (d);
+      \node[rotulo, below] at (1.6,-0.1) {\textbf{enquadrada}};
+      \node[rotulo, below] at (1.6,-0.5) {sai de um marco e chega a outro};
+    \end{scope}
+    % aberta
+    \begin{scope}[xshift=10.0cm]
+      \node[marco] (a) at (0.1,0.5) {};
+      \node[vertice] (b) at (1.2,1.7) {};
+      \node[vertice] (c) at (2.2,0.9) {};
+      \node[vertice] (d) at (3.2,2.1) {};
+      \draw[lado] (a) -- (b) -- (c) -- (d);
+      \draw[mRose, thick, dotted] (d) -- (3.9,2.9);
+      \node[rotulo, text=mRose, right] at (3.5,2.9) {?};
+      \node[rotulo, below] at (1.6,-0.1) {\textcolor{mRose}{\textbf{aberta}}};
+      \node[rotulo, below] at (1.6,-0.5) {termina no vazio};
+    \end{scope}
+  \end{tikzpicture}
+  \bigskip
+  \medskip
+
+  {\small Os quadradinhos pretos são \textbf{marcos de coordenadas conhecidas};
+  as bolinhas são os \textbf{vértices novos}, que se quer determinar.}
+\end{frame}
+
+\begin{frame}{A diferença que realmente importa}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      Não é o desenho. É se existe, no fim, \bnum{alguma coisa conhecida com que comparar}.
+      \medskip
+      \begin{itemize}
+        \item Na \textbf{fechada}, você volta ao ponto de partida: as coordenadas calculadas
+              \emph{deveriam} dar as mesmas do começo.
+        \item Na \textbf{enquadrada}, você chega a um marco conhecido: o mesmo confronto.
+        \item Na \textbf{aberta}, você chega \alert{a lugar nenhum}.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{ideia}[title={Erro de fechamento}]
+        A diferença entre o que você calculou e o que já se sabia. É um número que
+        \bnum{acusa} quando algo deu errado.
+        \medskip
+
+        Na poligonal aberta esse número \alert{não existe}.
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{O que dizem os livros}
+  \centering
+  \small
+  \renewcommand{\arraystretch}{1.4}
+  \begin{tabular}{lp{8.4cm}}
+    \toprule
+    \emph{Fundamentos de Topografia} &
+      ``Não é possível determinar erros de fechamento, portanto devem-se tomar todos os
+      cuidados necessários durante o levantamento de campo para evitá-los.'' \\
+    \emph{Wolf \& Ghilani} &
+      ``\emph{Open traverses should be avoided because they offer no means of checking for
+      observational errors and mistakes.}'' \\
+    \emph{Irineu da Silva} &
+      ``Raramente usado devido ao fato dele ser totalmente desprovido de controle
+      geométrico'' --- mas recomendado para mineração e obras subterrâneas. \\
+    \bottomrule
+  \end{tabular}
+  \bigskip
+
+  Os três dizem a mesma coisa, com ênfases diferentes: \alert{use pouco, e com muito
+  cuidado} --- mas às vezes não há alternativa.
+\end{frame}
+
+% ==================================================================
+\section{A conta}
+
+\begin{frame}{Uma regra só, para a aula inteira}
+  \begin{regra}[title={Transporte de azimute}]
+    \centering
+    \[ \text{Az}_{\text{vante}} \;=\; \text{Az}_{\text{ré}} \;+\; \ang{\text{ângulo horário}}
+       \;-\; 180\ensuremath{^\circ} \]
+    (somando ou tirando $360\ensuremath{^\circ}$ para o resultado caber entre
+    $0\ensuremath{^\circ}$ e $360\ensuremath{^\circ}$)
+  \end{regra}
+  \bigskip
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{ideia}[title={Guarde estes três nomes}]
+        \small
+        \textbf{ré} --- de onde você veio, e para onde você mira primeiro\\[3pt]
+        \textbf{estação} --- onde o instrumento está\\[3pt]
+        \textbf{vante} --- para onde você mira depois
+      \end{ideia}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{ideia}[title={Por que ela vale para tudo}]
+        \small Na \textcolor{corApoio}{\textbf{poligonal}}, a vante é o próximo vértice ---
+        e você anda até lá.
+        \medskip
+
+        Na \textcolor{corDetalhe}{\textbf{irradiação}}, a vante é um detalhe --- e você
+        fica onde está.
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{A regra, desenhada}
+  \begin{columns}[T]
+    \begin{column}{0.44\textwidth}
+      O ângulo horário é lido \bnum{zerando na ré} e girando o instrumento \bnum{no sentido
+      horário} até a vante.
+      \medskip
+
+      O $-180\ensuremath{^\circ}$ aparece porque a direção que \emph{chega} na estação e a
+      direção que \emph{sai} dela olhando para a ré são \alert{opostas}: diferem de meia
+      volta.
+    \end{column}
+    \begin{column}{0.52\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95]
+        \coordinate (R) at (0.2,0.5);
+        \coordinate (E) at (2.6,1.5);
+        \coordinate (V) at (4.6,0.4);
+        \draw[corAng, thick, -{Stealth[length=2mm]}] (R) -- (E);
+        \node[rotulo, text=corAng, below] at (1.3,0.85) {$\text{Az}_{\text{ré}}$};
+        \draw[corApoio, very thick, -{Stealth[length=2mm]}] (E) -- (V);
+        \node[rotulo, text=corApoio, above right] at (3.7,1.0) {$\text{Az}_{\text{vante}}$};
+        \draw[mStoneMid, dashed] (E) -- (0.5,0.7);
+        \fill[mStone] (E) circle (0.075);
+        \node[rotulo, above] at (2.6,1.65) {estação};
+        \node[rotulo, left] at (0.1,0.5) {ré};
+        \node[rotulo, right] at (4.7,0.4) {vante};
+        \draw[norte] (E) -- (2.6,3.0);
+        \node[rotulo, text=corAng, above] at (2.6,3.0) {N};
+        \draw[corAng, thick] (2.05,1.27) arc (203:335:0.62);
+        \node[rotulo, text=corAng, below] at (3.05,0.62) {ângulo horário};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Do azimute às coordenadas}
+  \begin{columns}[T]
+    \begin{column}{0.46\textwidth}
+      Sabendo a direção e a distância, o resto é o triângulo retângulo do ensino médio:
+      \[ \Delta X = d \cdot \operatorname{sen}(\text{Az}) \]
+      \[ \Delta Y = d \cdot \cos(\text{Az}) \]
+      \medskip
+      \begin{cuidado}[title={Repare na troca}]
+        \small O seno vai no $X$ e o cosseno no $Y$ --- ao contrário do que se costuma ver
+        em matemática, porque o azimute é contado \alert{do Norte}, e não do eixo $X$.
+      \end{cuidado}
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95]
+        \draw[mStoneMid, seta] (0,0) -- (4.6,0) node[right, rotulo] {$X$ (leste)};
+        \draw[mStoneMid, seta] (0,0) -- (0,3.4) node[above, rotulo] {$Y$ (norte)};
+        \coordinate (P) at (0.7,0.7);
+        \coordinate (Q) at (3.5,2.7);
+        \fill[mStone] (P) circle (0.075);
+        \fill[corApoio] (Q) circle (0.085);
+        \draw[corApoio, very thick, -{Stealth[length=2.5mm]}] (P) -- (Q);
+        \node[rotulo, above left] at (2.0,1.85) {$d$};
+        \draw[corDetalhe, thick] (P) -- (3.5,0.7) -- (Q);
+        \node[rotulo, text=corDetalhe, below] at (2.1,0.62) {$\Delta X$};
+        \node[rotulo, text=corDetalhe, right] at (3.55,1.7) {$\Delta Y$};
+        \draw[norte] (P) -- (0.7,3.1);
+        \draw[corAng, thick] (0.7,2.1) arc (90:36:1.4);
+        \node[rotulo, text=corAng] at (1.55,2.35) {Az};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{O nosso levantamento: os dados de campo}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \centering
+      \footnotesize
+      \renewcommand{\arraystretch}{1.25}
+      \begin{tabular}{@{}lrr@{}}
+        \toprule
+        \multicolumn{3}{@{}l}{\textbf{partida}} \\
+        \midrule
+        marco M1 & $X$ & $1\,000{,}000$\,m \\
+                 & $Y$ & $2\,000{,}000$\,m \\
+        azimute M2\,$\to$\,M1 & & \gr{62}{14}{20} \\
+        \midrule
+        \multicolumn{3}{@{}l}{\textbf{caminhamento}} \\
+        \midrule
+        vértice & ângulo horário & distância \\
+        P1 & \gr{236}{17}{50} & $87{,}432$\,m \\
+        P2 & \gr{127}{15}{20} & $112{,}906$\,m \\
+        P3 & \gr{242}{17}{25} & $94{,}178$\,m \\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{ideia}[title={Como ler esta tabela}]
+        \small A linha de P1 quer dizer: \emph{estando em M1, com a ré em M2, girei
+        \gr{236}{17}{50} no sen\-ti\-do ho\-rá\-rio e medi $87{,}432$\,m até P1.}
+      \end{ideia}
+      \medskip
+      {\small As distâncias já são \textbf{horizontais}: é planimetria, e o relevo não
+      entra na conta.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Primeiro vértice, passo a passo}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \textbf{1. O azimute do lado M1\,$\to$\,P1}
+      \[ \gr{62}{14}{20} + \gr{236}{17}{50} - 180\ensuremath{^\circ} \]
+      \[ = \ang{\gr{118}{32}{10}} \]
+      \medskip
+      \textbf{2. As projeções}
+      \[ \Delta X = 87{,}432 \cdot \operatorname{sen}\gr{118}{32}{10} = +76{,}810 \]
+      \[ \Delta Y = 87{,}432 \cdot \cos\gr{118}{32}{10} = -41{,}767 \]
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \textbf{3. As coordenadas}
+      \begin{align*}
+        X_{P1} &= 1\,000{,}000 + 76{,}810 \\
+               &= \bnum{1\,076{,}810}\ \text{m} \\[6pt]
+        Y_{P1} &= 2\,000{,}000 - 41{,}767 \\
+               &= \bnum{1\,958{,}233}\ \text{m}
+      \end{align*}
+      \medskip
+      \begin{ideia}[title={E agora?}]
+        \small Anda-se até P1, e \alert{repete-se exatamente isto} --- agora com a ré em M1.
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{A poligonal inteira}
+  \centering
+  \footnotesize
+  \renewcommand{\arraystretch}{1.2}
+  \begin{tabular}{lrrrrrr}
+    \toprule
+    vért. & ângulo horário & distância & azimute do lado & $\Delta X$ & $\Delta Y$ & \\
+    \midrule
+    M1 & & & & & & \\
+    P1 & \gr{236}{17}{50} & $87{,}432$ & \ang{\gr{118}{32}{10}} & $+76{,}810$ & $-41{,}767$ & \\
+    P2 & \gr{127}{15}{20} & $112{,}906$ & \ang{\gr{65}{47}{30}} & $+102{,}977$ & $+46{,}298$ & \\
+    P3 & \gr{242}{17}{25} & $94{,}178$ & \ang{\gr{128}{04}{55}} & $+74{,}130$ & $-58{,}088$ & \\
+    \bottomrule
+  \end{tabular}
+  \medskip
+
+  \renewcommand{\arraystretch}{1.15}
+  \begin{tabular}{lrr}
+    \toprule
+    & $X$ (m) & $Y$ (m) \\
+    \midrule
+    M1 & $1\,000{,}000$ & $2\,000{,}000$ \\
+    P1 & $1\,076{,}810$ & $1\,958{,}233$ \\
+    P2 & $1\,179{,}788$ & $2\,004{,}530$ \\
+    P3 & \bnum{$1\,253{,}918$} & \bnum{$1\,946{,}443$} \\
+    \bottomrule
+  \end{tabular}
+  \smallskip
+
+  {\footnotesize Caminhamento total: $294{,}516$\,m.}
+\end{frame}
+
+\begin{frame}{A poligonal, desenhada}
+  \centering
+  % coordenadas em metros, RELATIVAS a M1 (o TikZ não aguenta os valores absolutos)
+  \begin{tikzpicture}[x=0.036cm, y=0.036cm]
+    \node[marco, label={[rotulo]above left:M1}] (m1) at (0,0) {};
+    \node[vertice, label={[rotulo]below:P1}] (p1) at (76.81,-41.77) {};
+    \node[vertice, label={[rotulo]above:P2}] (p2) at (179.79,4.53) {};
+    \node[vertice, label={[rotulo]above right:P3}] (p3) at (253.92,-53.56) {};
+    \draw[lado] (m1) -- (p1) -- (p2) -- (p3);
+    \draw[corAng, thick, dashed, -{Stealth[length=2mm]}] (-38,-17) -- (0,0);
+    \node[rotulo, text=corAng, above] at (-30,-14) {de M2};
+    \node[rotulo, text=mRose, below] at (253.92,-62) {e daqui?};
+  \end{tikzpicture}
+  \bigskip
+
+  Três vértices novos, calculados um a partir do outro. \alert{Nenhum deles foi conferido.}
+\end{frame}
+
+% ==================================================================
+\section{O preço de não ter confronto}
+
+\begin{frame}{Os erros andam junto com você}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      Numa poligonal, cada vértice é calculado \bnum{a partir do anterior}.
+      \medskip
+
+      Isso quer dizer que um errinho cometido em P1 \alert{não fica em P1}: ele é herdado
+      por P2, e depois por P3, e vai crescendo conforme o caminho se alonga.
+      \medskip
+
+      É o oposto de medir tudo de um lugar só.
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \node[marco] (m) at (0.3,0.5) {};
+        \node[vertice] (a) at (1.8,1.6) {};
+        \node[vertice] (b) at (3.5,1.0) {};
+        \node[vertice] (c) at (5.2,2.0) {};
+        \draw[lado] (m) -- (a) -- (b) -- (c);
+        \draw[mRose, thick, dashed] (a) -- (3.6,0.65) -- (5.6,1.4);
+        \fill[mRose] (3.6,0.65) circle (0.07);
+        \fill[mRose] (5.6,1.4) circle (0.07);
+        \draw[mRose, {Stealth[length=1.8mm]}-{Stealth[length=1.8mm]}] (3.5,1.0) -- (3.6,0.68);
+        \draw[mRose, {Stealth[length=1.8mm]}-{Stealth[length=1.8mm]}] (5.2,2.0) -- (5.58,1.44);
+        \node[rotulo, text=mRose, above, align=center] at (4.4,2.4) {o desvio\\vai crescendo};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Quanto custa um errinho no ângulo de P1}
+  \centering
+  \small
+  \renewcommand{\arraystretch}{1.4}
+  \begin{tabular}{lrr}
+    \toprule
+    erro cometido em P1 & P2 se desloca & P3 se desloca \\
+    \midrule
+    $1$ segundo & $0{,}001$\,m & $0{,}001$\,m \\
+    $1$ minuto & $0{,}033$\,m & $0{,}052$\,m \\
+    \alert{$1$ grau} & \alert{$1{,}971$\,m} & \alert{$3{,}098$\,m} \\
+    \bottomrule
+  \end{tabular}
+  \bigskip
+
+  \begin{armadilha}[title={O detalhe assustador}]
+    Numa poligonal aberta, \alert{as três linhas dessa tabela são indistinguíveis}.
+    \medskip
+
+    O cálculo fecha perfeitamente nas três. Os números saem bonitos, a planta fica bonita, e
+    o vértice P3 está a três metros de onde deveria.
+  \end{armadilha}
+\end{frame}
+
+\begin{frame}{Por que uma poligonal fechada seria diferente}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{ideia}[title={Na fechada}]
+        Você volta ao ponto de partida e compara.
+        \medskip
+
+        Se der $3$ metros de diferença, você \bnum{sabe} que errou --- e sabe mais ou menos
+        quanto.
+        \medskip
+
+        Aí volta ao campo, ou ajusta.
+      \end{ideia}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{armadilha}[title={Na aberta}]
+        Não há nada com que comparar.
+        \medskip
+
+        O erro \alert{não é pequeno}: ele é \alert{invisível}. E um erro que não dá sinal é
+        pior do que um erro grande que dá.
+      \end{armadilha}
+    \end{column}
+  \end{columns}
+  \bigskip
+  \centering
+  \begin{ideia}[title={A regra de ouro}]
+    Poligonal aberta é \bnum{curta}, com \bnum{poucos vértices}, e só quando não houver
+    outro jeito.
+  \end{ideia}
+\end{frame}
+
+% ==================================================================
+\section{Sem confronto, o que sobra: o campo}
+
+\begin{frame}{O cuidado de campo vira o único controle}
+  \begin{columns}[c]
+    \begin{column}{0.50\textwidth}
+      Se não existe um confronto no fim, o controle tem de ser feito \bnum{medida a
+      medida}, na hora.
+      \medskip
+
+      É por isso que os três livros, ao falar de poligonal aberta, gastam mais linhas com
+      procedimento de campo do que com fórmula.
+      \medskip
+
+      As próximas páginas são a lista do que fazer.
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{ideia}[title={A ideia geral}]
+        Em vez de um confronto grande no fim, \bnum{muitos confrontos pequenos} ao longo do
+        caminho.
+        \medskip
+
+        Cada medida importante é feita \alert{duas vezes, de jeitos diferentes}.
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Croqui e caderneta}
+  \begin{columns}[T]
+    \begin{column}{0.46\textwidth}
+      O \bnum{croqui} é um desenho à mão da área, feito no campo, com cada ponto numerado.
+      \medskip
+
+      A \bnum{caderneta} é a tabela das medidas, com \alert{exatamente a mesma numeração}.
+      \medskip
+
+      Um sem o outro não serve: o croqui sem medidas não tem escala, e a caderneta sem
+      croqui é uma lista de números que ninguém consegue desenhar.
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.86]
+        \fill[mStoneLight] (0,0) rectangle (2.9,3.2);
+        \draw[mStoneMid] (0,0) rectangle (2.9,3.2);
+        \draw[mStone] (0.5,0.7) rectangle (2.2,2.0);
+        \foreach \x/\y/\n in {0.5/0.7/1, 2.2/0.7/2, 2.2/2.0/3, 0.5/2.0/4} {
+          \fill[corDetalhe] (\x,\y) circle (0.07);
+          \node[rotulo, font=\tiny] at (\x+0.22,\y+0.2) {\n};
+        }
+        \node[rotulo, below] at (1.45,-0.15) {croqui};
+        \fill[mStoneLight] (3.6,0) rectangle (6.3,3.2);
+        \draw[mStoneMid] (3.6,0) rectangle (6.3,3.2);
+        \foreach \y in {0.6,1.2,1.8,2.4} { \draw[mStoneMid!40] (3.7,\y) -- (6.2,\y); }
+        \draw[mStoneMid!40] (4.3,0.2) -- (4.3,2.9);
+        \foreach \y/\n in {2.4/1, 1.8/2, 1.2/3, 0.6/4} {
+          \node[rotulo, font=\tiny, text=corDetalhe] at (3.95,\y+0.25) {\n};
+        }
+        \node[rotulo, below] at (4.95,-0.15) {caderneta};
+        \draw[corDetalhe, thick, <->] (2.95,1.6) -- (3.55,1.6);
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Medir duas vezes, de jeitos diferentes}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{ideia}[title={A distância, nos dois sentidos}]
+        Mede-se de A para B e depois de B para A. Se as duas não baterem, há algo errado
+        --- e você descobre \bnum{ainda no campo}.
+      \end{ideia}
+      \medskip
+      \begin{ideia}[title={O ângulo, repetido}]
+        Lê-se o ângulo, vira-se o instrumento de cabeça para baixo e lê-se de novo. Os
+        defeitos do aparelho trocam de sinal e \bnum{se cancelam na média}.
+      \end{ideia}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{ideia}[title={Fechamento do horizonte}]
+        Estando numa estação, visam-se todas as direções e volta-se à primeira. A soma tem
+        de dar $360\ensuremath{^\circ}$ --- um confronto pequeno, mas \bnum{de graça}.
+      \end{ideia}
+      \medskip
+      \begin{cuidado}[title={Nada disso conserta tudo}]
+        \small Esses controles pegam o erro \emph{daquela} medida. Eles não substituem o
+        erro de fechamento --- só reduzem a chance de haver um.
+      \end{cuidado}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Centragem forçada: três tripés}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      Num caminhamento, o erro mais traiçoeiro não é de ângulo nem de distância: é de
+      \bnum{centragem} --- o instrumento não ficar exatamente sobre o marco.
+      \medskip
+
+      A solução clássica usa \bnum{três tripés}: os tripés da ré e da vante ficam plantados,
+      e só o que está no meio troca de conteúdo.
+      \medskip
+
+      O prisma sai e o instrumento entra \alert{na mesma base}, no mesmo lugar exato.
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \foreach \x/\lab/\cor in {0.6/ré/mStoneMid, 2.8/estação/mStone, 5.0/vante/mStoneMid} {
+          \draw[\cor, thick] (\x,0.9) -- (\x-0.42,0) (\x,0.9) -- (\x+0.42,0) (\x,0.9) -- (\x,0);
+          \node[rotulo, below] at (\x,-0.12) {\lab};
+        }
+        \fill[corApoio] (0.6,0.9) circle (0.13);
+        \fill[mStone] (2.55,0.9) rectangle (3.05,1.35);
+        \fill[corApoio] (5.0,0.9) circle (0.13);
+        \draw[corDetalhe, seta] (2.9,1.7) to[bend left=25] (4.8,1.3);
+        \draw[corDetalhe, seta] (0.9,1.35) to[bend left=20] (2.5,1.7);
+        \node[rotulo, text=corDetalhe, above] at (2.9,2.0) {tudo desliza uma casa};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Checklist da poligonal aberta}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \textbf{Antes}
+      \begin{itemize}
+        \item reconhecer a área a pé;
+        \item escolher vértices intervisíveis;
+        \item evitar lados curtos;
+        \item lados de comprimentos parecidos.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \textbf{Durante}
+      \begin{itemize}
+        \item croqui e caderneta com a mesma numeração;
+        \item distâncias nos dois sentidos;
+        \item ângulos repetidos;
+        \item fechamento do horizonte;
+        \item centragem forçada;
+        \item o menor número possível de vértices.
+      \end{itemize}
+    \end{column}
+  \end{columns}
+  \bigskip
+  \centering
+  \begin{cuidado}[title={E o principal}]
+    Se houver \emph{qualquer} jeito de fechar a poligonal --- voltar ao início, ou chegar a
+    outro marco conhecido --- \bnum{feche}. O confronto vale mais do que todo o resto da
+    lista.
+  \end{cuidado}
+\end{frame}
+
+% ==================================================================
+\section{Quando a poligonal aberta é a ferramenta certa}
+
+\begin{frame}{Há casos em que não existe alternativa}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{ideia}[title={Túnel e mina}]
+        Você entra por uma boca e avança. Não há por onde fechar --- só há um caminho, e ele
+        é para a frente.
+      \end{ideia}
+      \medskip
+      \begin{ideia}[title={Faixa de estrada}]
+        O levantamento acompanha o traçado por quilômetros. Fechar significaria voltar todo
+        o caminho.
+      \end{ideia}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{ideia}[title={A linha que você não consegue medir}]
+        O caso clássico: é preciso saber a distância e a direção entre dois pontos que
+        \alert{não se enxergam} --- uma mata fechada entre eles.
+        \medskip
+
+        Contorna-se o obstáculo com uma poligonal aberta e \bnum{calcula-se} a linha que não
+        deu para medir.
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{A linha de fechamento}
+  \begin{columns}[T]
+    \begin{column}{0.44\textwidth}
+      No nosso exemplo, de M1 a P3:
+      \[ \Delta X = +253{,}918\ \text{m} \]
+      \[ \Delta Y = -53{,}557\ \text{m} \]
+      \[ d = \sqrt{\Delta X^2 + \Delta Y^2} = \bnum{259{,}505}\ \text{m} \]
+      \[ \text{Az} = \ang{\gr{101}{54}{38}} \]
+    \end{column}
+    \begin{column}{0.52\textwidth}
+      \centering
+      \begin{tikzpicture}[x=0.024cm, y=0.024cm]
+        \node[marco, label={[rotulo]above left:M1}] (m1) at (0,0) {};
+        \node[vertice, label={[rotulo]below:P1}] (p1) at (76.81,-41.77) {};
+        \node[vertice, label={[rotulo]above:P2}] (p2) at (179.79,4.53) {};
+        \node[vertice, label={[rotulo]below:P3}] (p3) at (253.92,-53.56) {};
+        \draw[lado] (m1) -- (p1) -- (p2) -- (p3);
+        \draw[mRose, very thick, dashed] (m1) -- (p3);
+        \node[rotulo, text=mRose, above] at (130,-33) {a linha de fechamento};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+  \medskip
+  \begin{armadilha}[title={Atenção ao nome}]
+    Aqui ``fechamento'' é \alert{resultado}, não conferência. Numa poligonal fechada essa
+    linha seria comparada com algo já conhecido; aqui, ela \bnum{é} a resposta procurada ---
+    e continua sem confronto.
+  \end{armadilha}
+\end{frame}
+
+\begin{frame}[standout]
+  Parte 2\\[6pt]
+  {\normalsize Irradiação: o levantamento dos detalhes}
+\end{frame}
+
+% ==================================================================
+\section{Irradiação: a ideia}
+
+\begin{frame}{Agora o instrumento fica parado}
+  \begin{columns}[T]
+    \begin{column}{0.46\textwidth}
+      Com o apoio pronto, começa a parte demorada: levantar \bnum{cada detalhe} do terreno.
+      \medskip
+
+      Aqui o instrumento \alert{não sai do lugar}. Estacionado num vértice da poligonal,
+      ele faz a varredura de tudo que se vê dali: um ângulo e uma distância para cada
+      ponto.
+      \medskip
+
+      É por isso que o método se chama \bnum{irradiação}: os raios saem todos do mesmo
+      centro.
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.92]
+        \node[vertice] (E) at (2.6,1.5) {};
+        \node[rotulo, below] at (2.6,1.25) {P1};
+        \foreach \a/\r in {28/2.5, 62/2.0, 105/2.4, 150/1.7, 200/2.2, 250/1.5, 310/2.3, 345/1.9} {
+          \draw[raio] (E) -- ++(\a:\r);
+          \fill[corDetalhe] ($(E)+(\a:\r)$) circle (0.075);
+        }
+        \draw[norte] (E) -- (2.6,3.9);
+        \node[rotulo, text=corAng, above] at (2.6,3.9) {N};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{É a mesma conta de antes}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      A caderneta de irradiação tem exatamente as mesmas colunas da poligonal: um ângulo
+      horário e uma distância, por ponto.
+      \medskip
+
+      E a conta é a mesma, na mesma ordem:
+      \medskip
+      \begin{enumerate}
+        \item transporta o azimute;
+        \item projeta em $\Delta X$ e $\Delta Y$;
+        \item soma às coordenadas da estação.
+      \end{enumerate}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{regra}[title={A mesma regra}]
+        \centering
+        \[ \text{Az}_{\text{det}} = \text{Az}_{\text{ré}} + \ang{\alpha}
+           - 180\ensuremath{^\circ} \]
+        \[ X = X_{\text{est}} + d \operatorname{sen}(\text{Az}) \]
+        \[ Y = Y_{\text{est}} + d \cos(\text{Az}) \]
+        \centering{\scriptsize$\alpha$ = ângulo horário lido}
+      \end{regra}
+      \medskip
+      {\small A ré continua sendo o vértice anterior da poligonal --- é ela que orienta a
+      estação.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{A diferença que muda tudo}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{armadilha}[title={Na poligonal}]
+        Você \bnum{anda até} o ponto que acabou de calcular e mede o próximo a partir dele.
+        \medskip
+
+        O erro de um ponto \alert{entra} no seguinte, e no seguinte.
+      \end{armadilha}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{ideia}[title={Na irradiação}]
+        Você \bnum{não pisa} no ponto calculado. Cada detalhe é medido direto da estação.
+        \medskip
+
+        Um erro num detalhe \alert{fica só naquele detalhe}: não contamina nenhum outro.
+      \end{ideia}
+    \end{column}
+  \end{columns}
+  \bigskip
+  \centering
+  É por isso que o apoio exige tanto cuidado e o detalhe pode ser rápido: \bnum{o apoio
+  se propaga, o detalhe não}.
+\end{frame}
+
+% ==================================================================
+\section{Irradiação: a conta}
+
+\begin{frame}{Estacionado em P1}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \centering
+      \small
+      \renewcommand{\arraystretch}{1.25}
+      \begin{tabular}{lrr}
+        \toprule
+        \multicolumn{3}{l}{\textbf{estação P1}\quad ré em M1} \\
+        \midrule
+        $X_{P1}$ & \multicolumn{2}{r}{$1\,076{,}810$\,m} \\
+        $Y_{P1}$ & \multicolumn{2}{r}{$1\,958{,}233$\,m} \\
+        Az da ré & \multicolumn{2}{r}{\gr{118}{32}{10}} \\
+        \midrule
+        detalhe & ângulo horário & distância \\
+        E1 \emph{esquina} & \gr{88}{14}{05} & $23{,}145$\,m \\
+        E2 \emph{poste} & \gr{152}{40}{30} & $41{,}802$\,m \\
+        AR \emph{árvore} & \gr{305}{18}{40} & $17{,}560$\,m \\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \textbf{O ponto E1, passo a passo}
+      \[ \text{Az} = \gr{118}{32}{10} + \gr{88}{14}{05} - 180\ensuremath{^\circ} \]
+      \[ = \ang{\gr{26}{46}{15}} \]
+      \begin{align*}
+        X &= 1\,076{,}810 + 23{,}145\operatorname{sen}(\text{Az}) \\
+          &= \bnum{1\,087{,}235} \\
+        Y &= 1\,958{,}233 + 23{,}145\cos(\text{Az}) \\
+          &= \bnum{1\,978{,}897}
+      \end{align*}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Os detalhes das duas estações}
+  \centering
+  \small
+  \renewcommand{\arraystretch}{1.3}
+  \begin{tabular}{llrrrr}
+    \toprule
+    estação & detalhe & ângulo horário & distância & $X$ (m) & $Y$ (m) \\
+    \midrule
+    P1 & E1 \emph{esquina} & \gr{88}{14}{05} & $23{,}145$ & $1\,087{,}235$ & $1\,978{,}897$ \\
+    P1 & E2 \emph{poste} & \gr{152}{40}{30} & $41{,}802$ & $1\,118{,}603$ & $1\,957{,}349$ \\
+    P1 & AR \emph{árvore} & \gr{305}{18}{40} & $17{,}560$ & $1\,061{,}048$ & $1\,950{,}493$ \\
+    \midrule
+    P2 & E2 \emph{o mesmo poste} & \gr{346}{34}{10} & $77{,}290$ & $1\,118{,}583$ & $1\,957{,}331$ \\
+    P2 & E3 \emph{tampa de poço} & \gr{74}{52}{15} & $34{,}907$ & $1\,157{,}660$ & $2\,031{,}528$ \\
+    \bottomrule
+  \end{tabular}
+  \bigskip
+
+  Repare na linha do poste: ele foi medido \alert{duas vezes, de duas estações diferentes}.
+  Isso não foi por acaso.
+\end{frame}
+
+\begin{frame}{O desenho fica pronto}
+  \centering
+  \begin{tikzpicture}[x=0.040cm, y=0.040cm]
+    \node[marco, label={[rotulo]above left:M1}] (m1) at (0,0) {};
+    \node[vertice, label={[rotulo]below:P1}] (p1) at (76.81,-41.77) {};
+    \node[vertice, label={[rotulo]above:P2}] (p2) at (179.79,4.53) {};
+    \node[vertice, label={[rotulo]below:P3}] (p3) at (253.92,-53.56) {};
+    \foreach \x/\y in {87.24/-21.10, 118.60/-42.65, 61.05/-49.51} {
+      \draw[corDetalhe!45] (76.81,-41.77) -- (\x,\y);
+    }
+    \foreach \x/\y in {118.60/-42.65, 157.66/31.53} {
+      \draw[corDetalhe!45] (179.79,4.53) -- (\x,\y);
+    }
+    \draw[lado] (m1) -- (p1) -- (p2) -- (p3);
+    \foreach \x/\y/\n/\pos in {87.24/-21.10/E1/above, 118.60/-42.65/E2/below,
+                                61.05/-49.51/AR/below, 157.66/31.53/E3/above} {
+      \fill[corDetalhe] (\x,\y) circle (2.2pt);
+      \node[rotulo, text=corDetalhe, \pos] at (\x,\y) {\n};
+    }
+  \end{tikzpicture}
+  \bigskip
+
+  O \textcolor{corApoio}{\textbf{esqueleto}} e a \textcolor{corDetalhe}{\textbf{carne}}, no
+  mesmo sistema de coordenadas.
+\end{frame}
+
+% ==================================================================
+\section{Conferir o que não tem confronto}
+
+\begin{frame}{A irradiação também não se confere sozinha}
+  \begin{columns}[c]
+    \begin{column}{0.50\textwidth}
+      Cada detalhe é um ângulo e uma distância, calculados e pronto. Se o operador anotou
+      $41{,}802$ onde era $41{,}082$, \alert{nada na conta reclama}.
+      \medskip
+
+      O ponto vai parar 72 centímetros fora, e a planta fica com uma casa torta que ninguém
+      vai notar até a obra começar.
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{ideia}[title={A saída}]
+        Criar confrontos de propósito:
+        \medskip
+        \begin{itemize}
+          \item medir alguns pontos de \bnum{duas estações};
+          \item conferir com trena a distância entre dois detalhes vizinhos;
+          \item conferir os lados de construções, que costumam ser retos e perpendiculares.
+        \end{itemize}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{O poste, visto de duas estações}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \centering
+      \small
+      \renewcommand{\arraystretch}{1.35}
+      \begin{tabular}{lrr}
+        \toprule
+        & $X$ (m) & $Y$ (m) \\
+        \midrule
+        de P1 & $1\,118{,}603$ & $1\,957{,}349$ \\
+        de P2 & $1\,118{,}583$ & $1\,957{,}331$ \\
+        \midrule
+        diferença & $-0{,}020$ & $-0{,}018$ \\
+        \bottomrule
+      \end{tabular}
+      \medskip
+
+      \[ \sqrt{0{,}020^2 + 0{,}018^2} = \bnum{0{,}027\ \text{m}} \]
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{ideia}[title={Como ler esses 27 milímetros}]
+        Para um poste num levantamento de detalhes, é \bnum{ótimo}: significa que as duas
+        estações concordam, que o apoio está coerente e que ninguém trocou um número.
+        \medskip
+
+        Se tivesse dado $27$ \emph{centímetros}, haveria o que investigar --- e seria o
+        único aviso que o levantamento inteiro daria.
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Quantos detalhes, e quais}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      Não se levanta ``tudo''. Levanta-se o que a \bnum{escala do desenho} consegue mostrar
+      e o que o trabalho pede.
+      \medskip
+
+      Numa planta $1{:}500$, um milímetro no papel vale meio metro no terreno: detalhes
+      menores do que isso não cabem.
+      \medskip
+
+      O croqui é onde essa decisão fica registrada.
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{cuidado}[title={O erro clássico do iniciante}]
+        Medir centenas de pontos sem croqui e sem critério.
+        \medskip
+
+        No escritório, a nuvem de pontos não vira desenho: \alert{ninguém lembra qual ponto
+        era o quê}, e o levantamento inteiro se perde.
+      \end{cuidado}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{Fechamento}
+
+\begin{frame}{Para levar para casa}
+  \footnotesize
+  \begin{enumerate}
+    \setlength{\itemsep}{3.5pt}
+    \item Todo levantamento tem duas camadas: o \textcolor{corApoio}{\textbf{apoio}}, poucos
+          pontos medidos com muito cuidado, e o \textcolor{corDetalhe}{\textbf{detalhe}},
+          muitos pontos medidos a partir do apoio.
+    \item Uma poligonal precisa de \bnum{um ponto de partida} e \bnum{uma direção de
+          partida}. Sem as duas, a forma existe mas não tem lugar no mundo.
+    \item \bnum{Uma regra só} resolve a aula inteira:
+          $\text{Az}_{\text{vante}} = \text{Az}_{\text{ré}} + \text{âng.\ horário} -
+          180\ensuremath{^\circ}$, e depois
+          $\Delta X = d\operatorname{sen}(\text{Az})$, $\Delta Y = d\cos(\text{Az})$.
+    \item Fechada e enquadrada têm \bnum{erro de fechamento}; a aberta não tem. Um erro de
+          $1\ensuremath{^\circ}$ no nosso exemplo joga P3 a \alert{três metros} de distância
+          --- e a conta fecha do mesmo jeito.
+    \item Sem confronto no fim, o controle é \bnum{de campo}: croqui, caderneta, distâncias
+          nos dois sentidos, ângulos repetidos, centragem forçada.
+    \item Na irradiação o erro \bnum{não se propaga}, porque você não pisa no ponto
+          calculado --- mas ela também não se confere sozinha. Meça alguns detalhes de duas
+          estações.
+  \end{enumerate}
+\end{frame}
+
+% ==================================================================
+\appendix
+
+\begin{frame}[standout]
+  Apêndice\\[6pt]
+  {\normalsize Para quem quer ir além}
+\end{frame}
+
+\begin{frame}{A1 · De onde sai a regra do azimute}
+  \small
+  Seja a estação $E$, a ré $R$ e a vante $V$. O ângulo horário $\alpha$ é lido de $R$ para
+  $V$, girando no sentido horário.
+  \medskip
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      Como o azimute de $E$ para $R$ é o contra-azimute do de $R$ para $E$:
+      \[ \text{Az}_{E \to R} = \text{Az}_{R \to E} \pm 180\ensuremath{^\circ} \]
+      E como $\alpha$ é medido \emph{a partir} da direção $E \to R$:
+      \[ \text{Az}_{E \to V} = \text{Az}_{E \to R} + \alpha \]
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      Juntando as duas:
+      \[ \boxed{\;\text{Az}_{E \to V} = \text{Az}_{R \to E} + \alpha \pm 180\ensuremath{^\circ}\;} \]
+      \medskip
+      Somar ou subtrair $180\ensuremath{^\circ}$ dá no mesmo, módulo $360\ensuremath{^\circ}$:
+      escolhe-se o que mantém o resultado no intervalo.
+    \end{column}
+  \end{columns}
+  \medskip
+  \begin{ideia}[title={Conferência}]
+    Essa mesma regra reproduz o exercício 9.3.1 de \emph{Fundamentos de Topografia} (ao
+    centímetro) e o Exemplo 10.11 de \emph{Wolf \& Ghilani} (à centésima de pé), com
+    convenções de país diferentes. O script desta pasta refaz as duas.
+  \end{ideia}
+\end{frame}
+
+\begin{frame}{A2 · Polares e retangulares}
+  \small
+  O cálculo de um ponto a partir de azimute e distância é o que Irineu da Silva chama de
+  \emph{segundo problema fundamental da Geodésia} --- uma transformação de coordenadas
+  polares planas em retangulares planas:
+  \[ X_Q = X_P + d_{PQ}\operatorname{sen}(\text{Az}_{PQ}), \qquad
+     Y_Q = Y_P + d_{PQ}\cos(\text{Az}_{PQ}) \]
+  As fórmulas valem em \textbf{todos os quadrantes}, desde que se respeitem os sinais das
+  funções trigonométricas --- não há caso a separar.
+  \medskip
+
+  O problema inverso (de duas coordenadas para distância e azimute) é
+  \[ d_{PQ} = \sqrt{\Delta X^2 + \Delta Y^2}, \qquad
+     \text{Az}_{PQ} = \operatorname{atan2}(\Delta X,\ \Delta Y) \]
+  \begin{cuidado}[title={A ordem dos argumentos}]
+    Repare em $\operatorname{atan2}(\Delta X, \Delta Y)$, e não o contrário: o azimute é
+    contado do eixo $Y$ (Norte) para o eixo $X$ (Leste). Trocar a ordem é o engano mais
+    comum ao programar isso.
+  \end{cuidado}
+\end{frame}
+
+\begin{frame}{A3 · O exemplo inteiro}
+  \scriptsize
+  \begin{columns}[T]
+    \begin{column}{0.47\textwidth}
+      \textbf{Poligonal} --- M1 $(1\,000{,}000;\ 2\,000{,}000)$, azimute de partida
+      M2\,$\to$\,M1 $=$ \gr{62}{14}{20}
+      \renewcommand{\arraystretch}{1.15}
+      \begin{tabular}{@{}lrrr@{}}
+        \toprule
+        & azimute & $X$ & $Y$ \\
+        \midrule
+        P1 & \gr{118}{32}{10} & $1076{,}810$ & $1958{,}233$ \\
+        P2 & \gr{65}{47}{30} & $1179{,}788$ & $2004{,}530$ \\
+        P3 & \gr{128}{04}{55} & $1253{,}918$ & $1946{,}443$ \\
+        \bottomrule
+      \end{tabular}
+      \medskip
+
+      Caminhamento $294{,}516$\,m; linha M1\,$\to$\,P3 $= 259{,}505$\,m,
+      azimute \gr{101}{54}{38}.
+    \end{column}
+    \begin{column}{0.49\textwidth}
+      \textbf{Irradiação}
+      \renewcommand{\arraystretch}{1.15}
+      \begin{tabular}{@{}llrr@{}}
+        \toprule
+        est. & pt & $X$ & $Y$ \\
+        \midrule
+        P1 & E1 & $1087{,}235$ & $1978{,}897$ \\
+        P1 & E2 & $1118{,}603$ & $1957{,}349$ \\
+        P1 & AR & $1061{,}048$ & $1950{,}493$ \\
+        P2 & E2 & $1118{,}583$ & $1957{,}331$ \\
+        P2 & E3 & $1157{,}660$ & $2031{,}528$ \\
+        \bottomrule
+      \end{tabular}
+      \medskip
+
+      Confronto em E2: $0{,}027$\,m.
+      \smallskip
+
+      Propagação de erro em P1: $1'' \to 1$\,mm; $1' \to 52$\,mm em P3;
+      $1\ensuremath{^\circ} \to 3{,}098$\,m em P3.
+    \end{column}
+  \end{columns}
+  \medskip
+  \centering
+  \normalsize
+  Tudo sai de \texttt{node surveyor\_valley/explanations/poligonal\_irradiacao.js}.
+\end{frame}
+
+\begin{frame}{A4 · O que ficou de fora: a altimetria}
+  \small
+  Esta aula tratou só de $X$ e $Y$. Duas observações honestas sobre isso:
+  \medskip
+  \begin{itemize}
+    \item As distâncias usadas foram \textbf{horizontais}. O que a estação total mede é a
+          distância \emph{inclinada} $D_i$, e a redução usa o ângulo zenital $Z$:
+          \[ D_h = D_i \operatorname{sen}(Z) \]
+          No exercício 9.3.1 de \emph{Fundamentos}, por exemplo, $58{,}38$\,m inclinados com
+          $Z = \gr{88}{21}{40}$ viram $58{,}36$\,m horizontais.
+    \item A mesma visada que dá o detalhe planimétrico dá também a altitude, por
+          nivelamento trigonométrico. Na prática o levantamento é um só; foi a
+          \emph{explicação} que se dividiu.
+  \end{itemize}
+  \medskip
+  \begin{ideia}[title={Por que separar}]
+    Porque as duas coisas erram de maneiras diferentes e se controlam de maneiras
+    diferentes. Misturá-las na primeira explicação é o caminho mais curto para não entender
+    nenhuma das duas.
+  \end{ideia}
+\end{frame}
+
+\begin{frame}{A5 · Fontes}
+  \scriptsize
+  \begin{itemize}
+    \item \textbf{VEIGA, L. A. K.; ZANETTI, M. A. Z.; FAGGION, P. L.}
+          \emph{Fundamentos de Topografia}. UFPR. Capítulo 9 --- tipos de poligonal
+          (figuras 9.2 a 9.4), formas de obter o azimute de partida (figuras 9.5 a 9.11,
+          com a recomendação da NBR 13133/ABNT de ter dois pontos do SGB em comum), método
+          de irradiação (seção 9.3, figuras 9.24 e 9.25), caderneta e croqui (figuras 9.26 e
+          9.27), e o exercício resolvido 9.3.1.
+    \item \textbf{SILVA, Irineu da.} \emph{Topografia para engenharia --- teoria e prática
+          de geomática}. Seção 10.3 (cálculo de um ponto lançado), 10.4 (transporte de
+          azimute) e 11.2 (poligonação: vantagens, tipos, reconhecimento de campo, fontes de
+          erro e centragem forçada com três tripés).
+    \item \textbf{WOLF, P. R.; GHILANI, C. D.} \emph{Elementary Surveying --- An
+          Introduction to Geomatics}. Seção 9.1 (\emph{open traverses should be avoided
+          because they offer no means of checking}) e seção 10.13 (\emph{Use of Open
+          Traverses}), com o Exemplo 10.11 da linha de fechamento.
+  \end{itemize}
+  \medskip
+  \normalsize
+  \centering
+  Os exercícios de \emph{Fundamentos} e de \emph{Wolf \& Ghilani} são refeitos pelo script
+  desta pasta, e conferem.
+\end{frame}
+
+\end{document}
