@@ -472,7 +472,7 @@ const app = {
             const checked = (idx === preSelected) ? ' checked' : '';
             label.innerHTML = `
                 <input type="checkbox" class="blunderObsCheck accent-rose-500" value="${idx}"${obs.hasError ? ' disabled' : checked}>
-                <span class="font-mono">${obs.id}</span>
+                <span class="font-mono">${this.escapeHTML(obs.id)}</span>
                 <span class="text-stone-400">(${valDisplay}${obs.hasError ? ' — já contém erro' : ''})</span>
             `;
             list.appendChild(label);
@@ -867,7 +867,7 @@ const app = {
             const injectedIcon = r.obs.hasError ? ' <span class="text-rose-500" title="Erro Grosseiro Injetado">&#9888;</span>' : '';
 
             tr.innerHTML = `
-                <td class="font-mono">${r.obs.id}${injectedIcon}</td>
+                <td class="font-mono">${this.escapeHTML(r.obs.id)}${injectedIcon}</td>
                 <td class="font-mono">${obsDisplay}</td>
                 <td class="font-mono">${vDisplay}</td>
                 <td class="font-mono">${svDisplay}</td>
@@ -894,7 +894,7 @@ const app = {
             const injectedIcon = r.obs.hasError ? ' <span class="text-rose-500" title="Erro Grosseiro Injetado">&#9888;</span>' : '';
 
             tr.innerHTML = `
-                <td class="font-mono">${r.obs.id}${injectedIcon}</td>
+                <td class="font-mono">${this.escapeHTML(r.obs.id)}${injectedIcon}</td>
                 <td class="font-mono ${rColor}">${r.r.toFixed(3)}</td>
                 <td class="font-mono">${mdbDisplay}</td>
                 <td class="${rColor} text-xs uppercase font-semibold">${rQual}</td>
@@ -911,11 +911,11 @@ const app = {
             const sigH_pos = res.sigma0 * sigH_pri; // mm (a-posteriori)
             const extMm = sr.maxExtMag * 1000; // mm
             tr.innerHTML = `
-                <td class="font-mono font-bold">${sr.stationId}</td>
+                <td class="font-mono font-bold">${this.escapeHTML(sr.stationId)}</td>
                 <td class="font-mono">${sr.H.toFixed(4)}</td>
                 <td class="font-mono">${sigH_pri.toFixed(3)} <span class="text-stone-400 text-[10px]">(${sigH_pos.toFixed(3)})</span></td>
                 <td class="font-mono">${extMm.toFixed(3)}</td>
-                <td class="font-mono text-stone-400 text-xs">${sr.maxExtObs || '—'}</td>
+                <td class="font-mono text-stone-400 text-xs">${sr.maxExtObs ? this.escapeHTML(sr.maxExtObs) : '—'}</td>
             `;
             tbCoords.appendChild(tr);
         });
@@ -1349,7 +1349,7 @@ const app = {
         let bodyHTML = `
             <div>
                 <label class="block text-xs font-semibold text-stone-600 mb-1">Identificador</label>
-                <input id="modalInputId" type="text" value="${defaultId}"
+                <input id="modalInputId" type="text" value="${this.escapeHTML(defaultId)}"
                     class="w-full px-3 py-2 text-sm border border-stone-300 rounded focus:outline-none focus:border-teal-500" />
             </div>
 
@@ -1385,10 +1385,11 @@ const app = {
                 <label class="block text-xs font-semibold text-stone-600 mb-2">Conectar a (Trechos de Nivelamento):</label>
                 <div class="space-y-1 max-h-40 overflow-y-auto border border-stone-100 rounded p-2 bg-stone-50">`;
             this.points.forEach(pt => {
+                const safeId = this.escapeHTML(pt.id);
                 bodyHTML += `
                 <label class="flex items-center gap-2 text-sm text-stone-600 cursor-pointer select-none">
-                    <input type="checkbox" class="connCheck accent-teal-600" value="${pt.id}" />
-                    ${pt.id} (H: ${pt.H.toFixed(3)})
+                    <input type="checkbox" class="connCheck accent-teal-600" value="${safeId}" />
+                    ${safeId} (H: ${pt.H.toFixed(3)})
                 </label>`;
             });
             bodyHTML += `
@@ -1472,6 +1473,16 @@ const app = {
         document.getElementById('pointModal').classList.remove('active');
         this._pendingPoint = null;
         this.setInsertMode(null);
+    },
+
+    escapeHTML(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     },
 
     fitNetwork() {
@@ -1659,7 +1670,7 @@ const app = {
                 let tr = document.createElement('tr');
                 let biasH = (sMeanH - nominalH[p.id]) * 1000;
                 tr.innerHTML = `
-                    <td class="font-mono font-bold">${p.id}</td>
+                    <td class="font-mono font-bold">${this.escapeHTML(p.id)}</td>
                     <td class="font-mono">${biasH.toFixed(3)}</td>
                     <td class="font-mono">${(sigH*1000).toFixed(3)}</td>
                 `;

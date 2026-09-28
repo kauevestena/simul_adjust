@@ -367,4 +367,21 @@ approx(chi2Inv(0.95, 6), 12.591587243743977, 1e-10, 'chi2 df=6');
   ]).includes('disconnected'));
 }
 
+function escapeHTML(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// Test XSS sanitization helper
+assert.strictEqual(escapeHTML('<script>alert("XSS")</script>'), '&lt;script&gt;alert(&quot;XSS&quot;)&lt;/script&gt;');
+assert.strictEqual(escapeHTML("Station 'A' & 'B'"), 'Station &#39;A&#39; &amp; &#39;B&#39;');
+assert.strictEqual(escapeHTML(null), '');
+assert.strictEqual(escapeHTML(undefined), '');
+assert.strictEqual(escapeHTML(123), '123');
+
 console.log('All tests passed.');
