@@ -1,0 +1,5 @@
+- very similar to ajusta_planos I want another adjustment simulator, called "intersecao_re_3D" , 
+- you can use /home/kaue/Documents/material_estudo/livros/adjustment_ghillani.pdf to review some theory . 
+- I want the "modelo combinado" of adjustment to be used to solve the equations. The problem to be solved is the 3D free station network, so we start with 3 fixed points
+- the input is a .csv having 8 columns "estacao,ponto_visado,hg,hm,hs,vg,vm,vs,di" so installed point, the point that is being seeked, 3 for the horizontal reading, 3 for vertical reading, slope distance
+- Please generate synthetic data for testing, later I'll have true data to test
