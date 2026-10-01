@@ -1,0 +1,12 @@
+{
+  "name": "camera-proj",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/model.test.mjs",
+    "test:browser": "node tests/browser.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.51.1"
+  }
+}

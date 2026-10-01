@@ -1,0 +1,23 @@
+name: Camera projection tests
+on:
+  push:
+    paths: ["camera_proj/**", ".github/workflows/camera-proj.yml"]
+  pull_request:
+    paths: ["camera_proj/**", ".github/workflows/camera-proj.yml"]
+permissions:
+  contents: read
+jobs:
+  camera-proj:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: camera_proj/package-lock.json
+      - run: npm ci --prefix camera_proj
+      - run: npm test --prefix camera_proj
+      - run: npx --prefix camera_proj playwright install --with-deps chromium
+      - run: npm run test:browser --prefix camera_proj
