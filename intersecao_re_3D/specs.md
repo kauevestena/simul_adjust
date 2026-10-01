@@ -1,5 +1,17 @@
-- very similar to ajusta_planos I want another adjustment simulator, called "intersecao_re_3D" , 
+- very similar to "ajusta_planos" I want another adjustment simulator, called "intersecao_re_3D" , 
 - you can use /home/kaue/Documents/material_estudo/livros/adjustment_ghillani.pdf to review some theory . 
 - I want the "modelo combinado" of adjustment to be used to solve the equations. The problem to be solved is the 3D free station network, so we start with 3 fixed points
-- the input is a .csv having 8 columns "estacao,ponto_visado,hg,hm,hs,vg,vm,vs,di" so installed point, the point that is being seeked, 3 for the horizontal reading, 3 for vertical reading, slope distance
-- Please generate synthetic data for testing, later I'll have true data to test
+- The problem is very similar to the one at "estacao_livre"
+- the input is a .csv having the columns "Estacao,Ponto Visado,Leitura Horizontal,desvio padrão H,Ângulo Zenital,desvio padrão V,Distância Incinada,desvio padrão D,Fixo".
+    - Estacao: the station point name
+    - Ponto Visado: the observed point name
+    - Leitura Horizontal: the horizontal angle reading in degrees
+    - desvio padrão H: the standard deviation of the horizontal angle reading in degrees
+    - Ângulo Zenital: the zenith angle reading in degrees
+    - desvio padrão V: the standard deviation of the zenith angle reading in degrees
+    - Distância Incinada: the inclined distance reading in meters
+    - desvio padrão D: the standard deviation of the inclined distance reading in meters
+    - Fixo: a boolean indicating if the point is fixed (True) or free (False)
+- The output should be a .csv with the adjusted coordinates of the points, their standard deviations, and the residuals of the observations.
+- There shall be a visualization of the adjusted network in 3D, showing the fixed and free points and their error ellipsoids, as well as the observations. There shall be a 2D visualization in XY plane, YZ, and XZ planes, showing the adjusted points and their error ellipsoids (projections of the 3D error ellipsoids).
+- The program should also generate a report summarizing the adjustment process, including the number of iterations, convergence criteria, and any warnings or errors encountered during the adjustment (as a PDF file).

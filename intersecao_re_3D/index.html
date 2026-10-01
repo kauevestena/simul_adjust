@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interseção a Ré 3D — Modelo Combinado</title>
+    <meta name="description"
+        content="Simulador didático de rede 3D de estações livres (interseção a ré) ajustada pelo Método Combinado (MMQ): aproximações iniciais, controle de qualidade, detecção de outliers, elipsoides de erro e relatório em PDF.">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔭</text></svg>">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body class="text-stone-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-stone-900 text-stone-50 py-4 shadow-md">
+        <div class="max-w-[1600px] mx-auto px-4 sm:px-6 flex justify-between items-center gap-4">
+            <div>
+                <h1 class="text-xl md:text-2xl font-bold tracking-tight">Interseção a Ré 3D</h1>
+                <p class="text-stone-400 text-xs md:text-sm mt-1">Rede de estações livres pelo Método Combinado (MMQ)</p>
+            </div>
+            <a href="../index.html"
+                class="text-xs text-stone-300 hover:text-white border border-stone-700 rounded px-3 py-1.5 transition-colors shrink-0">&#8592;
+                Portal</a>
+        </div>
+    </header>
+
+    <main class="max-w-[1600px] mx-auto px-4 sm:px-6 py-6 flex-grow w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- ============================ PAINEL ESQUERDO ============================ -->
+        <div class="lg:col-span-3 space-y-6">
+
+            <!-- Dados -->
+            <div class="bg-white p-5 rounded-xl border border-stone-200 shadow-sm">
+                <h2 class="text-sm font-bold text-stone-500 uppercase tracking-wider mb-3 border-b pb-2">Observações
+                </h2>
+
+                <label class="field-label">Amostra</label>
+                <button onclick="app.loadSample()"
+                    class="btn w-full py-1.5 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-xs font-semibold">&#9651;
+                    Estações A, B, C — fixos M01, M02</button>
+                <p class="text-[10px] text-stone-400 leading-tight mt-1">24 visadas; os fixos não têm X,Y,Z no
+                    arquivo e são irradiados de A (datum local).</p>
+
+                <div class="mt-3 pt-3 border-t border-stone-100">
+                    <label class="field-label" for="csvFile">Carregar CSV próprio</label>
+                    <input id="csvFile" type="file" accept=".csv,.txt" onchange="app.loadUserCSV(event)"
+                        class="w-full text-xs text-stone-600 file:mr-2 file:py-1 file:px-2 file:rounded file:border file:border-stone-300 file:text-xs file:font-semibold file:bg-stone-100 file:text-stone-700 hover:file:bg-stone-200 cursor-pointer">
+                    <p class="text-[10px] text-stone-400 mt-1 leading-tight">Estacao, Ponto Visado, Leitura Horizontal
+                        (°), desvio padrão H (″), Ângulo Zenital (°), desvio padrão V (″), Distância Inclinada (m),
+                        desvio padrão D (m), Fixo (sim/não) e, opcionais, X, Y, Z dos fixos.</p>
+                </div>
+
+                <details class="mt-3 pt-3 border-t border-stone-100">
+                    <summary class="text-xs font-semibold text-stone-600 cursor-pointer select-none">Rede sintética
+                    </summary>
+                    <div class="mt-2 space-y-2">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="field-label" for="synthStations">Estações</label>
+                                <input id="synthStations" type="number" class="field" value="3" min="2" max="8">
+                            </div>
+                            <div>
+                                <label class="field-label" for="synthDetail">Pontos de detalhe</label>
+                                <input id="synthDetail" type="number" class="field" value="8" min="0" max="60">
+                            </div>
+                        </div>
+                        <label class="flex items-center gap-1.5 text-[11px] text-stone-600 cursor-pointer"><input
+                                type="checkbox" id="synthNoise" checked class="accent-teal-600"> Ruído com a precisão
+                            nominal</label>
+                        <label class="flex items-center gap-1.5 text-[11px] text-stone-600 cursor-pointer"><input
+                                type="checkbox" id="synthCoords" checked class="accent-teal-600"> X,Y,Z dos fixos no
+                            CSV</label>
+                        <button onclick="app.generateSynthetic()"
+                            class="btn w-full py-1.5 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-xs font-semibold">&#8635;
+                            Gerar rede</button>
+                        <p class="text-[10px] text-stone-400 leading-tight">Com a verdade conhecida, a aba
+                            <strong>Coordenadas</strong> mostra o erro real de cada ponto.</p>
+                    </div>
+                </details>
+
+                <button onclick="app.openBlunderModal()" id="btnBlunder" disabled
+                    class="btn w-full mt-3 py-1.5 bg-rose-50 text-rose-700 border border-rose-200 rounded hover:bg-rose-100 text-xs font-semibold">&#9888;
+                    Simular Erro Grosseiro</button>
+
+                <p id="dataStatus" class="text-[11px] text-stone-400 mt-3 leading-tight">Nenhuma observação carregada.
+                </p>
+            </div>
+
+            <!-- Fluxo de trabalho -->
+            <div class="bg-white p-5 rounded-xl border border-stone-200 shadow-sm">
+                <h2 class="text-sm font-bold text-stone-500 uppercase tracking-wider mb-3 border-b pb-2">Fluxo de
+                    Trabalho</h2>
+
+                <div class="space-y-3">
+                    <div class="step" id="step1">
+                        <span class="step-num">1</span>
+                        <div class="flex-1">
+                            <button onclick="app.runAdjustment()" id="btnAdjust" disabled
+                                class="btn w-full py-2 bg-teal-600 text-white rounded shadow hover:bg-teal-700 text-sm font-bold">&#9654;
+                                Executar Ajustamento</button>
+                        </div>
+                    </div>
+
+                    <div class="step" id="step2">
+                        <span class="step-num">2</span>
+                        <div class="flex-1 space-y-1.5">
+                            <select id="outlierMethod" class="field">
+                                <option value="snooping">Data snooping iterativo (Baarda)</option>
+                                <option value="tau">Teste &tau; de Pope (a posteriori)</option>
+                                <option value="ksigma">Regra k&sigma; (a priori)</option>
+                            </select>
+                            <button onclick="app.runOutlierDetection()" id="btnOutliers" disabled
+                                class="btn w-full py-1.5 bg-amber-500 text-white rounded shadow hover:bg-amber-600 text-xs font-bold">&#9888;
+                                Detectar Outliers</button>
+                        </div>
+                    </div>
+
+                    <div class="step" id="step3">
+                        <span class="step-num">3</span>
+                        <div class="flex-1">
+                            <p class="text-[11px] text-stone-500 leading-tight">Desative as visadas marcadas na aba
+                                <strong>Observações</strong>.</p>
+                            <div class="flex gap-1.5 mt-1.5">
+                                <button onclick="app.deactivateFlagged()" id="btnDeactivate" disabled
+                                    class="btn flex-1 py-1 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-[11px] font-semibold">Desativar
+                                    marcadas</button>
+                                <button onclick="app.reactivateAll()"
+                                    class="btn flex-1 py-1 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-[11px] font-semibold">Reativar
+                                    todas</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step" id="step4">
+                        <span class="step-num">4</span>
+                        <p class="flex-1 text-[11px] text-stone-500 leading-tight">Reexecute o ajustamento quantas vezes
+                            forem necessárias.</p>
+                    </div>
+
+                    <div class="step" id="step5">
+                        <span class="step-num">5</span>
+                        <div class="flex-1 space-y-1.5">
+                            <button onclick="app.exportReportPDF()" id="btnExportPDF" disabled
+                                class="btn w-full py-1.5 bg-indigo-600 text-white rounded shadow hover:bg-indigo-700 text-xs font-bold">&#8615;
+                                Relatório (PDF)</button>
+                            <div class="flex gap-1.5">
+                                <button onclick="app.exportCoordinates()" id="btnExportCoords" disabled
+                                    class="btn flex-1 py-1 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-[11px] font-semibold">&#8615;
+                                    Coordenadas</button>
+                                <button onclick="app.exportResiduals()" id="btnExportResid" disabled
+                                    class="btn flex-1 py-1 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-[11px] font-semibold">&#8615;
+                                    Resíduos</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Teste global -->
+            <div class="bg-white p-5 rounded-xl border border-stone-200 shadow-sm" id="panelGlobalTest">
+                <h2 class="text-sm font-bold text-stone-500 uppercase tracking-wider mb-4 border-b pb-2">Teste Global
+                    (&chi;&sup2;)</h2>
+                <div class="text-center py-4">
+                    <p class="text-xs text-stone-400">Aguardando ajustamento...</p>
+                </div>
+            </div>
+
+            <!-- Avisos -->
+            <div class="bg-white p-5 rounded-xl border border-stone-200 shadow-sm">
+                <h2 class="text-sm font-bold text-stone-500 uppercase tracking-wider mb-3 border-b pb-2">Avisos e Erros
+                </h2>
+                <div id="logPanel" class="space-y-1.5">
+                    <p class="text-xs text-stone-400">Nenhum.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================ PAINEL DIREITO ============================ -->
+        <div class="lg:col-span-9 flex flex-col gap-6">
+
+            <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-sm">
+                <div class="flex flex-wrap gap-1 bg-stone-100 rounded-lg p-0.5 mb-3 w-fit">
+                    <button id="tabBtn-view3d" onclick="app.switchTab('view3d')"
+                        class="tab-btn tab-btn-active px-3 py-1.5 text-xs font-semibold rounded-md transition-all">&#9711;
+                        Vista 3D</button>
+                    <button id="tabBtn-views2d" onclick="app.switchTab('views2d')"
+                        class="tab-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all">&#9638; Vistas
+                        2D</button>
+                    <button id="tabBtn-table" onclick="app.switchTab('table')"
+                        class="tab-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all">&#9776;
+                        Observações</button>
+                    <button id="tabBtn-coords" onclick="app.switchTab('coords')"
+                        class="tab-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all">&#8982;
+                        Coordenadas</button>
+                    <button id="tabBtn-matrices" onclick="app.switchTab('matrices')"
+                        class="tab-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all">&#8862;
+                        Matrizes</button>
+                    <button id="tabBtn-report" onclick="app.switchTab('report')"
+                        class="tab-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all">&#9998;
+                        Relatório</button>
+                    <button id="tabBtn-settings" onclick="app.switchTab('settings')"
+                        class="tab-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all">&#9881;
+                        Configurações</button>
+                </div>
+
+                <!-- ---------------- Vista 3D ---------------- -->
+                <div id="tab-view3d">
+                    <div class="flex flex-wrap gap-3 items-center mb-2 text-xs text-stone-600">
+                        <button onclick="app.viewer.fitView()"
+                            class="btn py-1 px-3 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-xs font-semibold">&#8982;
+                            Ajustar à janela</button>
+                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="chkEllipsoids"
+                                checked class="accent-teal-600" onchange="app.updateViewOptions()"> Elipsoides</label>
+                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="chkLines"
+                                checked class="accent-teal-600" onchange="app.updateViewOptions()"> Visadas</label>
+                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="chkLabels"
+                                checked class="accent-teal-600" onchange="app.updateViewOptions()"> Rótulos</label>
+                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="chkAxes"
+                                checked class="accent-teal-600" onchange="app.updateViewOptions()"> Eixos</label>
+                    </div>
+                    <div class="flex flex-wrap gap-4 items-center mb-2 text-xs text-stone-600">
+                        <label class="flex items-center gap-2">Exagero dos elipsoides
+                            <input id="ellipsoidScale" type="range" min="0" max="4" step="0.01" value="2.48"
+                                style="width:130px" oninput="app.updateViewOptions()">
+                            <span id="ellipsoidScaleVal" class="font-mono text-stone-700 min-w-[3.5rem]">300×</span>
+                        </label>
+                        <label class="flex items-center gap-2">Nível
+                            <select id="confSelect3d" class="field" style="width:auto" onchange="app.setConfidence(this.value)">
+                                <option value="1sigma">1&sigma;</option>
+                                <option value="95">95%</option>
+                                <option value="99">99%</option>
+                            </select>
+                        </label>
+                        <span id="view3dMode" class="text-[11px] text-stone-400"></span>
+                    </div>
+                    <div id="viewer3d"></div>
+                    <div class="flex flex-wrap justify-between gap-2 mt-2">
+                        <p class="text-xs text-stone-500 italic">Arraste para rotacionar · roda para zoom · botão
+                            direito (ou Ctrl) para transladar.
+                            <span class="legend-dot" style="background:#d97706"></span>estação
+                            <span class="legend-dot" style="background:#e11d48"></span>fixo
+                            <span class="legend-dot" style="background:#0f766e"></span>livre
+                            <span class="legend-dot" style="background:#6366f1"></span>elipsoide</p>
+                        <details class="text-xs">
+                            <summary class="text-stone-500 cursor-pointer select-none">Cores</summary>
+                            <div class="grid grid-cols-2 gap-2 mt-2 p-2 bg-stone-50 rounded border border-stone-100">
+                                <label class="text-[11px] text-stone-600">Estações<input type="color" id="colStation"
+                                        class="field" value="#d97706" oninput="app.updateViewOptions()"></label>
+                                <label class="text-[11px] text-stone-600">Fixos<input type="color" id="colFixed"
+                                        class="field" value="#e11d48" oninput="app.updateViewOptions()"></label>
+                                <label class="text-[11px] text-stone-600">Livres<input type="color" id="colFree"
+                                        class="field" value="#0f766e" oninput="app.updateViewOptions()"></label>
+                                <label class="text-[11px] text-stone-600">Elipsoides<input type="color"
+                                        id="colEllipsoid" class="field" value="#6366f1"
+                                        oninput="app.updateViewOptions()"></label>
+                                <label class="text-[11px] text-stone-600">Visadas<input type="color" id="colLine"
+                                        class="field" value="#a8a29e" oninput="app.updateViewOptions()"></label>
+                            </div>
+                        </details>
+                    </div>
+                </div>
+
+                <!-- ---------------- Vistas 2D ---------------- -->
+                <div id="tab-views2d" style="display:none">
+                    <div class="flex flex-wrap gap-3 items-center mb-2 text-xs text-stone-600">
+                        <button onclick="app.views.fitAll()"
+                            class="btn py-1 px-3 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-xs font-semibold">&#8982;
+                            Ajustar à janela</button>
+                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="chkEllipses2d"
+                                checked class="accent-teal-600" onchange="app.updateViewOptions()"> Elipses</label>
+                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="chkLines2d"
+                                checked class="accent-teal-600" onchange="app.updateViewOptions()"> Visadas</label>
+                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="chkLabels2d"
+                                checked class="accent-teal-600" onchange="app.updateViewOptions()"> Rótulos</label>
+                        <label class="flex items-center gap-2">Exagero das elipses
+                            <input id="ellipseScale2d" type="range" min="0" max="4" step="0.01" value="2.48"
+                                style="width:130px" oninput="app.updateViewOptions()">
+                            <span id="ellipseScale2dVal" class="font-mono text-stone-700 min-w-[3.5rem]">300×</span>
+                        </label>
+                        <label class="flex items-center gap-2" title="Só nos cortes XZ e YZ; os rótulos de Z continuam em metros verdadeiros">Exagero vertical (cortes)
+                            <input id="vertExag2d" type="range" min="1" max="20" step="0.5" value="1"
+                                style="width:100px" oninput="app.updateViewOptions()">
+                            <span id="vertExag2dVal" class="font-mono text-stone-700 min-w-[2.5rem]">1×</span>
+                        </label>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                        <canvas id="canvasXY" class="view2d lg:col-span-2 lg:row-span-2" style="height:528px"></canvas>
+                        <canvas id="canvasXZ" class="view2d" style="height:258px"></canvas>
+                        <canvas id="canvasYZ" class="view2d" style="height:258px"></canvas>
+                    </div>
+                    <p class="text-[11px] text-stone-500 mt-2 leading-snug">As elipses são as <strong>projeções dos
+                            elipsoides 3D</strong> no plano: o bloco 2×2 de &Sigma; correspondente aos dois eixos, com o
+                        mesmo fator k do elipsoide — exatamente o contorno da sombra dele. Por isso, no nível 95% o k é o
+                        de &chi;² com 3 graus (2,796), não o de uma elipse 2D isolada (2,448). Roda para zoom, arraste
+                        para transladar, duplo clique para reenquadrar.</p>
+                </div>
+
+                <!-- ---------------- Observações ---------------- -->
+                <div id="tab-table" style="display:none">
+                    <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
+                        <p class="text-xs text-stone-500 max-w-3xl">Edite as observações. Desmarque <strong>Ativa</strong>
+                            para excluir a visada inteira (as três componentes) do próximo ajustamento. Resíduos
+                            angulares em segundos, de distância em mm; em vermelho, |w| acima do crítico.</p>
+                        <button onclick="app.exportObservations()"
+                            class="btn py-1 px-3 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-xs font-semibold">&#8615;
+                            CSV das observações</button>
+                    </div>
+                    <div class="table-container" style="max-height:600px;overflow-y:auto">
+                        <table id="tableData">
+                            <thead>
+                                <tr>
+                                    <th data-tooltip="Incluir esta visada no ajustamento">Ativa</th>
+                                    <th>Visada</th>
+                                    <th data-tooltip="Leitura horizontal (graus decimais)">Hz (°)</th>
+                                    <th data-tooltip="Ângulo zenital (graus decimais)">Zen (°)</th>
+                                    <th data-tooltip="Distância inclinada (m)">D (m)</th>
+                                    <th data-tooltip="Desvios-padrão efetivos usados no ajustamento (* = nominal)"><span class="nc">&sigma;</span> Hz, Zen (″), D (mm)</th>
+                                    <th data-tooltip="Ponto visado é fixo">Fixo</th>
+                                    <th data-tooltip="Resíduos v = La − Lb">v Hz, Zen (″), D (mm)</th>
+                                    <th data-tooltip="Resíduo padronizado de Baarda por componente">w</th>
+                                    <th data-tooltip="Números de redundância (0 a 1) por componente">r</th>
+                                    <th data-tooltip="Menor erro grosseiro detectável por componente (Hz, Zen em ″; D em mm)">&nabla;<sub>0</sub> (″, ″, mm)</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="12" class="text-center text-stone-400 py-4">Carregue a amostra ou um
+                                        CSV.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ---------------- Coordenadas ---------------- -->
+                <div id="tab-coords" style="display:none">
+                    <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
+                        <p class="text-xs text-stone-500 max-w-3xl" id="coordsHint">Coordenadas aproximadas até o
+                            ajustamento ser executado.</p>
+                        <div class="flex gap-2">
+                            <button onclick="app.exportCoordinates()"
+                                class="btn py-1 px-3 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-xs font-semibold">&#8615;
+                                Coordenadas CSV</button>
+                            <button onclick="app.exportResiduals()"
+                                class="btn py-1 px-3 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-xs font-semibold">&#8615;
+                                Resíduos CSV</button>
+                        </div>
+                    </div>
+                    <div class="table-container" style="max-height:600px;overflow-y:auto">
+                        <table id="tableCoords">
+                            <thead></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ---------------- Matrizes ---------------- -->
+                <div id="tab-matrices" style="display:none">
+                    <div class="flex flex-wrap gap-1 bg-stone-100 rounded-lg p-0.5 mb-3" id="matrixTabs"></div>
+                    <div class="flex flex-wrap gap-3 items-center mb-2">
+                        <button onclick="app.exportActiveMatrix()"
+                            class="btn py-1 px-3 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-xs font-semibold">&#8615;
+                            Exportar esta matriz</button>
+                        <button onclick="app.exportAllMatrices()"
+                            class="btn py-1 px-3 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-xs font-semibold">&#8615;
+                            Exportar todas</button>
+                    </div>
+                    <div id="matrixContent"
+                        class="overflow-auto p-2 flex justify-center items-start bg-stone-50 rounded border border-stone-100 min-h-[150px]"
+                        style="font-size:0.72rem">
+                        <p class="text-xs text-stone-400">Aguardando ajustamento...</p>
+                    </div>
+                    <p id="matDesc" class="text-[11px] text-stone-500 mt-2 leading-snug"></p>
+                    <details class="mt-2">
+                        <summary class="text-[11px] text-stone-500 cursor-pointer select-none">Ordem das incógnitas e
+                            das observações</summary>
+                        <div id="matLegend" class="text-[10px] font-mono text-stone-500 mt-1 leading-snug"></div>
+                    </details>
+                    <p class="text-[10px] text-stone-400 mt-1">Ângulos em radianos, distâncias e coordenadas em metros.
+                        A exibição é truncada em 20×20; a exportação em CSV traz a matriz inteira, com os nomes das
+                        colunas quando fazem sentido.</p>
+                </div>
+
+                <!-- ---------------- Relatório ---------------- -->
+                <div id="tab-report" style="display:none">
+                    <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
+                        <p class="text-xs text-stone-500 max-w-3xl">O que vai para o relatório: dimensões do problema,
+                            datum, aproximações, iterações e critério de convergência, teste global, avisos, coordenadas,
+                            resíduos e as vistas 3D e 2D.</p>
+                        <div class="flex gap-2">
+                            <button onclick="app.exportReportPDF()"
+                                class="btn py-1.5 px-3 bg-indigo-600 text-white rounded shadow hover:bg-indigo-700 text-xs font-bold">&#8615;
+                                PDF</button>
+                            <button onclick="app.exportReportText()"
+                                class="btn py-1.5 px-3 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-xs font-semibold">&#8615;
+                                Texto</button>
+                        </div>
+                    </div>
+                    <div id="reportContent">
+                        <p class="text-xs text-stone-400">Aguardando ajustamento...</p>
+                    </div>
+                </div>
+
+                <!-- ---------------- Configurações ---------------- -->
+                <div id="tab-settings" style="display:none">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <h3 class="text-xs font-bold text-stone-500 uppercase tracking-wider mb-2 border-b pb-1">
+                                Modelo estocástico</h3>
+                            <div class="space-y-2">
+                                <div>
+                                    <label class="field-label" for="setSigmaSource">Origem dos desvios-padrão</label>
+                                    <select id="setSigmaSource" class="field" onchange="app.updateSettings()">
+                                        <option value="csv">CSV (nominal onde faltar)</option>
+                                        <option value="nominal">Nominal</option>
+                                        <option value="max">Maior entre CSV e nominal</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="field-label" for="setSigmaUnit">Unidade dos desvios angulares no CSV</label>
+                                    <select id="setSigmaUnit" class="field" onchange="app.updateSettings()">
+                                        <option value="arcsec">segundos de arco (″)</option>
+                                        <option value="deg">graus</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="field-label" for="setSigAng">&sigma; angular nominal — Hz e zenital
+                                        (&Prime;)</label>
+                                    <input id="setSigAng" type="number" class="field" value="2" min="0.1" step="0.1"
+                                        onchange="app.updateSettings()">
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="field-label" for="setEdmMm">MED — parcela fixa (mm)</label>
+                                        <input id="setEdmMm" type="number" class="field" value="2" min="0" step="0.1"
+                                            onchange="app.updateSettings()">
+                                    </div>
+                                    <div>
+                                        <label class="field-label" for="setEdmPpm">MED — parcela (ppm)</label>
+                                        <input id="setEdmPpm" type="number" class="field" value="2" min="0" step="0.1"
+                                            onchange="app.updateSettings()">
+                                    </div>
+                                </div>
+                                <p class="text-[10px] text-stone-400 leading-tight">&sigma;<sub>D</sub> = fixa + ppm
+                                    &middot; D. Os desvios do CSV costumam ser desvios da média de leituras
+                                    repetidas — otimistas como precisão absoluta. Compare as três origens e veja o
+                                    efeito no teste global.</p>
+                            </div>
+
+                            <h3 class="text-xs font-bold text-stone-500 uppercase tracking-wider mt-5 mb-2 border-b pb-1">
+                                Datum local assumido</h3>
+                            <p class="text-[10px] text-stone-400 leading-tight mb-2">Usado quando os pontos fixos não têm
+                                X,Y,Z no CSV: eles são irradiados da única estação que os visa, posta nesta posição e
+                                orientação.</p>
+                            <div class="grid grid-cols-4 gap-2">
+                                <div><label class="field-label" for="setDatumX">X (m)</label>
+                                    <input id="setDatumX" type="number" class="field" value="0" step="1" onchange="app.updateSettings()"></div>
+                                <div><label class="field-label" for="setDatumY">Y (m)</label>
+                                    <input id="setDatumY" type="number" class="field" value="0" step="1" onchange="app.updateSettings()"></div>
+                                <div><label class="field-label" for="setDatumZ">Z (m)</label>
+                                    <input id="setDatumZ" type="number" class="field" value="0" step="1" onchange="app.updateSettings()"></div>
+                                <div><label class="field-label" for="setDatumW">&omega; (°)</label>
+                                    <input id="setDatumW" type="number" class="field" value="0" step="1" onchange="app.updateSettings()"></div>
+                            </div>
+
+                            <h3 class="text-xs font-bold text-stone-500 uppercase tracking-wider mt-5 mb-2 border-b pb-1">
+                                Iterações</h3>
+                            <div class="grid grid-cols-3 gap-2">
+                                <div>
+                                    <label class="field-label" for="setMaxIter">Máx. iterações</label>
+                                    <input id="setMaxIter" type="number" class="field" value="25" min="1" max="200"
+                                        onchange="app.updateSettings()">
+                                </div>
+                                <div>
+                                    <label class="field-label" for="setTolLin">Tol. coord. (mm)</label>
+                                    <input id="setTolLin" type="number" class="field" value="0.01" step="0.001" min="1e-9"
+                                        onchange="app.updateSettings()">
+                                </div>
+                                <div>
+                                    <label class="field-label" for="setTolAng">Tol. &omega; (″)</label>
+                                    <input id="setTolAng" type="number" class="field" value="0.01" step="0.001" min="1e-9"
+                                        onchange="app.updateSettings()">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 class="text-xs font-bold text-stone-500 uppercase tracking-wider mb-2 border-b pb-1">
+                                Testes estatísticos e qualidade</h3>
+                            <div class="space-y-2">
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="field-label" for="setAlpha">&alpha; do teste global (%)</label>
+                                        <input id="setAlpha" type="number" class="field" value="5" min="0.1" max="20"
+                                            step="0.1" onchange="app.updateSettings()">
+                                    </div>
+                                    <div>
+                                        <label class="field-label" for="setAlpha0">&alpha;<sub>0</sub> — snooping e &tau;
+                                            (%)</label>
+                                        <input id="setAlpha0" type="number" class="field" value="0.1" min="0.001"
+                                            max="10" step="0.01" onchange="app.updateSettings()">
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="field-label" for="setPower">Poder do teste (%)</label>
+                                        <input id="setPower" type="number" class="field" value="80" min="50" max="99"
+                                            step="1" onchange="app.updateSettings()">
+                                    </div>
+                                    <div>
+                                        <label class="field-label" for="setSigmaK">k da regra k&sigma;</label>
+                                        <input id="setSigmaK" type="number" class="field" value="3" min="1" max="10"
+                                            step="0.1" onchange="app.updateSettings()">
+                                    </div>
+                                </div>
+                                <p id="delta0Info" class="text-[10px] text-stone-400 leading-tight"></p>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="field-label" for="setSigmaXa">Escala da MVC das incógnitas</label>
+                                        <select id="setSigmaXa" class="field" onchange="app.updateSettings()">
+                                            <option value="posteriori">&sigma;&#x302;&sup2;<sub>0</sub> N⁻¹ (a posteriori)</option>
+                                            <option value="priori">N⁻¹ (a priori, &sigma;&sup2;<sub>0</sub> = 1)</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="field-label" for="setConf">Nível dos elipsoides</label>
+                                        <select id="setConf" class="field" onchange="app.setConfidence(this.value)">
+                                            <option value="1sigma">1&sigma;</option>
+                                            <option value="95">95%</option>
+                                            <option value="99">99%</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mt-5 p-3 bg-stone-50 border border-stone-200 rounded text-[11px] text-stone-600 leading-snug space-y-2">
+                                <p><strong class="text-stone-700">O modelo.</strong> Cada visada gera três equações de
+                                    condição, uma por componente do vetor irradiado:
+                                    X<sub>j</sub> − X<sub>i</sub> − S·sen Z·cos(Hz+&omega;<sub>i</sub>) = 0,
+                                    Y<sub>j</sub> − Y<sub>i</sub> − S·sen Z·sen(Hz+&omega;<sub>i</sub>) = 0 e
+                                    Z<sub>j</sub> − Z<sub>i</sub> − S·cos Z = 0. Observações (Hz, Z, S) e
+                                    incógnitas (coordenadas e orientações) aparecem misturadas e implícitas: é o caso
+                                    do <em>Método Combinado</em>, F(L<sub>a</sub>, X<sub>a</sub>) = 0.</p>
+                                <p><strong class="text-stone-700">Por que B importa.</strong> B = &part;F/&part;L é a
+                                    jacobiana da irradiação, e M = B P⁻¹ B<sup>T</sup> é a MVC cartesiana de cada vetor
+                                    irradiado — o mesmo &Sigma;<sub>XYZ</sub> do ajustamento de planos. N =
+                                    A<sup>T</sup>M⁻¹A, X = −N⁻¹A<sup>T</sup>M⁻¹W, K = −M⁻¹(AX + W) e V = P⁻¹B<sup>T</sup>K.</p>
+                                <p><strong class="text-stone-700">Datum.</strong> Distâncias fixam a escala e os
+                                    zenitais a vertical; faltam três translações e a rotação em torno da vertical.
+                                    Dois pontos fixos bastam para defini-las. Cada estação ganha uma incógnita de
+                                    orientação &omega;.</p>
+                                <p><strong class="text-stone-700">Pontos irradiados.</strong> Um ponto visado de uma só
+                                    estação tem 3 observações e 3 incógnitas: o ajustamento o reproduz, r = 0 e nenhum
+                                    erro grosseiro nele é detectável.</p>
+                            </div>
+
+                            <button onclick="app.resetSettings()"
+                                class="btn w-full mt-4 py-1.5 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-xs font-semibold">Restaurar
+                                padrões</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resumo -->
+            <div class="bg-white p-4 rounded-xl border border-stone-200 shadow-sm">
+                <h2 class="text-sm font-bold text-stone-500 uppercase tracking-wider mb-3">Resumo do Ajustamento</h2>
+                <div id="summaryPanel">
+                    <p class="text-xs text-stone-400">Aguardando ajustamento...</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal de erro grosseiro -->
+    <div id="blunderModal" class="fixed inset-0 z-50 bg-black/50 items-center justify-center p-4" style="display:none">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg border border-stone-200">
+            <div class="flex justify-between items-center px-5 py-4 border-b border-stone-100">
+                <h3 class="font-bold text-stone-700 text-sm uppercase tracking-wider">&#9888; Simular Erro Grosseiro
+                </h3>
+                <button onclick="app.closeBlunderModal()"
+                    class="text-stone-400 hover:text-stone-600 text-xl leading-none">&times;</button>
+            </div>
+            <div class="px-5 py-4 space-y-4">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-stone-600 mb-2" for="blunderComp">Componente</label>
+                        <select id="blunderComp" class="field">
+                            <option value="hz">Leitura horizontal</option>
+                            <option value="zen">Ângulo zenital</option>
+                            <option value="dist" selected>Distância inclinada</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-stone-600 mb-2">Magnitude (múltiplo do &sigma;)</label>
+                        <div class="flex items-center gap-3">
+                            <input id="blunderK" type="range" min="3" max="100" step="1" value="20" class="flex-1"
+                                oninput="document.getElementById('blunderKVal').textContent=this.value+'σ'">
+                            <span id="blunderKVal"
+                                class="font-mono text-sm font-bold text-rose-600 min-w-[3rem] text-right">20&sigma;</span>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-stone-600 mb-2">Visadas candidatas <span
+                            class="font-normal text-stone-400">(selecione uma ou mais; r = redundância da
+                            componente)</span></label>
+                    <div id="blunderList"
+                        class="space-y-1 max-h-64 overflow-y-auto border border-stone-100 rounded p-2 bg-stone-50"></div>
+                </div>
+            </div>
+            <div class="px-5 py-4 border-t border-stone-100 flex justify-end gap-2">
+                <button onclick="app.closeBlunderModal()"
+                    class="btn px-4 py-2 text-sm text-stone-600 bg-stone-100 border border-stone-200 rounded hover:bg-stone-200">Cancelar</button>
+                <button onclick="app.confirmBlunder()"
+                    class="btn px-4 py-2 text-sm text-white bg-rose-600 rounded shadow hover:bg-rose-700 font-semibold">&#9888;
+                    Injetar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <script src="io.js"></script>
+    <script src="adjustment.js"></script>
+    <script src="viewer3d.js"></script>
+    <script src="views2d.js"></script>
+    <script src="report.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
