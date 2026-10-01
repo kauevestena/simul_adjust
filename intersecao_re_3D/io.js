@@ -13,6 +13,8 @@
     const TWO_PI = 2 * Math.PI;
 
     const DEFAULT_SETTINGS = {
+        model: 'combinado',     // combinado (Gauss-Helmert) | parametrico (Gauss-Markov)
+        datum: 'fixos',         // fixos (pontos fixos como constantes) | livre (injunções internas)
         sigmaSource: 'csv',     // csv | nominal | max — origem dos desvios-padrão das observações
         sigmaAngUnit: 'arcsec', // unidade dos desvios angulares no CSV: arcsec | deg
         sigAngSec: 2.0,         // sigma nominal dos ângulos (arcsec)

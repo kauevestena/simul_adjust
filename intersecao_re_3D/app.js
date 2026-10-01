@@ -115,6 +115,11 @@ const app = {
     // Qualquer mudança nos dados ou no modelo: descarta o ajustamento e refaz as aproximações
     _invalidate(refit) {
         this.result = null;
+        if (this.lastComparison) {
+            this.lastComparison = null;
+            document.getElementById('compareContent').innerHTML =
+                '<p class="text-xs text-amber-600">Os dados ou o modelo mudaram: clique em <strong>Comparar os quatro</strong> de novo.</p>';
+        }
         this._computePreview();
         this._refreshAll(refit);
     },
@@ -139,14 +144,15 @@ const app = {
             coords = new Map(r.pointResults.map(p => [p.name, p.xyz]));
             r.pointResults.forEach(p => points.push({
                 name: p.name, xyz: p.xyz, Sigma: p.fixed ? null : p.Sigma,
-                kind: p.isStation ? 'station' : (p.fixed ? 'fixed' : 'free')
+                kind: p.isStation ? 'station' : ((p.fixed || p.support) ? 'fixed' : 'free')
             }));
         } else if (this.preview && this.preview.approx) {
             const { net, approx } = this.preview;
             coords = approx.coords;
             approx.coords.forEach((xyz, name) => points.push({
                 name, xyz, Sigma: null,
-                kind: net.stations.includes(name) ? 'station' : (net.fixedCoords.has(name) ? 'fixed' : 'free')
+                kind: net.stations.includes(name) ? 'station'
+                    : ((net.fixedCoords.has(name) || (net.supportNames || []).includes(name)) ? 'fixed' : 'free')
             }));
         }
         if (coords) {
@@ -171,11 +177,15 @@ const app = {
         const sc = this._scene();
         this.viewer.setScene(sc, refit);
         this.views.setScene(sc, refit);
-        const mode = document.getElementById('view3dMode');
-        mode.textContent = this.result ? `rede ajustada · elipsoides ${this.result.confLabel}`
-            : (this.preview && this.preview.approx ? 'aproximações iniciais (antes do ajustamento) — sem elipsoides' : '');
+        document.getElementById('view3dMode').textContent = this._modeText();
         this._updateStatus();
         this._updateButtons();
+    },
+
+    _modeText() {
+        const r = this.result;
+        if (r) return `rede ajustada — ${r.modelLabel}, ${r.datumLabel.toLowerCase()} · elipsoides ${r.confLabel}`;
+        return this.preview && this.preview.approx ? 'aproximações iniciais (antes do ajustamento) — sem elipsoides' : '';
     },
 
     _updateStatus() {
@@ -196,6 +206,7 @@ const app = {
         const flagged = this.rows.some(r => r.flagged && r.active);
         document.getElementById('btnAdjust').disabled = !has;
         document.getElementById('btnBlunder').disabled = !has;
+        document.getElementById('btnCompare').disabled = !has;
         document.getElementById('btnOutliers').disabled = !adjusted;
         document.getElementById('btnDeactivate').disabled = !flagged;
         ['btnExportPDF', 'btnExportCoords', 'btnExportResid'].forEach(id => {
@@ -223,7 +234,8 @@ const app = {
             this.result = NetAdjust.adjustNetwork(this.rows, this.settings);
         } catch (e) {
             this.result = null;
-            this.runs.push({ when, ok: false, msg: e.message });
+            const lbl = `${NetAdjust.MODEL_LABELS[this.settings.model] || ''} · ${NetAdjust.DATUM_LABELS[this.settings.datum] || ''}`;
+            this.runs.push({ when, ok: false, msg: `${lbl}: ${e.message}` });
             this._computePreview();
             this._refreshAll(false);
             alert(`Falha no ajustamento:\n\n${e.message}`);
@@ -232,7 +244,7 @@ const app = {
         const r = this.result;
         this.runs.push({
             when, ok: true,
-            msg: `${r.m} visadas, ${r.iterations} iterações, ${r.converged ? 'convergiu' : 'NÃO convergiu'}, ` +
+            msg: `${r.modelLabel} · ${r.datumLabel}: ${r.m} visadas, gl ${r.dof}, ${r.iterations} iterações, ${r.converged ? 'convergiu' : 'NÃO convergiu'}, ` +
                 `σ̂₀² = ${Number.isFinite(r.sigma02) ? r.sigma02.toFixed(3) : '—'}, teste global ${r.globalPass === null ? '—' : (r.globalPass ? 'aprovado' : 'reprovado')}`
         });
         if (!this._autoScaled) { this._autoEllipseScale(); this._autoScaled = true; }
@@ -332,7 +344,7 @@ const app = {
     // ---------------------------------------------------------------- abas
     switchTab(tab) {
         this.activeTab = tab;
-        ['view3d', 'views2d', 'table', 'coords', 'matrices', 'report', 'settings'].forEach(t => {
+        ['view3d', 'views2d', 'table', 'coords', 'compare', 'matrices', 'report', 'settings'].forEach(t => {
             document.getElementById(`tab-${t}`).style.display = (t === tab) ? '' : 'none';
             document.getElementById(`tabBtn-${t}`).className = 'tab-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all' +
                 (t === tab ? ' tab-btn-active' : '');
@@ -353,6 +365,7 @@ const app = {
         g('ellipsoidScaleVal').textContent = fmtScale(s3);
         g('ellipseScale2dVal').textContent = fmtScale(s2);
         g('vertExag2dVal').textContent = `${ve}×`;
+        g('pointScaleVal').textContent = `${parseFloat(g('pointScale').value).toFixed(2)}×`;
         const confK = NetAdjust.confidenceK(this.settings.ellipsoidConf, 3);
         const colors = {
             colorStation: g('colStation').value, colorFixed: g('colFixed').value, colorFree: g('colFree').value,
@@ -361,6 +374,7 @@ const app = {
         this.viewer.setOptions(Object.assign({
             showEllipsoids: g('chkEllipsoids').checked, showLines: g('chkLines').checked,
             showLabels: g('chkLabels').checked, showAxes: g('chkAxes').checked,
+            pointScale: parseFloat(g('pointScale').value),
             ellipsoidScale: s3, confK, colorEllipsoid: g('colEllipsoid').value
         }, colors));
         this.views.setOptions(Object.assign({
@@ -385,7 +399,7 @@ const app = {
         this.updateViewOptions();
         this.renderCoordinates();
         this.renderReport();
-        document.getElementById('view3dMode').textContent = this.result ? `rede ajustada · elipsoides ${this.result.confLabel}` : document.getElementById('view3dMode').textContent;
+        document.getElementById('view3dMode').textContent = this._modeText();
     },
 
     // ---------------------------------------------------------------- tabela de observações
@@ -559,7 +573,9 @@ const app = {
             <div class="text-[10px] uppercase tracking-wider text-stone-500 font-semibold">${label}</div>
             <div class="text-base font-bold text-stone-800 font-mono">${value}</div>
             <div class="text-[10px] text-stone-400">${sub || ''}</div></div>`;
-        el.innerHTML = `<div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-2">
+        const glTxt = r.d ? `gl = n − u + d = ${r.nEq} − ${r.u} + ${r.d}` : `gl = n − u = ${r.nEq} − ${r.u}`;
+        el.innerHTML = `<p class="text-[11px] text-stone-500 mb-2"><strong class="text-stone-700">${r.modelLabel}</strong> · ${r.datumLabel} · ${glTxt}</p>
+            <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-2">
             ${tile('Visadas', r.m, `${r.nEq} equações`)}
             ${tile('Incógnitas', r.u, `${r.net.stations.length} estações`)}
             ${tile('Graus de lib.', r.dof, `Σr = ${r.redundancySum.toFixed(3)}`)}
@@ -577,7 +593,7 @@ const app = {
         const hint = document.getElementById('coordsHint');
         const r = this.result;
         const AS = NetAdjust.ARCSEC;
-        const tipoBadge = t => `<span class="badge ${t.startsWith('estação') ? 'badge-free' : (t === 'fixo' ? 'badge-out' : 'badge-ok')}">${t}</span>`;
+        const tipoBadge = t => `<span class="badge ${t.startsWith('estação') ? 'badge-free' : ((t === 'fixo' || t.startsWith('apoio')) ? 'badge-out' : 'badge-ok')}">${t}</span>`;
         if (r) {
             const truth = this.truth;
             hint.innerHTML = `Coordenadas ajustadas (m), desvios-padrão e semieixos do elipsoide ${r.confLabel} em mm` +
@@ -624,9 +640,12 @@ const app = {
         pv.approx.coords.forEach((xyz, name) => {
             const src = pv.approx.source.get(name) || {};
             const isSt = pv.net.stations.includes(name);
-            const tipo = isSt ? 'estação' : (pv.net.fixedCoords.has(name) ? 'fixo' : 'livre');
+            const support = (pv.net.supportNames || []).includes(name);
+            const tipo = isSt ? 'estação' : (pv.net.fixedCoords.has(name) ? 'fixo' : (support ? 'apoio (livre)' : 'livre'));
+            const fixoTxt = pv.net.free ? 'aproximação do apoio' : 'fixo';
             const origem = src.kind === 'irradiado' ? `irradiado de ${src.origin.station}`
-                : (src.kind === 'fixo' ? (pv.net.datum.computed.includes(name) ? 'fixo irradiado (datum)' : 'fixo (CSV)') : (src.kind || ''));
+                : (src.kind === 'fixo' ? (pv.net.datum.computed.includes(name) ? `${fixoTxt} irradiado (datum)` : `${fixoTxt} (CSV)`)
+                    : (src.kind === 'datum assumido' ? 'semente: datum local assumido' : (src.kind || '')));
             rows.push(`<tr><td class="font-mono text-xs font-semibold">${this.esc(name)}</td><td>${tipoBadge(tipo)}</td>
                 ${xyz.map(v => `<td class="font-mono text-xs">${v.toFixed(4)}</td>`).join('')}
                 <td class="text-xs text-stone-500">${this.esc(origem)}</td></tr>`);
@@ -673,30 +692,150 @@ const app = {
             <p class="text-[11px] text-stone-400">Coordenadas e resíduos completos nas abas <strong>Coordenadas</strong> e <strong>Observações</strong>; no PDF entram também as vistas 3D e 2D.</p>`;
     },
 
+    // ---------------------------------------------------------------- comparação de modelos
+    runComparison() {
+        if (!this.rows.length) return;
+        const el = document.getElementById('compareContent');
+        el.innerHTML = '<p class="text-xs text-stone-400">Calculando os quatro ajustamentos...</p>';
+        setTimeout(() => {
+            try { this.lastComparison = NetAdjust.compareModels(this.rows, this.settings); }
+            catch (e) { el.innerHTML = `<p class="text-xs text-rose-600">Falha na comparação: ${this.esc(e.message)}</p>`; return; }
+            this.renderComparison(this.lastComparison);
+        }, 20);
+    },
+
+    renderComparison(cmp) {
+        const el = document.getElementById('compareContent');
+        const AS = NetAdjust.ARCSEC;
+        const cols = cmp.runs;
+        const exp = (v, d = 1) => (v === undefined || v === null || !Number.isFinite(v)) ? '—' : (v === 0 ? '0' : v.toExponential(d));
+        const head = `<tr><th></th>${cols.map(c => `<th class="whitespace-normal">${c.model === 'parametrico' ? 'Paramétrico' : 'Combinado'}` +
+            `<br><span class="font-normal normal-case text-stone-400">${c.datum === 'livre' ? 'rede livre' : 'pontos fixos'}</span></th>`).join('')}</tr>`;
+        const cell = (c, fn) => c.res ? fn(c) : `<span class="text-rose-600 text-[10px] whitespace-normal">falhou: ${this.esc(c.error || '')}</span>`;
+        const row = (label, fn) => `<tr><td class="text-stone-500 text-xs whitespace-normal">${label}</td>` +
+            cols.map(c => `<td class="font-mono text-xs whitespace-normal">${cell(c, fn)}</td>`).join('') + '</tr>';
+        const sec = (t, tone) => `<tr><td colspan="${cols.length + 1}" class="${tone || 'bg-stone-50 text-stone-500'} text-[10px] font-bold uppercase tracking-wider">${t}</td></tr>`;
+        const ref = cols.find(c => c.res);
+
+        const table = `<div class="table-container mb-4"><table><thead>${head}</thead><tbody>
+            ${sec('Dimensões')}
+            ${row('iterações', c => `${c.res.iterations}${c.res.converged ? '' : ' <span class="hot">(não convergiu)</span>'}`)}
+            ${row('equações n', c => c.res.nEq)}
+            ${row('incógnitas u', c => c.res.u)}
+            ${row('defeito de posto d', c => c.res.d)}
+            ${row('graus de liberdade n − u + d', c => c.res.dof)}
+            ${sec('Qualidade')}
+            ${row('V<sup>T</sup>PV', c => c.res.VtPV.toFixed(4))}
+            ${row('&sigma;&#x302;²<sub>0</sub>', c => Number.isFinite(c.res.sigma02) ? c.res.sigma02.toFixed(4) : '—')}
+            ${row('teste global', c => c.res.globalPass === null ? '—' : (c.res.globalPass ? '<span class="text-teal-700">aprovado</span>' : '<span class="hot">reprovado</span>'))}
+            ${row('&Sigma;r', c => c.res.redundancySum.toFixed(4))}
+            ${row('traço de &Sigma;<sub>Xa</sub> nas coordenadas (mm²)', c => (c.traceCoord * 1e6).toFixed(2))}
+            ${row('cond(N) (sem os nulos)', c => exp(c.res.condN, 2))}
+            ${sec('O que não pode mudar', 'bg-teal-50 text-teal-700')}
+            ${row('max|&Delta;X<sub>a</sub>| para o outro modelo, mesmo datum (m / ″)', c => c.dModel ? `${exp(c.dModel.lin)} / ${exp(c.dModel.ang / AS)}` : '—')}
+            ${row(`max|&Delta;V| contra ${ref ? this.esc(ref.label) : '—'} (″ / mm)`, c => c === ref ? 'referência' : (c.dV ? `${exp(c.dV.ang / AS)} / ${exp(c.dV.lin * 1000)}` : '—'))}
+            ${row('max|&Delta;| das distâncias entre pontos (mm)', c => c === ref ? 'referência' : exp(c.dDist * 1000))}
+        </tbody></table></div>`;
+
+        // Teste de compatibilidade dos pontos fixos
+        const compat = cmp.compat.map(c => {
+            const name = c.model === 'parametrico' ? 'Paramétrico' : 'Combinado';
+            if (!c.available) return `<p><strong>${name}:</strong> indisponível (uma das variantes falhou).</p>`;
+            if (!c.applicable) return `<p><strong>${name}:</strong> não se aplica — os pontos fixos não impõem injunções além do datum mínimo (gl iguais).</p>`;
+            const dv = Math.abs(c.dV) < 1e-6 ? 0 : c.dV;
+            return `<p><strong>${name}:</strong> &Delta;V<sup>T</sup>PV = ${dv.toFixed(4)} com ${c.ddof} graus; &chi;² crítico (${this.settings.alphaPct}%) = ${c.crit.toFixed(3)} → ` +
+                (c.pass ? '<span class="text-teal-700 font-semibold">compatíveis</span>' : '<span class="hot">INCOMPATÍVEIS</span>') + '</p>';
+        }).join('');
+
+        // σ por ponto: pontos fixos × rede livre (os dois modelos são idênticos)
+        const fx = cols.find(c => c.res && c.datum === 'fixos'), lv = cols.find(c => c.res && c.datum === 'livre');
+        let sigTable = '';
+        if (fx && lv) {
+            const byName = res => new Map(res.pointResults.map(p => [p.name, p]));
+            const a = byName(fx.res), b = byName(lv.res);
+            const names = lv.res.pointResults.map(p => p.name);
+            const trio = p => p ? (p.fixed ? '<span class="text-stone-400">fixo (0)</span>' : p.sigma.map(v => (v * 1000).toFixed(2)).join(' / ')) : '—';
+            sigTable = `<h3 class="report-h mt-4"><span class="nc">σ</span>X / <span class="nc">σ</span>Y / <span class="nc">σ</span>Z por ponto (mm, ${this.settings.sigmaXaScale === 'priori' ? 'a priori' : 'a posteriori'})</h3>
+            <div class="table-container mb-2" style="max-height:340px;overflow-y:auto"><table>
+                <thead><tr><th>Ponto</th><th>Pontos fixos</th><th>Rede livre</th></tr></thead>
+                <tbody>${names.map(n => `<tr><td class="font-mono text-xs font-semibold">${this.esc(n)}</td>
+                    <td class="font-mono text-xs">${trio(a.get(n))}</td><td class="font-mono text-xs">${trio(b.get(n))}</td></tr>`).join('')}</tbody>
+            </table></div>`;
+        }
+
+        el.innerHTML = table + `
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="p-3 bg-stone-50 border border-stone-200 rounded text-[11px] text-stone-600 leading-snug space-y-1.5">
+                    <h3 class="text-xs font-bold text-stone-600 uppercase tracking-wider">Compatibilidade dos pontos fixos</h3>
+                    <p>Os pontos fixos impõem 3 injunções cada; o datum só precisa de 4. As que sobram só aumentam
+                        V<sup>T</sup>PV se as coordenadas fixas discordarem das observações:
+                        &Delta;V<sup>T</sup>PV = V<sup>T</sup>PV(fixos) − V<sup>T</sup>PV(livre) ~ &chi;² com gl(fixos) − gl(livre) graus.</p>
+                    ${compat}
+                </div>
+                <div class="p-3 bg-teal-50 border border-teal-200 rounded text-[11px] text-stone-600 leading-snug space-y-1.5">
+                    <h3 class="text-xs font-bold text-teal-800 uppercase tracking-wider">Como ler</h3>
+                    <p><strong>Combinado × paramétrico</strong> com o mesmo datum: diferenças na ordem da precisão de
+                        máquina — são o mesmo problema de mínimos quadrados escrito de duas formas.</p>
+                    <p><strong>Pontos fixos × rede livre</strong>: resíduos e forma da rede (distâncias) não mudam
+                        enquanto os fixos não tensionarem as observações. Mudam as coordenadas, os &sigma;, os
+                        elipsoides e os graus de liberdade. Na rede livre o traço de &Sigma;<sub>Xa</sub> é o menor
+                        possível, e nenhum ponto tem &sigma; nulo.</p>
+                </div>
+            </div>` + sigTable;
+    },
+
     // ---------------------------------------------------------------- matrizes
+    // desc: texto, ou função (resultado) => texto quando depende do modelo/datum.
+    // models / datum: em quais variantes a matriz existe.
     MATRICES: [
-        { key: 'A', label: 'A', tex: 'A', rows: 'obs', cols: 'unk', desc: '<strong>Jacobiana em relação às incógnitas (A = &part;F/&part;X<sub>a</sub>):</strong> três linhas por visada, +I no ponto visado (se livre), −I na estação e a coluna de &omega;, igual à coluna de Hz de B.' },
-        { key: 'B', label: 'B', tex: 'B', rows: 'obs', cols: 'obs', desc: '<strong>Jacobiana em relação às observações (B = &part;F/&part;L<sub>a</sub>):</strong> bloco-diagonal 3×3 por visada — a jacobiana da irradiação (Hz, Z, S) → (X, Y, Z), a mesma do ajustamento de planos.' },
+        { key: 'A', label: 'A', tex: 'A', rows: 'obs', cols: 'unk', desc: r => r.model === 'parametrico'
+            ? '<strong>Jacobiana das equações de observação (A = &part;F/&part;X<sub>a</sub>):</strong> três linhas (Hz, Z, S) por visada — derivadas de atan2 e da norma, com sinais opostos na estação e no ponto visado e −1 na coluna de &omega; (linha de Hz).'
+            : '<strong>Jacobiana das equações de condição em relação às incógnitas (A = &part;F/&part;X<sub>a</sub>):</strong> três linhas por visada, +I no ponto visado, −I na estação e a coluna de &omega;, igual à coluna de Hz de B.' },
+        { key: 'B', label: 'B', tex: 'B', rows: 'obs', cols: 'obs', models: ['combinado'], desc: '<strong>Jacobiana em relação às observações (B = &part;F/&part;L<sub>a</sub>):</strong> bloco-diagonal 3×3 por visada — a jacobiana da irradiação (Hz, Z, S) → (X, Y, Z), a mesma do ajustamento de planos. No paramétrico, B = −I.' },
         { key: 'SigLb', label: '&Sigma;<sub>Lb</sub>', tex: '\\Sigma_{L_b}', rows: 'obs', cols: 'obs', desc: '<strong>MVC das observações:</strong> diagonal com &sigma;² de Hz, Z (rad²) e S (m²), conforme a origem escolhida nas Configurações.' },
         { key: 'P', label: 'P', tex: 'P', rows: 'obs', cols: 'obs', desc: '<strong>Matriz dos pesos:</strong> P = &Sigma;<sub>Lb</sub>⁻¹, com &sigma;²<sub>0</sub> a priori = 1.' },
-        { key: 'M', label: 'M', tex: 'M', rows: 'obs', cols: 'obs', desc: '<strong>M = B P⁻¹ B<sup>T</sup>:</strong> bloco 3×3 por visada — a MVC cartesiana do vetor irradiado. É a única matriz invertida por visada.' },
-        { key: 'W', label: 'W', tex: 'W', rows: 'obs', vec: true, desc: '<strong>Erro de fechamento</strong> da última iteração, na forma iterada de Gemael: W = F(L<sub>0</sub>, X<sub>0</sub>) + B(L<sub>b</sub> − L<sub>0</sub>) (m).' },
-        { key: 'N', label: 'N', tex: 'N', rows: 'unk', cols: 'unk', desc: '<strong>Matriz normal:</strong> N = A<sup>T</sup> M⁻¹ A.' },
-        { key: 'U', label: 'U', tex: 'U', rows: 'unk', vec: true, desc: '<strong>Vetor dos termos independentes:</strong> U = A<sup>T</sup> M⁻¹ W.' },
-        { key: 'X', label: 'X', tex: 'X', rows: 'unk', vec: true, desc: '<strong>Correção da última iteração:</strong> X = −N⁻¹ U. Abaixo do critério de convergência.' },
+        { key: 'M', label: 'M', tex: 'M', rows: 'obs', cols: 'obs', models: ['combinado'], desc: '<strong>M = B P⁻¹ B<sup>T</sup>:</strong> bloco 3×3 por visada — a MVC cartesiana do vetor irradiado. No paramétrico, M = P⁻¹.' },
+        { key: 'W', label: 'W', tex: 'W', rows: 'obs', vec: true, models: ['combinado'], desc: '<strong>Erro de fechamento</strong> da última iteração, na forma iterada de Gemael: W = F(L<sub>0</sub>, X<sub>0</sub>) + B(L<sub>b</sub> − L<sub>0</sub>) (m).' },
+        { key: 'L', label: 'L', tex: 'L', rows: 'obs', vec: true, models: ['parametrico'], desc: '<strong>Vetor L = L<sub>0</sub> − L<sub>b</sub></strong> (calculado menos observado, Hz reduzido a (−&pi;, &pi;]) da última iteração (rad, rad, m).' },
+        { key: 'N', label: 'N', tex: 'N', rows: 'unk', cols: 'unk', desc: r => (r.model === 'parametrico'
+            ? '<strong>Matriz normal:</strong> N = A<sup>T</sup> P A.' : '<strong>Matriz normal:</strong> N = A<sup>T</sup> M⁻¹ A.') +
+            (r.d ? ` Na rede livre ela é <strong>singular</strong>: posto u − ${r.d} (veja λ(N)).` : '') },
+        { key: 'eigN', label: '&lambda;(N)', tex: '\\lambda(N)', rows: 'eig', vec: true, desc: r => '<strong>Autovalores de N</strong> em ordem crescente. ' + (r.d
+            ? `Os ${r.d} primeiros são nulos (à precisão numérica): o defeito de posto — translações em X, Y, Z e rotação em torno da vertical, direções que as observações não enxergam.`
+            : 'Com pontos fixos, todos são positivos: o datum está definido.') },
+        { key: 'G', label: 'G', tex: 'G', rows: 'unk', cols: 'g4', datum: ['livre'], desc: '<strong>Matriz das injunções internas (u × 4):</strong> o espaço nulo de N restrito às coordenadas — colunas de translação em X, Y, Z (1 nas respectivas coordenadas) e de rotação em torno da vertical (−(Y − Ȳ) em X, X − X̄ em Y), com zeros nas linhas de &omega;. A injunção G<sup>T</sup>X = 0 dá a solução de norma mínima.' },
+        { key: 'Nb', label: 'N<sub>orlada</sub>', tex: '\\begin{bmatrix} N & G \\\\ G^T & 0 \\end{bmatrix}', rows: 'unkb', cols: 'unkb', datum: ['livre'], desc: '<strong>Sistema orlado [N G; G<sup>T</sup> 0]:</strong> não singular mesmo com N singular. O bloco u×u da sua inversa é Q, a inversa generalizada usada em X = −QU e em &Sigma;<sub>Xa</sub> = &sigma;&#x302;²<sub>0</sub>Q. (No cálculo, as colunas de G são escaladas ao porte de N, o que não muda a injunção.)' },
+        { key: 'U', label: 'U', tex: 'U', rows: 'unk', vec: true, desc: r => r.model === 'parametrico'
+            ? '<strong>Vetor dos termos independentes:</strong> U = A<sup>T</sup> P L.' : '<strong>Vetor dos termos independentes:</strong> U = A<sup>T</sup> M⁻¹ W.' },
+        { key: 'X', label: 'X', tex: 'X', rows: 'unk', vec: true, desc: r => r.d
+            ? '<strong>Correção da última iteração:</strong> X = −Q U, com Q do sistema orlado; cumpre G<sup>T</sup>X = 0.'
+            : '<strong>Correção da última iteração:</strong> X = −N⁻¹ U. Abaixo do critério de convergência.' },
         { key: 'Xa', label: 'X<sub>a</sub>', tex: 'X_a', rows: 'unk', vec: true, desc: '<strong>Incógnitas ajustadas:</strong> coordenadas (m) e orientações &omega; (rad).' },
-        { key: 'K', label: 'K', tex: 'K', rows: 'obs', vec: true, desc: '<strong>Correlatos:</strong> K = −M⁻¹(AX + W).' },
-        { key: 'V', label: 'V', tex: 'V', rows: 'obs', vec: true, desc: '<strong>Resíduos:</strong> V = P⁻¹ B<sup>T</sup> K (rad, rad, m por visada).' },
+        { key: 'K', label: 'K', tex: 'K', rows: 'obs', vec: true, models: ['combinado'], desc: '<strong>Correlatos:</strong> K = −M⁻¹(AX + W).' },
+        { key: 'V', label: 'V', tex: 'V', rows: 'obs', vec: true, desc: r => r.model === 'parametrico'
+            ? '<strong>Resíduos:</strong> V = AX + L (rad, rad, m por visada).' : '<strong>Resíduos:</strong> V = P⁻¹ B<sup>T</sup> K (rad, rad, m por visada).' },
         { key: 'Lb', label: 'L<sub>b</sub>', tex: 'L_b', rows: 'obs', vec: true, desc: '<strong>Observações brutas</strong> (rad, rad, m).' },
         { key: 'La', label: 'L<sub>a</sub>', tex: 'L_a', rows: 'obs', vec: true, desc: '<strong>Observações ajustadas:</strong> L<sub>a</sub> = L<sub>b</sub> + V.' },
-        { key: 'SigmaXa', label: '&Sigma;<sub>Xa</sub>', tex: '\\Sigma_{X_a}', rows: 'unk', cols: 'unk', desc: '<strong>MVC das incógnitas:</strong> &sigma;&#x302;²<sub>0</sub> N⁻¹ (ou N⁻¹ com a escala a priori). Os blocos 3×3 dão os elipsoides de erro.' },
-        { key: 'SigmaLa', label: '&Sigma;<sub>La</sub>', tex: '\\Sigma_{L_a}', rows: 'obs', cols: 'obs', desc: '<strong>MVC das observações ajustadas:</strong> &sigma;&#x302;²<sub>0</sub>(P⁻¹ − Q<sub>V</sub>).' },
-        { key: 'SigmaV', label: '&Sigma;<sub>V</sub>', tex: '\\Sigma_{V}', rows: 'obs', cols: 'obs', desc: '<strong>MVC dos resíduos:</strong> &sigma;&#x302;²<sub>0</sub> Q<sub>V</sub>, Q<sub>V</sub> = P⁻¹B<sup>T</sup>(M⁻¹ − M⁻¹AN⁻¹A<sup>T</sup>M⁻¹)BP⁻¹. Sua diagonal, vezes P, dá os números de redundância.' }
+        { key: 'SigmaXa', label: '&Sigma;<sub>Xa</sub>', tex: '\\Sigma_{X_a}', rows: 'unk', cols: 'unk', desc: r => '<strong>MVC das incógnitas:</strong> &sigma;&#x302;²<sub>0</sub> Q (ou Q com a escala a priori), ' +
+            (r.d ? 'Q do sistema orlado — posto u − 4, traço mínimo nas coordenadas.' : 'Q = N⁻¹.') + ' Os blocos 3×3 dão os elipsoides de erro.' },
+        { key: 'SigmaLa', label: '&Sigma;<sub>La</sub>', tex: '\\Sigma_{L_a}', rows: 'obs', cols: 'obs', desc: r => r.model === 'parametrico'
+            ? '<strong>MVC das observações ajustadas:</strong> &sigma;&#x302;²<sub>0</sub> A Q A<sup>T</sup>.'
+            : '<strong>MVC das observações ajustadas:</strong> &sigma;&#x302;²<sub>0</sub>(P⁻¹ − Q<sub>V</sub>).' },
+        { key: 'SigmaV', label: '&Sigma;<sub>V</sub>', tex: '\\Sigma_{V}', rows: 'obs', cols: 'obs', desc: r => '<strong>MVC dos resíduos:</strong> &sigma;&#x302;²<sub>0</sub> Q<sub>V</sub>, ' + (r.model === 'parametrico'
+            ? 'Q<sub>V</sub> = P⁻¹ − A Q A<sup>T</sup>.' : 'Q<sub>V</sub> = P⁻¹B<sup>T</sup>(M⁻¹ − M⁻¹AQA<sup>T</sup>M⁻¹)BP⁻¹.') + ' Sua diagonal, vezes P, dá os números de redundância — iguais em qualquer datum.' }
     ],
+
+    _visibleMatrices() {
+        const model = this.result ? this.result.model : this.settings.model;
+        const datum = this.result ? this.result.datum : this.settings.datum;
+        return this.MATRICES.filter(m => (!m.models || m.models.includes(model)) && (!m.datum || m.datum.includes(datum)));
+    },
 
     _buildMatrixTabs() {
         const wrap = document.getElementById('matrixTabs');
-        wrap.innerHTML = this.MATRICES.map(m => {
+        const visible = this._visibleMatrices();
+        if (!visible.some(m => m.key === this.activeMatrix)) this.activeMatrix = 'A';
+        wrap.innerHTML = visible.map(m => {
             const active = m.key === this.activeMatrix;
             return `<button onclick="app.switchMatrixTab('${m.key}')"
                 class="mat-tab-btn px-2.5 py-1.5 text-xs font-semibold rounded-md transition-all ${active ? 'mat-tab-active' : 'text-stone-600 hover:bg-stone-200'}">${m.label}</button>`;
@@ -726,16 +865,24 @@ const app = {
         if (key === 'X') return col(r.X);
         if (key === 'Xa') return col(r.Xa);
         if (key === 'SigmaXa') return r.SigmaXa;
+        if (key === 'eigN') return r.eigN ? col(r.eigN) : col(NetAdjust.linalg.eigSym(r.N).values);
         const F = this._full();
+        if (key === 'L') return col(F.W);
         if (['W', 'K', 'V', 'Lb', 'La'].includes(key)) return col(F[key]);
         return F[key] || null;
     },
 
     _labels(kind) {
-        if (kind === 'unk') return this.result.unknowns.map(u => u.name);
+        const unk = () => this.result.unknowns.map(u => u.name);
+        if (kind === 'unk') return unk();
         if (kind === 'obs') return NetAdjust.observationLabels(this.result);
+        if (kind === 'g4') return ['tX', 'tY', 'tZ', 'rotZ'];
+        if (kind === 'unkb') return unk().concat(['k_tX', 'k_tY', 'k_tZ', 'k_rotZ']);
+        if (kind === 'eig') return this.result.unknowns.map((_, i) => `λ${i + 1}`);
         return null;
     },
+
+    _matDesc(def) { return typeof def.desc === 'function' ? def.desc(this.result) : def.desc; },
 
     formatMatrixToLatex(tex, mat) {
         const MAX = 20;
@@ -779,7 +926,7 @@ const app = {
         } else {
             container.innerHTML = '<p class="text-xs text-rose-500">KaTeX não carregado.</p>';
         }
-        desc.innerHTML = `<span class="text-stone-400 font-mono text-[10px]">dimensão ${mat.length} × ${mat[0].length}</span><br>${def.desc}`;
+        desc.innerHTML = `<span class="text-stone-400 font-mono text-[10px]">dimensão ${mat.length} × ${mat[0].length}</span><br>${this._matDesc(def)}`;
         const unk = this._labels('unk'), obs = this._labels('obs');
         legend.innerHTML = `<p class="mb-1"><strong>Incógnitas (${unk.length}):</strong> ${unk.map((n, i) => `${i + 1}:${this.esc(n)}`).join(' · ')}</p>` +
             `<p><strong>Observações (${obs.length}):</strong> ${obs.map((n, i) => `${i + 1}:${this.esc(n)}`).join(' · ')}</p>`;
@@ -806,7 +953,7 @@ const app = {
 
     exportAllMatrices() {
         if (!this.result) return;
-        this.MATRICES.forEach((m, i) => {
+        this._visibleMatrices().forEach((m, i) => {
             const csv = this._matrixCSV(m.key);
             // Downloads em sequência: alguns navegadores descartam disparos simultâneos
             if (csv) setTimeout(() => RedeIO.download(`matriz_${m.key}.csv`, csv), i * 250);
@@ -815,6 +962,7 @@ const app = {
 
     // ---------------------------------------------------------------- configurações
     _settingsFields: [
+        ['selModel', 'model', 'str'], ['selDatum', 'datum', 'str'],
         ['setSigmaSource', 'sigmaSource', 'str'], ['setSigmaUnit', 'sigmaAngUnit', 'str'],
         ['setSigAng', 'sigAngSec'], ['setEdmMm', 'edmMm'], ['setEdmPpm', 'edmPpm'],
         ['setDatumX', 'datumX'], ['setDatumY', 'datumY'], ['setDatumZ', 'datumZ'], ['setDatumW', 'datumOmegaDeg'],
@@ -840,9 +988,19 @@ const app = {
         const critW = NetAdjust.normInv(1 - a0 / 2), d0 = critW + NetAdjust.normInv(s.powerPct / 100);
         document.getElementById('delta0Info').textContent =
             `|w| crítico = ${critW.toFixed(3)}; δ₀ = ${d0.toFixed(3)} (erro mínimo detectável ∇₀ = δ₀ σ / √r).`;
+        this._renderModelHint();
         if (silent === true) return;
         this.lastDetection = null;
         this._invalidate(false);
+    },
+
+    _renderModelHint() {
+        const s = this.settings;
+        const eq = s.model === 'parametrico' ? 'La = F(Xa): Hz, Z e S como funções das coordenadas'
+            : 'F(La, Xa) = 0: três equações de condição por visada';
+        const dt = s.datum === 'livre' ? 'todos os pontos incógnitos, defeito de posto 4 removido por injunções internas; gl = n − u + 4'
+            : 'pontos fixos como constantes; gl = n − u';
+        document.getElementById('modelHint').textContent = `${eq} · ${dt}.`;
     },
 
     resetSettings() {

@@ -32,12 +32,21 @@
         const rows = ctx.rows || [];
         const net = res.net;
         const nSt = net.stations.length;
-        const fixedNames = res.pointResults.filter(p => p.fixed && !p.isStation).map(p => p.name);
-        const freeNames = res.pointResults.filter(p => !p.fixed && !p.isStation).map(p => p.name);
+        const free = res.datum === 'livre';
+        const supportNames = res.pointResults.filter(p => (p.fixed || p.support) && !p.isStation).map(p => p.name);
+        const otherNames = res.pointResults.filter(p => !p.fixed && !p.support && !p.isStation).map(p => p.name);
         const nStXYZ = res.unknowns.filter(u => u.kind !== 'w' && net.stations.includes(u.point)).length;
+        const nPtXYZ = res.unknowns.filter(u => u.kind !== 'w' && !net.stations.includes(u.point)).length;
 
         let datumText;
-        if (net.datum.computed.length) {
+        if (free) {
+            const nPts = res.unknowns.filter(u => u.kind === 'X').length;
+            const seed = (net.seedPoses || [])[0];
+            datumText = `rede livre: injunções internas sobre as coordenadas dos ${nPts} pontos (defeito de posto ${res.d}, ` +
+                'traço mínimo); a rede conserva o centróide e a orientação média das coordenadas aproximadas' +
+                (seed ? `, que partem de ${seed.station} no datum local assumido`
+                    : (net.datum.computed.length ? ', com os pontos de apoio irradiados pela regra do datum' : ', a partir dos pontos de apoio'));
+        } else if (net.datum.computed.length) {
             datumText = net.datum.origins.map(o => o.method === 'datum assumido'
                 ? `${net.datum.computed.join(', ')} irradiados de ${o.station}, com ${o.station} assumida em ` +
                   `X=${o.xyz[0]}, Y=${o.xyz[1]}, Z=${o.xyz[2]} m e ω=${(o.omega / DEG).toFixed(4)}°`
@@ -47,15 +56,17 @@
         }
 
         const summary = [
-            ['Modelo', 'Combinado (Gauss–Helmert): F(La, Xa) = 0, três equações de condição por visada'],
+            ['Modelo', res.model === 'parametrico'
+                ? 'Paramétrico (Gauss–Markov): La = F(Xa), três equações de observação por visada'
+                : 'Combinado (Gauss–Helmert): F(La, Xa) = 0, três equações de condição por visada'],
             ['Dados', ctx.origin || '—'],
             ['Visadas ativas / total', `${res.m} / ${rows.length || res.m}`],
             ['Estações livres', net.stations.join(', ')],
-            ['Pontos fixos', fixedNames.join(', ') || '—'],
-            ['Pontos livres', `${freeNames.length}`],
+            [free ? 'Pontos de apoio (livres nesta solução)' : 'Pontos fixos', supportNames.join(', ') || '—'],
+            ['Pontos livres', `${otherNames.length}`],
             ['Equações (3 por visada)', `${res.nEq}`],
-            ['Incógnitas', `${res.u} = ${nStXYZ} coordenadas de estação + ${nSt} orientações + ${3 * freeNames.length} coordenadas de pontos livres`],
-            ['Graus de liberdade', `${res.dof}`],
+            ['Incógnitas', `${res.u} = ${nStXYZ} coordenadas de estação + ${nSt} orientações + ${nPtXYZ} coordenadas de pontos`],
+            ['Graus de liberdade', free ? `${res.dof} = ${res.nEq} − ${res.u} + ${res.d} (defeito de posto)` : `${res.dof} = ${res.nEq} − ${res.u}`],
             ['Datum', datumText],
             ['Iterações', `${res.iterations} (máximo ${S.maxIter})`],
             ['Convergência', `${res.converged ? 'sim' : 'NÃO'} — critério max|Δcoord| < ${S.tolLinMm} mm e max|Δω| < ${S.tolAngSec}″`],
@@ -63,8 +74,9 @@
             ['σ̂₀² (a posteriori)', f(res.sigma02, 4)],
             ['Teste global (χ²)', res.globalPass === null ? 'sem redundância'
                 : `${res.globalPass ? 'APROVADO' : 'REPROVADO'} — α = ${S.alphaPct}%, intervalo [${f(res.chi2low, 3)}; ${f(res.chi2upp, 3)}]`],
-            ['MVC das incógnitas', res.varScale === 1 && S.sigmaXaScale === 'priori' ? 'Σ_Xa = N⁻¹ (σ₀² a priori = 1)' : 'Σ_Xa = σ̂₀² N⁻¹'],
-            ['cond(N)', res.condN === null ? '—' : res.condN.toExponential(2)]
+            ['MVC das incógnitas', (res.varScale === 1 && S.sigmaXaScale === 'priori' ? 'Σ_Xa = Q (σ₀² a priori = 1)' : 'Σ_Xa = σ̂₀² Q') +
+                (free ? ', Q = inversa generalizada do sistema orlado [N G; Gᵀ 0]' : ', Q = N⁻¹')],
+            ['cond(N)', res.condN === null ? '—' : res.condN.toExponential(2) + (free ? ` (sem os ${res.d} autovalores nulos)` : '')]
         ];
 
         const stochastic = [
@@ -79,18 +91,18 @@
         const approximations = {
             head: ['Ordem', 'Estação', 'Pontos conhecidos', 'Desajuste máx. (mm)', 'Excluídos'],
             rows: res.approx.steps.map((s, i) => [
-                `${i + 1}`, s.station, `${s.nKnown}${s.own ? ' (posição conhecida)' : ''}`,
+                `${i + 1}`, s.station, s.seed ? 'semente (datum local assumido)' : `${s.nKnown}${s.own ? ' (posição conhecida)' : ''}`,
                 f(s.misfit * 1000, 2),
                 s.excluded.length ? s.excluded.map(e => `${e.target} (${f(e.misfit, 3)} m)`).join(', ') : '—'
             ])
         };
 
         const iterations = {
-            head: ['Iteração', 'max|Δcoord| (mm)', 'max|Δω| (″)', 'VᵀPV', '‖W‖ (mm)'],
+            head: ['Iteração', 'max|Δcoord| (mm)', 'max|Δω| (″)', 'VᵀPV', '√(WᵀM⁻¹W)'],
             rows: res.history.map(h => [
                 `${h.iter}`, h.maxLin * 1000 < 1e-3 ? (h.maxLin * 1000).toExponential(2) : f(h.maxLin * 1000, 4),
                 h.maxAng / ARCSEC < 1e-3 ? (h.maxAng / ARCSEC).toExponential(2) : f(h.maxAng / ARCSEC, 4),
-                f(h.VtPV, 4), f(h.normW * 1000, 3)
+                f(h.VtPV, 4), f(h.normW, 3)
             ])
         };
 

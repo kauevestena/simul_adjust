@@ -19,6 +19,7 @@
         showLabels: true,
         showAxes: true,
         ellipsoidScale: 300,
+        pointScale: 1,
         confK: 1
     };
 
@@ -145,7 +146,11 @@
             this.gHelpers.clear();
             if (!this.opts.showAxes || !this.scene3.points.length) return;
             const L = this.extent * 0.12;
-            const o = this._pos(this.center);
+            // Eixos na origem do referencial (a estação de origem do datum local). Com
+            // coordenadas de projeto (ex.: 5000, 8000) a origem fica longe da rede; aí os
+            // eixos vão para o centro dela, para não sumirem do quadro.
+            const near = Math.hypot(...this.center) < 2 * this.extent;
+            const o = this._pos(near ? [0, 0, 0] : this.center);
             [[[1, 0, 0], '#dc2626', 'X'], [[0, 1, 0], '#16a34a', 'Y'], [[0, 0, 1], '#2563eb', 'Z']].forEach(([dir, col, name]) => {
                 const d = toDisplay(dir);
                 const v = new THREE.Vector3(d[0], d[1], d[2]);
@@ -180,7 +185,7 @@
 
         _drawPoints() {
             this.gPoints.clear();
-            const size = this.extent * 0.011;
+            const size = this.extent * 0.011 * this.opts.pointScale;
             const mats = {
                 station: new THREE.MeshStandardMaterial({ color: this.opts.colorStation, roughness: 0.5 }),
                 fixed: new THREE.MeshStandardMaterial({ color: this.opts.colorFixed, roughness: 0.5 }),

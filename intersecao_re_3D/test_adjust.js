@@ -276,6 +276,144 @@ console.log('\nAmostra e datum');
     ok('estação sem pontos conhecidos suficientes gera erro explicativo');
 }
 
+// ---------------------------------------------------------------- modelos e datum
+console.log('\nModelos (combinado × paramétrico) e datum (fixos × livre)');
+const TIGHT = { tolLinMm: 1e-9, tolAngSec: 1e-7 };
+const withModel = (model, datum, extra) => Object.assign({}, S, TIGHT, { model, datum }, extra || {});
+function maxUnknownDiff(a, b) {
+    let m = 0;
+    a.Xa.forEach((v, i) => {
+        const dv = v - b.Xa[i];
+        m = Math.max(m, Math.abs(a.unknowns[i].kind === 'w' ? NA.wrapPi(dv) : dv));
+    });
+    return m;
+}
+function flatV(res) { const out = []; res.V.forEach(v => out.push(...v)); return out; }
+{
+    const g = synthetic({ noise: true, nStations: 3, nDetail: 8, seed: 21 });
+    ['fixos', 'livre'].forEach(datum => {
+        const c = NA.adjustNetwork(g.rows, withModel('combinado', datum));
+        const p = NA.adjustNetwork(g.rows, withModel('parametrico', datum));
+        assert.strictEqual(c.u, p.u);
+        const dX = maxUnknownDiff(c, p);
+        assert.ok(dX < 1e-9, `${datum}: ΔX ${dX}`);
+        const dV = maxAbsDiff(flatV(c), flatV(p));
+        assert.ok(dV < 1e-10, `${datum}: ΔV ${dV}`);
+        const qMax = Math.max(...c.Ninv.map(r => Math.max(...r.map(Math.abs))));
+        const dQ = maxAbsDiff(c.Ninv, p.Ninv) / qMax;
+        assert.ok(dQ < 1e-7, `${datum}: ΔQ ${dQ}`);
+        approx(c.VtPV, p.VtPV, 1e-9 * Math.max(1, c.VtPV), `${datum}: paramétrico ≡ combinado (ΔX ${dX.toExponential(1)}, ΔV ${dV.toExponential(1)}, ΔQ ${dQ.toExponential(1)})`);
+    });
+
+    const pl = NA.adjustNetwork(g.rows, withModel('parametrico', 'livre'));
+    const pf = NA.adjustNetwork(g.rows, withModel('parametrico', 'fixos'));
+    assert.strictEqual(pl.d, 4);
+    assert.strictEqual(pl.u, pf.u + 3 * g.fixedNames.length);
+    assert.strictEqual(pl.dof, pl.nEq - pl.u + 4);
+    approx(pl.redundancySum, pl.dof, 1e-6, `rede livre: gl = n − u + 4 = ${pl.dof} = Σr`);
+
+    // Q é a inversa generalizada das injunções: GᵀQ = 0 e QNQ = Q
+    const G = pl.G, Q = pl.Ninv;
+    const qMax = Math.max(...Q.map(r => Math.max(...r.map(Math.abs))));
+    let gq = 0;
+    for (let k = 0; k < 4; k++) for (let j = 0; j < pl.u; j++) {
+        let s = 0;
+        for (let i = 0; i < pl.u; i++) s += G[i][k] * Q[i][j];
+        gq = Math.max(gq, Math.abs(s));
+    }
+    assert.ok(gq / qMax < 1e-9, `GᵀQ ${gq / qMax}`);
+    const QNQ = linalg.matmul(linalg.matmul(Q, pl.N), Q);
+    assert.ok(maxAbsDiff(QNQ, Q) / qMax < 1e-8);
+    ok('GᵀQ = 0 e QNQ = Q (inversa generalizada pelo sistema orlado)');
+
+    const ev = pl.eigN.map(Math.abs).sort((a, b) => a - b);
+    assert.ok(ev[3] < 1e-12 * ev[ev.length - 1] && ev[4] > 1e-9 * ev[ev.length - 1], `autovalores ${ev.slice(0, 6)}`);
+    ok('N do paramétrico livre tem exatamente 4 autovalores nulos (defeito de posto)');
+
+    // Traço mínimo: qualquer outro datum (transformação S) tem traço maior nas coordenadas,
+    // com a mesma NQN = N
+    const H = NA.nullSpace(pl.net, pl.Xa, true);
+    const Gp = H.map((row, i) => {
+        const un = pl.unknowns[i];
+        return ['E1', 'E2', 'M01'].includes(un.point) && un.kind !== 'w' ? row.slice() : [0, 0, 0, 0];
+    });
+    const GtH = linalg.matmul(linalg.transpose(Gp), H);
+    const Ssh = linalg.identity(pl.u).map((row, i) => row.map((v, j) => {
+        let s = 0;
+        const T = linalg.matmul(H, linalg.inv(GtH));
+        for (let k = 0; k < 4; k++) s += T[i][k] * Gp[j][k];
+        return v - s;
+    }));
+    const Qp = linalg.matmul(linalg.matmul(Ssh, Q), linalg.transpose(Ssh));
+    const trace = M => pl.unknowns.reduce((a, un, i) => a + (un.kind === 'w' ? 0 : M[i][i]), 0);
+    assert.ok(trace(Q) < trace(Qp), `traço ${trace(Q)} × ${trace(Qp)}`);
+    const NQN = linalg.matmul(linalg.matmul(pl.N, Qp), pl.N);
+    const nMax = Math.max(...pl.N.map(r => Math.max(...r.map(Math.abs))));
+    assert.ok(maxAbsDiff(NQN, pl.N) / nMax < 1e-6);
+    ok(`traço mínimo: ${(trace(Q) * 1e6).toFixed(2)} mm² contra ${(trace(Qp) * 1e6).toFixed(2)} mm² com datum em E1, E2, M01`);
+}
+{
+    const g = synthetic({ noise: false, nStations: 4, nDetail: 10, seed: 4 });
+    const res = NA.adjustNetwork(g.rows, withModel('combinado', 'livre'));
+    const truthOf = p => p.isStation ? g.truth.stations[p.name].xyz : g.truth.points[p.name];
+    let err = 0;
+    const P = res.pointResults;
+    for (let i = 0; i < P.length; i++) for (let j = i + 1; j < P.length; j++) {
+        const a = P[i].xyz, b = P[j].xyz, ta = truthOf(P[i]), tb = truthOf(P[j]);
+        err = Math.max(err, Math.abs(Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) - Math.hypot(ta[0] - tb[0], ta[1] - tb[1], ta[2] - tb[2])));
+    }
+    assert.ok(err < 1e-8, `distâncias: ${err}`);
+    ok(`rede livre sem ruído recupera a forma: todas as distâncias entre pontos (erro máx ${err.toExponential(1)} m)`);
+}
+{
+    // Sem nenhum ponto fixo: só a rede livre resolve
+    const rows = loadSample();
+    rows.forEach(r => { r.fixed = false; });
+    assert.throws(() => NA.adjustNetwork(rows, S), /Nenhum ponto fixo/);
+    const res = NA.adjustNetwork(rows, Object.assign({}, S, { datum: 'livre' }));
+    assert.ok(res.converged && res.net.seedPoses.length === 1 && res.log.some(l => /partem de A/.test(l.msg)));
+    ok('sem pontos fixos: datum por pontos fixos recusa, rede livre resolve a partir de A');
+    const one = loadSample();
+    one.filter(r => r.target === 'M02').forEach(r => { r.fixed = false; });
+    assert.throws(() => NA.adjustNetwork(one, S), /Só um ponto fixo/);
+    ok('um único ponto fixo é recusado (falta a rotação em torno da vertical)');
+}
+{
+    // Amostra: os fixos vêm das próprias visadas de A, então não tensionam a rede
+    const fx = NA.adjustNetwork(loadSample(), S);
+    const lv = NA.adjustNetwork(loadSample(), Object.assign({}, S, { datum: 'livre' }));
+    assert.strictEqual(fx.dof, 15);
+    assert.strictEqual(lv.dof, 13);
+    approx(lv.VtPV, fx.VtPV, 1e-6, `amostra: VᵀPV igual nos dois datums (${fx.VtPV.toFixed(3)}), gl 15 × 13`);
+    const m01 = lv.pointResults.find(p => p.name === 'M01');
+    assert.ok(m01.support && m01.tipo === 'apoio (livre)' && m01.sigma[0] > 0 && m01.ellipsoid);
+    ok('na rede livre M01 é ponto de apoio com σ e elipsoide');
+    const cmp = NA.compareModels(loadSample(), S);
+    assert.ok(cmp.runs.every(r => r.res), cmp.runs.map(r => r.error).join(' | '));
+    assert.ok(cmp.runs.every(r => !r.dModel || (r.dModel.lin < 1e-8 && r.dModel.ang < 1e-9)));
+    assert.ok(cmp.runs.slice(1).every(r => r.dV.lin < 1e-7 && r.dDist < 1e-7));
+    assert.ok(cmp.compat.every(c => c.applicable && Math.abs(c.dV) < 1e-6 && c.pass && c.ddof === 2));
+    ok('compareModels: 4 variantes, modelos iguais, resíduos e forma invariantes, ΔVᵀPV = 0 com 2 graus');
+}
+{
+    // Fixo deslocado 3 cm: a compatibilidade dos pontos fixos reprova
+    const g = synthetic({ noise: true, seed: 8 });
+    const ok0 = NA.compareModels(g.rows, S).compat[0];
+    assert.ok(ok0.applicable && ok0.pass, JSON.stringify(ok0));
+    g.rows.filter(r => r.target === 'M02').forEach(r => { r.xyz[0] += 0.03; });
+    const bad = NA.compareModels(g.rows, S).compat[0];
+    assert.ok(bad.applicable && !bad.pass && bad.dV > bad.crit, JSON.stringify(bad));
+    ok(`teste de compatibilidade dos fixos: aprova os verdadeiros (ΔVᵀPV ${ok0.dV.toFixed(2)}) e reprova M02 deslocado 3 cm (${bad.dV.toFixed(0)} > ${bad.crit.toFixed(2)})`);
+}
+{
+    const rows = loadSample();
+    const model = Report.buildReportModel(NA.adjustNetwork(rows, Object.assign({}, S, { model: 'parametrico', datum: 'livre' })),
+        { rows, origin: 'x', detection: null, settings: S });
+    const kv = new Map(model.summary);
+    assert.ok(/Paramétrico/.test(kv.get('Modelo')) && /rede livre/.test(kv.get('Datum')) && /\+ 4/.test(kv.get('Graus de liberdade')));
+    ok('relatório: modelo, datum e gl = n − u + d');
+}
+
 // ---------------------------------------------------------------- outliers
 console.log('\nDetecção de outliers');
 {
@@ -311,6 +449,18 @@ console.log('\nDetecção de outliers');
     const res = NA.adjustNetwork(rows, S);
     assert.ok(res.converged);
     ok(`snooping na amostra marca ${sn.flagged.map(i => rows[i].id).join(', ')} e poupa a essencial ${sn.essential.map(c => c.id).join(', ')}`);
+}
+
+{
+    // O snooping herda modelo e datum das configurações
+    const g = synthetic({ noise: true, nStations: 3, nDetail: 4, linksPerPair: 4, seed: 5 });
+    const SL = Object.assign({}, S, { model: 'parametrico', datum: 'livre' });
+    const base = NA.adjustNetwork(g.rows, SL);
+    const target = base.obsData.slice().sort((a, b) => b.r[2] - a.r[2])[0];
+    io.injectBlunder(g.rows[target.row.idx], 'dist', 40, target.sigma[2], 1);
+    const sn = NA.detectDataSnooping(g.rows, SL);
+    assert.strictEqual(sn.flagged[0], target.row.idx);
+    ok(`data snooping no paramétrico livre aponta ${target.row.id}`);
 }
 
 // ---------------------------------------------------------------- elipsoides

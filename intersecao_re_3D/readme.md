@@ -1,9 +1,16 @@
-A 3D free-station network (interseção a ré 3D) adjusted with the **combined least squares
-model** (Gemael's "método combinado", Ghilani's "general least squares"). Total-station
+A 3D free-station network (interseção a ré 3D) adjusted by least squares. Total-station
 sightings — horizontal reading, zenith angle and slope distance, each with its own standard
-deviation — tie free stations to each other and to fixed points. The simulator computes initial
-approximations, adjusts the network, tests it and reports coordinates, error ellipsoids,
-residuals, every matrix of the adjustment and a PDF report.
+deviation — tie free stations to each other and to fixed points. Students pick the model and the
+datum:
+
+- **combined** (Gemael's "método combinado", Ghilani's "general least squares") or
+  **parametric** (Gauss–Markov);
+- **fixed points** or **free network** (inner constraints).
+
+The simulator computes initial approximations, adjusts the network, tests it and reports
+coordinates, error ellipsoids, residuals, every matrix of the adjustment and a PDF report. The
+**Explicação dos Modelos** button opens `modelos.html`, which derives the equations and the
+Jacobians A and B of all four variants.
 
 Serve the repository root over HTTP (`python3 -m http.server`) and open
 `intersecao_re_3D/index.html`; the sample is read with `fetch`.
@@ -37,11 +44,45 @@ relinearise at `(La, Xa)`. In Ghilani's notation (ch. 22) the same solution read
 Convergence: max |Δcoordinate| < 0.01 mm **and** max |Δω| < 0.01″ (both editable), at most 25
 iterations. Every iteration's corrections, `VᵀPV` and ‖W‖ are kept and reported.
 
-`test_adjust.js` checks the implementation against an independent Gauss–Markov
-(parametric) adjustment of the same data, with explicit observation equations
-`Hz = atan2(ΔY, ΔX) − ω`, `Z = acos(ΔZ/S)`, `S = |Δ|`. Coordinates and residuals agree to
-~1e-13, `VᵀPV` to machine precision and `N⁻¹` to ~1e-10 relative. That is expected, not a
-coincidence: at convergence the two formulations describe the same least squares problem.
+### The parametric alternative
+
+The parametric model writes each observation as an explicit function of the unknowns:
+`Hz = atan2(ΔY, ΔX) − ω`, `Z = atan2(h, ΔZ)`, `S = |Δ|`, with `V = AX + L`, `L = L0 − Lb`,
+`N = AᵀPA`, `U = AᵀPL`, `X = −N⁻¹U`. It is the combined model with `F = f(Xa) − La`, that is
+`B = −I`, `M = P⁻¹`, `W = L`, so `adjustment.js` runs both through the same iteration loop:
+only the per-sighting blocks differ.
+
+At convergence the two describe the same least squares problem
+(`A_par = −B⁻¹A_comb ⇒ AᵀPA = AᵀM⁻¹A`), and they agree to ~1e-13 in coordinates and residuals.
+`test_adjust.js` checks this both through the app's parametric model and against an
+independent Gauss–Markov solve written in the test.
+
+### Datum: fixed points or free network
+
+The observations are blind to a translation of the whole network and to a rotation about the
+vertical, with every ω turning along. Distances fix the scale and zenith angles the vertical.
+So with every point unknown, N has a **rank defect of 4**.
+
+- **Fixed points** enter as constants, so their columns leave A. At least 2 are needed: one
+  fixes the translations, not the rotation. `dof = n − u`.
+- **Free network**: every point is an unknown, including the support points. Their coordinates
+  serve only as approximations; with none, the first station seeds them at the assumed datum.
+  - The defect is removed by **inner constraints** `GᵀX = 0`, where G is the null space with the
+    ω rows zeroed. The bordered system `[N G; Gᵀ 0]` is solved, and Q, the top-left block of its
+    inverse, gives `Σ_Xa = σ̂₀²Q`. `dof = n − u + 4`.
+  - Among all datum choices, this solution has the minimum trace of Σ_Xa over the coordinates.
+  - G is built once at the approximations, so the adjusted network keeps their centroid and mean
+    orientation exactly, whichever model is used.
+
+The **Comparar Modelos** tab runs the four variants side by side.
+- Between models with the same datum, everything agrees.
+- Between datums, residuals, VᵀPV and point-to-point distances agree, while coordinates, σ,
+  ellipsoids and dof change.
+- It also runs the fixed-point compatibility test, `ΔVᵀPV = VᵀPV_fixed − VᵀPV_free ~ χ²` with
+  `dof_fixed − dof_free` degrees of freedom.
+
+On the sample, the free network has dof 13 (72 − 63 + 4) against 15. VᵀPV is the same 193.585,
+and ΔVᵀPV = 0, because M01/M02 come from A's own sightings.
 
 ### Conventions
 
@@ -166,17 +207,21 @@ condition equations share its three observations.
 | File | Role |
 |---|---|
 | `io.js` | CSV parsing, settings, synthetic network generator, blunder injection, CSV writers |
-| `adjustment.js` | network building, datum rule, approximations, combined model, quality control, outlier detection, ellipsoids |
+| `adjustment.js` | network building, datum rule, approximations, combined and parametric models, fixed or free datum, model comparison, quality control, outlier detection, ellipsoids |
 | `viewer3d.js` | three.js view |
 | `views2d.js` | XY / XZ / YZ canvases |
 | `report.js` | report model (pure data), text and PDF renderers |
+| `modelos.html` | static page: models, equations, Jacobians, datum theory |
 | `app.js` | state, tabs, tables, workflow |
 | `test_adjust.js` | `node intersecao_re_3D/test_adjust.js` |
 
 ## References
 
-- Gemael, C. *Introdução ao Ajustamento de Observações* — the combined model and its iterated
-  form.
-- Ghilani, C. D. *Adjustment Computations: Spatial Data Analysis* — ch. 19 (3D uncertainty
-  measures), ch. 21 (blunder detection, internal reliability), ch. 22 (general least squares),
-  ch. 23 (3D geodetic networks).
+- Gemael, C.; Machado, A. M. L.; Wandresen, R. *Introdução ao ajustamento de observações:
+  aplicações geodésicas*, 2nd ed., Editora UFPR, 2015 — parametric and combined models, the
+  iterated form.
+- Ghilani, C. D.; Wolf, P. R. *Adjustment Computations: Spatial Data Analysis*, 4th ed., Wiley,
+  2006 — ch. 19 (error ellipses), ch. 21 (blunder detection, internal reliability), ch. 22
+  (general least squares), ch. 23 (3D geodetic networks).
+- Caspary, W. F. *Concepts of Network and Deformation Analysis*, Monograph 11, School of
+  Surveying, UNSW, 1987 — free networks, inner constraints, S-transformations.

@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Explicação dos Modelos — Interseção a Ré 3D</title>
+    <meta name="description"
+        content="Modelos de ajustamento e modelo matemático da interseção a ré 3D: método paramétrico e combinado, com pontos fixos e em rede livre, jacobianas A e B, datum e controle de qualidade.">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>∑</text></svg>">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .doc h2 { font-size: 1.15rem; font-weight: 700; color: #1c1917; margin: 2.2rem 0 0.6rem; padding-bottom: 0.3rem; border-bottom: 1px solid #e7e5e4; scroll-margin-top: 1rem; }
+        .doc h3 { font-size: 0.95rem; font-weight: 700; color: #0f766e; margin: 1.4rem 0 0.4rem; scroll-margin-top: 1rem; }
+        .doc p, .doc li { font-size: 0.9rem; line-height: 1.6; color: #44403c; }
+        .doc p { margin: 0.5rem 0; }
+        .doc ul { list-style: disc; padding-left: 1.3rem; margin: 0.4rem 0; }
+        .doc ol { list-style: decimal; padding-left: 1.3rem; margin: 0.4rem 0; }
+        .doc .eq { background: #fafaf9; border: 1px solid #e7e5e4; border-radius: 0.5rem; padding: 0.4rem 0.8rem; margin: 0.6rem 0; overflow-x: auto; }
+        .doc .note { background: #f0fdfa; border-left: 3px solid #14b8a6; padding: 0.5rem 0.8rem; border-radius: 0.25rem; margin: 0.8rem 0; }
+        .doc .warn { background: #fffbeb; border-left: 3px solid #f59e0b; padding: 0.5rem 0.8rem; border-radius: 0.25rem; margin: 0.8rem 0; }
+        .doc table td, .doc table th { white-space: normal; vertical-align: top; }
+        .doc table td { font-size: 0.8rem; }
+        .doc .katex-display { margin: 0.4rem 0; }
+        /* Equações exibidas um pouco menores que o padrão do KaTeX (1.21em) para caber na coluna */
+        .doc .eq .katex-display > .katex { font-size: 1em; }
+        @media (max-width: 1280px) { .doc .eq .katex-display > .katex { font-size: 0.9em; } }
+        .toc a { display: block; font-size: 0.78rem; color: #57534e; padding: 0.2rem 0.4rem; border-radius: 0.25rem; }
+        .toc a:hover { background: #f5f5f4; color: #0f766e; }
+        .fig { background: #fff; border: 1px solid #e7e5e4; border-radius: 0.5rem; }
+        .fig text { font-family: Inter, sans-serif; }
+    </style>
+</head>
+
+<body class="text-stone-800 antialiased min-h-screen flex flex-col">
+
+    <header class="bg-stone-900 text-stone-50 py-4 shadow-md">
+        <div class="max-w-[1200px] mx-auto px-4 sm:px-6 flex justify-between items-center gap-4">
+            <div>
+                <h1 class="text-xl md:text-2xl font-bold tracking-tight">Explicação dos Modelos</h1>
+                <p class="text-stone-400 text-xs md:text-sm mt-1">Modelos de ajustamento e modelo matemático utilizado na
+                    interseção a ré 3D</p>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+                <a href="../index.html"
+                    class="text-xs text-stone-300 hover:text-white border border-stone-700 rounded px-3 py-1.5 transition-colors">&#8592;
+                    Portal</a>
+                <a href="index.html"
+                    class="text-xs text-stone-100 hover:text-white bg-stone-800 hover:bg-stone-700 border border-stone-600 rounded px-3 py-1.5 transition-colors font-semibold">&#9654;
+                    Simulador</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-[1200px] mx-auto px-4 sm:px-6 py-6 flex-grow w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <nav class="toc lg:col-span-3">
+            <div class="bg-white p-3 rounded-xl border border-stone-200 shadow-sm lg:sticky lg:top-4">
+                <p class="text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1 px-1">Conteúdo</p>
+                <a href="#problema">1. O problema</a>
+                <a href="#estocastico">2. Modelo estocástico</a>
+                <a href="#parametrico">3. Método paramétrico</a>
+                <a href="#combinado">4. Método combinado</a>
+                <a href="#equivalencia">5. Equivalência dos dois</a>
+                <a href="#datum">6. Datum e defeito de posto</a>
+                <a href="#fixos">&nbsp;&nbsp;6.1 Pontos fixos</a>
+                <a href="#livre">&nbsp;&nbsp;6.2 Rede livre</a>
+                <a href="#compat">&nbsp;&nbsp;6.3 Compatibilidade dos fixos</a>
+                <a href="#quadro">&nbsp;&nbsp;6.4 Quadro das quatro variantes</a>
+                <a href="#qualidade">7. Controle de qualidade</a>
+                <a href="#elipsoides">8. Elipsoides e projeções</a>
+                <a href="#aproximacoes">9. Aproximações iniciais</a>
+                <a href="#referencias">10. Referências</a>
+            </div>
+        </nav>
+
+        <article class="doc lg:col-span-9 bg-white p-6 md:p-8 rounded-xl border border-stone-200 shadow-sm">
+
+            <p>O simulador ajusta a mesma rede de quatro maneiras: pelo <strong>método paramétrico</strong>
+                (Gauss–Markov) ou pelo <strong>método combinado</strong> (Gauss–Helmert), e em cada um com o datum
+                definido por <strong>pontos fixos</strong> ou como <strong>rede livre</strong>. Esta página mostra as
+                equações de cada caso, a estrutura das jacobianas \(A\) e \(B\) e por que as quatro respostas
+                coincidem no que deve coincidir. A notação segue Gemael.</p>
+
+            <!-- ===================================================== 1 -->
+            <h2 id="problema">1. O problema</h2>
+            <p>Uma estação total é instalada, sem coordenadas conhecidas, em cada estação \(i\). De lá, cada
+                <strong>visada</strong> \(k\) ao ponto \(j\) mede três grandezas:</p>
+            <ul>
+                <li>a <strong>leitura horizontal</strong> \(Hz\), contada a partir do zero do círculo, no sentido
+                    horário;</li>
+                <li>o <strong>ângulo zenital</strong> \(Z\), a partir da vertical;</li>
+                <li>a <strong>distância inclinada</strong> \(S\).</li>
+            </ul>
+            <p>O zero do círculo de cada estação aponta numa direção desconhecida: a <strong>orientação</strong>
+                \(\omega_i\), o azimute desse zero. O azimute da visada é então \(\alpha = Hz + \omega_i\). As
+                incógnitas são as coordenadas \((X, Y, Z)\) das estações e dos pontos e uma orientação por estação.
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 my-4">
+                <figure class="fig p-2">
+                    <svg viewBox="0 0 320 250" role="img" aria-label="Planta: eixo X, zero do círculo, orientação ω, leitura Hz e azimute α da visada">
+                        <defs>
+                            <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                                <path d="M0,0 L10,5 L0,10 z" fill="#57534e" />
+                            </marker>
+                        </defs>
+                        <text x="10" y="18" font-size="12" font-weight="700" fill="#1c1917">Planta</text>
+                        <line x1="130" y1="170" x2="130" y2="32" stroke="#57534e" stroke-width="1.4" marker-end="url(#arr)" />
+                        <text x="136" y="40" font-size="11" fill="#57534e">X (α = 0)</text>
+                        <line x1="130" y1="170" x2="300" y2="170" stroke="#57534e" stroke-width="1.4" marker-end="url(#arr)" />
+                        <text x="288" y="186" font-size="11" fill="#57534e">Y</text>
+                        <line x1="130" y1="170" x2="192.5" y2="61.7" stroke="#d97706" stroke-width="1.4" stroke-dasharray="5 4" />
+                        <text x="196" y="58" font-size="11" fill="#b45309">zero do círculo</text>
+                        <line x1="130" y1="170" x2="261.6" y2="122.1" stroke="#0f766e" stroke-width="1.8" />
+                        <path d="M130,125 A45,45 0 0 1 152.5,131" fill="none" stroke="#d97706" stroke-width="1.6" />
+                        <text x="141" y="113" font-size="12" font-style="italic" fill="#b45309">ω</text>
+                        <path d="M162.5,113.7 A65,65 0 0 1 191.1,147.8" fill="none" stroke="#0f766e" stroke-width="1.6" />
+                        <text x="186" y="122" font-size="12" font-style="italic" fill="#0f766e">Hz</text>
+                        <path d="M130,75 A95,95 0 0 1 219.3,137.5" fill="none" stroke="#6366f1" stroke-width="1.2" stroke-dasharray="3 3" />
+                        <text x="216" y="104" font-size="12" font-style="italic" fill="#4f46e5">α = Hz + ω</text>
+                        <circle cx="130" cy="170" r="4.5" fill="#d97706" />
+                        <text x="112" y="188" font-size="12" font-weight="700" fill="#92400e">i</text>
+                        <circle cx="261.6" cy="122.1" r="4" fill="#0f766e" />
+                        <text x="268" y="118" font-size="12" font-weight="700" fill="#115e59">j</text>
+                        <text x="196" y="160" font-size="11" fill="#115e59">h = S sen Z</text>
+                    </svg>
+                </figure>
+                <figure class="fig p-2">
+                    <svg viewBox="0 0 300 250" role="img" aria-label="Vista vertical: vertical da estação, ângulo zenital Z, distância inclinada S, desnível e distância horizontal">
+                        <text x="10" y="18" font-size="12" font-weight="700" fill="#1c1917">Vista vertical</text>
+                        <line x1="60" y1="200" x2="60" y2="40" stroke="#57534e" stroke-width="1.4" marker-end="url(#arr)" />
+                        <text x="66" y="46" font-size="11" fill="#57534e">vertical</text>
+                        <line x1="60" y1="200" x2="220" y2="90" stroke="#0f766e" stroke-width="1.8" />
+                        <text x="118" y="132" font-size="12" font-style="italic" fill="#0f766e">S</text>
+                        <path d="M60,150 A50,50 0 0 1 101.2,171.7" fill="none" stroke="#6366f1" stroke-width="1.6" />
+                        <text x="72" y="150" font-size="12" font-style="italic" fill="#4f46e5">Z</text>
+                        <line x1="60" y1="200" x2="220" y2="200" stroke="#a8a29e" stroke-width="1.2" stroke-dasharray="4 4" />
+                        <text x="100" y="218" font-size="11" fill="#57534e">h = S sen Z</text>
+                        <line x1="220" y1="200" x2="220" y2="90" stroke="#a8a29e" stroke-width="1.2" stroke-dasharray="4 4" />
+                        <text x="226" y="150" font-size="11" fill="#57534e">ΔZ = S cos Z</text>
+                        <circle cx="60" cy="200" r="4.5" fill="#d97706" />
+                        <text x="44" y="216" font-size="12" font-weight="700" fill="#92400e">i</text>
+                        <circle cx="220" cy="90" r="4" fill="#0f766e" />
+                        <text x="226" y="86" font-size="12" font-weight="700" fill="#115e59">j</text>
+                    </svg>
+                </figure>
+            </div>
+
+            <p>Com \(\Delta X = X_j - X_i\) e assim por diante, a visada liga as observações às coordenadas pela
+                <strong>irradiação</strong>, a mesma do ajustamento de planos:</p>
+            <div class="eq">$$\Delta X = S \sin Z \cos(Hz + \omega_i), \qquad \Delta Y = S \sin Z \sin(Hz + \omega_i), \qquad \Delta Z = S \cos Z$$</div>
+            <p>\(X\) aponta para o zero dos azimutes e \(Y\) para \(\alpha = 90^\circ\), no sentido horário, com \(Z\)
+                para cima. Esse terno é de mão esquerda; as vistas do simulador desenham a planta com \(X\) para
+                cima e \(Y\) para a direita, para que a rede não apareça espelhada.</p>
+            <p>Com \(m\) visadas há \(n = 3m\) observações. As alturas de instrumento e de alvo são nulas por
+                construção, e curvatura e refração são desprezíveis nas distâncias da rede (até ~15 m).</p>
+
+            <!-- ===================================================== 2 -->
+            <h2 id="estocastico">2. Modelo estocástico</h2>
+            <p>As observações são independentes, cada uma com seu desvio-padrão:</p>
+            <div class="eq">$$\Sigma_{L_b} = \operatorname{diag}\left(\sigma^2_{Hz_1},\ \sigma^2_{Z_1},\ \sigma^2_{S_1},\ \dots,\ \sigma^2_{Hz_m},\ \sigma^2_{Z_m},\ \sigma^2_{S_m}\right), \qquad P = \sigma_0^2\,\Sigma_{L_b}^{-1}, \quad \sigma_0^2 = 1$$</div>
+            <p>Os desvios vêm do CSV (em segundos de arco para os ângulos), do valor nominal do equipamento
+                (\(\sigma_{ang}\) e \(\sigma_S = a + b\,\mathrm{ppm}\cdot S\)) ou do maior dos dois — escolha nas
+                Configurações. A variância de referência a priori \(\sigma_0^2 = 1\) é o que o teste global
+                confronta com a a posteriori \(\hat\sigma_0^2\).</p>
+
+            <!-- ===================================================== 3 -->
+            <h2 id="parametrico">3. Método paramétrico (Gauss–Markov)</h2>
+            <h3>Modelo funcional</h3>
+            <p>Cada observação é escrita como função explícita das incógnitas, \(L_a = F(X_a)\). Para a visada
+                \(i \to j\):</p>
+            <div class="eq">$$Hz = \operatorname{atan2}(\Delta Y,\ \Delta X) - \omega_i, \qquad Z = \operatorname{atan2}\!\left(h,\ \Delta Z\right), \qquad S = \sqrt{h^2 + \Delta Z^2}$$
+                $$\text{com } h = \sqrt{\Delta X^2 + \Delta Y^2} \text{ (distância horizontal)}$$</div>
+            <p>O zenital sai de \(\operatorname{atan2}\), estável também perto da vertical. A diferença de \(Hz\) é
+                sempre reduzida a \((-\pi, \pi]\).</p>
+
+            <h3>Linearização</h3>
+            <p>Com aproximações \(X_0\), \(X_a = X_0 + X\) e \(L_0 = F(X_0)\):</p>
+            <div class="eq">$$V = AX + L, \qquad A = \left.\frac{\partial F}{\partial X_a}\right|_{X_0}, \qquad L = L_0 - L_b$$</div>
+
+            <h3>A jacobiana \(A\)</h3>
+            <p>Cada visada ocupa três linhas (\(Hz, Z, S\)) e só sete colunas não nulas: as coordenadas e a
+                orientação da estação e as coordenadas do ponto visado. As derivadas da estação são as do ponto
+                com o sinal trocado, e só \(Hz\) depende de \(\omega\):</p>
+            <div class="eq">$$A_k = \begin{bmatrix}
+                \dfrac{\Delta Y}{h^2} & -\dfrac{\Delta X}{h^2} & 0 & -1 & -\dfrac{\Delta Y}{h^2} & \dfrac{\Delta X}{h^2} & 0 \\[2ex]
+                -\dfrac{\Delta X\,\Delta Z}{S^2 h} & -\dfrac{\Delta Y\,\Delta Z}{S^2 h} & \dfrac{h}{S^2} & 0 & \dfrac{\Delta X\,\Delta Z}{S^2 h} & \dfrac{\Delta Y\,\Delta Z}{S^2 h} & -\dfrac{h}{S^2} \\[2ex]
+                -\dfrac{\Delta X}{S} & -\dfrac{\Delta Y}{S} & -\dfrac{\Delta Z}{S} & 0 & \dfrac{\Delta X}{S} & \dfrac{\Delta Y}{S} & \dfrac{\Delta Z}{S}
+                \end{bmatrix}
+                \begin{matrix} \leftarrow Hz \\[2ex] \leftarrow Z \\[2ex] \leftarrow S \end{matrix}$$
+                $$\text{colunas: } \quad X_i \quad Y_i \quad Z_i \quad \omega_i \quad \Big| \quad X_j \quad Y_j \quad Z_j$$</div>
+            <p>A matriz \(A\) completa (\(n \times u\)) empilha esses blocos, cada um nas colunas das suas
+                incógnitas; colunas de pontos fixos simplesmente não existem (seção 6.1). Não há matriz \(B\): o
+                modelo paramétrico é o caso particular do combinado com \(B = -I\) (seção 5).</p>
+
+            <h3>Solução</h3>
+            <div class="eq">$$N = A^T P A, \qquad U = A^T P L, \qquad X = -N^{-1} U, \qquad V = AX + L, \qquad L_a = L_b + V$$</div>
+            <p>Como o modelo é não linear, atualiza-se \(X_0 \leftarrow X_0 + X\), recalculam-se \(A\) e \(L\) e
+                repete-se até \(\max|X|\) ficar abaixo da tolerância (coordenadas em mm, orientações em segundos).</p>
+            <div class="eq">$$\hat\sigma_0^2 = \frac{V^T P V}{\nu}, \qquad \Sigma_{X_a} = \hat\sigma_0^2\, N^{-1}, \qquad \Sigma_{L_a} = \hat\sigma_0^2\, A N^{-1} A^T, \qquad Q_V = P^{-1} - A N^{-1} A^T$$</div>
+
+            <!-- ===================================================== 4 -->
+            <h2 id="combinado">4. Método combinado (Gauss–Helmert)</h2>
+            <h3>Modelo funcional</h3>
+            <p>Em vez de explicitar cada observação, escreve-se uma relação implícita entre observações e
+                incógnitas, \(F(L_a, X_a) = 0\). Para a visada \(i \to j\), três equações de condição — uma por
+                componente do vetor irradiado:</p>
+            <div class="eq">$$F_k = \begin{bmatrix} X_j - X_i - S \sin Z \cos\alpha \\ Y_j - Y_i - S \sin Z \sin\alpha \\ Z_j - Z_i - S \cos Z \end{bmatrix} = 0, \qquad \alpha = Hz + \omega_i$$</div>
+
+            <h3>Linearização (forma iterada de Gemael)</h3>
+            <p>Em torno de \((L_0, X_0)\) — na primeira iteração \(L_0 = L_b\):</p>
+            <div class="eq">$$AX + BV + W = 0, \qquad A = \frac{\partial F}{\partial X_a}, \qquad B = \frac{\partial F}{\partial L_a}, \qquad W = F(L_0, X_0) + B\,(L_b - L_0)$$</div>
+
+            <h3>As jacobianas \(A\) e \(B\)</h3>
+            <p>Em \(A\), as coordenadas entram com \(\pm 1\) — o vetor irradiado é uma diferença de coordenadas —, e
+                a orientação com a derivada do vetor em relação a \(\alpha\):</p>
+            <div class="eq">$$A_k = \begin{bmatrix}
+                -1 & 0 & 0 & S \sin Z \sin\alpha & 1 & 0 & 0 \\
+                0 & -1 & 0 & -S \sin Z \cos\alpha & 0 & 1 & 0 \\
+                0 & 0 & -1 & 0 & 0 & 0 & 1
+                \end{bmatrix}
+                \qquad \text{colunas: } X_i \ \ Y_i \ \ Z_i \ \ \omega_i \ \big| \ X_j \ \ Y_j \ \ Z_j$$</div>
+            <p>\(B\) é bloco-diagonal; cada bloco \(3 \times 3\) é a jacobiana da irradiação em relação a
+                \((Hz, Z, S)\):</p>
+            <div class="eq">$$B_k = \begin{bmatrix}
+                S \sin Z \sin\alpha & -S \cos Z \cos\alpha & -\sin Z \cos\alpha \\
+                -S \sin Z \cos\alpha & -S \cos Z \sin\alpha & -\sin Z \sin\alpha \\
+                0 & S \sin Z & -\cos Z
+                \end{bmatrix}, \qquad B = \operatorname{diag}(B_1, \dots, B_m)$$</div>
+            <p>Note que a coluna de \(\omega_i\) em \(A_k\) é igual à coluna de \(Hz\) em \(B_k\): girar o círculo ou
+                mudar a leitura têm o mesmo efeito sobre o azimute.</p>
+
+            <h3>Solução</h3>
+            <div class="eq">$$M = B P^{-1} B^T, \qquad N = A^T M^{-1} A, \qquad U = A^T M^{-1} W, \qquad X = -N^{-1} U$$
+                $$K = -M^{-1}(AX + W), \qquad V = P^{-1} B^T K, \qquad L_a = L_b + V$$</div>
+            <p>Cada bloco \(3 \times 3\) de \(M\) é a MVC cartesiana do vetor irradiado — exatamente a
+                \(\Sigma_{XYZ}\) do ajustamento de planos, obtida pela mesma jacobiana. É a única inversão por
+                visada. A iteração relineariza em \((L_a, X_a)\) até \(\max|X|\) ficar abaixo da tolerância.</p>
+            <div class="eq">$$\Sigma_{X_a} = \hat\sigma_0^2\, N^{-1}, \qquad \Sigma_{L_a} = \hat\sigma_0^2 \left(P^{-1} - Q_V\right)$$
+                $$Q_V = P^{-1} B^T \left(M^{-1} - M^{-1} A N^{-1} A^T M^{-1}\right) B P^{-1}$$</div>
+            <p>Em Ghilani e Wolf (cap. 22, "general least squares") a mesma solução aparece com \(J = A\),
+                \(K = -W\) e \(W_e = M^{-1}\).</p>
+
+            <!-- ===================================================== 5 -->
+            <h2 id="equivalencia">5. Por que os dois métodos dão a mesma resposta</h2>
+            <p>O combinado escreve \(F(L, X) = \Delta(X) - g(L, \omega) = 0\), em que \(g\) é a irradiação. Como
+                \(\partial g / \partial L = -B\) é inversível (fora da vertical), a condição equivale a explicitar
+                \(L = f(X)\) — o modelo paramétrico. Derivando \(F(f(X), X) = 0\):</p>
+            <div class="eq">$$A_{comb} + B\,A_{par} = 0 \quad\Longrightarrow\quad A_{par} = -B^{-1} A_{comb}$$
+                $$A_{par}^T P A_{par} = A_{comb}^T B^{-T} P B^{-1} A_{comb} = A_{comb}^T \left(B P^{-1} B^T\right)^{-1} A_{comb} = A_{comb}^T M^{-1} A_{comb}$$</div>
+            <p>No mesmo ponto as duas matrizes normais são iguais; convergidas, as duas iterações minimizam o mesmo
+                \(V^TPV\) sob as mesmas observações, e dão a mesma solução, os mesmos resíduos e a mesma
+                \(\Sigma_{X_a}\). No sentido inverso, o paramétrico é o combinado com</p>
+            <div class="eq">$$F(L_a, X_a) = f(X_a) - L_a \quad\Longrightarrow\quad B = -I, \qquad M = P^{-1}, \qquad W = L$$
+                $$K = -P\,(AX + L), \qquad V = P^{-1}B^TK = AX + L$$</div>
+            <div class="note"><p>É assim que o simulador implementa os dois: um único laço de iteração, com blocos
+                \((A_k, B_k, M_k, W_k)\) — no paramétrico, \(B_k = -I\) e \(M_k = \Sigma_k\). A aba
+                <strong>Comparar Modelos</strong> mostra as diferenças entre eles na ordem de \(10^{-13}\).</p></div>
+            <p>O que muda, então? A forma de pensar. No paramétrico cada observação "pertence" a uma linha de
+                \(A\); no combinado as três observações de uma visada se misturam em três equações de condição,
+                e \(M\) carrega a correlação que a irradiação cria entre as componentes \(X, Y, Z\) do vetor.
+                O combinado é o modelo natural quando a relação é implícita — como no ajuste de planos, em que não
+                há como isolar a observação.</p>
+
+            <!-- ===================================================== 6 -->
+            <h2 id="datum">6. Datum e defeito de posto</h2>
+            <p>As observações não "veem" onde a rede está nem para onde ela aponta. Elas ficam idênticas se a rede
+                inteira for <strong>transladada</strong> (três graus de liberdade) ou <strong>girada em torno da
+                vertical</strong>, com todas as orientações \(\omega_i\) girando junto (um grau). A
+                <strong>escala</strong> está fixada pelas distâncias, e a <strong>direção da vertical</strong> pelos
+                zenitais — cada instrumento está nivelado. Se todos os pontos forem incógnitas, o defeito de posto
+                é</p>
+            <div class="eq">$$d = 4, \qquad \operatorname{posto}(A) = \operatorname{posto}(N) = u - 4, \qquad A\,H = 0$$</div>
+            <p>com o espaço nulo \(H\) (\(u \times 4\)) formado pelas três translações e pela rotação, que desloca
+                cada ponto perpendicularmente ao seu raio em torno do centróide \((\bar X, \bar Y)\):</p>
+            <div class="eq">$$H = \begin{bmatrix}
+                \vdots & \vdots & \vdots & \vdots \\
+                1 & 0 & 0 & -(Y_p - \bar Y) \\
+                0 & 1 & 0 & X_p - \bar X \\
+                0 & 0 & 1 & 0 \\
+                \vdots & \vdots & \vdots & \vdots \\
+                0 & 0 & 0 & 1 \\
+                \vdots & \vdots & \vdots & \vdots
+                \end{bmatrix}
+                \begin{matrix} \\ \leftarrow X_p \\ \leftarrow Y_p \\ \leftarrow Z_p \\ \\ \leftarrow \omega_i \\ \\ \end{matrix}
+                \qquad \text{colunas: } t_X \quad t_Y \quad t_Z \quad \text{rot}_Z$$</div>
+            <p>Verifique na linha de \(Hz\) do paramétrico: girando a rede de \(\theta\), \(\delta\Delta X = -\Delta Y\,\theta\)
+                e \(\delta\Delta Y = \Delta X\,\theta\), e</p>
+            <div class="eq">$$\delta Hz = -\frac{\Delta Y}{h^2}\left(-\Delta Y\,\theta\right) + \frac{\Delta X}{h^2}\left(\Delta X\,\theta\right) - \theta = \frac{\Delta X^2 + \Delta Y^2}{h^2}\,\theta - \theta = 0$$</div>
+
+            <h3 id="fixos">6.1 Datum por pontos fixos</h3>
+            <p>Os pontos fixos têm coordenadas conhecidas e entram como <strong>constantes</strong>: suas colunas
+                saem de \(A\), e \(N\) passa a ter posto completo. Um ponto fixo define as três translações, mas
+                não a rotação — são necessários <strong>pelo menos dois</strong>. Com \(u\) incógnitas:</p>
+            <div class="eq">$$\nu = n - u, \qquad X = -N^{-1} U, \qquad \Sigma_{X_a} = \hat\sigma_0^2 N^{-1}$$</div>
+            <p>Os \(\sigma\) e os elipsoides medem a precisão <em>em relação aos pontos fixos</em>, que têm
+                \(\sigma = 0\). Dois pontos fixos impõem 6 injunções onde bastariam 4: as 2 que sobram contam como
+                redundância e só são testadas se as coordenadas fixas forem independentes das visadas (seção 6.3).</p>
+            <div class="warn"><p>Na amostra, os fixos M01 e M02 não têm coordenadas no CSV e são irradiados da
+                estação A, posta no datum local assumido. Como as coordenadas saem das próprias visadas, elas não
+                tensionam a rede: os resíduos dessas visadas são nulos.</p></div>
+
+            <h3 id="livre">6.2 Rede livre: injunções internas</h3>
+            <p>Na rede livre <strong>todos</strong> os pontos são incógnitas, inclusive os de apoio, e \(N\) é
+                singular. Há infinitas soluções de mínimos quadrados, \(X + H t\), que diferem por uma translação e
+                uma rotação. Escolhe-se a de <strong>norma mínima das correções das coordenadas</strong>, impondo
+                \(G^T X = 0\) com \(G\) igual a \(H\) com as linhas de \(\omega\) zeradas — radianos não se somam a
+                metros. Pelo método dos multiplicadores de Lagrange, o sistema orlado:</p>
+            <div class="eq">$$\begin{bmatrix} N & G \\ G^T & 0 \end{bmatrix} \begin{bmatrix} X \\ k \end{bmatrix} = \begin{bmatrix} -U \\ 0 \end{bmatrix}, \qquad \begin{bmatrix} N & G \\ G^T & 0 \end{bmatrix}^{-1} = \begin{bmatrix} Q & R \\ R^T & S \end{bmatrix}$$
+                $$X = -QU, \qquad \Sigma_{X_a} = \hat\sigma_0^2\, Q, \qquad Q N Q = Q, \qquad G^T Q = 0, \qquad \nu = n - u + d$$</div>
+            <ul>
+                <li>O sistema orlado é inversível mesmo com \(N\) singular, desde que \(G^T H\) seja inversível —
+                    o que vale para as injunções internas.</li>
+                <li>\(Q\) é uma inversa generalizada de \(N\), de posto \(u - 4\). Entre todas as escolhas de datum, é a
+                    de <strong>traço mínimo</strong> nas coordenadas: qualquer outro datum é uma transformação S
+                    desta solução e só pode aumentar o traço.</li>
+                <li>O simulador monta \(G\) nas coordenadas aproximadas e o mantém fixo; como cada incremento cumpre
+                    \(G^T X = 0\), a solução final cumpre \(G^T (X_a - X_0) = 0\): a rede ajustada conserva o
+                    <strong>centróide e a orientação média</strong> das coordenadas aproximadas.</li>
+                <li>Os graus de liberdade ganham \(d\) de volta, porque o datum não consome observações.</li>
+            </ul>
+            <p><strong>O que não depende do datum</strong> (quantidades estimáveis): resíduos \(V\), \(V^TPV\),
+                números de redundância, \(w\) de Baarda, distâncias e ângulos entre pontos. <strong>O que
+                depende</strong>: coordenadas, \(\sigma\), elipsoides — na rede livre nenhum ponto tem
+                \(\sigma\) nulo, e as incertezas se distribuem pela rede inteira.</p>
+
+            <h3 id="compat">6.3 Compatibilidade dos pontos fixos</h3>
+            <p>As injunções que os pontos fixos impõem além do datum mínimo só aumentam \(V^TPV\) se as
+                coordenadas fixas discordarem das observações. Sob a hipótese de que são compatíveis,</p>
+            <div class="eq">$$\Delta V^TPV = V^TPV_{\text{fixos}} - V^TPV_{\text{livre}} \ \sim\ \chi^2_{\nu_{\text{fixos}} - \nu_{\text{livre}}}$$</div>
+            <p>Na amostra \(\Delta V^TPV = 0\) com 2 graus — os fixos saíram das próprias visadas. Com coordenadas
+                independentes (uma rede sintética, por exemplo) o teste aprova os pontos corretos e reprova um
+                ponto fixo deslocado de poucos centímetros.</p>
+
+            <h3 id="quadro">6.4 Quadro das quatro variantes</h3>
+            <div class="table-container my-3">
+                <table>
+                    <thead>
+                        <tr><th></th><th>Combinado</th><th>Combinado — rede livre</th><th>Paramétrico</th><th>Paramétrico — rede livre</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td class="font-semibold text-stone-600">Equações</td><td>\(F(L_a, X_a) = 0\)</td><td>\(F(L_a, X_a) = 0\)</td><td>\(L_a = F(X_a)\)</td><td>\(L_a = F(X_a)\)</td></tr>
+                        <tr><td class="font-semibold text-stone-600">\(X_a\)</td><td>estações (\(X, Y, Z, \omega\)) e pontos não fixos</td><td>estações e <strong>todos</strong> os pontos</td><td>estações e pontos não fixos</td><td>estações e <strong>todos</strong> os pontos</td></tr>
+                        <tr><td class="font-semibold text-stone-600">\(A_k\)</td><td>\(\pm I\) e coluna de \(\omega\)</td><td>idem, com colunas também para os pontos de apoio</td><td>derivadas de \(\operatorname{atan2}\) e da norma; \(-1\) em \(\omega\)</td><td>idem, com colunas também para os pontos de apoio</td></tr>
+                        <tr><td class="font-semibold text-stone-600">\(B\)</td><td>jacobiana da irradiação</td><td>jacobiana da irradiação</td><td>\(-I\) (implícita)</td><td>\(-I\) (implícita)</td></tr>
+                        <tr><td class="font-semibold text-stone-600">\(N\)</td><td>\(A^TM^{-1}A\), posto \(u\)</td><td>\(A^TM^{-1}A\), posto \(u - 4\)</td><td>\(A^TPA\), posto \(u\)</td><td>\(A^TPA\), posto \(u - 4\)</td></tr>
+                        <tr><td class="font-semibold text-stone-600">Solução</td><td>\(X = -N^{-1}U\)</td><td>sistema orlado, \(X = -QU\)</td><td>\(X = -N^{-1}U\)</td><td>sistema orlado, \(X = -QU\)</td></tr>
+                        <tr><td class="font-semibold text-stone-600">Graus de liberdade</td><td>\(n - u\)</td><td>\(n - u + 4\)</td><td>\(n - u\)</td><td>\(n - u + 4\)</td></tr>
+                        <tr><td class="font-semibold text-stone-600">Amostra</td><td>\(72 - 57 = 15\)</td><td>\(72 - 63 + 4 = 13\)</td><td>\(72 - 57 = 15\)</td><td>\(72 - 63 + 4 = 13\)</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- ===================================================== 7 -->
+            <h2 id="qualidade">7. Controle de qualidade</h2>
+            <p>Valem igualmente para os quatro casos — com \(Q_V\) do respectivo modelo e \(\nu\) do respectivo
+                datum.</p>
+            <ul>
+                <li><strong>Teste global</strong> (bilateral): \(V^TPV\) deve cair entre os quantis
+                    \(\chi^2_{\nu,\,\alpha/2}\) e \(\chi^2_{\nu,\,1-\alpha/2}\). Acima, as observações discordam mais do
+                    que os desvios informados preveem; abaixo, os desvios estão pessimistas.</li>
+                <li><strong>Números de redundância</strong>: \(r_i = (Q_V P)_{ii}\), com \(\sum r_i = \nu\). Um ponto
+                    visado de uma só estação tem \(r = 0\) nas três componentes: nenhum erro nele é detectável.</li>
+                <li><strong>Data snooping (Baarda)</strong>: \(w_i = \dfrac{v_i}{\sigma_0 \sqrt{q_{v_i}}}\), comparado a
+                    \(z_{1-\alpha_0/2}\); remove-se a visada de maior \(|w|\) e reajusta-se.</li>
+                <li><strong>Teste \(\tau\) de Pope</strong>: \(\tau_i = \dfrac{v_i}{\hat\sigma_0 \sqrt{q_{v_i}}}\), com valor
+                    crítico \(\tau_c = \dfrac{t\sqrt{\nu}}{\sqrt{\nu - 1 + t^2}}\), \(t\) de Student com \(\nu - 1\)
+                    graus.</li>
+                <li><strong>Erro mínimo detectável</strong>: \(\nabla_i = \dfrac{\delta_0\,\sigma_i}{\sqrt{r_i}}\), com
+                    \(\delta_0 = z_{1-\alpha_0/2} + z_{\text{poder}}\).</li>
+            </ul>
+
+            <!-- ===================================================== 8 -->
+            <h2 id="elipsoides">8. Elipsoides de erro e suas projeções</h2>
+            <p>O bloco \(3 \times 3\) de \(\Sigma_{X_a}\) de cada ponto se decompõe em \(\Sigma_p = V \Lambda V^T\). O
+                elipsoide tem semieixos \(k\sqrt{\lambda_1}, k\sqrt{\lambda_2}, k\sqrt{\lambda_3}\) nas direções dos
+                autovetores, com \(k = 1\) para \(1\sigma\) ou \(k = \sqrt{\chi^2_{3,\,p}}\) para um nível \(p\)
+                (\(2{,}796\) a 95 %, \(3{,}368\) a 99 %).</p>
+            <p>As elipses das vistas 2D são as <strong>projeções</strong> do elipsoide: o bloco \(2 \times 2\)
+                marginal de \(\Sigma_p\), com o mesmo \(k\). Para toda direção \(d\) do plano,</p>
+            <div class="eq">$$\max_{x \,\in\, \text{elipsoide}} d^T x = k\sqrt{d^T \Sigma_p\, d}$$</div>
+            <p>que só depende do bloco marginal — logo a elipse é exatamente o contorno da sombra do elipsoide. Por
+                isso, a 95 %, o fator é o de \(\chi^2\) com 3 graus, e não os \(2{,}448\) de uma elipse 2D isolada.</p>
+            <p>Elipsoides achatados são comuns nestas redes: a incerteza horizontal é dominada pela orientação
+                \(\omega\) das estações, que gira os pontos em torno da vertical sem mudar sua altura.</p>
+
+            <!-- ===================================================== 9 -->
+            <h2 id="aproximacoes">9. Aproximações iniciais</h2>
+            <p>Os dois modelos são não lineares e precisam de \(X_0\). O simulador o constrói por resseção e irradiação:</p>
+            <ol>
+                <li>Parte dos pontos conhecidos: os fixos, com coordenadas do CSV ou irradiados da estação de origem
+                    no datum local assumido. Na rede livre sem apoio, parte de uma estação semente nesse datum.</li>
+                <li>Uma estação que vê ao menos dois pontos conhecidos é posicionada por um ajuste de rotação em torno
+                    da vertical mais translação (Procrustes sem escala) entre os vetores locais
+                    \(l = (S\sin Z\cos Hz,\ S\sin Z\sin Hz,\ S\cos Z)\) e as coordenadas conhecidas:
+                    \[\omega = \operatorname{atan2}\!\left(\sum (l_x k_y - l_y k_x),\ \sum (l_x k_x + l_y k_y)\right)\]
+                    com os vetores centrados nos respectivos centróides.</li>
+                <li>Ela irradia os pontos ainda desconhecidos, e o processo se repete até esgotar as estações.</li>
+                <li>Visadas que destoam na resseção são deixadas de fora e reportadas — inclusive quando a diferença
+                    some ao somar 180° à leitura horizontal (leitura em face II não reduzida).</li>
+            </ol>
+
+            <!-- ===================================================== 10 -->
+            <h2 id="referencias">10. Referências</h2>
+            <ul>
+                <li>GEMAEL, C.; MACHADO, A. M. L.; WANDRESEN, R. <em>Introdução ao ajustamento de observações:
+                        aplicações geodésicas</em>. 2. ed. Curitiba: Editora UFPR, 2015 — métodos paramétrico e
+                    combinado, forma iterada.</li>
+                <li>GHILANI, C. D.; WOLF, P. R. <em>Adjustment Computations: Spatial Data Analysis</em>. 4th ed.
+                    Hoboken: Wiley, 2006 — cap. 19 (elipses de erro), 21 (detecção de erros grosseiros), 22 (general
+                    least squares), 23 (redes geodésicas 3D).</li>
+                <li>CASPARY, W. F. <em>Concepts of Network and Deformation Analysis</em>. Monograph 11. Kensington:
+                    School of Surveying, University of New South Wales, 1987 — redes livres, injunções internas e
+                    transformações S.</li>
+                <li>BAARDA, W. <em>A Testing Procedure for Use in Geodetic Networks</em>. Delft: Netherlands Geodetic
+                    Commission, 1968 — data snooping e confiabilidade.</li>
+                <li>POPE, A. J. <em>The Statistics of Residuals and the Detection of Outliers</em>. NOAA Technical
+                    Report NOS 65 NGS 1, 1976 — teste \(\tau\).</li>
+            </ul>
+        </article>
+    </main>
+
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+        onload="renderMathInElement(document.querySelector('.doc'), {
+            delimiters: [
+                { left: '$$', right: '$$', display: true },
+                { left: '\\[', right: '\\]', display: true },
+                { left: '\\(', right: '\\)', display: false }
+            ],
+            throwOnError: false
+        });"></script>
+</body>
+
+</html>

@@ -1,14 +1,19 @@
-// --- Interseção a ré 3D: rede de estações livres pelo Modelo Combinado (GEMAEL) ---
-// Cada visada (estação i -> ponto j) contribui com três equações de condição implícitas
-// F(La, Xa) = 0, uma por componente do vetor irradiado:
+// --- Interseção a ré 3D: rede de estações livres, modelos Combinado e Paramétrico (GEMAEL) ---
+// Combinado (Gauss-Helmert): cada visada (estação i -> ponto j) contribui com três equações
+// de condição implícitas F(La, Xa) = 0, uma por componente do vetor irradiado:
 //     F1 = Xj - Xi - S sinZ cos(Hz + ωi)
 //     F2 = Yj - Yi - S sinZ sin(Hz + ωi)
 //     F3 = Zj - Zi - S cosZ
 // com as observações La = (Hz, Z, S) e as incógnitas Xa = coordenadas das estações e dos
-// pontos livres mais a orientação ω de cada estação. Os pontos fixos entram como constantes.
-// B = ∂F/∂La é a jacobiana da irradiação (a mesma do ajusta_planos), então M = B P⁻¹ Bᵀ é a
-// MVC cartesiana de cada vetor irradiado. Em Ghilani (cap. 22, "general least squares") a
-// mesma solução aparece com J = A, K = -W e We = M⁻¹.
+// pontos mais a orientação ω de cada estação. B = ∂F/∂La é a jacobiana da irradiação (a mesma
+// do ajusta_planos), então M = B P⁻¹ Bᵀ é a MVC cartesiana de cada vetor irradiado. Em
+// Ghilani (cap. 22, "general least squares") a mesma solução aparece com J = A, K = -W, We = M⁻¹.
+// Paramétrico (Gauss-Markov): La = f(Xa), com Hz = atan2(ΔY, ΔX) - ω, Z = atan2(h, ΔZ) e
+// S = |Δ|. É o combinado com F = f(Xa) - La, isto é, B = -I e M = P⁻¹: os dois usam o mesmo
+// laço de iteração e, convergidos, dão a mesma solução.
+// Datum: com pontos fixos, eles são constantes; na rede livre, todos os pontos são incógnitas
+// e o defeito de posto 4 (três translações e a rotação em torno da vertical) é removido por
+// injunções internas sobre as coordenadas — a solução de traço mínimo.
 (function (root, factory) {
     const api = factory();
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
@@ -335,6 +340,27 @@
         return [ssz * Math.sin(a), -ssz * Math.cos(a), 0];
     }
 
+    // Modelo paramétrico: observações calculadas f(X) = (Hz, Z, S) da estação para o ponto.
+    // O zenital sai de atan2(h, ΔZ), estável também perto da vertical.
+    function observationF(st, omega, tg) {
+        const dx = tg[0] - st[0], dy = tg[1] - st[1], dz = tg[2] - st[2];
+        const h = Math.hypot(dx, dy);
+        return [wrap2Pi(Math.atan2(dy, dx) - omega), Math.atan2(h, dz), Math.hypot(h, dz)];
+    }
+
+    // Derivadas de (Hz, Z, S) em relação às coordenadas do PONTO VISADO, uma coluna por
+    // coordenada (X, Y, Z) com as três linhas (Hz, Z, S). As da estação são as mesmas com o
+    // sinal trocado, e ∂Hz/∂ω = -1.
+    function observationJacobian(st, tg) {
+        const dx = tg[0] - st[0], dy = tg[1] - st[1], dz = tg[2] - st[2];
+        const h2 = dx * dx + dy * dy, h = Math.sqrt(h2), s2 = h2 + dz * dz, s = Math.sqrt(s2);
+        return [
+            [-dy / h2, dx * dz / (s2 * h), dx / s],
+            [dx / h2, dy * dz / (s2 * h), dy / s],
+            [0, -h / s2, dz / s]
+        ];
+    }
+
     // ---------------------------------------------------------------- modelo estocástico
     // Desvios efetivos (rad, rad, m) de uma linha. O CSV traz os desvios angulares em
     // segundos (padrão) ou graus; vazio ou ≤ 0 cai no nominal.
@@ -452,9 +478,17 @@
         unique(rows.map(r => r.target)).filter(t => !targets.includes(t) && !stations.includes(t))
             .forEach(t => log.info(`Ponto ${t} ficou sem visadas ativas e saiu do ajustamento.`));
 
+        // Na rede livre os pontos de apoio ("Fixo = sim") também são incógnitas: suas
+        // coordenadas, dadas ou obtidas pela regra do datum, servem só de aproximação.
+        const free = S.datum === 'livre';
         const fixedPts = unique(targets.concat(stations)).filter(isFixed);
-        if (!fixedPts.length) {
-            throw new NetworkError('Nenhum ponto fixo entre as visadas ativas: marque os pontos de apoio com Fixo = sim.', log);
+        if (!free && !fixedPts.length) {
+            throw new NetworkError('Nenhum ponto fixo entre as visadas ativas: marque os pontos de apoio com Fixo = sim ' +
+                'ou use a rede livre (injunções internas).', log);
+        }
+        if (!free && fixedPts.length === 1) {
+            throw new NetworkError(`Só um ponto fixo (${fixedPts[0]}): ele define as três translações, mas não a rotação em torno ` +
+                'da vertical. São necessários ao menos 2 pontos fixos — ou use a rede livre (injunções internas).', log);
         }
         const fixedCoords = new Map();
         fixedPts.forEach(n => { if (given.has(n)) fixedCoords.set(n, given.get(n).xyz.slice()); });
@@ -462,7 +496,21 @@
         // Pontos fixos sem coordenadas: irradiados da única estação que os visa
         const missing = fixedPts.filter(n => !fixedCoords.has(n));
         const datum = { computed: missing.slice(), origins: [] };
-        if (missing.length) {
+        // Na rede livre a regra do datum só gera aproximações: se ela não se aplica, os
+        // pontos sem coordenadas são simplesmente irradiados como os demais.
+        let ruleApplies = missing.length > 0;
+        if (ruleApplies && free) {
+            const obsBy = missing.map(n => unique(act.filter(r => r.target === n).map(r => r.station)));
+            const origins = unique(obsBy.map(s => s[0]));
+            const withCoords = st => unique(act.filter(r => r.station === st && fixedCoords.has(r.target)).map(r => r.target)).length;
+            ruleApplies = !missing.some(n => stations.includes(n)) && obsBy.every(s => s.length === 1) &&
+                origins.filter(st => withCoords(st) < 2).length <= 1;
+            if (!ruleApplies) {
+                datum.computed = [];
+                log.info(`Rede livre: ${missing.join(', ')} (de apoio, sem X,Y,Z) entram nas aproximações como pontos comuns.`);
+            }
+        }
+        if (ruleApplies) {
             const asStation = missing.filter(n => stations.includes(n));
             if (asStation.length) {
                 throw new NetworkError(`O ponto fixo ${asStation.join(', ')} também é estação e não tem coordenadas; informe X,Y,Z.`, log);
@@ -508,15 +556,34 @@
                 const pose = o.method === 'datum assumido'
                     ? `datum local assumido em ${o.station}: X=${o.xyz[0]}, Y=${o.xyz[1]}, Z=${o.xyz[2]}, ω=${(o.omega / DEG).toFixed(4)}°`
                     : `pose de ${o.station} obtida por resseção nos fixos com coordenadas`;
-                log.info(`Pontos fixos sem coordenadas no CSV (${pts.join(', ')}) foram irradiados de ${o.station} (${pose}).`);
-                if (o.method === 'datum assumido') {
+                log.info(`Pontos fixos sem coordenadas no CSV (${pts.join(', ')}) foram irradiados de ${o.station} (${pose})` +
+                    (free ? ' — na rede livre, só como aproximação.' : '.'));
+                if (o.method === 'datum assumido' && !free) {
                     log.info(`As visadas de ${o.station} a ${pts.join(', ')} definem o datum: como as coordenadas saíram ` +
                         'delas mesmas, seus resíduos ficam nulos enquanto o resto da rede não as tensionar.');
                 }
             });
         }
 
-        // Incógnitas: estações (X, Y, Z, ω) na ordem de aparição, depois os pontos livres
+        // Constantes do ajustamento: os pontos fixos, só no datum por pontos fixos
+        const constCoords = free ? new Map() : fixedCoords;
+        // Aproximações da rede livre: precisam de uma estação que veja 2 pontos de apoio
+        // conhecidos; sem isso, partem da primeira estação no datum local assumido.
+        const seedPoses = [];
+        if (free) {
+            const startable = stations.some(st =>
+                unique(act.filter(r => r.station === st && fixedCoords.has(r.target)).map(r => r.target)).length >= 2);
+            if (!startable) {
+                if (fixedCoords.size) log.info('Rede livre: os pontos de apoio com coordenadas não bastam para iniciar as aproximações; foram ignorados nelas.');
+                fixedCoords.clear();
+                const st = stations[0];
+                seedPoses.push({ station: st, xyz: [S.datumX, S.datumY, S.datumZ], omega: wrap2Pi(S.datumOmegaDeg * DEG) });
+                log.info(`Rede livre: as aproximações partem de ${st} no datum local assumido ` +
+                    `(X=${S.datumX}, Y=${S.datumY}, Z=${S.datumZ}, ω=${S.datumOmegaDeg}°).`);
+            }
+        }
+
+        // Incógnitas: estações (X, Y, Z, ω) na ordem de aparição, depois os demais pontos
         const unknowns = [];
         const index = new Map();
         const addXYZ = (name, e) => {
@@ -526,24 +593,37 @@
         };
         stations.forEach(s => {
             const e = { x: null, y: null, z: null, w: null };
-            if (!fixedCoords.has(s)) addXYZ(s, e);
+            if (!constCoords.has(s)) addXYZ(s, e);
             e.w = unknowns.length; unknowns.push({ name: `ω_${s}`, point: s, kind: 'w' });
             index.set(s, e);
         });
         targets.forEach(t => {
-            if (index.has(t) || fixedCoords.has(t)) return;
+            if (index.has(t) || constCoords.has(t)) return;
             const e = { x: null, y: null, z: null, w: null };
             addXYZ(t, e);
             index.set(t, e);
         });
 
-        const u = unknowns.length, nEq = 3 * act.length, dof = nEq - u;
+        // Defeito de posto: distâncias fixam a escala e zenitais a vertical; sobram três
+        // translações e a rotação em torno da vertical. Os pontos fixos o removem; na rede
+        // livre ele fica em N e é removido pelas injunções internas (d = 4 volta ao gl).
+        const d = free ? 4 : 0;
+        const u = unknowns.length, nEq = 3 * act.length, dof = nEq - u + d;
         if (dof < 0) {
-            throw new NetworkError(`Redundância negativa: ${nEq} equações para ${u} incógnitas. Adicione visadas.`, log);
+            throw new NetworkError(`Redundância negativa: ${nEq} equações para ${u} incógnitas` +
+                (d ? ` e defeito de posto ${d}` : '') + '. Adicione visadas.', log);
         }
         if (dof === 0) log.warn('Redundância nula: solução única, sem controle de qualidade possível.');
+        if (free) {
+            const nPts = unknowns.filter(x => x.kind === 'X').length;
+            log.info(`Rede livre: defeito de posto 4 removido por injunções internas sobre as coordenadas dos ${nPts} pontos ` +
+                '(traço mínimo). A rede conserva o centróide e a orientação média das coordenadas aproximadas.');
+        }
 
-        return { rows: act, stations, targets, fixedCoords, isFixed, datum, unknowns, index, u, nEq, dof, log };
+        return {
+            rows: act, stations, targets, fixedCoords: constCoords, supportCoords: fixedCoords, supportNames: fixedPts,
+            seedPoses, free, d, isFixed, datum, unknowns, index, u, nEq, dof, log
+        };
     }
 
     // ---------------------------------------------------------------- aproximações iniciais
@@ -553,15 +633,44 @@
     // quando a diferença some ao somar 180° à leitura horizontal (face II não reduzida).
     function approximate(net, S) {
         const log = net.log;
-        const known = new Map(net.fixedCoords);
+        // Fixos (constantes) e, na rede livre, os pontos de apoio usados só como aproximação
+        const known = new Map(net.supportCoords || net.fixedCoords);
+        net.fixedCoords.forEach((xyz, n) => known.set(n, xyz));
         const source = new Map();
-        net.fixedCoords.forEach((_, n) => source.set(n, { kind: 'fixo' }));
+        known.forEach((_, n) => source.set(n, { kind: 'fixo' }));
         const omega = new Map();
         const pending = new Set(net.stations);
         const steps = [];
         const rowsBy = new Map(net.stations.map(s => [s, net.rows.filter(r => r.station === s)]));
         const local = r => polarToDelta(...rowRad(r), 0);
         const flip = l => [-l[0], -l[1], l[2]];
+
+        // Irradia os pontos ainda desconhecidos de uma estação já posicionada e orientada
+        // (média se visados mais de uma vez)
+        const radiateFrom = (st, om) => {
+            const acc = new Map();
+            rowsBy.get(st).forEach(r => {
+                if (known.has(r.target)) return;
+                const q = applyPose(known.get(st), om, local(r));
+                const a = acc.get(r.target) || { s: [0, 0, 0], n: 0, row: r };
+                a.s[0] += q[0]; a.s[1] += q[1]; a.s[2] += q[2]; a.n++;
+                acc.set(r.target, a);
+            });
+            acc.forEach((a, name) => {
+                known.set(name, a.s.map(v => v / a.n));
+                source.set(name, { kind: 'irradiado', origin: { station: st }, row: a.row });
+            });
+        };
+
+        // Rede livre sem apoio: a estação semente entra com a pose do datum local assumido
+        (net.seedPoses || []).forEach(sp => {
+            known.set(sp.station, sp.xyz.slice());
+            source.set(sp.station, { kind: 'datum assumido' });
+            omega.set(sp.station, sp.omega);
+            steps.push({ station: sp.station, nKnown: 0, misfit: 0, excluded: [], own: true, seed: true });
+            radiateFrom(sp.station, sp.omega);
+            pending.delete(sp.station);
+        });
 
         while (pending.size) {
             let best = null;
@@ -623,19 +732,7 @@
             omega.set(st, pose.omega);
             steps.push({ station: st, nKnown: pairs.length, misfit: maxMis, excluded, own: best.own });
 
-            // Irradia os pontos ainda desconhecidos (média se visados mais de uma vez)
-            const acc = new Map();
-            rowsBy.get(st).forEach(r => {
-                if (known.has(r.target)) return;
-                const q = applyPose(known.get(st), pose.omega, local(r));
-                const a = acc.get(r.target) || { s: [0, 0, 0], n: 0, row: r };
-                a.s[0] += q[0]; a.s[1] += q[1]; a.s[2] += q[2]; a.n++;
-                acc.set(r.target, a);
-            });
-            acc.forEach((a, name) => {
-                known.set(name, a.s.map(v => v / a.n));
-                source.set(name, { kind: 'irradiado', origin: { station: st }, row: a.row });
-            });
+            radiateFrom(st, pose.omega);
             pending.delete(st);
         }
         return { coords: known, omega, steps, source };
@@ -643,13 +740,44 @@
 
     // ---------------------------------------------------------------- linearização
     // Um bloco por visada: colunas não nulas de A (≤ 7), B, M = BΣBᵀ, M⁻¹ e W.
-    function linearize(net, Xv, La, Lb, sig) {
+    // No paramétrico o mesmo bloco descreve F = f(X) − L: B = −I, M = Σ, M⁻¹ = P e
+    // W = L = L0 − Lb (convenção de Gemael), de modo que N, U, X, K e V saem das mesmas
+    // contas — com B = −I, V = ΣBᵀK vira exatamente V = AX + L.
+    function linearize(net, Xv, La, Lb, sig, model) {
         const idx = net.index;
         const coordOf = name => {
             const e = idx.get(name);
             if (e && e.x !== null) return [Xv[e.x], Xv[e.y], Xv[e.z]];
             return net.fixedCoords.get(name);
         };
+        if (model === 'parametrico') {
+            return net.rows.map((r, k) => {
+                const es = idx.get(r.station), et = idx.get(r.target);
+                const om = Xv[es.w];
+                const st = coordOf(r.station), tg = coordOf(r.target);
+                const F = observationF(st, om, tg);
+                const W = [wrapPi(F[0] - Lb[k][0]), F[1] - Lb[k][1], F[2] - Lb[k][2]];
+                const J = observationJacobian(st, tg);
+                const cols = [], Acols = [];
+                if (et && et.x !== null) {
+                    cols.push(et.x, et.y, et.z);
+                    Acols.push(J[0], J[1], J[2]);
+                }
+                if (es.x !== null) {
+                    cols.push(es.x, es.y, es.z);
+                    Acols.push(J[0].map(v => -v), J[1].map(v => -v), J[2].map(v => -v));
+                }
+                cols.push(es.w);
+                Acols.push([-1, 0, 0]);
+                const s2 = sig[k].map(v => v * v);
+                return {
+                    cols, Acols, F, W,
+                    B: [[-1, 0, 0], [0, -1, 0], [0, 0, -1]],
+                    M: [[s2[0], 0, 0], [0, s2[1], 0], [0, 0, s2[2]]],
+                    Minv: [[1 / s2[0], 0, 0], [0, 1 / s2[1], 0], [0, 0, 1 / s2[2]]]
+                };
+            });
+        }
         return net.rows.map((r, k) => {
             const L0 = La[k];
             const es = idx.get(r.station), et = idx.get(r.target);
@@ -681,8 +809,57 @@
         });
     }
 
+    // ---------------------------------------------------------------- injunções internas
+    // Espaço nulo da rede livre (u × 4): translações em X, Y, Z e rotação em torno da
+    // vertical, δX = −(Y − Ȳ), δY = X − X̄, δω = 1 (o azimute α = Hz + ω gira junto e a
+    // leitura Hz não muda). As injunções internas usam essas colunas só nas coordenadas
+    // (withOmega = false): a norma minimizada é a das coordenadas, sem misturar radianos
+    // com metros — a solução de traço mínimo de Σ_Xa sobre as coordenadas.
+    function nullSpace(net, Xv, withOmega) {
+        const pts = [];
+        net.index.forEach(e => { if (e.x !== null) pts.push(e); });
+        const cx = pts.reduce((a, e) => a + Xv[e.x], 0) / pts.length;
+        const cy = pts.reduce((a, e) => a + Xv[e.y], 0) / pts.length;
+        const H = linalg.zeros(net.u, 4);
+        net.index.forEach(e => {
+            if (e.x !== null) {
+                H[e.x][0] = 1; H[e.y][1] = 1; H[e.z][2] = 1;
+                H[e.x][3] = -(Xv[e.y] - cy);
+                H[e.y][3] = Xv[e.x] - cx;
+            }
+            if (e.w !== null && withOmega) H[e.w][3] = 1;
+        });
+        return H;
+    }
+
+    // Sistema orlado [N G; Gᵀ 0]: o bloco u×u da inversa é a inversa generalizada Q que
+    // respeita GᵀX = 0 (Q N Q = Q, Gᵀ Q = 0). As colunas de G são escaladas ao porte da
+    // diagonal de N só por condicionamento: a injunção não muda com a escala de cada coluna.
+    function borderedInverse(N, G) {
+        const u = N.length, d = G[0].length;
+        let rms = 0;
+        for (let i = 0; i < u; i++) rms += N[i][i] * N[i][i];
+        rms = Math.sqrt(rms / u);
+        const sc = [];
+        for (let c = 0; c < d; c++) {
+            let nrm = 0;
+            for (let i = 0; i < u; i++) nrm += G[i][c] * G[i][c];
+            sc.push(rms / Math.sqrt(nrm));
+        }
+        const Nb = linalg.zeros(u + d, u + d);
+        for (let i = 0; i < u; i++) {
+            for (let j = 0; j < u; j++) Nb[i][j] = N[i][j];
+            for (let c = 0; c < d; c++) Nb[i][u + c] = Nb[u + c][i] = G[i][c] * sc[c];
+        }
+        return linalg.inv(Nb).slice(0, u).map(r => r.slice(0, u));
+    }
+
+    const MODEL_LABELS = { combinado: 'Combinado (Gauss–Helmert)', parametrico: 'Paramétrico (Gauss–Markov)' };
+    const DATUM_LABELS = { fixos: 'Pontos fixos', livre: 'Rede livre (injunções internas)' };
+
     // ---------------------------------------------------------------- ajustamento
     function adjustNetwork(rows, S) {
+        const model = S.model === 'parametrico' ? 'parametrico' : 'combinado';
         const net = buildNetwork(rows, S);
         const log = net.log;
         const approx = approximate(net, S);
@@ -710,12 +887,12 @@
         let V = Lb.map(() => [0, 0, 0]);
         const history = [];
         let iterations = 0, converged = false;
-        let lin = null, N = null, Ninv = null, U = null, X = null, K = null, VtPV = 0;
+        let lin = null, N = null, Ninv = null, U = null, X = null, K = null, G = null, VtPV = 0;
         const tolLin = S.tolLinMm / 1000, tolAng = S.tolAngSec * ARCSEC;
 
         for (let it = 0; it < S.maxIter; it++) {
             iterations = it + 1;
-            lin = linearize(net, X0, La, Lb, sig);
+            lin = linearize(net, X0, La, Lb, sig, model);
 
             // N = Aᵀ M⁻¹ A e U = Aᵀ M⁻¹ W, acumulados visada a visada
             N = linalg.zeros(u, u);
@@ -732,10 +909,18 @@
                     }
                 }
             });
-            try { Ninv = linalg.inv(N); }
-            catch (e) {
+            try {
+                if (net.free) {
+                    // G fica nas coordenadas aproximadas: como cada incremento cumpre GᵀX = 0
+                    // com o MESMO G, a solução final cumpre Gᵀ(Xa − X0) = 0 exatamente — o
+                    // datum não depende do caminho da iteração nem do modelo escolhido
+                    if (!G) G = nullSpace(net, Xinit, false);
+                    Ninv = borderedInverse(N, G);
+                } else Ninv = linalg.inv(N);
+            } catch (e) {
                 throw new NetworkError('Sistema normal singular: a geometria não determina todas as incógnitas ' +
-                    '(estação com visadas insuficientes ou pontos alinhados).', log);
+                    '(estação com visadas insuficientes ou pontos alinhados)' +
+                    (net.free ? '.' : ' — ou os pontos fixos não bastam para o datum.'), log);
             }
             X = linalg.matvec(Ninv, U).map(v => -v);
 
@@ -749,7 +934,8 @@
                 const s2 = sig[k].map(v => v * v);
                 const Vk = [0, 1, 2].map(c => s2[c] * (b.B[0][c] * Kk[0] + b.B[1][c] * Kk[1] + b.B[2][c] * Kk[2]));
                 for (let c = 0; c < 3; c++) VtPV += Vk[c] * Vk[c] / s2[c];
-                normW += b.W[0] * b.W[0] + b.W[1] * b.W[1] + b.W[2] * b.W[2];
+                // √(WᵀM⁻¹W): fechamento padronizado, sem unidade e comparável entre modelos
+                for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) normW += b.W[i] * b.Minv[i][j] * b.W[j];
                 return Vk;
             });
             La = Lb.map((l, k) => [l[0] + V[k][0], l[1] + V[k][1], l[2] + V[k][2]]);
@@ -832,6 +1018,7 @@
         const pushPoint = (name, isStation) => {
             const e = net.index.get(name);
             const fixed = net.fixedCoords.has(name);
+            const support = !fixed && net.supportNames.includes(name);
             let xyz, Sig = linalg.zeros(3, 3);
             if (e && e.x !== null) {
                 xyz = [X0[e.x], X0[e.y], X0[e.z]];
@@ -840,9 +1027,10 @@
             } else xyz = net.fixedCoords.get(name).slice();
             const omega = isStation ? X0[e.w] : null;
             pointResults.push({
-                name, isStation, fixed,
-                tipo: isStation ? (fixed ? 'estação (fixa)' : 'estação') : (fixed ? 'fixo' : 'livre'),
-                origem: fixed ? (net.datum.computed.includes(name) ? 'irradiado (datum)' : 'CSV') : null,
+                name, isStation, fixed, support,
+                tipo: isStation ? (fixed ? 'estação (fixa)' : (support ? 'estação (apoio, livre)' : 'estação'))
+                    : (fixed ? 'fixo' : (support ? 'apoio (livre)' : 'livre')),
+                origem: (fixed || support) ? (net.datum.computed.includes(name) ? 'irradiado (datum)' : 'CSV') : null,
                 xyz, Sigma: Sig,
                 sigma: [0, 1, 2].map(i => Math.sqrt(Math.max(Sig[i][i], 0))),
                 omega, sigmaOmega: isStation ? Math.sqrt(Math.max(SigmaXa[e.w][e.w], 0)) : null,
@@ -855,10 +1043,18 @@
         net.targets.forEach(t => { if (!net.stations.includes(t)) pushPoint(t, false); });
 
         // ---- avisos de qualidade
-        let condN = null;
+        // Na rede livre os d autovalores nulos de N são o defeito de posto, não mau
+        // condicionamento: o número de condição usa o (d+1)-ésimo menor
+        let condN = null, eigN = null;
         if (u <= 400) {
-            condN = linalg.condSym(N);
-            if (condN > 1e12) log.warn(`Sistema normal mal condicionado: cond(N) = ${condN.toExponential(2)}.`);
+            eigN = linalg.eigSym(N).values;
+            const ev = eigN.map(Math.abs).sort((a, b) => a - b);
+            const mn = ev[net.d], mx = ev[ev.length - 1];
+            condN = mn > 0 ? mx / mn : Infinity;
+            if (condN > 1e12) {
+                log.warn(`Sistema normal mal condicionado: cond(N) = ${condN.toExponential(2)}` +
+                    (net.d ? ` (sem os ${net.d} autovalores nulos do defeito de posto).` : '.'));
+            }
         }
         if (dof > 0) {
             if (!globalPass) {
@@ -883,6 +1079,9 @@
 
         return {
             net, approx, settings: Object.assign({}, S),
+            model, datum: net.free ? 'livre' : 'fixos', d: net.d,
+            modelLabel: MODEL_LABELS[model], datumLabel: DATUM_LABELS[net.free ? 'livre' : 'fixos'],
+            G, eigN,
             log: log.items,
             iterations, converged, history,
             m, u, nEq: net.nEq, dof,
@@ -932,7 +1131,17 @@
         const s = result.varScale;
         const SigmaV = linalg.scale(QV, s);
         const SigmaLa = SigLb.map((row, i) => row.map((v, j) => s * v - SigmaV[i][j]));
-        return { A, B, M, Minv, SigLb, P, W, K, V, Lb, La, QV, SigmaV, SigmaLa };
+        // Rede livre: matriz das injunções G (sem a escala de condicionamento) e N orlada
+        let Nb = null;
+        if (result.G) {
+            const d = result.G[0].length;
+            Nb = Z(u + d, u + d);
+            for (let i = 0; i < u; i++) {
+                for (let j = 0; j < u; j++) Nb[i][j] = result.N[i][j];
+                for (let c = 0; c < d; c++) Nb[i][u + c] = Nb[u + c][i] = result.G[i][c];
+            }
+        }
+        return { A, B, M, Minv, SigLb, P, W, K, V, Lb, La, QV, SigmaV, SigmaLa, G: result.G, Nb };
     }
 
     function observationLabels(result) {
@@ -1024,6 +1233,79 @@
         };
     }
 
+    // ---------------------------------------------------------------- comparação de modelos
+    // Roda os quatro ajustamentos sobre as mesmas visadas. O que NÃO pode mudar: entre os
+    // dois modelos com o mesmo datum, nada (é o mesmo problema de mínimos quadrados); entre
+    // datums, os resíduos e a forma da rede quando os pontos fixos não tensionam as
+    // observações. O que muda com o datum: coordenadas, σ, elipsoides e graus de liberdade.
+    const VARIANTS = [['combinado', 'fixos'], ['parametrico', 'fixos'], ['combinado', 'livre'], ['parametrico', 'livre']];
+
+    function compareModels(rows, S) {
+        const runs = VARIANTS.map(([model, datum]) => {
+            const label = `${MODEL_LABELS[model]} · ${DATUM_LABELS[datum]}`;
+            try { return { model, datum, label, res: adjustNetwork(rows, Object.assign({}, S, { model, datum })) }; }
+            catch (e) { return { model, datum, label, error: e.message }; }
+        });
+        const ref = runs.find(r => r.res) || null;
+        const xyzOf = res => new Map(res.pointResults.map(p => [p.name, p.xyz]));
+        const residualsOf = res => new Map(res.obsData.map(o => [o.row.idx, o.v]));
+
+        runs.forEach(r => {
+            if (!r.res) return;
+            const res = r.res;
+            r.traceCoord = res.unknowns.reduce((a, un, i) => a + (un.kind === 'w' ? 0 : res.SigmaXa[i][i]), 0);
+            // Mesmo datum, outro modelo: incógnita a incógnita, pelo nome
+            const twin = runs.find(o => o.res && o.datum === r.datum && o.model !== r.model);
+            if (twin) {
+                const other = new Map(twin.res.unknowns.map((un, i) => [un.name, twin.res.Xa[i]]));
+                let lin = 0, ang = 0;
+                res.unknowns.forEach((un, i) => {
+                    if (!other.has(un.name)) return;
+                    const dv = res.Xa[i] - other.get(un.name);
+                    if (un.kind === 'w') ang = Math.max(ang, Math.abs(wrapPi(dv)));
+                    else lin = Math.max(lin, Math.abs(dv));
+                });
+                r.dModel = { lin, ang };
+            }
+            if (ref && r !== ref) {
+                const vRef = residualsOf(ref.res);
+                let dAng = 0, dLin = 0;
+                residualsOf(res).forEach((v, idx) => {
+                    const w = vRef.get(idx);
+                    if (!w) return;
+                    dAng = Math.max(dAng, Math.abs(v[0] - w[0]), Math.abs(v[1] - w[1]));
+                    dLin = Math.max(dLin, Math.abs(v[2] - w[2]));
+                });
+                r.dV = { ang: dAng, lin: dLin };
+                // Forma da rede: distâncias entre todos os pares de pontos comuns
+                const a = xyzOf(res), b = xyzOf(ref.res);
+                const names = Array.from(a.keys()).filter(n => b.has(n));
+                let dd = 0;
+                for (let i = 0; i < names.length; i++) for (let j = i + 1; j < names.length; j++) {
+                    const p = a.get(names[i]), q = a.get(names[j]), p2 = b.get(names[i]), q2 = b.get(names[j]);
+                    const d1 = Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
+                    const d2 = Math.hypot(p2[0] - q2[0], p2[1] - q2[1], p2[2] - q2[2]);
+                    dd = Math.max(dd, Math.abs(d1 - d2));
+                }
+                r.dDist = dd;
+            }
+        });
+
+        // Compatibilidade dos pontos fixos: as injunções a mais que eles impõem além do
+        // datum mínimo só aumentam VᵀPV se tensionarem as observações.
+        // ΔVᵀPV = VᵀPV(fixos) − VᵀPV(livre) ~ χ² com gl(fixos) − gl(livre) graus.
+        const compat = ['combinado', 'parametrico'].map(model => {
+            const f = runs.find(o => o.res && o.model === model && o.datum === 'fixos');
+            const l = runs.find(o => o.res && o.model === model && o.datum === 'livre');
+            if (!f || !l) return { model, available: false };
+            const dV = f.res.VtPV - l.res.VtPV, ddof = f.res.dof - l.res.dof;
+            if (ddof <= 0) return { model, available: true, applicable: false, dV, ddof };
+            const crit = chi2Inv(1 - S.alphaPct / 100, ddof);
+            return { model, available: true, applicable: true, dV, ddof, crit, pass: dV <= crit };
+        });
+        return { runs, refLabel: ref ? ref.label : null, compat };
+    }
+
     function detectOutliers(rows, result, method, S) {
         if (method === 'snooping') return detectDataSnooping(rows, S);
         if (method === 'tau') return detectPope(result, S);
@@ -1066,8 +1348,9 @@
         linalg,
         logGamma, regularizedGammaP, chi2CDF, chi2Inv, normInv, tCDF, tInv, tauCritical,
         wrap2Pi, wrapPi, polarToDelta, conditionF, jacobianB, omegaColumn, obsSigmas,
+        observationF, observationJacobian, MODEL_LABELS, DATUM_LABELS, VARIANTS,
         NetworkError, fitStationPose, applyPose, buildNetwork, approximate, linearize,
-        adjustNetwork, fullMatrices, observationLabels,
+        nullSpace, borderedInverse, adjustNetwork, fullMatrices, observationLabels, compareModels,
         detectSigmaRule, detectPope, detectDataSnooping, detectOutliers,
         confidenceK, ellipsoid3D, ellipse2D
     };

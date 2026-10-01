@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Interseção a Ré 3D — Modelo Combinado</title>
     <meta name="description"
-        content="Simulador didático de rede 3D de estações livres (interseção a ré) ajustada pelo Método Combinado (MMQ): aproximações iniciais, controle de qualidade, detecção de outliers, elipsoides de erro e relatório em PDF.">
+        content="Simulador didático de rede 3D de estações livres (interseção a ré) ajustada pelos métodos combinado e paramétrico (MMQ), com pontos fixos ou como rede livre: aproximações iniciais, controle de qualidade, detecção de outliers, elipsoides de erro e relatório em PDF.">
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔭</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -21,11 +21,16 @@
         <div class="max-w-[1600px] mx-auto px-4 sm:px-6 flex justify-between items-center gap-4">
             <div>
                 <h1 class="text-xl md:text-2xl font-bold tracking-tight">Interseção a Ré 3D</h1>
-                <p class="text-stone-400 text-xs md:text-sm mt-1">Rede de estações livres pelo Método Combinado (MMQ)</p>
+                <p class="text-stone-400 text-xs md:text-sm mt-1">Rede de estações livres — métodos combinado e paramétrico, com pontos fixos ou rede livre (MMQ)</p>
             </div>
-            <a href="../index.html"
-                class="text-xs text-stone-300 hover:text-white border border-stone-700 rounded px-3 py-1.5 transition-colors shrink-0">&#8592;
-                Portal</a>
+            <div class="flex items-center gap-2 shrink-0">
+                <a href="../index.html"
+                    class="text-xs text-stone-300 hover:text-white border border-stone-700 rounded px-3 py-1.5 transition-colors">&#8592;
+                    Portal</a>
+                <a href="modelos.html" target="_blank" rel="noopener"
+                    class="text-xs text-stone-100 hover:text-white bg-stone-800 hover:bg-stone-700 border border-stone-600 rounded px-3 py-1.5 transition-colors font-semibold">&#8721;
+                    Explicação dos Modelos</a>
+            </div>
         </div>
     </header>
 
@@ -99,7 +104,24 @@
                 <div class="space-y-3">
                     <div class="step" id="step1">
                         <span class="step-num">1</span>
-                        <div class="flex-1">
+                        <div class="flex-1 space-y-1.5">
+                            <div class="grid grid-cols-2 gap-1.5">
+                                <div>
+                                    <label class="field-label" for="selModel">Modelo</label>
+                                    <select id="selModel" class="field" onchange="app.updateSettings()">
+                                        <option value="combinado">Combinado</option>
+                                        <option value="parametrico">Paramétrico</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="field-label" for="selDatum">Datum</label>
+                                    <select id="selDatum" class="field" onchange="app.updateSettings()">
+                                        <option value="fixos">Pontos fixos</option>
+                                        <option value="livre">Rede livre</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <p id="modelHint" class="text-[10px] text-stone-400 leading-tight"></p>
                             <button onclick="app.runAdjustment()" id="btnAdjust" disabled
                                 class="btn w-full py-2 bg-teal-600 text-white rounded shadow hover:bg-teal-700 text-sm font-bold">&#9654;
                                 Executar Ajustamento</button>
@@ -197,6 +219,9 @@
                     <button id="tabBtn-coords" onclick="app.switchTab('coords')"
                         class="tab-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all">&#8982;
                         Coordenadas</button>
+                    <button id="tabBtn-compare" onclick="app.switchTab('compare')"
+                        class="tab-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all">&#8646;
+                        Comparar Modelos</button>
                     <button id="tabBtn-matrices" onclick="app.switchTab('matrices')"
                         class="tab-btn px-3 py-1.5 text-xs font-semibold rounded-md transition-all">&#8862;
                         Matrizes</button>
@@ -228,6 +253,11 @@
                             <input id="ellipsoidScale" type="range" min="0" max="4" step="0.01" value="2.48"
                                 style="width:130px" oninput="app.updateViewOptions()">
                             <span id="ellipsoidScaleVal" class="font-mono text-stone-700 min-w-[3.5rem]">300×</span>
+                        </label>
+                        <label class="flex items-center gap-2">Tamanho dos pontos
+                            <input id="pointScale" type="range" min="0" max="3" step="0.05" value="1"
+                                style="width:100px" oninput="app.updateViewOptions()">
+                            <span id="pointScaleVal" class="font-mono text-stone-700 min-w-[2.5rem]">1×</span>
                         </label>
                         <label class="flex items-center gap-2">Nível
                             <select id="confSelect3d" class="field" style="width:auto" onchange="app.setConfidence(this.value)">
@@ -357,6 +387,24 @@
                             <thead></thead>
                             <tbody></tbody>
                         </table>
+                    </div>
+                </div>
+
+                <!-- ---------------- Comparar modelos ---------------- -->
+                <div id="tab-compare" style="display:none">
+                    <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
+                        <p class="text-xs text-stone-500 max-w-3xl">Roda os quatro ajustamentos sobre as mesmas visadas
+                            ativas — combinado e paramétrico, com pontos fixos e como rede livre. Compare o que não pode
+                            mudar (entre modelos, tudo; entre datums, os resíduos e a forma da rede) com o que muda
+                            (coordenadas, &sigma;, elipsoides, graus de liberdade). A teoria está na
+                            <a href="modelos.html" target="_blank" rel="noopener" class="text-teal-700 underline">Explicação dos Modelos</a>.</p>
+                        <button onclick="app.runComparison()" id="btnCompare" disabled
+                            class="btn py-1.5 px-3 bg-indigo-600 text-white rounded shadow hover:bg-indigo-700 text-xs font-bold">&#8646;
+                            Comparar os quatro</button>
+                    </div>
+                    <div id="compareContent">
+                        <p class="text-xs text-stone-400">Carregue observações e clique em
+                            <strong>Comparar os quatro</strong>.</p>
                     </div>
                 </div>
 
@@ -555,6 +603,11 @@
                                     zenitais a vertical; faltam três translações e a rotação em torno da vertical.
                                     Dois pontos fixos bastam para defini-las. Cada estação ganha uma incógnita de
                                     orientação &omega;.</p>
+                                <p><strong class="text-stone-700">Paramétrico e rede livre.</strong> O passo 1 também
+                                    oferece o modelo paramétrico (L<sub>a</sub> = F(X<sub>a</sub>)) e a rede livre (todos
+                                    os pontos como incógnitas, defeito de posto 4 removido por injunções internas). As
+                                    equações e as jacobianas de cada caso estão na
+                                    <a href="modelos.html" target="_blank" rel="noopener" class="text-teal-700 underline">Explicação dos Modelos</a>.</p>
                                 <p><strong class="text-stone-700">Pontos irradiados.</strong> Um ponto visado de uma só
                                     estação tem 3 observações e 3 incógnitas: o ajustamento o reproduz, r = 0 e nenhum
                                     erro grosseiro nele é detectável.</p>
