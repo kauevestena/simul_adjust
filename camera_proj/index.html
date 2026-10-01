@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>camera_proj · Formação de imagens</title>
+    <meta
+      name="description"
+      content="Laboratório interativo PT-BR/EN de projeção de câmeras, geometria fotogramétrica, distorção de lentes e amostragem em pixels."
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231d766b'/%3E%3Ccircle cx='32' cy='32' r='19' fill='none' stroke='%23fff' stroke-width='3'/%3E%3Ccircle cx='32' cy='32' r='5' fill='%23fff'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">◎</span>
+        <div><strong>camera_proj</strong><span data-t="subtitle"></span></div>
+      </div>
+      <div class="header-actions">
+        <a href="../" data-t="portal"></a>
+        <div class="language" aria-label="Language / Idioma">
+          <button type="button" data-lang="pt-BR" aria-pressed="true">
+            PT-BR</button
+          ><button type="button" data-lang="en" aria-pressed="false">EN</button>
+        </div>
+      </div>
+    </header>
+    <main class="workspace">
+      <aside class="sidebar">
+        <section class="preview-section" aria-labelledby="preview-title">
+          <div class="section-heading">
+            <h1 id="preview-title" data-t="image"></h1>
+            <span id="resolution-badge" class="mono badge"></span>
+          </div>
+          <div id="image-container" role="img" data-label="image">
+            <canvas id="image-overlay" aria-hidden="true"></canvas>
+          </div>
+          <div class="image-caption">
+            <span class="status-dot"></span><span id="plane-caption"></span>
+          </div>
+          <p id="preview-warning" class="warning" hidden></p>
+        </section>
+        <div class="settings">
+          <details open>
+            <summary>
+              <span class="step">01</span><span data-t="sensor"></span>
+            </summary>
+            <div class="controls">
+              <label
+                ><span data-t="plane"></span
+                ><select id="plane">
+                  <option value="physical" data-t="physical"></option>
+                  <option value="virtual" data-t="virtual"></option></select
+              ></label>
+              <label
+                ><span data-t="sampling"></span
+                ><select id="sampling">
+                  <option value="continuous" data-t="continuous"></option>
+                  <option value="pixels" data-t="pixels"></option></select
+              ></label>
+              <p class="hint" data-t="sampleHint"></p>
+              <div class="fields two">
+                <label
+                  ><span data-t="width"></span
+                  ><input
+                    id="sensor-width"
+                    inputmode="decimal"
+                    value="35" /></label
+                ><label
+                  ><span data-t="height"></span
+                  ><input id="sensor-height" inputmode="decimal" value="24"
+                /></label>
+              </div>
+              <div class="fields two">
+                <label
+                  ><span data-t="focal"></span
+                  ><input id="focal" inputmode="decimal" value="50" /></label
+                ><label
+                  ><span data-t="resolution"></span
+                  ><input id="resolution" inputmode="numeric" value="700"
+                /></label>
+              </div>
+              <div class="resolution-presets">
+                <button type="button" data-resolution="70">70 px</button
+                ><button type="button" data-resolution="350">350 px</button
+                ><button type="button" data-resolution="1400">1400 px</button>
+              </div>
+              <fieldset>
+                <legend data-t="offset"></legend>
+                <div class="fields two">
+                  <label
+                    >Δx<input
+                      id="offset-x"
+                      inputmode="decimal"
+                      value="0" /></label
+                  ><label
+                    >Δy<input id="offset-y" inputmode="decimal" value="0"
+                  /></label>
+                </div>
+              </fieldset>
+              <p class="hint" data-t="offsetHint"></p>
+              <div id="derived" class="derived"></div>
+            </div>
+          </details>
+          <details open>
+            <summary>
+              <span class="step">02</span><span data-t="camera"></span>
+            </summary>
+            <div class="controls">
+              <fieldset>
+                <legend data-t="position"></legend>
+                <div class="fields three">
+                  <label>X<input id="cx" inputmode="decimal" value="0" /></label
+                  ><label
+                    >Y<input id="cy" inputmode="decimal" value="0" /></label
+                  ><label
+                    >Z<input id="cz" inputmode="decimal" value="0"
+                  /></label>
+                </div>
+              </fieldset>
+              <label
+                ><span data-t="representation"></span
+                ><select id="representation">
+                  <option value="angles" data-t="angles"></option>
+                  <option value="quaternion" data-t="quaternion"></option>
+                  <option value="matrix" data-t="matrix"></option></select
+              ></label>
+              <div id="rotation-inputs" class="fields three"></div>
+              <button
+                id="apply-rotation"
+                type="button"
+                data-t="applyRotation"
+              ></button>
+              <p class="hint" data-t="rotationHint"></p>
+              <button
+                id="face-object"
+                class="primary"
+                type="button"
+                data-t="faceObject"
+              ></button>
+            </div>
+          </details>
+          <details>
+            <summary>
+              <span class="step">03</span><span data-t="distortion"></span>
+            </summary>
+            <div class="controls">
+              <label
+                ><span data-t="model"></span
+                ><select id="distortion">
+                  <option value="none" data-t="none"></option>
+                  <option value="radial">k₁, k₂</option>
+                  <option value="tangential">k₁, k₂, p₁, p₂</option>
+                  <option value="full">k₁, k₂, k₃, p₁, p₂</option>
+                </select></label
+              >
+              <div class="fields three" id="distortion-inputs">
+                <label>k₁<input id="k1" value="0" inputmode="decimal" /></label
+                ><label>k₂<input id="k2" value="0" inputmode="decimal" /></label
+                ><label>k₃<input id="k3" value="0" inputmode="decimal" /></label
+                ><label>p₁<input id="p1" value="0" inputmode="decimal" /></label
+                ><label
+                  >p₂<input id="p2" value="0" inputmode="decimal"
+                /></label>
+              </div>
+              <p class="hint" data-t="distortionHint"></p>
+              <p id="distortion-warning" class="warning" hidden></p>
+            </div>
+          </details>
+          <details>
+            <summary>
+              <span class="step">04</span><span data-t="object"></span>
+            </summary>
+            <div class="controls">
+              <fieldset>
+                <legend data-t="objectPosition"></legend>
+                <div class="fields three">
+                  <label>X<input id="ox" value="0" inputmode="decimal" /></label
+                  ><label
+                    >Y<input id="oy" value="0" inputmode="decimal" /></label
+                  ><label
+                    >Z<input id="oz" value="5" inputmode="decimal"
+                  /></label>
+                </div>
+              </fieldset>
+              <label
+                ><span data-t="side"></span
+                ><input id="side" value="1" inputmode="decimal"
+              /></label>
+              <fieldset>
+                <legend data-t="objectAngles"></legend>
+                <div class="fields three">
+                  <label
+                    >X<input id="rx" value="20" inputmode="decimal" /></label
+                  ><label
+                    >Y<input id="ry" value="30" inputmode="decimal" /></label
+                  ><label
+                    >Z<input id="rz" value="0" inputmode="decimal"
+                  /></label>
+                </div>
+              </fieldset>
+            </div>
+          </details>
+          <details>
+            <summary>
+              <span class="step">05</span><span data-t="guides"></span>
+            </summary>
+            <div class="controls">
+              <label class="check"
+                ><input id="axes" type="checkbox" checked /><span
+                  data-t="axes"
+                ></span></label
+              ><label class="check"
+                ><input id="frustum" type="checkbox" checked /><span
+                  data-t="frustum"
+                ></span></label
+              ><label class="check"
+                ><input id="grid" type="checkbox" /><span
+                  data-t="pixelGrid"
+                ></span
+              ></label>
+            </div>
+          </details>
+          <div class="settings-footer">
+            <button
+              id="theory"
+              class="primary"
+              type="button"
+              data-t="theory"
+            ></button
+            ><button id="reset" type="button" data-t="reset"></button
+            ><a
+              href="https://docs.opencv.org/4.13.0/d9/d0c/group__calib3d.html"
+              target="_blank"
+              rel="noopener"
+              data-t="reference"
+            ></a>
+          </div>
+        </div>
+        <p id="form-error" role="alert" hidden></p>
+      </aside>
+      <section id="viewport" data-label="world">
+        <div class="viewport-toolbar">
+          <div>
+            <h2 data-t="world"></h2>
+            <p data-t="navigate"></p>
+          </div>
+          <div class="viewport-actions">
+            <select id="vertex" data-label="vertex">
+              <option value="" data-t="vertex"></option></select
+            ><button id="reset-view" type="button" data-t="resetView"></button>
+          </div>
+        </div>
+        <div id="camera-label" class="scene-label">
+          C <span class="mono">(0, 0, 0)</span>
+        </div>
+        <section class="pose-readout" aria-labelledby="pose-title">
+          <h3 id="pose-title" data-t="orientation"></h3>
+          <div class="readout-label">ω, φ, κ <span>°</span></div>
+          <div id="euler-readout" class="mono values"></div>
+          <div class="readout-label">
+            qcw <span data-t="cameraWorld"></span>
+          </div>
+          <div id="quaternion-readout" class="mono values"></div>
+          <div class="readout-label">
+            Rwc <span data-t="worldCamera"></span>
+          </div>
+          <pre id="matrix-readout"></pre>
+          <div class="matrix-convention">Rwc = Rκ Rφ Rω</div>
+          <p id="gimbal-warning" class="hint" hidden></p>
+        </section>
+        <section class="point-readout" aria-labelledby="point-title">
+          <div class="point-heading">
+            <h3 id="point-title" data-t="point"></h3>
+            <button id="clear-point" type="button" data-t="clear"></button>
+          </div>
+          <p id="point-help" data-t="hoverHint"></p>
+          <div id="point-values"></div>
+        </section>
+        <div id="detail-caption" data-t="detail"></div>
+        <div class="ray-legend">
+          <span><i class="yellow"></i><span data-t="ray"></span></span
+          ><span><i class="teal"></i><span data-t="distorted"></span></span>
+        </div>
+        <p id="graphics-error" role="alert" hidden></p>
+      </section>
+    </main>
+    <dialog id="theory-dialog">
+      <div class="dialog-heading">
+        <h2 data-t="theoryTitle"></h2>
+        <button id="close-theory" type="button" data-t="close"></button>
+      </div>
+      <h3 data-t="theory1"></h3>
+      <p data-t="theory1Text"></p>
+      <pre>Pc = Rwc (Pw − C) = Rwc Pw + t     t = −Rwc C</pre>
+      <h3 data-t="theory2"></h3>
+      <p data-t="theory2Text"></p>
+      <pre>
+x = Xc/Zc     y = Yc/Zc     r² = x² + y²
+a = 1 + k₁r² + k₂r⁴ + k₃r⁶
+xd = xa + 2p₁xy + p₂(r² + 2x²)
+yd = ya + p₁(r² + 2y²) + 2p₂xy</pre
+      >
+      <h3 data-t="theory3"></h3>
+      <p data-t="theory3Text"></p>
+      <pre>
+virtual:  (f xd, f yd, +f)
+physical: (−f xd, −f yd, −f)
+uphysical = W − 1 − uOpenCV
+vphysical = H − 1 − vOpenCV</pre
+      >
+      <h3 data-t="theory4"></h3>
+      <p data-t="theory4Text"></p>
+      <pre>
+fx = f W / sensor_width     fy = f H / sensor_height
+cx = (W − 1)/2 + Δx W / sensor_width
+cy = (H − 1)/2 + Δy H / sensor_height
+uOpenCV = fx xd + cx        vOpenCV = fy yd + cy</pre
+      >
+      <h3 data-t="theory5"></h3>
+      <p data-t="theory5Text"></p>
+      <pre>
+Rω = [ 1   0     0  ]   Rφ = [ cosφ  0 −sinφ ]
+     [ 0 cosω  sinω ]        [   0   1    0  ]
+     [ 0 −sinω cosω ]        [ sinφ  0  cosφ ]
+
+Rκ = [  cosκ sinκ 0 ]
+     [ −sinκ cosκ 0 ]
+     [   0    0  1 ]</pre
+      >
+      <a
+        href="https://docs.opencv.org/4.13.0/d9/d0c/group__calib3d.html"
+        target="_blank"
+        rel="noopener"
+        data-t="reference"
+      ></a>
+    </dialog>
+    <noscript
+      >Ative JavaScript para usar o simulador. Enable JavaScript to use the
+      simulator.</noscript
+    >
+    <script type="module" src="app.mjs"></script>
+  </body>
+</html>
