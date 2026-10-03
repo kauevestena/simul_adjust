@@ -2,6 +2,64 @@
 // Cinco painéis empilhados: dados -> ajustamento das seis faces -> resumo -> volume geométrico
 // -> propagação e intervalos. O cálculo vive em volume.js; aqui só há orquestração e desenho.
 const volApp = {
+    currentLang: (function() {
+        const p = new URLSearchParams(window.location.search).get('lang');
+        if (p === 'en' || p === 'pt' || p === 'pt-BR') return p.startsWith('pt') ? 'pt-BR' : 'en';
+        const s = localStorage.getItem('monorepo_lang');
+        if (s === 'en' || s === 'pt' || s === 'pt-BR') return s.startsWith('pt') ? 'pt-BR' : 'en';
+        return (navigator.language && navigator.language.startsWith('pt')) ? 'pt-BR' : 'en';
+    })(),
+
+    t(key) {
+        const dict = (window.planosI18n && window.planosI18n[this.currentLang]) || 
+                     (window.planosI18n && window.planosI18n['pt-BR']) || {};
+        return dict[key] !== undefined ? dict[key] : key;
+    },
+
+    setLanguage(lang) {
+        if (lang === 'pt') lang = 'pt-BR';
+        this.currentLang = lang;
+        localStorage.setItem('monorepo_lang', lang);
+        const url = new URL(window.location.href);
+        url.searchParams.set('lang', lang);
+        window.history.replaceState({}, '', url.toString());
+
+        this.updateLanguageUI();
+    },
+
+    updateLanguageUI() {
+        const t = (k) => this.t(k);
+        document.title = t('volTitle');
+        const metaDesc = document.querySelector('meta[name="description"]');
+        if (metaDesc) metaDesc.setAttribute('content', t('volSubtitle'));
+
+        const isPt = this.currentLang.startsWith('pt');
+        const btnPt = document.getElementById('btnLangPt');
+        const btnEn = document.getElementById('btnLangEn');
+        if (btnPt && btnEn) {
+            btnPt.className = isPt ? "px-2.5 py-1 text-xs font-bold rounded-md transition-all bg-teal-600 text-white shadow-sm" : "px-2.5 py-1 text-xs font-bold rounded-md transition-all text-stone-400 hover:text-white";
+            btnEn.className = !isPt ? "px-2.5 py-1 text-xs font-bold rounded-md transition-all bg-teal-600 text-white shadow-sm" : "px-2.5 py-1 text-xs font-bold rounded-md transition-all text-stone-400 hover:text-white";
+        }
+
+        const portalLink = document.getElementById('portalLink');
+        if (portalLink) {
+            portalLink.textContent = t('portalLink');
+            portalLink.setAttribute('title', t('portalTitle'));
+            portalLink.href = `../index.html?lang=${isPt ? 'pt' : 'en'}`;
+        }
+
+        const adjLink = document.getElementById('adjustLink');
+        if (adjLink) {
+            adjLink.textContent = t('volAdjustLink');
+            adjLink.href = `index.html?lang=${isPt ? 'pt' : 'en'}`;
+        }
+
+        const hTitle = document.querySelector('header h1');
+        if (hTitle) hTitle.textContent = t('volTitle');
+        const hSub = document.querySelector('header p');
+        if (hSub) hSub.textContent = t('volSubtitle');
+    },
+
 
     // A injunção unitária é fixa nesta página: é o gauge em que Sigma_Xa pode ser propagada
     // para o volume sem nenhuma reparametrização.
@@ -14,6 +72,7 @@ const volApp = {
     _upload: [],
 
     init() {
+        this.updateLanguageUI();
         this.faces = PlanoVolume.SLOTS.map((slot, i) => ({
             slot, idx: i, rows: null, points: null, result: null, normalized: null,
             det: null, metodo: '3sigma', origem: null

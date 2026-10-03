@@ -1,0 +1,290 @@
+// ============================================
+// i18n Dictionary for 2D Resection Simulator (estacao_livre)
+// Fully Bilingual: PT-BR & EN
+// ============================================
+
+export const i18n = {
+    'pt-BR': {
+        pageTitle: "Simulador de Interseção à Ré - MMQ",
+        pageDesc: "Simulação de Ajustamento pelo Método dos Mínimos Quadrados para Interseção à Ré 2D (Estação Livre).",
+        headerTitle: "Interseção à Ré",
+        headerSubtitle: "Simulação de Ajustamento pelo Método dos Mínimos Quadrados",
+        portalLink: "← Portal",
+        portalTitle: "Voltar ao Portal Monorepo",
+
+        // Sidebar Panels
+        insertPointsTitle: "Inserção de Pontos",
+        btnInsertA: "■ + Apoio (Tipo A)",
+        btnInsertB: "● + Estação Livre (Tipo B)",
+        insertModeHint: "Clique no mapa para inserir...",
+        networkControlTitle: "Controle da Rede",
+        btnGenerateNetwork: "Gerar Nova Rede",
+        btnInjectOutlier: "Simular Erro Grosseiro",
+        btnRunAdjustment: "Executar Ajustamento",
+        randomNoiseTitle: "σ ruído aleatório",
+        randomNoiseSub: "(re-amostrado a cada execução)",
+        randomNoiseHelp: "Gaussian(0, σ) adicionado a cada execução. Se σ=0, nenhum ruído é inserido.",
+        aprioriParamsTitle: "Parâmetros Estocásticos a Priori:",
+        sigmaDistLabel: "Distâncias (σ_d)",
+        sigmaDirLabel: "Direções (σ_az)",
+        significanceLevel: "Nível de Significância (α)",
+        varianceFactor: "Fator de Variância (σ²₀):",
+
+        // Global Test
+        globalTestTitle: "Teste Global (χ²)",
+        awaitingAdjustment: "Aguardando ajustamento...",
+        testPassed: "✓ Aprovado",
+        testFailed: "✗ Falhou",
+        calcChi2: "χ² calc. (VᵀPV):",
+        infChi2: "χ² inf (α/2 = ",
+        supChi2: "χ² sup (1-α/2 = ",
+        estVariance: "σ̂²₀:",
+        dof: "Graus de Liberdade:",
+        anomalyDetected: "Anomalia detectada na rede. Analise o teste de Baarda abaixo.",
+
+        // Map View / Tabs
+        tabMapView: "▣ Vista de Rede",
+        tabDataTable: "☰ Tabela de Dados",
+        legendTypeA: "Ponto de Apoio (Fixo)",
+        legendTypeB: "Estação Livre (Calculado)",
+        legendDistLine: "Distância",
+        legendDirLine: "Direção",
+        fitNetwork: "⌕ Ajustar à janela",
+        ellipseScale: "Escala Elipses",
+        canvasHint: "Arraste os pontos para alterar a geometria. As elipses de erro estão ampliadas.",
+
+        // Data Table Tab
+        dataTableHelp: "Edite diretamente as observações e seus desvios padrão. Alterações resetam o ajustamento.",
+        btnNewObs: "+ Nova Observação",
+        colFrom: "Estação",
+        colTo: "Alvo",
+        colType: "Tipo",
+        colObsVal: "Valor Observado",
+        colSigma: "σ a priori",
+        typeDist: "Distância (m)",
+        typeDir: "Direção (graus)",
+        dataTableFootnote: "Ao editar ou adicionar observações, certifique-se de que os pontos existam na rede.",
+
+        // Residuals Table
+        residualsTitle: "Resíduos & Data Snooping",
+        critLimit: "limite crítico |w| ≤ ",
+        colObsId: "Obs.",
+        colValObs: "Valor Observado",
+        colResidualV: "v (Resíduo)",
+        colStdV: "std(v)",
+        colWTest: "w-test (Baarda)",
+        colState: "Estado",
+        tipObsId: "Identificador da observação (Estação → Alvo)",
+        tipValObs: "Valor simulado (com ruído e eventuais erros grosseiros)",
+        tipResidualV: "Diferença entre o valor ajustado e o observado",
+        tipStdV: "Desvio padrão a priori do resíduo e (a posteriori)",
+        tipWTest: "Resíduo padronizado (w). Se |w| > limite crítico, possível erro grosseiro.",
+        tipState: "Resultado do Data Snooping (OK ou OUTLIER)",
+
+        // Reliability Table
+        reliabilityTitle: "Confiabilidade Interna (Sensibilidade)",
+        colRedundancy: "r (Redundância)",
+        colMdb: "∇₀l (Viés Mín. Detectável)",
+        colQuality: "Qualidade",
+        tipRedundancy: "Número de redundância local (0 a 1).",
+        tipMdb: "Menor erro grosseiro detectável estatisticamente.",
+        tipQuality: "Classificação da redundância local (Boa se r > 0.3, Crítica se r < 0.1)",
+        qualGood: "Boa",
+        qualMedium: "Média",
+        qualCritical: "Crítica (Sem Controle)",
+        reliabilityFootnote: "<strong>r (0 a 1):</strong> Contribuição da observação para a redundância do sistema.<br><strong>∇₀l:</strong> O menor erro grosseiro que o sistema consegue detectar estatisticamente com 80% de probabilidade.",
+
+        // Coordinates Table
+        coordsTitle: "Coordenadas Ajustadas & Confiabilidade Externa",
+        colPoint: "Ponto",
+        colXadj: "X_adj (m)",
+        colYadj: "Y_adj (m)",
+        colSemiMajor: "Semi-eixo a (mm)",
+        colSemiMinor: "Semi-eixo b (mm)",
+        colTheta: "Orientação θ (°)",
+        colExtRelMax: "Conf. ext. máx. (mm)",
+        colOrigin: "Origem",
+        coordsFootnote: "<strong>Conf. ext. máx.:</strong> maior deslocamento posicional gerado pelo erro mínimo detectável (∇₀) de qualquer observação.",
+
+        // Matrices
+        matricesTitle: "Matrizes do Ajustamento",
+        matrixDescSummary: "Descrição",
+        explanations: {
+            'A': '<strong>Matriz de Configuração / Jacobiana (A):</strong> Contém as derivadas parciais das equações não-lineares de distância e azimute em relação às incógnitas (X, Y).',
+            'P': '<strong>Matriz de Pesos (P):</strong> Diagonal com o inverso das variâncias a priori das distâncias e direções.',
+            'L': '<strong>Vetor de Termos Independentes (L):</strong> Diferenças L_obs − L_calc calculadas a cada iteração de Gauss-Newton.',
+            'X': '<strong>Vetor de Correções (dx):</strong> Ajustes estimados por mínimos quadrados a cada iteração (dx = N⁻¹U).',
+            'V': '<strong>Vetor de Resíduos (V):</strong> Discrepâncias finais entre grandezas ajustadas e observações.',
+            'N': '<strong>Matriz das Equações Normais (N):</strong> Matriz simétrica N = Aᵀ P A.',
+            'SigmaXa': '<strong>Matriz de Variância-Covariância (&Sigma;<sub>X<sub>a</sub></sub>):</strong> Incertezas propagadas e elipses de erro dos pontos livres.'
+        },
+
+        // Monte Carlo
+        mcTitle: "Simulação de Monte Carlo",
+        mcDesc: "Simula milhares de observações adicionando ruído gaussiano para validar empiricamente a convergência e as elipses de erro.",
+        mcTrials: "Número de Ensaios (N)",
+        btnRunMonteCarlo: "Executar Monte Carlo",
+        mcDispScale: "Escala dispersão",
+        colBiasPos: "Viés Posicional (mm)",
+        colSampleRms: "RMS amostral (mm)",
+        mcAccepted: "Aceitos no Teste Global:",
+        mcRejected: "Rejeitados:",
+        mcCrashed: "Falhas de convergência:",
+        mcFootnoteTest: "As simulações reprovadas não passaram no teste de qui-quadrado com significância de",
+        mcFootnoteIdeal: "%.",
+        mcBiasDoc: "<strong>Viés Posicional:</strong> Mede o afastamento médio das posições simuladas em relação às coordenadas nominais.",
+        mcStdDoc: "<strong>RMS Amostral:</strong> Raio quadrático médio empírico da dispersão dos ensaios.",
+
+        // Modals
+        blunderModalTitle: "⚠ Simular Erro Grosseiro",
+        blunderMagLabel: "Magnitude do erro (Múltiplo do desvio padrão)",
+        blunderHelp: "As observações selecionadas receberão um erro grosseiro de ±X vezes o seu desvio padrão a priori.",
+        candidateObs: "Observações candidatas",
+        selectOneOrMore: "(selecione uma ou mais)",
+        btnCancel: "Cancelar",
+        btnInject: "⚠ Injetar Erro",
+        btnConfirm: "Confirmar"
+    },
+
+    'en': {
+        pageTitle: "2D Resection Simulator - LSE",
+        pageDesc: "Least Squares Adjustment Simulation for 2D Free Station / Resection Networks.",
+        headerTitle: "2D Resection",
+        headerSubtitle: "Network Adjustment Simulation via the Method of Least Squares",
+        portalLink: "← Portal",
+        portalTitle: "Back to Monorepo Portal",
+
+        // Sidebar Panels
+        insertPointsTitle: "Point Insertion",
+        btnInsertA: "■ + Control Point (Type A)",
+        btnInsertB: "● + Free Station (Type B)",
+        insertModeHint: "Click on map to insert...",
+        networkControlTitle: "Network Control",
+        btnGenerateNetwork: "Generate New Network",
+        btnInjectOutlier: "Simulate Gross Error (Blunder)",
+        btnRunAdjustment: "Run Adjustment",
+        randomNoiseTitle: "σ random noise",
+        randomNoiseSub: "(re-sampled on each run)",
+        randomNoiseHelp: "Gaussian(0, σ) added on each run. If σ=0, no noise is injected.",
+        aprioriParamsTitle: "A Priori Stochastic Parameters:",
+        sigmaDistLabel: "Distances (σ_d)",
+        sigmaDirLabel: "Directions (σ_az)",
+        significanceLevel: "Significance Level (α)",
+        varianceFactor: "Variance Factor (σ²₀):",
+
+        // Global Test
+        globalTestTitle: "Global Test (χ²)",
+        awaitingAdjustment: "Awaiting adjustment...",
+        testPassed: "✓ Passed",
+        testFailed: "✗ Failed",
+        calcChi2: "calc. χ² (VᵀPV):",
+        infChi2: "lower χ² (α/2 = ",
+        supChi2: "upper χ² (1-α/2 = ",
+        estVariance: "σ̂²₀:",
+        dof: "Degrees of Freedom:",
+        anomalyDetected: "Anomaly detected in the network. Check the Baarda w-test below.",
+
+        // Map View / Tabs
+        tabMapView: "▣ Network View",
+        tabDataTable: "☰ Data Table",
+        legendTypeA: "Control Point (Fixed)",
+        legendTypeB: "Free Station (Calculated)",
+        legendDistLine: "Distance",
+        legendDirLine: "Direction",
+        fitNetwork: "⌕ Fit to Window",
+        ellipseScale: "Error Ellipse Scale",
+        canvasHint: "Drag points to change geometry. Error ellipses are visually magnified.",
+
+        // Data Table Tab
+        dataTableHelp: "Edit observations and standard deviations directly. Changes reset the adjustment.",
+        btnNewObs: "+ New Observation",
+        colFrom: "Station",
+        colTo: "Target",
+        colType: "Type",
+        colObsVal: "Observed Value",
+        colSigma: "σ a priori",
+        typeDist: "Distance (m)",
+        typeDir: "Direction (deg)",
+        dataTableFootnote: "When editing or adding observations, ensure endpoints exist in the network.",
+
+        // Residuals Table
+        residualsTitle: "Residuals & Data Snooping",
+        critLimit: "critical limit |w| ≤ ",
+        colObsId: "Obs.",
+        colValObs: "Observed Value",
+        colResidualV: "v (Residual)",
+        colStdV: "std(v)",
+        colWTest: "w-test (Baarda)",
+        colState: "Status",
+        tipObsId: "Observation identifier (Station → Target)",
+        tipValObs: "Simulated value (with random noise and potential blunders)",
+        tipResidualV: "Difference between adjusted and observed value",
+        tipStdV: "A priori standard deviation of residual and (a posteriori)",
+        tipWTest: "Standardized residual (w). Flagged as blunder if |w| > critical limit.",
+        tipState: "Data Snooping outcome (OK or OUTLIER)",
+
+        // Reliability Table
+        reliabilityTitle: "Internal Reliability (Sensitivity)",
+        colRedundancy: "r (Redundancy)",
+        colMdb: "∇₀l (Min. Detectable Bias)",
+        colQuality: "Quality",
+        tipRedundancy: "Local redundancy number (0 to 1).",
+        tipMdb: "Smallest gross error statistically detectable by the system.",
+        tipQuality: "Redundancy quality classification (Good if r > 0.3, Critical if r < 0.1)",
+        qualGood: "Good",
+        qualMedium: "Medium",
+        qualCritical: "Critical (Uncontrolled)",
+        reliabilityFootnote: "<strong>r (0 to 1):</strong> Observation contribution to overall system redundancy.<br><strong>∇₀l:</strong> Smallest gross error detectable statistically with 80% test power.",
+
+        // Coordinates Table
+        coordsTitle: "Adjusted Coordinates & External Reliability",
+        colPoint: "Point",
+        colXadj: "X_adj (m)",
+        colYadj: "Y_adj (m)",
+        colSemiMajor: "Semi-major a (mm)",
+        colSemiMinor: "Semi-minor b (mm)",
+        colTheta: "Orientation θ (°)",
+        colExtRelMax: "Max Ext. Rel. (mm)",
+        colOrigin: "Origin",
+        coordsFootnote: "<strong>Max Ext. Rel.:</strong> largest position shift caused by the minimal detectable bias (∇₀) of any observation.",
+
+        // Matrices
+        matricesTitle: "Adjustment Matrices",
+        matrixDescSummary: "Description",
+        explanations: {
+            'A': '<strong>Design / Jacobian Matrix (A):</strong> Contains partial derivatives of nonlinear distance and azimuth equations with respect to unknown station coordinates (X, Y).',
+            'P': '<strong>Weight Matrix (P):</strong> Diagonal containing inverse variances of distance and direction observations.',
+            'L': '<strong>Misclosure Vector (L):</strong> Differences L_obs − L_calc updated at each Gauss-Newton iteration.',
+            'X': '<strong>Solution Vector (dx):</strong> Parameter corrections estimated at each iteration (dx = N⁻¹U).',
+            'V': '<strong>Residual Vector (V):</strong> Final discrepancies between adjusted quantities and observations.',
+            'N': '<strong>Normal Equations Matrix (N):</strong> Symmetric normal matrix N = Aᵀ P A.',
+            'SigmaXa': '<strong>Variance-Covariance Matrix (&Sigma;<sub>X<sub>a</sub></sub>):</strong> Propagated covariance matrix and standard error ellipses for unknown stations.'
+        },
+
+        // Monte Carlo
+        mcTitle: "Monte Carlo Simulation",
+        mcDesc: "Simulates thousands of synthetic surveys by adding Gaussian noise to validate convergence, bias, and error ellipses empirically.",
+        mcTrials: "Number of Trials (N)",
+        btnRunMonteCarlo: "Run Monte Carlo",
+        mcDispScale: "Dispersion scale",
+        colBiasPos: "Position Bias (mm)",
+        colSampleRms: "Sample RMS (mm)",
+        mcAccepted: "Accepted by Global Test:",
+        mcRejected: "Rejected:",
+        mcCrashed: "Convergence failures:",
+        mcFootnoteTest: "Rejected trials failed a chi-square global test at significance level of",
+        mcFootnoteIdeal: "%.",
+        mcBiasDoc: "<strong>Position Bias:</strong> Average deviation of simulated station positions from nominal coordinates.",
+        mcStdDoc: "<strong>Sample RMS:</strong> Empirical root-mean-square spread across Monte Carlo iterations.",
+
+        // Modals
+        blunderModalTitle: "⚠ Simulate Gross Error (Blunder)",
+        blunderMagLabel: "Error magnitude (Multiple of standard deviation)",
+        blunderHelp: "All selected observations will receive a blunder equal to ±X times their a priori standard deviation.",
+        candidateObs: "Candidate observations",
+        selectOneOrMore: "(select one or more)",
+        btnCancel: "Cancel",
+        btnInject: "⚠ Inject Error",
+        btnConfirm: "Confirm"
+    }
+};

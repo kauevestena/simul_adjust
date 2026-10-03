@@ -1,5 +1,66 @@
 // --- Orquestração da interface do simulador de ajustamento de planos ---
 const app = {
+    currentLang: (function() {
+        const p = new URLSearchParams(window.location.search).get('lang');
+        if (p === 'en' || p === 'pt' || p === 'pt-BR') return p.startsWith('pt') ? 'pt-BR' : 'en';
+        const s = localStorage.getItem('monorepo_lang');
+        if (s === 'en' || s === 'pt' || s === 'pt-BR') return s.startsWith('pt') ? 'pt-BR' : 'en';
+        return (navigator.language && navigator.language.startsWith('pt')) ? 'pt-BR' : 'en';
+    })(),
+
+    t(key) {
+        const dict = (window.planosI18n && window.planosI18n[this.currentLang]) || 
+                     (window.planosI18n && window.planosI18n['pt-BR']) || {};
+        return dict[key] !== undefined ? dict[key] : key;
+    },
+
+    setLanguage(lang) {
+        if (lang === 'pt') lang = 'pt-BR';
+        this.currentLang = lang;
+        localStorage.setItem('monorepo_lang', lang);
+        const url = new URL(window.location.href);
+        url.searchParams.set('lang', lang);
+        window.history.replaceState({}, '', url.toString());
+
+        this.updateLanguageUI();
+    },
+
+    updateLanguageUI() {
+        const t = (k) => this.t(k);
+        document.title = t('pageTitle');
+        const metaDesc = document.querySelector('meta[name="description"]');
+        if (metaDesc) metaDesc.setAttribute('content', t('pageDesc'));
+
+        const isPt = this.currentLang.startsWith('pt');
+        const btnPt = document.getElementById('btnLangPt');
+        const btnEn = document.getElementById('btnLangEn');
+        if (btnPt && btnEn) {
+            btnPt.className = isPt ? "px-2.5 py-1 text-xs font-bold rounded-md transition-all bg-teal-600 text-white shadow-sm" : "px-2.5 py-1 text-xs font-bold rounded-md transition-all text-stone-400 hover:text-white";
+            btnEn.className = !isPt ? "px-2.5 py-1 text-xs font-bold rounded-md transition-all bg-teal-600 text-white shadow-sm" : "px-2.5 py-1 text-xs font-bold rounded-md transition-all text-stone-400 hover:text-white";
+        }
+
+        const portalLink = document.getElementById('portalLink');
+        if (portalLink) {
+            portalLink.textContent = t('portalLink');
+            portalLink.setAttribute('title', t('portalTitle'));
+            portalLink.href = `../index.html?lang=${isPt ? 'pt' : 'en'}`;
+        }
+
+        const volLink = document.getElementById('volumeLink');
+        if (volLink) {
+            volLink.textContent = t('volumeLink');
+            volLink.href = `volume.html?lang=${isPt ? 'pt' : 'en'}`;
+        }
+
+        const hTitle = document.querySelector('header h1');
+        if (hTitle) hTitle.textContent = t('headerTitle');
+        const hSub = document.querySelector('header p');
+        if (hSub) hSub.textContent = t('headerSubtitle');
+
+        const secObs = document.querySelector('main h2');
+        if (secObs) secObs.textContent = t('secObs');
+    },
+
     settings: Object.assign({}, PlanoIO.DEFAULT_SETTINGS),
     points: [],
     result: null,

@@ -1,4 +1,77 @@
 const app = {
+    currentLang: (function() {
+        const p = new URLSearchParams(window.location.search).get('lang');
+        if (p === 'en' || p === 'pt' || p === 'pt-BR') return p.startsWith('pt') ? 'pt-BR' : 'en';
+        const s = localStorage.getItem('monorepo_lang');
+        if (s === 'en' || s === 'pt' || s === 'pt-BR') return s.startsWith('pt') ? 'pt-BR' : 'en';
+        return (navigator.language && navigator.language.startsWith('pt')) ? 'pt-BR' : 'en';
+    })(),
+
+    t(key) {
+        const dict = (window.estradasI18n && window.estradasI18n[this.currentLang]) || 
+                     (window.estradasI18n && window.estradasI18n['pt-BR']) || {};
+        return dict[key] !== undefined ? dict[key] : key;
+    },
+
+    setLanguage(lang) {
+        if (lang === 'pt') lang = 'pt-BR';
+        this.currentLang = lang;
+        localStorage.setItem('monorepo_lang', lang);
+        const url = new URL(window.location.href);
+        url.searchParams.set('lang', lang);
+        window.history.replaceState({}, '', url.toString());
+
+        this.updateLanguageUI();
+        this.recalculate(false);
+        this.switchTab(this.activeTab);
+    },
+
+    updateLanguageUI() {
+        const t = (k) => this.t(k);
+        document.title = t('pageTitle');
+
+        const btnPt = document.getElementById('btnLangPt');
+        const btnEn = document.getElementById('btnLangEn');
+        if (btnPt && btnEn) {
+            const isPt = this.currentLang.startsWith('pt');
+            btnPt.className = isPt ? "px-2.5 py-1 text-xs font-bold rounded-md transition-all bg-teal-600 text-white shadow-sm" : "px-2.5 py-1 text-xs font-bold rounded-md transition-all text-stone-400 hover:text-white";
+            btnEn.className = !isPt ? "px-2.5 py-1 text-xs font-bold rounded-md transition-all bg-teal-600 text-white shadow-sm" : "px-2.5 py-1 text-xs font-bold rounded-md transition-all text-stone-400 hover:text-white";
+        }
+
+        const portalLink = document.getElementById('portalLink');
+        if (portalLink) {
+            portalLink.textContent = t('portalLink');
+            portalLink.setAttribute('title', t('portalTitle'));
+            portalLink.href = `../index.html?lang=${this.currentLang.startsWith('pt') ? 'pt' : 'en'}`;
+        }
+
+        const hTitle = document.getElementById('headerTitle');
+        if (hTitle) hTitle.textContent = t('headerTitle');
+        const hSub = document.getElementById('headerSubtitle');
+        if (hSub) hSub.textContent = t('headerSubtitle');
+        const calcSt = document.getElementById('calcStatus');
+        if (calcSt) calcSt.textContent = t('calcStatusReady');
+
+        // Section headers
+        const h2s = document.querySelectorAll('aside h2');
+        if (h2s[0]) h2s[0].textContent = t('sectionHCurve');
+        if (h2s[1]) h2s[1].textContent = t('sectionVProfile');
+        if (h2s[2]) h2s[2].textContent = t('sectionCrossSection');
+        if (h2s[3]) h2s[3].textContent = t('sectionStakeout');
+
+        // Tab buttons
+        const tPlan = document.getElementById('tabPlan');
+        if (tPlan) tPlan.innerHTML = `<i data-lucide="map"></i> ${t('tabPlan')}`;
+        const tProf = document.getElementById('tabProfile');
+        if (tProf) tProf.innerHTML = `<i data-lucide="activity"></i> ${t('tabProfile')}`;
+        const tEarth = document.getElementById('tabEarth');
+        if (tEarth) tEarth.innerHTML = `<i data-lucide="layers"></i> ${t('tabEarth')}`;
+        const tStake = document.getElementById('tabStake');
+        if (tStake) tStake.innerHTML = `<i data-lucide="crosshair"></i> ${t('tabStake')}`;
+
+        if (window.lucide) window.lucide.createIcons();
+    },
+
     canvas: null,
     ctx: null,
     activeTab: 'plan',
@@ -25,6 +98,7 @@ const app = {
         this.ctx = this.canvas.getContext('2d');
         const hashTab = window.location.hash.replace('#', '');
         if (['plan', 'profile', 'earth', 'stake'].includes(hashTab)) this.activeTab = hashTab;
+        this.updateLanguageUI();
         this.bindEvents();
         this.resizeCanvas();
         window.addEventListener('resize', () => this.resizeCanvas());

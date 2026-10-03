@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { i18n, translateInteractDOM, translateReadoutDOM } from './i18n.js';
 
 // Import all coordinate system modules
 import * as geodesicasModule from './models/geodesicas.js';
@@ -22,6 +23,24 @@ const models = [
 ];
 
 // ============================================
+// Language State & Detection
+// ============================================
+function getInitialLang() {
+    const params = new URLSearchParams(window.location.search);
+    const langParam = params.get('lang');
+    if (langParam === 'en' || langParam === 'pt' || langParam === 'pt-BR') {
+        return langParam.startsWith('pt') ? 'pt' : 'en';
+    }
+    const saved = localStorage.getItem('monorepo_lang');
+    if (saved === 'en' || saved === 'pt' || saved === 'pt-BR') {
+        return saved.startsWith('pt') ? 'pt' : 'en';
+    }
+    return 'pt';
+}
+
+let currentLang = getInitialLang();
+
+// ============================================
 // State
 // ============================================
 let currentModelId = null;
@@ -40,6 +59,8 @@ function init() {
     setupThreeJS();
     createStarField();
     setupLighting();
+    setupLanguageSwitcher();
+    setupReadoutObserver();
     buildSidebar();
     setupTabs();
     setupPanelToggle();
@@ -152,6 +173,100 @@ function setupLighting() {
 }
 
 // ============================================
+// ============================================
+// Language Management
+// ============================================
+let isTranslatingReadout = false;
+
+function setupLanguageSwitcher() {
+    const btnPt = document.getElementById('btn-lang-pt');
+    const btnEn = document.getElementById('btn-lang-en');
+
+    if (btnPt) {
+        btnPt.addEventListener('click', () => setLanguage('pt'));
+    }
+    if (btnEn) {
+        btnEn.addEventListener('click', () => setLanguage('en'));
+    }
+
+    updateLanguageUI();
+}
+
+function setLanguage(lang) {
+    if (currentLang === lang) return;
+    currentLang = lang;
+    localStorage.setItem('monorepo_lang', lang);
+
+    const url = new URL(window.location.href);
+    url.searchParams.set('lang', lang);
+    window.history.replaceState({}, '', url.toString());
+
+    updateLanguageUI();
+    buildSidebar();
+
+    if (currentModelId) {
+        applyModelText(currentModelId);
+        const interactTab = document.getElementById('tab-interact');
+        translateInteractDOM(interactTab, currentLang);
+        translateReadoutDOM(document.getElementById('coord-readout'), currentLang);
+        rerenderMath();
+    }
+}
+
+function updateLanguageUI() {
+    const t = i18n.ui[currentLang];
+    if (!t) return;
+    document.title = t.pageTitle;
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) metaDesc.setAttribute('content', t.pageDesc);
+
+    const btnPt = document.getElementById('btn-lang-pt');
+    const btnEn = document.getElementById('btn-lang-en');
+    if (btnPt) btnPt.classList.toggle('active', currentLang === 'pt');
+    if (btnEn) btnEn.classList.toggle('active', currentLang === 'en');
+
+    const portalLink = document.getElementById('portalLink');
+    if (portalLink) {
+        portalLink.textContent = t.backToPortal;
+        portalLink.setAttribute('title', t.portalTitle);
+        portalLink.href = `../index.html?lang=${currentLang}`;
+    }
+
+    const appTitle = document.getElementById('app-title');
+    if (appTitle) appTitle.textContent = t.appTitle;
+
+    const appSubtitle = document.getElementById('app-subtitle');
+    if (appSubtitle) appSubtitle.textContent = t.appSubtitle;
+
+    const sidebarFooter = document.getElementById('sidebar-footer-text');
+    if (sidebarFooter) sidebarFooter.textContent = t.sidebarFooter;
+
+    const tabConcept = document.querySelector('#tab-btn-concept .tab-label');
+    if (tabConcept) tabConcept.textContent = t.tabConcept;
+
+    const tabHow = document.querySelector('#tab-btn-how .tab-label');
+    if (tabHow) tabHow.textContent = t.tabHow;
+
+    const tabInteract = document.querySelector('#tab-btn-interact .tab-label');
+    if (tabInteract) tabInteract.textContent = t.tabInteract;
+
+    const togglePanel = document.getElementById('toggle-panel');
+    if (togglePanel) togglePanel.setAttribute('title', t.togglePanelTitle);
+}
+
+function setupReadoutObserver() {
+    const readout = document.getElementById('coord-readout');
+    if (!readout) return;
+    const observer = new MutationObserver(() => {
+        if (isTranslatingReadout || currentLang !== 'en') return;
+        isTranslatingReadout = true;
+        translateReadoutDOM(readout, 'en');
+        isTranslatingReadout = false;
+    });
+    observer.observe(readout, { childList: true, subtree: true });
+}
+
+// ============================================
 // Sidebar
 // ============================================
 function buildSidebar() {
@@ -160,22 +275,45 @@ function buildSidebar() {
 
     models.forEach(({ id, module }) => {
         const info = module.modelInfo;
+        const modelTranslation = i18n.models[id]?.[currentLang];
+        const name = modelTranslation?.name || info.name;
+        const subtitle = modelTranslation?.subtitle || info.subtitle;
+
         const item = document.createElement('div');
         item.className = 'nav-item';
+        if (id === currentModelId) item.classList.add('active');
         item.dataset.modelId = id;
         item.id = `nav-${id}`;
 
         item.innerHTML = `
             <div class="nav-item-icon">${info.icon}</div>
             <div class="nav-item-text">
-                <div class="nav-item-name">${info.name}</div>
-                <div class="nav-item-desc">${info.subtitle}</div>
+                <div class="nav-item-name">${name}</div>
+                <div class="nav-item-desc">${subtitle}</div>
             </div>
         `;
 
         item.addEventListener('click', () => selectModel(id));
         nav.appendChild(item);
     });
+}
+
+function applyModelText(id) {
+    const entry = models.find(m => m.id === id);
+    if (!entry) return;
+    const { module } = entry;
+    const info = module.modelInfo;
+    const modelTranslation = i18n.models[id]?.[currentLang];
+
+    const name = modelTranslation?.name || info.name;
+    const subtitle = modelTranslation?.subtitle || info.subtitle;
+    const concept = modelTranslation?.concept || info.concept;
+    const how = modelTranslation?.howItWorks || info.howItWorks;
+
+    document.getElementById('current-model-name').textContent = name;
+    document.getElementById('current-model-subtitle').textContent = subtitle;
+    document.getElementById('tab-concept').innerHTML = concept;
+    document.getElementById('tab-how').innerHTML = how;
 }
 
 // ============================================
@@ -215,12 +353,7 @@ function selectModel(id) {
     overlay.offsetHeight; // trigger reflow
     overlay.style.animation = 'fadeSlideIn 0.6s ease forwards';
 
-    document.getElementById('current-model-name').textContent = info.name;
-    document.getElementById('current-model-subtitle').textContent = info.subtitle;
-
-    // Populate info tabs
-    document.getElementById('tab-concept').innerHTML = info.concept;
-    document.getElementById('tab-how').innerHTML = info.howItWorks;
+    applyModelText(id);
 
     // Setup the 3D scene
     currentModelInstance = module.setup(scene, camera, controls);
@@ -230,7 +363,10 @@ function selectModel(id) {
     interactTab.innerHTML = '';
     if (currentModelInstance.createControls) {
         currentModelInstance.createControls(interactTab);
+        translateInteractDOM(interactTab, currentLang);
     }
+
+    translateReadoutDOM(readout, currentLang);
 
     // Reset camera if model provides a default position
     if (info.cameraPosition) {

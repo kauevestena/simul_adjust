@@ -86,9 +86,65 @@ html, body {
    Sidebar
    ============================================ */
 .sidebar-header {
-    padding: 28px 24px 20px;
+    padding: 20px 20px 18px;
     border-bottom: 1px solid var(--border-subtle);
     text-align: center;
+}
+
+.sidebar-top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+}
+
+.portal-back-btn {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-decoration: none;
+    padding: 3px 8px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-subtle);
+    background: rgba(15, 23, 42, 0.5);
+    transition: all var(--transition-fast);
+}
+
+.portal-back-btn:hover {
+    color: var(--accent-primary);
+    border-color: var(--border-active);
+    background: rgba(56, 189, 248, 0.1);
+}
+
+.lang-switcher {
+    display: flex;
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 2px;
+    gap: 2px;
+}
+
+.lang-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.lang-btn:hover {
+    color: var(--text-primary);
+}
+
+.lang-btn.active {
+    background: var(--accent-primary);
+    color: #070b14;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.35);
 }
 
 .logo-icon {

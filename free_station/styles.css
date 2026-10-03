@@ -32,6 +32,12 @@ p, .hint, footer { color: var(--muted); }
 .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 1rem; margin: 1rem 0; box-shadow: 0 1px 2px #0001; }
 .row { display: flex; gap: 1rem; }
 .between { justify-content: space-between; }
+.header-actions { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.back-link { display: inline-flex; align-items: center; gap: 0.35rem; color: var(--accent); text-decoration: none; font-size: 0.85rem; font-weight: 600; padding: 0.45rem 0.75rem; border-radius: 9px; border: 1px solid var(--border); transition: all 0.2s ease; background: var(--panel); }
+.back-link:hover { background: color-mix(in srgb, var(--accent) 10%, var(--panel)); }
+.lang-switcher { display: inline-flex; border: 1px solid var(--border); border-radius: 9px; overflow: hidden; background: var(--panel); }
+.lang-btn { border: none; border-radius: 0; padding: 0.45rem 0.75rem; font-size: 0.82rem; font-weight: 700; cursor: pointer; background: transparent; color: var(--muted); transition: all 0.2s ease; }
+.lang-btn.active { background: var(--accent); color: white; }
 .grid { display: grid; gap: 1rem; }
 .two { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
 .three { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }

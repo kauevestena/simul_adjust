@@ -14,10 +14,19 @@
     <header class="bg-stone-900 text-stone-50 py-4 shadow-md">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 flex justify-between items-center">
             <div>
-                <h1 class="text-xl md:text-2xl font-bold tracking-tight">Projeto Rodoviario</h1>
-                <p class="text-stone-400 text-xs md:text-sm mt-1">Curvas, perfil, terraplenagem e locacao</p>
+                <h1 id="headerTitle" class="text-xl md:text-2xl font-bold tracking-tight">Projeto Rodoviário</h1>
+                <p id="headerSubtitle" class="text-stone-400 text-xs md:text-sm mt-1">Curvas, perfil, terraplenagem e locação</p>
             </div>
-            <span id="calcStatus" class="text-xs text-stone-400 font-mono hidden sm:inline">Pronto</span>
+            <div class="flex items-center gap-3">
+                <span id="calcStatus" class="text-xs text-stone-400 font-mono hidden sm:inline">Pronto</span>
+                <a id="portalLink" href="../index.html?lang=pt" class="text-xs font-semibold px-3 py-1.5 rounded-lg border border-stone-700 bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white transition-all flex items-center gap-1.5" title="Voltar ao Portal">
+                    ← Portal
+                </a>
+                <div class="flex bg-stone-800 p-0.5 rounded-lg border border-stone-700">
+                    <button id="btnLangPt" onclick="app.setLanguage('pt-BR')" class="px-2.5 py-1 text-xs font-bold rounded-md transition-all bg-teal-600 text-white shadow-sm">PT</button>
+                    <button id="btnLangEn" onclick="app.setLanguage('en')" class="px-2.5 py-1 text-xs font-bold rounded-md transition-all text-stone-400 hover:text-white">EN</button>
+                </div>
+            </div>
         </div>
     </header>
 
@@ -169,6 +178,10 @@
         </section>
     </main>
 
+    <script type="module">
+        import { i18n } from './i18n.js';
+        window.estradasI18n = i18n;
+    </script>
     <script src="app.js"></script>
 </body>
 

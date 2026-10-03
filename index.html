@@ -1,16 +1,16 @@
 <!DOCTYPE html>
+
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Simuladores de Geodésia, Topografia e Ajustamento — Portal Monorepo</title>
-  <meta name="description" content="Portal central de simuladores científicos e didáticos para Geodésia, Topografia, Ajustamento por Mínimos Quadrados, Órbitas GNSS e Engenharia Rodoviária.">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌐</text></svg>">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  
-  <style>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Simuladores de Geodésia, Topografia e Ajustamento — Portal Monorepo</title>
+<meta content="Portal central de simuladores científicos e didáticos para Geodésia, Topografia, Ajustamento por Mínimos Quadrados, Órbitas GNSS e Engenharia Rodoviária." name="description"/>
+<link href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'&gt;&lt;text y='.9em' font-size='90'&gt;🌐&lt;/text&gt;&lt;/svg&gt;" rel="icon"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<style>
     :root {
       --bg-base: #080c14;
       --bg-card: rgba(15, 23, 42, 0.65);
@@ -577,766 +577,1527 @@
         padding: 36px 0 24px 0;
       }
     }
-  </style>
+  
+    /* Header Top & Language Switcher */
+    .header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      max-width: 960px;
+      margin: 0 auto 20px auto;
+      gap: 16px;
+    }
+
+    .lang-switcher {
+      display: inline-flex;
+      align-items: center;
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 3px;
+      gap: 2px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    }
+
+    .lang-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 6px 14px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: var(--transition-smooth);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .lang-btn:hover {
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .lang-btn.active {
+      background: var(--accent-indigo);
+      color: #ffffff;
+      box-shadow: 0 2px 10px rgba(99, 102, 241, 0.4);
+    }
+
+    @media (max-width: 640px) {
+      .header-top {
+        flex-direction: column;
+        gap: 14px;
+      }
+    }
+</style>
 </head>
 <body>
-  <div class="mesh-glow"></div>
+<div class="mesh-glow"></div>
+<div class="container">
+<header><div class="header-top"><div class="monorepo-badge"><span class="pulse-dot"></span><span id="badgeText">MONOREPO • APLICAÇÕES CIENTÍFICAS SERVERLESS</span></div><div aria-label="Language / Idioma" class="lang-switcher" role="group"><button aria-pressed="true" class="lang-btn active" data-lang="pt-BR" type="button">PT-BR</button><button aria-pressed="false" class="lang-btn" data-lang="en" type="button">EN</button></div></div>
 
-  <div class="container">
-    <header>
-      <div class="monorepo-badge">
-        <span class="pulse-dot"></span>
-        MONOREPO • APLICAÇÕES CIENTÍFICAS SERVERLESS
-      </div>
-      <h1>Simuladores de Geodésia & Topografia</h1>
-      <p class="hero-subtitle">
+<h1 id="heroTitle">Simuladores de Geodésia &amp; Topografia</h1>
+<p class="hero-subtitle" id="heroSubtitle">
         Portal centralizado com ferramentas interativas, visualizadores 3D e laboratórios de ajustamento por Mínimos Quadrados. Todas as ferramentas executam 100% no navegador.
       </p>
-
-      <div class="hero-stats">
-        <div class="stat-pill">
-          <span>📦 Total de Simuladores:</span>
-          <strong id="statTotalApps">12</strong>
-        </div>
-        <div class="stat-pill">
-          <span>⚡ Arquitetura:</span>
-          <strong>Client-side (Sem Servidor)</strong>
-        </div>
-        <div class="stat-pill">
-          <span>📐 Métodos:</span>
-          <strong>MMQ, Órbitas, 3D & Vias</strong>
-        </div>
-      </div>
-
-      <!-- Controls Panel: Instant Search and Category Pills -->
-      <div class="controls-panel">
-        <div class="search-wrapper">
-          <div class="search-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-          </div>
-          <input 
-            type="text" 
-            id="searchInput" 
-            class="search-input" 
-            placeholder="Buscar por nome, método (ex: MMQ, GNSS, Geoide, Curvas), biblioteca..."
-            aria-label="Buscar simuladores"
-          >
-          <button id="searchClear" class="search-clear" aria-label="Limpar busca">&times;</button>
-        </div>
-
-        <div class="filter-tabs" id="filterTabs">
-          <button class="filter-btn active" data-category="all">
-            Todos <span class="filter-count" id="countAll">10</span>
-          </button>
-          <button class="filter-btn" data-category="ajustamento">
-            📐 Ajustamento & MMQ <span class="filter-count" id="countAjustamento">4</span>
-          </button>
-          <button class="filter-btn" data-category="geodesia-3d">
-            🌍 Geodésia & Modelos 3D <span class="filter-count" id="countGeodesia">2</span>
-          </button>
-          <button class="filter-btn" data-category="astronomia-gnss">
-            📡 GNSS & Astronomia <span class="filter-count" id="countAstro">2</span>
-          </button>
-          <button class="filter-btn" data-category="vias">
-            🛣️ Rodovias & Traçado <span class="filter-count" id="countVias">1</span>
-          </button>
-          <button class="filter-btn" data-category="jogos">
-            🎮 Jogos Educativos <span class="filter-count" id="countJogos">1</span>
-          </button>
-        </div>
-      </div>
-    </header>
-
-    <!-- Simulators Grid -->
-    <main class="simulators-grid" id="simulatorsGrid">
-
-      <article class="sim-card" data-category="geodesia-3d" style="--card-accent: #2dd4bf; --card-accent-glow: rgba(45, 212, 191, 0.2); --card-icon-bg: rgba(45, 212, 191, 0.12); --card-btn-bg: linear-gradient(135deg, #0f766e, #0d9488);">
-        <div class="card-top"><div class="card-icon-box">📷</div><span class="card-category-badge">Fotogrametria · PT-BR / EN</span></div>
-        <h2 class="card-title">Formação de Imagens — Camera Projection</h2>
-        <div class="card-path">camera_proj/</div>
-        <p class="card-description">Explore como pontos de um cubo 3D formam uma imagem. Inspecione raios, planos físico e virtual, orientação da câmera e coordenadas de imagem.</p>
-        <ul class="card-features"><li>Projeção pinhole, distorção radial/tangencial e amostragem em pixels</li><li>Ângulos ω, φ, κ, quaternions e matrizes de rotação sincronizados</li><li>Sensor, distância focal, ponto principal e pose ajustáveis</li></ul>
-        <div class="card-tags"><span class="tech-tag">OpenCV model</span><span class="tech-tag">Three.js</span><span class="tech-tag">Client-side</span></div>
-        <div class="card-actions"><a href="camera_proj/" class="btn-launch">Abrir Simulador →</a><a href="camera_proj/" target="_blank" rel="noopener" class="btn-icon-ext" title="Abrir em nova aba">↗</a></div>
-      </article>
-
-      <!-- 1. Sistemas de Coordenadas -->
-      <article class="sim-card" data-category="geodesia-3d" style="--card-accent: #06b6d4; --card-accent-glow: rgba(6, 182, 212, 0.25); --card-icon-bg: rgba(6, 182, 212, 0.12); --card-btn-bg: linear-gradient(135deg, #0891b2, #06b6d4);">
-        <div class="card-top">
-          <div class="card-icon-box">📐</div>
-          <span class="card-category-badge">Geodésia Fundamental</span>
-        </div>
-        <h2 class="card-title">Sistemas de Coordenadas</h2>
-        <div class="card-path">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+<div class="hero-stats">
+<div class="stat-pill">
+<span id="statTotalLabel">📦 Total de Simuladores:</span>
+<strong id="statTotalApps">12</strong>
+</div>
+<div class="stat-pill">
+<span id="statArchLabel">⚡ Arquitetura:</span>
+<strong id="statArchVal">Client-side (Sem Servidor)</strong>
+</div>
+<div class="stat-pill">
+<span id="statMethodsLabel">📐 Métodos:</span>
+<strong id="statMethodsVal">MMQ, Órbitas, 3D &amp; Vias</strong>
+</div>
+</div>
+<!-- Controls Panel: Instant Search and Category Pills -->
+<div class="controls-panel">
+<div class="search-wrapper">
+<div class="search-icon">
+<svg fill="none" height="20" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="20">
+<circle cx="11" cy="11" r="8"></circle>
+<line x1="21" x2="16.65" y1="21" y2="16.65"></line>
+</svg>
+</div>
+<input aria-label="Buscar simuladores" class="search-input" id="searchInput" placeholder="Buscar por nome, método (ex: MMQ, GNSS, Geoide, Curvas), biblioteca..." type="text"/>
+<button aria-label="Limpar busca" class="search-clear" id="searchClear">×</button>
+</div>
+<div class="filter-tabs" id="filterTabs">
+<button class="filter-btn active" data-category="all"><span class="filter-label" data-filter-key="filterAll">Todos</span> <span class="filter-count" id="countAll">10</span></button>
+<button class="filter-btn" data-category="ajustamento"><span class="filter-label" data-filter-key="filterAjustamento">📐 Ajustamento &amp; MMQ</span> <span class="filter-count" id="countAjustamento">4</span></button>
+<button class="filter-btn" data-category="geodesia-3d"><span class="filter-label" data-filter-key="filterGeodesia">🌍 Geodésia &amp; Modelos 3D</span> <span class="filter-count" id="countGeodesia">2</span></button>
+<button class="filter-btn" data-category="astronomia-gnss"><span class="filter-label" data-filter-key="filterAstro">📡 GNSS &amp; Astronomia</span> <span class="filter-count" id="countAstro">2</span></button>
+<button class="filter-btn" data-category="vias"><span class="filter-label" data-filter-key="filterVias">🛣️ Rodovias &amp; Traçado</span> <span class="filter-count" id="countVias">1</span></button>
+<button class="filter-btn" data-category="jogos"><span class="filter-label" data-filter-key="filterJogos">🎮 Jogos Educativos</span> <span class="filter-count" id="countJogos">1</span></button>
+</div>
+</div>
+</header>
+<!-- Simulators Grid -->
+<main class="simulators-grid" id="simulatorsGrid">
+<article class="sim-card" data-card-id="camera_proj" data-category="geodesia-3d" style="--card-accent: #2dd4bf; --card-accent-glow: rgba(45, 212, 191, 0.2); --card-icon-bg: rgba(45, 212, 191, 0.12); --card-btn-bg: linear-gradient(135deg, #0f766e, #0d9488);">
+<div class="card-top"><div class="card-icon-box">📷</div><span class="card-category-badge">Fotogrametria · PT-BR / EN</span></div>
+<h2 class="card-title">Formação de Imagens — Camera Projection</h2>
+<div class="card-path">camera_proj/</div>
+<p class="card-description">Explore como pontos de um cubo 3D formam uma imagem. Inspecione raios, planos físico e virtual, orientação da câmera e coordenadas de imagem.</p>
+<ul class="card-features"><li>Projeção pinhole, distorção radial/tangencial e amostragem em pixels</li><li>Ângulos ω, φ, κ, quaternions e matrizes de rotação sincronizados</li><li>Sensor, distância focal, ponto principal e pose ajustáveis</li></ul>
+<div class="card-tags"><span class="tech-tag">OpenCV model</span><span class="tech-tag">Three.js</span><span class="tech-tag">Client-side</span></div>
+<div class="card-actions"><a class="btn-launch" href="camera_proj/"><span class="btn-text">Abrir Simulador →</span></a><a class="btn-icon-ext" href="camera_proj/" rel="noopener" target="_blank" title="Abrir em nova aba">↗</a></div>
+</article>
+<!-- 1. Sistemas de Coordenadas -->
+<article class="sim-card" data-card-id="sistemas_coordenadas" data-category="geodesia-3d" style="--card-accent: #06b6d4; --card-accent-glow: rgba(6, 182, 212, 0.25); --card-icon-bg: rgba(6, 182, 212, 0.12); --card-btn-bg: linear-gradient(135deg, #0891b2, #06b6d4);">
+<div class="card-top">
+<div class="card-icon-box">📐</div>
+<span class="card-category-badge">Geodésia Fundamental</span>
+</div>
+<h2 class="card-title">Sistemas de Coordenadas</h2>
+<div class="card-path">
+<svg fill="none" height="12" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="12"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
           sistemas_coordenadas/
         </div>
-        <p class="card-description">
+<p class="card-description">
           Visualizador 3D didático e interativo que explora a geometria e as fórmulas de conversão entre os referenciais fundamentais da Geodésia.
         </p>
-        <ul class="card-features">
-          <li>Coordenadas Geodésicas (&phi;, &lambda;, h) e Cartesianas Geocêntricas (ECEF X,Y,Z)</li>
-          <li>Sistemas Esférico, Astronômico, Topocêntrico (ENU) e Plano Topográfico Local</li>
-          <li>Visualização orbital 3D e renderização de equações em tempo real com KaTeX</li>
-        </ul>
-        <div class="card-tags">
-          <span class="tech-tag">Three.js</span>
-          <span class="tech-tag">KaTeX</span>
-          <span class="tech-tag">Geodésia 3D</span>
-          <span class="tech-tag">Transformações</span>
-        </div>
-        <div class="card-actions">
-          <a href="sistemas_coordenadas/index.html" class="btn-launch">
-            Acessar Simulador
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-          </a>
-          <a href="sistemas_coordenadas/index.html" target="_blank" class="btn-icon-ext" title="Abrir em nova aba">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-          </a>
-        </div>
-      </article>
-
-      <!-- 2. História dos Modelos Terrestres -->
-      <article class="sim-card" data-category="geodesia-3d" style="--card-accent: #3b82f6; --card-accent-glow: rgba(59, 130, 246, 0.25); --card-icon-bg: rgba(59, 130, 246, 0.12); --card-btn-bg: linear-gradient(135deg, #2563eb, #3b82f6);">
-        <div class="card-top">
-          <div class="card-icon-box">🌍</div>
-          <span class="card-category-badge">Geodésia Histórica & Física</span>
-        </div>
-        <h2 class="card-title">Modelos Terrestres</h2>
-        <div class="card-path">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+<ul class="card-features">
+<li>Coordenadas Geodésicas (φ, λ, h) e Cartesianas Geocêntricas (ECEF X,Y,Z)</li>
+<li>Sistemas Esférico, Astronômico, Topocêntrico (ENU) e Plano Topográfico Local</li>
+<li>Visualização orbital 3D e renderização de equações em tempo real com KaTeX</li>
+</ul>
+<div class="card-tags">
+<span class="tech-tag">Three.js</span>
+<span class="tech-tag">KaTeX</span>
+<span class="tech-tag">Geodésia 3D</span>
+<span class="tech-tag">Transformações</span>
+</div>
+<div class="card-actions">
+<a class="btn-launch" href="sistemas_coordenadas/index.html"><span class="btn-text">Acessar Simulador</span><svg fill="none" height="16" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24" width="16"><line x1="5" x2="19" y1="12" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></a>
+<a class="btn-icon-ext" href="sistemas_coordenadas/index.html" target="_blank" title="Abrir em nova aba">
+<svg fill="none" height="16" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="16"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" x2="21" y1="14" y2="3"></line></svg>
+</a>
+</div>
+</article>
+<!-- 2. História dos Modelos Terrestres -->
+<article class="sim-card" data-card-id="historia_modelos_terrestres" data-category="geodesia-3d" style="--card-accent: #3b82f6; --card-accent-glow: rgba(59, 130, 246, 0.25); --card-icon-bg: rgba(59, 130, 246, 0.12); --card-btn-bg: linear-gradient(135deg, #2563eb, #3b82f6);">
+<div class="card-top">
+<div class="card-icon-box">🌍</div>
+<span class="card-category-badge">Geodésia Histórica &amp; Física</span>
+</div>
+<h2 class="card-title">Modelos Terrestres</h2>
+<div class="card-path">
+<svg fill="none" height="12" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="12"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
           historia_modelos_terrestres/
         </div>
-        <p class="card-description">
+<p class="card-description">
           Jornada científica em 3D pela evolução dos modelos da Terra — desde os conceitos primitivos até o elipsoide de revolução e o geoide gravimétrico moderno.
         </p>
-        <ul class="card-features">
-          <li>4 modelos históricos: Terra Plana, Esfera, Elipsoide e Geoide Gravimétrico</li>
-          <li>Visualização de ondulações geoidais em 3D com dados EGM96 e Three.js</li>
-          <li>Painel didático com contexto histórico, parâmetros geométricos e fórmulas</li>
-        </ul>
-        <div class="card-tags">
-          <span class="tech-tag">Three.js</span>
-          <span class="tech-tag">Geoide EGM96</span>
-          <span class="tech-tag">Elipsoide</span>
-          <span class="tech-tag">História da Ciência</span>
-        </div>
-        <div class="card-actions">
-          <a href="historia_modelos_terrestres/index.html" class="btn-launch">
-            Acessar Simulador
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-          </a>
-          <a href="historia_modelos_terrestres/index.html" target="_blank" class="btn-icon-ext" title="Abrir em nova aba">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-          </a>
-        </div>
-      </article>
-
-      <!-- 3. Simulador de Órbitas GNSS -->
-      <article class="sim-card" data-category="astronomia-gnss" style="--card-accent: #8b5cf6; --card-accent-glow: rgba(139, 92, 246, 0.25); --card-icon-bg: rgba(139, 92, 246, 0.12); --card-btn-bg: linear-gradient(135deg, #7c3aed, #8b5cf6);">
-        <div class="card-top">
-          <div class="card-icon-box">🛰️</div>
-          <span class="card-category-badge">Posicionamento por Satélite</span>
-        </div>
-        <h2 class="card-title">Simulador de Órbitas GNSS</h2>
-        <div class="card-path">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+<ul class="card-features">
+<li>4 modelos históricos: Terra Plana, Esfera, Elipsoide e Geoide Gravimétrico</li>
+<li>Visualização de ondulações geoidais em 3D com dados EGM96 e Three.js</li>
+<li>Painel didático com contexto histórico, parâmetros geométricos e fórmulas</li>
+</ul>
+<div class="card-tags">
+<span class="tech-tag">Three.js</span>
+<span class="tech-tag">Geoide EGM96</span>
+<span class="tech-tag">Elipsoide</span>
+<span class="tech-tag">História da Ciência</span>
+</div>
+<div class="card-actions">
+<a class="btn-launch" href="historia_modelos_terrestres/index.html"><span class="btn-text">Acessar Simulador</span><svg fill="none" height="16" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24" width="16"><line x1="5" x2="19" y1="12" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></a>
+<a class="btn-icon-ext" href="historia_modelos_terrestres/index.html" target="_blank" title="Abrir em nova aba">
+<svg fill="none" height="16" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="16"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" x2="21" y1="14" y2="3"></line></svg>
+</a>
+</div>
+</article>
+<!-- 3. Simulador de Órbitas GNSS -->
+<article class="sim-card" data-card-id="GNSS_simul" data-category="astronomia-gnss" style="--card-accent: #8b5cf6; --card-accent-glow: rgba(139, 92, 246, 0.25); --card-icon-bg: rgba(139, 92, 246, 0.12); --card-btn-bg: linear-gradient(135deg, #7c3aed, #8b5cf6);">
+<div class="card-top">
+<div class="card-icon-box">🛰️</div>
+<span class="card-category-badge">Posicionamento por Satélite</span>
+</div>
+<h2 class="card-title">Simulador de Órbitas GNSS</h2>
+<div class="card-path">
+<svg fill="none" height="12" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="12"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
           GNSS_simul/
         </div>
-        <p class="card-description">
+<p class="card-description">
           Propagação e rastreamento de órbitas de satélites GNSS em globo 3D (CesiumJS) com dados TLE reais e cálculo em tempo real da diluição de precisão (DOP).
         </p>
-        <ul class="card-features">
-          <li>Propagação orbital com Satellite.js baseada em efemérides TLE</li>
-          <li>Posicionamento de receptor no globo e traçado de linhas de visada (LOS)</li>
-          <li>Cálculo dinâmico da matriz de geometria e métricas GDOP, HDOP e VDOP</li>
-        </ul>
-        <div class="card-tags">
-          <span class="tech-tag">CesiumJS</span>
-          <span class="tech-tag">Satellite.js</span>
-          <span class="tech-tag">TLE</span>
-          <span class="tech-tag">Diluição DOP</span>
-          <span class="tech-tag">Globo 3D</span>
-        </div>
-        <div class="card-actions">
-          <a href="GNSS_simul/index.html" class="btn-launch">
-            Acessar Simulador
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-          </a>
-          <a href="GNSS_simul/index.html" target="_blank" class="btn-icon-ext" title="Abrir em nova aba">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-          </a>
-        </div>
-      </article>
-
-      <!-- 4. Astrometria -->
-      <article class="sim-card" data-category="astronomia-gnss" style="--card-accent: #ec4899; --card-accent-glow: rgba(236, 72, 153, 0.25); --card-icon-bg: rgba(236, 72, 153, 0.12); --card-btn-bg: linear-gradient(135deg, #db2777, #ec4899);">
-        <div class="card-top">
-          <div class="card-icon-box">🔭</div>
-          <span class="card-category-badge">Geodésia Celeste</span>
-        </div>
-        <h2 class="card-title">Astrometria de Posição</h2>
-        <div class="card-path">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+<ul class="card-features">
+<li>Propagação orbital com Satellite.js baseada em efemérides TLE</li>
+<li>Posicionamento de receptor no globo e traçado de linhas de visada (LOS)</li>
+<li>Cálculo dinâmico da matriz de geometria e métricas GDOP, HDOP e VDOP</li>
+</ul>
+<div class="card-tags">
+<span class="tech-tag">CesiumJS</span>
+<span class="tech-tag">Satellite.js</span>
+<span class="tech-tag">TLE</span>
+<span class="tech-tag">Diluição DOP</span>
+<span class="tech-tag">Globo 3D</span>
+</div>
+<div class="card-actions">
+<a class="btn-launch" href="GNSS_simul/index.html"><span class="btn-text">Acessar Simulador</span><svg fill="none" height="16" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24" width="16"><line x1="5" x2="19" y1="12" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></a>
+<a class="btn-icon-ext" href="GNSS_simul/index.html" target="_blank" title="Abrir em nova aba">
+<svg fill="none" height="16" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="16"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" x2="21" y1="14" y2="3"></line></svg>
+</a>
+</div>
+</article>
+<!-- 4. Astrometria -->
+<article class="sim-card" data-card-id="astrometria" data-category="astronomia-gnss" style="--card-accent: #ec4899; --card-accent-glow: rgba(236, 72, 153, 0.25); --card-icon-bg: rgba(236, 72, 153, 0.12); --card-btn-bg: linear-gradient(135deg, #db2777, #ec4899);">
+<div class="card-top">
+<div class="card-icon-box">🔭</div>
+<span class="card-category-badge">Geodésia Celeste</span>
+</div>
+<h2 class="card-title">Astrometria de Posição</h2>
+<div class="card-path">
+<svg fill="none" height="12" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="12"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
           astrometria/
         </div>
-        <p class="card-description">
+<p class="card-description">
           Simulação de determinação de posição geográfica clássica por observações astronômicas através da lente de um teodolito virtual.
         </p>
-        <ul class="card-features">
-          <li>Visada com retículo de teodolito em ambiente Three.js</li>
-          <li>Leituras de ângulo azimutal, distância zenital e tempo de Greenwich</li>
-          <li>Catálogo estelar com ascensão reta (RA) e declinação (DEC)</li>
-        </ul>
-        <div class="card-tags">
-          <span class="tech-tag">Three.js</span>
-          <span class="tech-tag">TailwindCSS</span>
-          <span class="tech-tag">Teodolito</span>
-          <span class="tech-tag">Catálogo Estelar</span>
-        </div>
-        <div class="card-actions">
-          <a href="astrometria/index.html" class="btn-launch">
-            Acessar Simulador
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-          </a>
-          <a href="astrometria/index.html" target="_blank" class="btn-icon-ext" title="Abrir em nova aba">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-          </a>
-        </div>
-      </article>
-
-      <!-- 5. Interseção à Ré (Estação Livre) -->
-      <article class="sim-card" data-category="ajustamento" style="--card-accent: #10b981; --card-accent-glow: rgba(16, 185, 129, 0.25); --card-icon-bg: rgba(16, 185, 129, 0.12); --card-btn-bg: linear-gradient(135deg, #059669, #10b981);">
-        <div class="card-top">
-          <div class="card-icon-box">📍</div>
-          <span class="card-category-badge">Ajustamento MMQ</span>
-        </div>
-        <h2 class="card-title">Interseção à Ré (Estação Livre)</h2>
-        <div class="card-path">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+<ul class="card-features">
+<li>Visada com retículo de teodolito em ambiente Three.js</li>
+<li>Leituras de ângulo azimutal, distância zenital e tempo de Greenwich</li>
+<li>Catálogo estelar com ascensão reta (RA) e declinação (DEC)</li>
+</ul>
+<div class="card-tags">
+<span class="tech-tag">Three.js</span>
+<span class="tech-tag">TailwindCSS</span>
+<span class="tech-tag">Teodolito</span>
+<span class="tech-tag">Catálogo Estelar</span>
+</div>
+<div class="card-actions">
+<a class="btn-launch" href="astrometria/index.html"><span class="btn-text">Acessar Simulador</span><svg fill="none" height="16" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24" width="16"><line x1="5" x2="19" y1="12" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></a>
+<a class="btn-icon-ext" href="astrometria/index.html" target="_blank" title="Abrir em nova aba">
+<svg fill="none" height="16" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="16"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" x2="21" y1="14" y2="3"></line></svg>
+</a>
+</div>
+</article>
+<!-- 5. Interseção à Ré (Estação Livre) -->
+<article class="sim-card" data-card-id="estacao_livre" data-category="ajustamento" style="--card-accent: #10b981; --card-accent-glow: rgba(16, 185, 129, 0.25); --card-icon-bg: rgba(16, 185, 129, 0.12); --card-btn-bg: linear-gradient(135deg, #059669, #10b981);">
+<div class="card-top">
+<div class="card-icon-box">📍</div>
+<span class="card-category-badge">Ajustamento MMQ</span>
+</div>
+<h2 class="card-title">Interseção à Ré (Estação Livre)</h2>
+<div class="card-path">
+<svg fill="none" height="12" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="12"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
           estacao_livre/
         </div>
-        <p class="card-description">
+<p class="card-description">
           Simulação interativa de redes topográficas 2D de estação livre com ajustamento paramétrico pelo Método dos Mínimos Quadrados.
         </p>
-        <ul class="card-features">
-          <li>Inserção livre de pontos de apoio (A) e estações livres (B) no Canvas</li>
-          <li>Ajustamento MMQ com desenho dinâmico de elipses de erro e incerteza</li>
-          <li>Injeção de erros grosseiros e teste estatístico de Data Snooping de Baarda</li>
-        </ul>
-        <div class="card-tags">
-          <span class="tech-tag">Canvas 2D</span>
-          <span class="tech-tag">MMQ Paramétrico</span>
-          <span class="tech-tag">Elipses de Erro</span>
-          <span class="tech-tag">Data Snooping</span>
-        </div>
-        <div class="card-actions">
-          <a href="estacao_livre/index.html" class="btn-launch">
-            Acessar Simulador
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-          </a>
-          <a href="estacao_livre/index.html" target="_blank" class="btn-icon-ext" title="Abrir em nova aba">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-          </a>
-        </div>
-      </article>
-
-      <!-- 6. 2D Resection Lab v3 (Free Station EN) -->
-      <article class="sim-card" data-category="ajustamento" style="--card-accent: #6366f1; --card-accent-glow: rgba(99, 102, 241, 0.25); --card-icon-bg: rgba(99, 102, 241, 0.12); --card-btn-bg: linear-gradient(135deg, #4f46e5, #6366f1);">
-        <div class="card-top">
-          <div class="card-icon-box">📊</div>
-          <span class="card-category-badge">Resection & Monte Carlo</span>
-        </div>
-        <h2 class="card-title">2D Resection Lab v3 (EN)</h2>
-        <div class="card-path">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+<ul class="card-features">
+<li>Inserção livre de pontos de apoio (A) e estações livres (B) no Canvas</li>
+<li>Ajustamento MMQ com desenho dinâmico de elipses de erro e incerteza</li>
+<li>Injeção de erros grosseiros e teste estatístico de Data Snooping de Baarda</li>
+</ul>
+<div class="card-tags">
+<span class="tech-tag">Canvas 2D</span>
+<span class="tech-tag">MMQ Paramétrico</span>
+<span class="tech-tag">Elipses de Erro</span>
+<span class="tech-tag">Data Snooping</span>
+</div>
+<div class="card-actions">
+<a class="btn-launch" href="estacao_livre/index.html"><span class="btn-text">Acessar Simulador</span><svg fill="none" height="16" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24" width="16"><line x1="5" x2="19" y1="12" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></a>
+<a class="btn-icon-ext" href="estacao_livre/index.html" target="_blank" title="Abrir em nova aba">
+<svg fill="none" height="16" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="16"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" x2="21" y1="14" y2="3"></line></svg>
+</a>
+</div>
+</article>
+<!-- 6. 2D Resection Lab v3 (Free Station EN) -->
+<article class="sim-card" data-card-id="free_station" data-category="ajustamento" style="--card-accent: #6366f1; --card-accent-glow: rgba(99, 102, 241, 0.25); --card-icon-bg: rgba(99, 102, 241, 0.12); --card-btn-bg: linear-gradient(135deg, #4f46e5, #6366f1);">
+<div class="card-top">
+<div class="card-icon-box">📊</div>
+<span class="card-category-badge">Resection &amp; Monte Carlo</span>
+</div>
+<h2 class="card-title">2D Resection Lab v3 (EN)</h2>
+<div class="card-path">
+<svg fill="none" height="12" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="12"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
           free_station/
         </div>
-        <p class="card-description">
+<p class="card-description">
           Laboratório avançado em inglês para cálculo de intersecção à ré, análise de confiabilidade (MDB/MDS) e ensaios estatísticos de Monte Carlo.
         </p>
-        <ul class="card-features">
-          <li>Modelos com direções e constante de orientação ou ângulos horizontais derivados</li>
-          <li>Pré-processamento de distâncias inclinadas e ângulos zenitais (redução)</li>
-          <li>Simulação de Monte Carlo com dispersão estocástica e elipses empíricas</li>
-        </ul>
-        <div class="card-tags">
-          <span class="tech-tag">SVG</span>
-          <span class="tech-tag">Monte Carlo</span>
-          <span class="tech-tag">MDB / MDS</span>
-          <span class="tech-tag">Least Squares</span>
-        </div>
-        <div class="card-actions">
-          <a href="free_station/index.html" class="btn-launch">
-            Acessar Simulador
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-          </a>
-          <a href="free_station/index.html" target="_blank" class="btn-icon-ext" title="Abrir em nova aba">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-          </a>
-        </div>
-      </article>
-
-      <!-- 7. Rede de Nivelamento -->
-      <article class="sim-card" data-category="ajustamento" style="--card-accent: #0ea5e9; --card-accent-glow: rgba(14, 165, 233, 0.25); --card-icon-bg: rgba(14, 165, 233, 0.12); --card-btn-bg: linear-gradient(135deg, #0284c7, #0ea5e9);">
-        <div class="card-top">
-          <div class="card-icon-box">⛰️</div>
-          <span class="card-category-badge">Geodésia Altimétrica</span>
-        </div>
-        <h2 class="card-title">Rede de Nivelamento Geométrico</h2>
-        <div class="card-path">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+<ul class="card-features">
+<li>Modelos com direções e constante de orientação ou ângulos horizontais derivados</li>
+<li>Pré-processamento de distâncias inclinadas e ângulos zenitais (redução)</li>
+<li>Simulação de Monte Carlo com dispersão estocástica e elipses empíricas</li>
+</ul>
+<div class="card-tags">
+<span class="tech-tag">SVG</span>
+<span class="tech-tag">Monte Carlo</span>
+<span class="tech-tag">MDB / MDS</span>
+<span class="tech-tag">Least Squares</span>
+</div>
+<div class="card-actions">
+<a class="btn-launch" href="free_station/index.html"><span class="btn-text">Acessar Simulador</span><svg fill="none" height="16" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24" width="16"><line x1="5" x2="19" y1="12" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></a>
+<a class="btn-icon-ext" href="free_station/index.html" target="_blank" title="Abrir em nova aba">
+<svg fill="none" height="16" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="16"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" x2="21" y1="14" y2="3"></line></svg>
+</a>
+</div>
+</article>
+<!-- 7. Rede de Nivelamento -->
+<article class="sim-card" data-card-id="nivelamento" data-category="ajustamento" style="--card-accent: #0ea5e9; --card-accent-glow: rgba(14, 165, 233, 0.25); --card-icon-bg: rgba(14, 165, 233, 0.12); --card-btn-bg: linear-gradient(135deg, #0284c7, #0ea5e9);">
+<div class="card-top">
+<div class="card-icon-box">⛰️</div>
+<span class="card-category-badge">Geodésia Altimétrica</span>
+</div>
+<h2 class="card-title">Rede de Nivelamento Geométrico</h2>
+<div class="card-path">
+<svg fill="none" height="12" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="12"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
           nivelamento/
         </div>
-        <p class="card-description">
+<p class="card-description">
           Ajustamento rigoroso de redes altimétricas de nivelamento geométrico pelo MMQ sobre mapa interativo com propagação de incertezas.
         </p>
-        <ul class="card-features">
-          <li>Criação de circuitos e desníveis observados sobre mapa MapLibre GL</li>
-          <li>Fixação de referências de nível (RN) e ponderação por extensão de nivelamento</li>
-          <li>Análise de resíduos normalizados, matriz peso e teste Chi-quadrado global</li>
-        </ul>
-        <div class="card-tags">
-          <span class="tech-tag">MapLibre GL</span>
-          <span class="tech-tag">KaTeX</span>
-          <span class="tech-tag">Altimetria</span>
-          <span class="tech-tag">Ajustamento MMQ</span>
-        </div>
-        <div class="card-actions">
-          <a href="nivelamento/index.html" class="btn-launch">
-            Acessar Simulador
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-          </a>
-          <a href="nivelamento/index.html" target="_blank" class="btn-icon-ext" title="Abrir em nova aba">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-          </a>
-        </div>
-      </article>
-
-      <!-- 8. Rede Gravimétrica -->
-      <article class="sim-card" data-category="ajustamento" style="--card-accent: #f59e0b; --card-accent-glow: rgba(245, 158, 11, 0.25); --card-icon-bg: rgba(245, 158, 11, 0.12); --card-btn-bg: linear-gradient(135deg, #d97706, #f59e0b);">
-        <div class="card-top">
-          <div class="card-icon-box">⚖️</div>
-          <span class="card-category-badge">Geodésia Física & Gravimetria</span>
-        </div>
-        <h2 class="card-title">Rede Gravimétrica</h2>
-        <div class="card-path">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+<ul class="card-features">
+<li>Criação de circuitos e desníveis observados sobre mapa MapLibre GL</li>
+<li>Fixação de referências de nível (RN) e ponderação por extensão de nivelamento</li>
+<li>Análise de resíduos normalizados, matriz peso e teste Chi-quadrado global</li>
+</ul>
+<div class="card-tags">
+<span class="tech-tag">MapLibre GL</span>
+<span class="tech-tag">KaTeX</span>
+<span class="tech-tag">Altimetria</span>
+<span class="tech-tag">Ajustamento MMQ</span>
+</div>
+<div class="card-actions">
+<a class="btn-launch" href="nivelamento/index.html"><span class="btn-text">Acessar Simulador</span><svg fill="none" height="16" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24" width="16"><line x1="5" x2="19" y1="12" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></a>
+<a class="btn-icon-ext" href="nivelamento/index.html" target="_blank" title="Abrir em nova aba">
+<svg fill="none" height="16" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="16"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" x2="21" y1="14" y2="3"></line></svg>
+</a>
+</div>
+</article>
+<!-- 8. Rede Gravimétrica -->
+<article class="sim-card" data-card-id="rede_gravimetrica" data-category="ajustamento" style="--card-accent: #f59e0b; --card-accent-glow: rgba(245, 158, 11, 0.25); --card-icon-bg: rgba(245, 158, 11, 0.12); --card-btn-bg: linear-gradient(135deg, #d97706, #f59e0b);">
+<div class="card-top">
+<div class="card-icon-box">⚖️</div>
+<span class="card-category-badge">Geodésia Física &amp; Gravimetria</span>
+</div>
+<h2 class="card-title">Rede Gravimétrica</h2>
+<div class="card-path">
+<svg fill="none" height="12" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="12"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
           rede_gravimetrica/
         </div>
-        <p class="card-description">
+<p class="card-description">
           Simulação de levantamento gravimétrico relativo e ajustamento de redes de gravidade (mGal) pelo Método dos Mínimos Quadrados.
         </p>
-        <ul class="card-features">
-          <li>Observações relativas de aceleração da gravidade (&Delta;g) em mGal</li>
-          <li>Ponderação estocástica proporcional à distância (&sigma; = &sigma;0 &radic;km)</li>
-          <li>Interface geoespacial com MapLibre GL e equações matemáticas KaTeX</li>
-        </ul>
-        <div class="card-tags">
-          <span class="tech-tag">MapLibre GL</span>
-          <span class="tech-tag">KaTeX</span>
-          <span class="tech-tag">Gravimetria (mGal)</span>
-          <span class="tech-tag">MMQ</span>
-        </div>
-        <div class="card-actions">
-          <a href="rede_gravimetrica/index.html" class="btn-launch">
-            Acessar Simulador
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-          </a>
-          <a href="rede_gravimetrica/index.html" target="_blank" class="btn-icon-ext" title="Abrir em nova aba">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-          </a>
-        </div>
-      </article>
-
-      <!-- 9. Projeto Rodoviário -->
-      <article class="sim-card" data-category="vias" style="--card-accent: #f97316; --card-accent-glow: rgba(249, 115, 22, 0.25); --card-icon-bg: rgba(249, 115, 22, 0.12); --card-btn-bg: linear-gradient(135deg, #ea580c, #f97316);">
-        <div class="card-top">
-          <div class="card-icon-box">🛣️</div>
-          <span class="card-category-badge">Engenharia Rodoviária</span>
-        </div>
-        <h2 class="card-title">Projeto Rodoviário</h2>
-        <div class="card-path">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+<ul class="card-features">
+<li>Observações relativas de aceleração da gravidade (Δg) em mGal</li>
+<li>Ponderação estocástica proporcional à distância (σ = σ0 √km)</li>
+<li>Interface geoespacial com MapLibre GL e equações matemáticas KaTeX</li>
+</ul>
+<div class="card-tags">
+<span class="tech-tag">MapLibre GL</span>
+<span class="tech-tag">KaTeX</span>
+<span class="tech-tag">Gravimetria (mGal)</span>
+<span class="tech-tag">MMQ</span>
+</div>
+<div class="card-actions">
+<a class="btn-launch" href="rede_gravimetrica/index.html"><span class="btn-text">Acessar Simulador</span><svg fill="none" height="16" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24" width="16"><line x1="5" x2="19" y1="12" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></a>
+<a class="btn-icon-ext" href="rede_gravimetrica/index.html" target="_blank" title="Abrir em nova aba">
+<svg fill="none" height="16" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="16"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" x2="21" y1="14" y2="3"></line></svg>
+</a>
+</div>
+</article>
+<!-- 9. Projeto Rodoviário -->
+<article class="sim-card" data-card-id="estradas" data-category="vias" style="--card-accent: #f97316; --card-accent-glow: rgba(249, 115, 22, 0.25); --card-icon-bg: rgba(249, 115, 22, 0.12); --card-btn-bg: linear-gradient(135deg, #ea580c, #f97316);">
+<div class="card-top">
+<div class="card-icon-box">🛣️</div>
+<span class="card-category-badge">Engenharia Rodoviária</span>
+</div>
+<h2 class="card-title">Projeto Rodoviário</h2>
+<div class="card-path">
+<svg fill="none" height="12" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="12"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
           estradas/
         </div>
-        <p class="card-description">
-          Ferramenta completa para dimensionamento geométrico de traçado rodoviário baseada na metodologia clássica de Wolf & Ghilani.
+<p class="card-description">
+          Ferramenta completa para dimensionamento geométrico de traçado rodoviário baseada na metodologia clássica de Wolf &amp; Ghilani.
         </p>
-        <ul class="card-features">
-          <li>Curva horizontal circular simples com PC/PT, raio, ângulo central e deflexões</li>
-          <li>Curva vertical parabólica com cálculo de K, ponto crítico (alto/baixo) e greide</li>
-          <li>Perfil longitudinal com terreno, cubagem/terraplenagem e notas de locação</li>
-        </ul>
-        <div class="card-tags">
-          <span class="tech-tag">Canvas</span>
-          <span class="tech-tag">Curvas Horizontais</span>
-          <span class="tech-tag">Curvas Verticais</span>
-          <span class="tech-tag">Terraplenagem</span>
-        </div>
-        <div class="card-actions">
-          <a href="estradas/index.html" class="btn-launch">
-            Acessar Simulador
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-          </a>
-          <a href="estradas/index.html" target="_blank" class="btn-icon-ext" title="Abrir em nova aba">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-          </a>
-        </div>
-      </article>
-
-      <!-- 10. Direções Horizontais -->
-      <article class="sim-card" data-category="ajustamento" style="--card-accent: #06b6d4; --card-accent-glow: rgba(6, 182, 212, 0.25); --card-icon-bg: rgba(6, 182, 212, 0.12); --card-btn-bg: linear-gradient(135deg, #0891b2, #06b6d4);">
-        <div class="card-top">
-          <div class="card-icon-box">🧭</div>
-          <span class="card-category-badge">Topografia &amp; Instrumentação</span>
-        </div>
-        <h2 class="card-title">Direções Horizontais</h2>
-        <div class="card-path">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+<ul class="card-features">
+<li>Curva horizontal circular simples com PC/PT, raio, ângulo central e deflexões</li>
+<li>Curva vertical parabólica com cálculo de K, ponto crítico (alto/baixo) e greide</li>
+<li>Perfil longitudinal com terreno, cubagem/terraplenagem e notas de locação</li>
+</ul>
+<div class="card-tags">
+<span class="tech-tag">Canvas</span>
+<span class="tech-tag">Curvas Horizontais</span>
+<span class="tech-tag">Curvas Verticais</span>
+<span class="tech-tag">Terraplenagem</span>
+</div>
+<div class="card-actions">
+<a class="btn-launch" href="estradas/index.html"><span class="btn-text">Acessar Simulador</span><svg fill="none" height="16" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24" width="16"><line x1="5" x2="19" y1="12" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></a>
+<a class="btn-icon-ext" href="estradas/index.html" target="_blank" title="Abrir em nova aba">
+<svg fill="none" height="16" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="16"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" x2="21" y1="14" y2="3"></line></svg>
+</a>
+</div>
+</article>
+<!-- 10. Direções Horizontais -->
+<article class="sim-card" data-card-id="direcoes" data-category="ajustamento" style="--card-accent: #06b6d4; --card-accent-glow: rgba(6, 182, 212, 0.25); --card-icon-bg: rgba(6, 182, 212, 0.12); --card-btn-bg: linear-gradient(135deg, #0891b2, #06b6d4);">
+<div class="card-top">
+<div class="card-icon-box">🧭</div>
+<span class="card-category-badge">Topografia &amp; Instrumentação</span>
+</div>
+<h2 class="card-title">Direções Horizontais</h2>
+<div class="card-path">
+<svg fill="none" height="12" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="12"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
           direcoes/
         </div>
-        <p class="card-description">
+<p class="card-description">
           Simulador didático interativo para aprendizado de medição de ângulos horizontais: conceito de Ré, Estação e Vante, pontaria e cálculo de diferença de leituras.
         </p>
-        <ul class="card-features">
-          <li>Modais didáticos explicando os fundamentos de direções horizontais</li>
-          <li>Exercícios interativos com pontaria em Canvas 2D e cálculo em GG°MM'SS"</li>
-          <li>Modos zerado na ré / não orientado e sentido horário / anti-horário</li>
-        </ul>
-        <div class="card-tags">
-          <span class="tech-tag">Canvas 2D</span>
-          <span class="tech-tag">Topografia</span>
-          <span class="tech-tag">Direções Hz</span>
-          <span class="tech-tag">Interativo</span>
-        </div>
-        <div class="card-actions">
-          <a href="direcoes/index.html" class="btn-launch">
-            Acessar Simulador
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-          </a>
-          <a href="direcoes/index.html" target="_blank" class="btn-icon-ext" title="Abrir em nova aba">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-          </a>
-        </div>
-      </article>
-
-      <!-- 11. Surveyor Valley (Game) -->
-      <article class="sim-card" data-category="jogos" style="--card-accent: #22c55e; --card-accent-glow: rgba(34, 197, 94, 0.25); --card-icon-bg: rgba(34, 197, 94, 0.12); --card-btn-bg: linear-gradient(135deg, #16a34a, #22c55e);">
-        <div class="card-top">
-          <div class="card-icon-box">🎮</div>
-          <span class="card-category-badge">Jogo Didático & Topografia</span>
-        </div>
-        <h2 class="card-title">Surveyor Valley</h2>
-        <div class="card-path">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+<ul class="card-features">
+<li>Modais didáticos explicando os fundamentos de direções horizontais</li>
+<li>Exercícios interativos com pontaria em Canvas 2D e cálculo em GG°MM'SS"</li>
+<li>Modos zerado na ré / não orientado e sentido horário / anti-horário</li>
+</ul>
+<div class="card-tags">
+<span class="tech-tag">Canvas 2D</span>
+<span class="tech-tag">Topografia</span>
+<span class="tech-tag">Direções Hz</span>
+<span class="tech-tag">Interativo</span>
+</div>
+<div class="card-actions">
+<a class="btn-launch" href="direcoes/index.html"><span class="btn-text">Acessar Simulador</span><svg fill="none" height="16" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24" width="16"><line x1="5" x2="19" y1="12" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></a>
+<a class="btn-icon-ext" href="direcoes/index.html" target="_blank" title="Abrir em nova aba">
+<svg fill="none" height="16" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="16"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" x2="21" y1="14" y2="3"></line></svg>
+</a>
+</div>
+</article>
+<!-- 11. Surveyor Valley (Game) -->
+<article class="sim-card" data-card-id="surveyor_valley" data-category="jogos" style="--card-accent: #22c55e; --card-accent-glow: rgba(34, 197, 94, 0.25); --card-icon-bg: rgba(34, 197, 94, 0.12); --card-btn-bg: linear-gradient(135deg, #16a34a, #22c55e);">
+<div class="card-top">
+<div class="card-icon-box">🎮</div>
+<span class="card-category-badge">Jogo Didático &amp; Topografia</span>
+</div>
+<h2 class="card-title">Surveyor Valley</h2>
+<div class="card-path">
+<svg fill="none" height="12" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="12"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
           surveyor_valley/
         </div>
-        <p class="card-description">
+<p class="card-description">
           Jogo interativo e educativo de agrimensura e topografia em estética pixel-art. Página de redirecionamento para o repositório e versão web oficial.
         </p>
-        <ul class="card-features">
-          <li>Desafios interativos e missões de campo para aprendizado de topografia</li>
-          <li>Renderização em pixel-art construída para execução direta no navegador</li>
-          <li>Acesso ao novo repositório oficial dedicado e link de reprodução online</li>
-        </ul>
-        <div class="card-tags">
-          <span class="tech-tag">Jogo Educativo</span>
-          <span class="tech-tag">Topografia</span>
-          <span class="tech-tag">Pixel Art</span>
-          <span class="tech-tag">Repositório Autônomo</span>
-        </div>
-        <div class="card-actions">
-          <a href="https://kauevestena.github.io/surveyor_valley/" target="_blank" class="btn-launch">
-            Jogar Online
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-          </a>
-          <a href="surveyor_valley/index.html" class="btn-icon-ext" title="Ver aviso local">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-          </a>
-        </div>
-      </article>
-
-      <!-- 12. Pontaria Direta e Inversa (pd_pi) -->
-      <article class="sim-card" data-category="ajustamento" style="--card-accent: #a855f7; --card-accent-glow: rgba(168, 85, 247, 0.25); --card-icon-bg: rgba(168, 85, 247, 0.12); --card-btn-bg: linear-gradient(135deg, #9333ea, #a855f7);">
-        <div class="card-top">
-          <div class="card-icon-box">🔄</div>
-          <span class="card-category-badge">Topografia &amp; Instrumentação</span>
-        </div>
-        <h2 class="card-title">Pontaria Direta e Inversa</h2>
-        <div class="card-path">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+<ul class="card-features">
+<li>Desafios interativos e missões de campo para aprendizado de topografia</li>
+<li>Renderização em pixel-art construída para execução direta no navegador</li>
+<li>Acesso ao novo repositório oficial dedicado e link de reprodução online</li>
+</ul>
+<div class="card-tags">
+<span class="tech-tag">Jogo Educativo</span>
+<span class="tech-tag">Topografia</span>
+<span class="tech-tag">Pixel Art</span>
+<span class="tech-tag">Repositório Autônomo</span>
+</div>
+<div class="card-actions">
+<a class="btn-launch" href="https://kauevestena.github.io/surveyor_valley/" target="_blank"><span class="btn-text">Jogar Online</span><svg fill="none" height="16" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24" width="16"><line x1="5" x2="19" y1="12" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></a>
+<a class="btn-icon-ext" href="surveyor_valley/index.html" title="Ver aviso local">
+<svg fill="none" height="16" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="16"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" x2="8" y1="13" y2="13"></line><line x1="16" x2="8" y1="17" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+</a>
+</div>
+</article>
+<!-- 12. Pontaria Direta e Inversa (pd_pi) -->
+<article class="sim-card" data-card-id="pd_pi" data-category="ajustamento" style="--card-accent: #a855f7; --card-accent-glow: rgba(168, 85, 247, 0.25); --card-icon-bg: rgba(168, 85, 247, 0.12); --card-btn-bg: linear-gradient(135deg, #9333ea, #a855f7);">
+<div class="card-top">
+<div class="card-icon-box">🔄</div>
+<span class="card-category-badge">Topografia &amp; Instrumentação</span>
+</div>
+<h2 class="card-title">Pontaria Direta e Inversa</h2>
+<div class="card-path">
+<svg fill="none" height="12" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="12"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
           pd_pi/
         </div>
-        <p class="card-description">
+<p class="card-description">
           Simulador didático interativo do teodolito em dupla face: pontaria direta (PD) e inversa (PI), com vistas superior e lateral sincronizadas.
         </p>
-        <ul class="card-features">
-          <li>Canvas duplo: vista superior (limbo horizontal) e vista lateral (círculo vertical) sincronizadas</li>
-          <li>Sequência guiada de 5 pontarias com animação de tombamento da luneta</li>
-          <li>Cálculo da verificação de face (Hz + 180°) e do ângulo zenital (Z = 360° − leitura PI)</li>
-        </ul>
-        <div class="card-tags">
-          <span class="tech-tag">Canvas 2D</span>
-          <span class="tech-tag">Teodolito</span>
-          <span class="tech-tag">Dupla Face</span>
-          <span class="tech-tag">PD/PI</span>
-        </div>
-        <div class="card-actions">
-          <a href="pd_pi/index.html" class="btn-launch">
-            Acessar Simulador
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-          </a>
-          <a href="pd_pi/index.html" target="_blank" class="btn-icon-ext" title="Abrir em nova aba">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-          </a>
-        </div>
-      </article>
-
-      <!-- 13. Medida Eletrônica de Distâncias (med) -->
-      <article class="sim-card" data-category="ajustamento" style="--card-accent: #14b8a6; --card-accent-glow: rgba(20, 184, 166, 0.25); --card-icon-bg: rgba(20, 184, 166, 0.12); --card-btn-bg: linear-gradient(135deg, #0d9488, #14b8a6);">
-        <div class="card-top">
-          <div class="card-icon-box">📏</div>
-          <span class="card-category-badge">EDM &amp; Metrologia</span>
-        </div>
-        <h2 class="card-title">Medida Eletrônica de Distâncias</h2>
-        <div class="card-path">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+<ul class="card-features">
+<li>Canvas duplo: vista superior (limbo horizontal) e vista lateral (círculo vertical) sincronizadas</li>
+<li>Sequência guiada de 5 pontarias com animação de tombamento da luneta</li>
+<li>Cálculo da verificação de face (Hz + 180°) e do ângulo zenital (Z = 360° − leitura PI)</li>
+</ul>
+<div class="card-tags">
+<span class="tech-tag">Canvas 2D</span>
+<span class="tech-tag">Teodolito</span>
+<span class="tech-tag">Dupla Face</span>
+<span class="tech-tag">PD/PI</span>
+</div>
+<div class="card-actions">
+<a class="btn-launch" href="pd_pi/index.html"><span class="btn-text">Acessar Simulador</span><svg fill="none" height="16" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24" width="16"><line x1="5" x2="19" y1="12" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></a>
+<a class="btn-icon-ext" href="pd_pi/index.html" target="_blank" title="Abrir em nova aba">
+<svg fill="none" height="16" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="16"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" x2="21" y1="14" y2="3"></line></svg>
+</a>
+</div>
+</article>
+<!-- 13. Medida Eletrônica de Distâncias (med) -->
+<article class="sim-card" data-card-id="med" data-category="ajustamento" style="--card-accent: #14b8a6; --card-accent-glow: rgba(20, 184, 166, 0.25); --card-icon-bg: rgba(20, 184, 166, 0.12); --card-btn-bg: linear-gradient(135deg, #0d9488, #14b8a6);">
+<div class="card-top">
+<div class="card-icon-box">📏</div>
+<span class="card-category-badge">EDM &amp; Metrologia</span>
+</div>
+<h2 class="card-title">Medida Eletrônica de Distâncias</h2>
+<div class="card-path">
+<svg fill="none" height="12" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="12"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
           med/
         </div>
-        <p class="card-description">
+<p class="card-description">
           Apresentação didática interativa sobre Medida Eletrônica de Distâncias (EDM): princípios, refletores, erros, calibração e correções atmosféricas.
         </p>
-        <ul class="card-features">
-          <li>10 tópicos navegáveis com resumo técnico e animação ilustrativa em Canvas 2D</li>
-          <li>Simulador interativo de resolução da ambiguidade de fase por múltiplos comprimentos de onda</li>
-          <li>Cobre estrutura interna, refletores, erros sistemáticos, calibração e correções atmosféricas</li>
-        </ul>
-        <div class="card-tags">
-          <span class="tech-tag">EDM</span>
-          <span class="tech-tag">Apresentação Interativa</span>
-          <span class="tech-tag">Ambiguidade de Fase</span>
-          <span class="tech-tag">Canvas 2D</span>
-        </div>
-        <div class="card-actions">
-          <a href="med/index.html" class="btn-launch">
-            Acessar Simulador
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-          </a>
-          <a href="med/index.html" target="_blank" class="btn-icon-ext" title="Abrir em nova aba">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-          </a>
-        </div>
-      </article>
-
-      <!-- 14. Ajustamento de Planos -->
-      <article class="sim-card" data-category="ajustamento" style="--card-accent: #8b5cf6; --card-accent-glow: rgba(139, 92, 246, 0.25); --card-icon-bg: rgba(139, 92, 246, 0.12); --card-btn-bg: linear-gradient(135deg, #7c3aed, #8b5cf6);">
-        <div class="card-top">
-          <div class="card-icon-box">📐</div>
-          <span class="card-category-badge">Ajustamento &amp; Geodésia</span>
-        </div>
-        <h2 class="card-title">Ajustamento de Planos</h2>
-        <div class="card-path">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+<ul class="card-features">
+<li>10 tópicos navegáveis com resumo técnico e animação ilustrativa em Canvas 2D</li>
+<li>Simulador interativo de resolução da ambiguidade de fase por múltiplos comprimentos de onda</li>
+<li>Cobre estrutura interna, refletores, erros sistemáticos, calibração e correções atmosféricas</li>
+</ul>
+<div class="card-tags">
+<span class="tech-tag">EDM</span>
+<span class="tech-tag">Apresentação Interativa</span>
+<span class="tech-tag">Ambiguidade de Fase</span>
+<span class="tech-tag">Canvas 2D</span>
+</div>
+<div class="card-actions">
+<a class="btn-launch" href="med/index.html"><span class="btn-text">Acessar Simulador</span><svg fill="none" height="16" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24" width="16"><line x1="5" x2="19" y1="12" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></a>
+<a class="btn-icon-ext" href="med/index.html" target="_blank" title="Abrir em nova aba">
+<svg fill="none" height="16" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="16"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" x2="21" y1="14" y2="3"></line></svg>
+</a>
+</div>
+</article>
+<!-- 14. Ajustamento de Planos -->
+<article class="sim-card" data-card-id="ajusta_planos" data-category="ajustamento" style="--card-accent: #8b5cf6; --card-accent-glow: rgba(139, 92, 246, 0.25); --card-icon-bg: rgba(139, 92, 246, 0.12); --card-btn-bg: linear-gradient(135deg, #7c3aed, #8b5cf6);">
+<div class="card-top">
+<div class="card-icon-box">📐</div>
+<span class="card-category-badge">Ajustamento &amp; Geodésia</span>
+</div>
+<h2 class="card-title">Ajustamento de Planos</h2>
+<div class="card-path">
+<svg fill="none" height="12" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="12"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
           ajusta_planos/
         </div>
-        <p class="card-description">
+<p class="card-description">
           Ajuste de planos pelo Método Combinado (MMQ) a partir de nuvens de pontos de estação total sem prisma: propagação da MVC das observações brutas, controle de qualidade e detecção de erros grosseiros.
         </p>
-        <ul class="card-features">
-          <li>Três estratégias de gauge — injunção A²+B²+C²=1, redução de parâmetros e pseudo-inversa — comparáveis lado a lado</li>
-          <li>Todas as matrizes do ajustamento visíveis em LaTeX e exportáveis em CSV</li>
-          <li>Visualizador 3D com elipsoides de erro, plano ajustado e resíduos</li>
-          <li>Modelo 2D dos resíduos por TIN, IDW ou Krigagem, com isolinhas</li>
-          <li>Teste global χ², regra kσ, data snooping iterativo e RANSAC</li>
-        </ul>
-        <div class="card-tags">
-          <span class="tech-tag">Three.js</span>
-          <span class="tech-tag">Método Combinado</span>
-          <span class="tech-tag">Krigagem</span>
-          <span class="tech-tag">Estação Total</span>
-        </div>
-        <div class="card-actions">
-          <a href="ajusta_planos/index.html" class="btn-launch">
-            Acessar Simulador
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-          </a>
-        </div>
-      </article>
-
-      <!-- 15. Interseção a Ré 3D -->
-      <article class="sim-card" data-category="ajustamento" style="--card-accent: #e11d48; --card-accent-glow: rgba(225, 29, 72, 0.25); --card-icon-bg: rgba(225, 29, 72, 0.12); --card-btn-bg: linear-gradient(135deg, #be123c, #e11d48);">
-        <div class="card-top">
-          <div class="card-icon-box">🔭</div>
-          <span class="card-category-badge">Ajustamento &amp; Geodésia</span>
-        </div>
-        <h2 class="card-title">Interseção a Ré 3D</h2>
-        <div class="card-path">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+<ul class="card-features">
+<li>Três estratégias de gauge — injunção A²+B²+C²=1, redução de parâmetros e pseudo-inversa — comparáveis lado a lado</li>
+<li>Todas as matrizes do ajustamento visíveis em LaTeX e exportáveis em CSV</li>
+<li>Visualizador 3D com elipsoides de erro, plano ajustado e resíduos</li>
+<li>Modelo 2D dos resíduos por TIN, IDW ou Krigagem, com isolinhas</li>
+<li>Teste global χ², regra kσ, data snooping iterativo e RANSAC</li>
+</ul>
+<div class="card-tags">
+<span class="tech-tag">Three.js</span>
+<span class="tech-tag">Método Combinado</span>
+<span class="tech-tag">Krigagem</span>
+<span class="tech-tag">Estação Total</span>
+</div>
+<div class="card-actions">
+<a class="btn-launch" href="ajusta_planos/index.html"><span class="btn-text">Acessar Simulador</span><svg fill="none" height="16" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24" width="16"><line x1="5" x2="19" y1="12" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></a>
+</div>
+</article>
+<!-- 15. Interseção a Ré 3D -->
+<article class="sim-card" data-card-id="intersecao_re_3D" data-category="ajustamento" style="--card-accent: #e11d48; --card-accent-glow: rgba(225, 29, 72, 0.25); --card-icon-bg: rgba(225, 29, 72, 0.12); --card-btn-bg: linear-gradient(135deg, #be123c, #e11d48);">
+<div class="card-top">
+<div class="card-icon-box">🔭</div>
+<span class="card-category-badge">Ajustamento &amp; Geodésia</span>
+</div>
+<h2 class="card-title">Interseção a Ré 3D</h2>
+<div class="card-path">
+<svg fill="none" height="12" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="12"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
           intersecao_re_3D/
         </div>
-        <p class="card-description">
+<p class="card-description">
           Rede 3D de estações livres ajustada pelos métodos combinado e paramétrico (MMQ), com datum por pontos fixos ou como rede livre (injunções internas), e uma página que deduz as equações e as jacobianas de cada caso.
         </p>
-        <ul class="card-features">
-          <li>Aproximações iniciais automáticas por resseção e irradiação, com aviso de leituras em face II não reduzidas</li>
-          <li>Teste global χ², data snooping, teste τ de Pope e regra kσ; números de redundância por componente</li>
-          <li>Vista 3D com elipsoides de erro e vistas XY, XZ e YZ com suas projeções</li>
-          <li>Todas as matrizes do ajustamento, CSV de coordenadas e resíduos e relatório em PDF</li>
-          <li>Os quatro ajustamentos lado a lado, com o teste de compatibilidade dos pontos fixos</li>
-        </ul>
-        <div class="card-tags">
-          <span class="tech-tag">Three.js</span>
-          <span class="tech-tag">Método Combinado</span>
-          <span class="tech-tag">jsPDF</span>
-          <span class="tech-tag">Estação Total</span>
-        </div>
-        <div class="card-actions">
-          <a href="intersecao_re_3D/index.html" class="btn-launch">
-            Acessar Simulador
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-          </a>
-        </div>
-      </article>
-
-      <!-- Empty State for filtered results -->
-      <div class="empty-state" id="emptyState">
-        <div class="empty-state-icon">🔍</div>
-        <h3>Nenhum simulador encontrado</h3>
-        <p>Tente ajustar os termos da pesquisa ou selecionar outra categoria.</p>
+<ul class="card-features">
+<li>Aproximações iniciais automáticas por resseção e irradiação, com aviso de leituras em face II não reduzidas</li>
+<li>Teste global χ², data snooping, teste τ de Pope e regra kσ; números de redundância por componente</li>
+<li>Vista 3D com elipsoides de erro e vistas XY, XZ e YZ com suas projeções</li>
+<li>Todas as matrizes do ajustamento, CSV de coordenadas e resíduos e relatório em PDF</li>
+<li>Os quatro ajustamentos lado a lado, com o teste de compatibilidade dos pontos fixos</li>
+</ul>
+<div class="card-tags">
+<span class="tech-tag">Three.js</span>
+<span class="tech-tag">Método Combinado</span>
+<span class="tech-tag">jsPDF</span>
+<span class="tech-tag">Estação Total</span>
+</div>
+<div class="card-actions">
+<a class="btn-launch" href="intersecao_re_3D/index.html"><span class="btn-text">Acessar Simulador</span><svg fill="none" height="16" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24" width="16"><line x1="5" x2="19" y1="12" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></a>
+</div>
+</article>
+<!-- Empty State for filtered results -->
+<div class="empty-state" id="emptyState">
+<div class="empty-state-icon">🔍</div>
+<h3 id="emptyTitle">Nenhum simulador encontrado</h3>
+<p id="emptyDesc">Tente ajustar os termos da pesquisa ou selecionar outra categoria.</p>
+</div>
+</main>
+</div>
+<!-- Footer -->
+<footer>
+<div class="container footer-content">
+<div id="footerPlatform">
+<strong>Simuladores Monorepo</strong> • Plataforma educacional e científica de Geodésia &amp; Topografia.
       </div>
-
-    </main>
-  </div>
-
-  <!-- Footer -->
-  <footer>
-    <div class="container footer-content">
-      <div>
-        <strong>Simuladores Monorepo</strong> • Plataforma educacional e científica de Geodésia & Topografia.
-      </div>
-      <div>
+<div id="footerTech">
         100% Client-Side • Desenvolvido com HTML, CSS e JavaScript Vanilla
       </div>
-    </div>
-  </footer>
+</div>
+</footer>
 
-  <script>
-    // Search and Filter Logic
-    const searchInput = document.getElementById('searchInput');
-    const searchClear = document.getElementById('searchClear');
-    const filterTabs = document.getElementById('filterTabs');
-    const filterBtns = document.querySelectorAll('.filter-btn');
-    const simCards = document.querySelectorAll('.sim-card');
-    const emptyState = document.getElementById('emptyState');
-
-    let currentCategory = 'all';
-    let searchQuery = '';
-
-    function normalizeText(text) {
-      return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+<script>
+  const uiTranslations = {
+  "pt-BR": {
+    "pageTitle": "Simuladores de Geodésia, Topografia e Ajustamento — Portal Monorepo",
+    "pageDesc": "Portal central de simuladores científicos e didáticos para Geodésia, Topografia, Ajustamento por Mínimos Quadrados, Órbitas GNSS e Engenharia Rodoviária.",
+    "badgeText": "MONOREPO • APLICAÇÕES CIENTÍFICAS SERVERLESS",
+    "heroTitle": "Simuladores de Geodésia & Topografia",
+    "heroSubtitle": "Portal centralizado com ferramentas interativas, visualizadores 3D e laboratórios de ajustamento por Mínimos Quadrados. Todas as ferramentas executam 100% no navegador.",
+    "statTotalLabel": "📦 Total de Simuladores:",
+    "statArchLabel": "⚡ Arquitetura:",
+    "statArchVal": "Client-side (Sem Servidor)",
+    "statMethodsLabel": "📐 Métodos:",
+    "statMethodsVal": "MMQ, Órbitas, 3D & Vias",
+    "searchPlaceholder": "Buscar por nome, método (ex: MMQ, GNSS, Geoide, Curvas), biblioteca...",
+    "searchAria": "Buscar simuladores",
+    "searchClearAria": "Limpar busca",
+    "filterAll": "Todos",
+    "filterAjustamento": "📐 Ajustamento & MMQ",
+    "filterGeodesia": "🌍 Geodésia & Modelos 3D",
+    "filterAstro": "📡 GNSS & Astronomia",
+    "filterVias": "🛣️ Rodovias & Traçado",
+    "filterJogos": "🎮 Jogos Educativos",
+    "emptyTitle": "Nenhum simulador encontrado",
+    "emptyDesc": "Tente ajustar os termos da pesquisa ou selecionar outra categoria.",
+    "btnLaunch": "Acessar Simulador",
+    "btnLaunchAlt": "Abrir Simulador →",
+    "btnPlay": "Jogar Online",
+    "btnExtTitle": "Abrir em nova aba",
+    "footerPlatform": "<strong>Simuladores Monorepo</strong> • Plataforma educacional e científica de Geodésia & Topografia.",
+    "footerTech": "100% Client-Side • Desenvolvido com HTML, CSS e JavaScript Vanilla"
+  },
+  "en": {
+    "pageTitle": "Geodesy, Surveying & Adjustment Simulators — Monorepo Portal",
+    "pageDesc": "Central portal of scientific and educational simulators for Geodesy, Surveying, Least Squares Estimation, GNSS Orbits, and Highway Engineering.",
+    "badgeText": "MONOREPO • SERVERLESS SCIENTIFIC APPS",
+    "heroTitle": "Geodesy & Surveying Simulators",
+    "heroSubtitle": "Centralized portal with interactive tools, 3D visualizers, and Least Squares adjustment laboratories. All tools run 100% in your browser.",
+    "statTotalLabel": "📦 Total Simulators:",
+    "statArchLabel": "⚡ Architecture:",
+    "statArchVal": "Client-side (Serverless)",
+    "statMethodsLabel": "📐 Methods:",
+    "statMethodsVal": "LSE, Orbits, 3D & Roads",
+    "searchPlaceholder": "Search by name, method (e.g. LSE, GNSS, Geoid, Curves), library...",
+    "searchAria": "Search simulators",
+    "searchClearAria": "Clear search",
+    "filterAll": "All",
+    "filterAjustamento": "📐 Adjustment & LSE",
+    "filterGeodesia": "🌍 Geodesy & 3D Models",
+    "filterAstro": "📡 GNSS & Astronomy",
+    "filterVias": "🛣️ Highways & Alignment",
+    "filterJogos": "🎮 Educational Games",
+    "emptyTitle": "No simulators found",
+    "emptyDesc": "Try adjusting your search terms or selecting another category.",
+    "btnLaunch": "Launch Simulator",
+    "btnLaunchAlt": "Launch Simulator →",
+    "btnPlay": "Play Online",
+    "btnExtTitle": "Open in new tab",
+    "footerPlatform": "<strong>Simulators Monorepo</strong> • Educational and scientific platform for Geodesy & Surveying.",
+    "footerTech": "100% Client-Side • Built with HTML, CSS, and Vanilla JavaScript"
+  }
+};
+  const cardTranslations = {
+  "camera_proj": {
+    "pt-BR": {
+      "badge": "Fotogrametria · PT-BR / EN",
+      "title": "Formação de Imagens — Camera Projection",
+      "desc": "Explore como pontos de um cubo 3D formam uma imagem. Inspecione raios, planos físico e virtual, orientação da câmera e coordenadas de imagem.",
+      "features": [
+        "Projeção pinhole, distorção radial/tangencial e amostragem em pixels",
+        "Ângulos ω, φ, κ, quaternions e matrizes de rotação sincronizados",
+        "Sensor, distância focal, ponto principal e pose ajustáveis"
+      ],
+      "tags": [
+        "OpenCV model",
+        "Three.js",
+        "Client-side"
+      ],
+      "btn": "Abrir Simulador →"
+    },
+    "en": {
+      "badge": "Photogrammetry · PT-BR / EN",
+      "title": "Image Formation — Camera Projection",
+      "desc": "Explore how 3D cube points form an image. Inspect projection rays, physical and virtual planes, camera pose, and image coordinates.",
+      "features": [
+        "Pinhole projection, radial/tangential distortion, and pixel sampling",
+        "Synchronized ω, φ, κ angles, quaternions, and rotation matrices",
+        "Adjustable sensor, focal length, principal point, and camera pose"
+      ],
+      "tags": [
+        "OpenCV model",
+        "Three.js",
+        "Client-side"
+      ],
+      "btn": "Launch Simulator →"
     }
+  },
+  "sistemas_coordenadas": {
+    "pt-BR": {
+      "badge": "Geodésia Fundamental",
+      "title": "Sistemas de Coordenadas",
+      "desc": "Visualizador 3D didático e interativo que explora a geometria e as fórmulas de conversão entre os referenciais fundamentais da Geodésia.",
+      "features": [
+        "Coordenadas Geodésicas (&phi;, &lambda;, h) e Cartesianas Geocêntricas (ECEF X,Y,Z)",
+        "Sistemas Esférico, Astronômico, Topocêntrico (ENU) e Plano Topográfico Local",
+        "Visualização orbital 3D e renderização de equações em tempo real com KaTeX"
+      ],
+      "tags": [
+        "Three.js",
+        "KaTeX",
+        "Geodésia 3D",
+        "Transformações"
+      ],
+      "btn": "Acessar Simulador"
+    },
+    "en": {
+      "badge": "Fundamental Geodesy",
+      "title": "Coordinate Systems",
+      "desc": "Interactive 3D educational visualizer exploring the geometry and transformation formulas between fundamental geodetic reference frames.",
+      "features": [
+        "Geodetic Coordinates (&phi;, &lambda;, h) and Geocentric Cartesian (ECEF X,Y,Z)",
+        "Spherical, Astronomical, Topocentric (ENU), and Local Topographic Plane frames",
+        "3D orbital visualization and real-time equation rendering with KaTeX"
+      ],
+      "tags": [
+        "Three.js",
+        "KaTeX",
+        "3D Geodesy",
+        "Transformations"
+      ],
+      "btn": "Launch Simulator"
+    }
+  },
+  "historia_modelos_terrestres": {
+    "pt-BR": {
+      "badge": "Geodésia Histórica & Física",
+      "title": "Modelos Terrestres",
+      "desc": "Jornada científica em 3D pela evolução dos modelos da Terra — desde os conceitos primitivos até o elipsoide de revolução e o geoide gravimétrico moderno.",
+      "features": [
+        "4 modelos históricos: Terra Plana, Esfera, Elipsoide e Geoide Gravimétrico",
+        "Visualização de ondulações geoidais em 3D com dados EGM96 e Three.js",
+        "Painel didático com contexto histórico, parâmetros geométricos e fórmulas"
+      ],
+      "tags": [
+        "Three.js",
+        "Geoide EGM96",
+        "Elipsoide",
+        "História da Ciência"
+      ],
+      "btn": "Acessar Simulador"
+    },
+    "en": {
+      "badge": "Historical & Physical Geodesy",
+      "title": "Earth Models & Geoid",
+      "desc": "A 3D scientific journey through the evolution of Earth models — from early historical concepts to the reference ellipsoid and modern gravimetric geoid.",
+      "features": [
+        "4 historical models: Flat Earth, Sphere, Ellipsoid, and Gravimetric Geoid",
+        "3D visualization of geoid undulations using EGM96 data and Three.js",
+        "Educational panel with historical context, geometric parameters, and formulas"
+      ],
+      "tags": [
+        "Three.js",
+        "EGM96 Geoid",
+        "Ellipsoid",
+        "History of Science"
+      ],
+      "btn": "Launch Simulator"
+    }
+  },
+  "GNSS_simul": {
+    "pt-BR": {
+      "badge": "Posicionamento por Satélite",
+      "title": "Simulador de Órbitas GNSS",
+      "desc": "Propagação e rastreamento de órbitas de satélites GNSS em globo 3D (CesiumJS) com dados TLE reais e cálculo em tempo real da diluição de precisão (DOP).",
+      "features": [
+        "Propagação orbital com Satellite.js baseada em efemérides TLE",
+        "Posicionamento de receptor no globo e traçado de linhas de visada (LOS)",
+        "Cálculo dinâmico da matriz de geometria e métricas GDOP, HDOP e VDOP"
+      ],
+      "tags": [
+        "CesiumJS",
+        "Satellite.js",
+        "TLE",
+        "Diluição DOP",
+        "Globo 3D"
+      ],
+      "btn": "Acessar Simulador"
+    },
+    "en": {
+      "badge": "Satellite Positioning",
+      "title": "GNSS Orbit Simulator",
+      "desc": "GNSS satellite orbit propagation and tracking on a 3D CesiumJS globe with real TLE data and real-time Dilution of Precision (DOP) calculation.",
+      "features": [
+        "Orbital propagation with Satellite.js based on TLE ephemerides",
+        "Ground receiver placement on the globe and Line of Sight (LOS) tracking",
+        "Dynamic geometry matrix calculation with GDOP, HDOP, and VDOP metrics"
+      ],
+      "tags": [
+        "CesiumJS",
+        "Satellite.js",
+        "TLE",
+        "DOP Dilution",
+        "3D Globe"
+      ],
+      "btn": "Launch Simulator"
+    }
+  },
+  "astrometria": {
+    "pt-BR": {
+      "badge": "Geodésia Celeste",
+      "title": "Astrometria de Posição",
+      "desc": "Simulação de determinação de posição geográfica clássica por observações astronômicas através da lente de um teodolito virtual.",
+      "features": [
+        "Visada com retículo de teodolito em ambiente Three.js",
+        "Leituras de ângulo azimutal, distância zenital e tempo de Greenwich",
+        "Catálogo estelar com ascensão reta (RA) e declinação (DEC)"
+      ],
+      "tags": [
+        "Three.js",
+        "TailwindCSS",
+        "Teodolito",
+        "Catálogo Estelar"
+      ],
+      "btn": "Acessar Simulador"
+    },
+    "en": {
+      "badge": "Celestial Geodesy",
+      "title": "Position Astrometry",
+      "desc": "Simulation of classical geographic position determination by astronomical observations through the lens of a virtual theodolite.",
+      "features": [
+        "Theodolite reticle sighting within an interactive Three.js environment",
+        "Azimuth angle, zenith distance, and Greenwich Mean Time readings",
+        "Star catalog with Right Ascension (RA) and Declination (DEC)"
+      ],
+      "tags": [
+        "Three.js",
+        "TailwindCSS",
+        "Theodolite",
+        "Star Catalog"
+      ],
+      "btn": "Launch Simulator"
+    }
+  },
+  "estacao_livre": {
+    "pt-BR": {
+      "badge": "Ajustamento MMQ",
+      "title": "Interseção à Ré (Estação Livre)",
+      "desc": "Ajustamento de observações de direções e distâncias pelo Método Paramétrico (MMQ) com elipses de erro absolutas e relativas.",
+      "features": [
+        "Leituras de direções horizontais e distâncias topográficas",
+        "Matrizes A, P, N e estimativa da variância a posteriori",
+        "Elipses de erro, resíduos padronizados e teste Tau de Pope"
+      ],
+      "tags": [
+        "Canvas 2D",
+        "Ajustamento MMQ",
+        "Elipses de Erro",
+        "Data Snooping"
+      ],
+      "btn": "Acessar Simulador"
+    },
+    "en": {
+      "badge": "LSE Adjustment",
+      "title": "2D Resection (Free Station)",
+      "desc": "Adjustment of direction and distance observations via the Parametric Least Squares method with absolute and relative error ellipses.",
+      "features": [
+        "Horizontal direction and slope distance surveying readings",
+        "A, P, N design matrices and a posteriori variance factor estimation",
+        "Error ellipses, standardized residuals, and Pope's Tau test"
+      ],
+      "tags": [
+        "Canvas 2D",
+        "LSE Adjustment",
+        "Error Ellipses",
+        "Data Snooping"
+      ],
+      "btn": "Launch Simulator"
+    }
+  },
+  "free_station": {
+    "pt-BR": {
+      "badge": "Interseção & Monte Carlo",
+      "title": "Laboratório de Interseção 2D v3",
+      "desc": "Laboratório avançado para cálculo de intersecção à ré 2D, análise de confiabilidade (MDB/MDS) e ensaios estatísticos de Monte Carlo.",
+      "features": [
+        "Modelos com direções e constante de orientação ou ângulos horizontais derivados",
+        "Pré-processamento de distâncias inclinadas e ângulos zenitais (redução)",
+        "Simulação de Monte Carlo com dispersão estocástica e elipses empíricas"
+      ],
+      "tags": [
+        "SVG",
+        "Monte Carlo",
+        "MDB / MDS",
+        "Ajustamento MMQ"
+      ],
+      "btn": "Acessar Simulador"
+    },
+    "en": {
+      "badge": "Resection & Monte Carlo",
+      "title": "2D Resection Lab v3",
+      "desc": "Advanced 2D resection laboratory with direction models, reliability analysis (MDB/MDS), and Monte Carlo statistical trials.",
+      "features": [
+        "Models with directions + orientation constant or derived horizontal angles",
+        "Slope distance and zenith angle reduction preprocessing",
+        "Monte Carlo simulation with stochastic scattering and empirical ellipses"
+      ],
+      "tags": [
+        "SVG",
+        "Monte Carlo",
+        "MDB / MDS",
+        "Least Squares"
+      ],
+      "btn": "Launch Simulator"
+    }
+  },
+  "nivelamento": {
+    "pt-BR": {
+      "badge": "Geodésia Altimétrica",
+      "title": "Rede de Nivelamento Geométrico",
+      "desc": "Ajustamento rigoroso de redes altimétricas de nivelamento geométrico pelo MMQ sobre mapa interativo com propagação de incertezas.",
+      "features": [
+        "Criação de circuitos e desníveis observados sobre mapa MapLibre GL",
+        "Fixação de referências de nível (RN) e ponderação por extensão de nivelamento",
+        "Análise de resíduos normalizados, matriz peso e teste Chi-quadrado global"
+      ],
+      "tags": [
+        "MapLibre GL",
+        "KaTeX",
+        "Altimetria",
+        "Ajustamento MMQ"
+      ],
+      "btn": "Acessar Simulador"
+    },
+    "en": {
+      "badge": "Vertical Geodesy",
+      "title": "Geometric Leveling Network",
+      "desc": "Rigorous adjustment of geometric leveling vertical networks using LSE over an interactive map with uncertainty propagation.",
+      "features": [
+        "Loop creation and observed height differences on an interactive MapLibre GL map",
+        "Benchmark (BM) fixed constraints and length-based stochastic weighting",
+        "Normalized residuals, weight matrix, and global Chi-square testing"
+      ],
+      "tags": [
+        "MapLibre GL",
+        "KaTeX",
+        "Altimetry",
+        "LSE Adjustment"
+      ],
+      "btn": "Launch Simulator"
+    }
+  },
+  "rede_gravimetrica": {
+    "pt-BR": {
+      "badge": "Geodésia Física & Gravimetria",
+      "title": "Rede Gravimétrica",
+      "desc": "Simulação de levantamento gravimétrico relativo e ajustamento de redes de gravidade (mGal) pelo Método dos Mínimos Quadrados.",
+      "features": [
+        "Observações relativas de aceleração da gravidade (Δg) em mGal",
+        "Ponderação estocástica proporcional à distância (σ = σ0 √km)",
+        "Interface geoespacial com MapLibre GL e equações matemáticas KaTeX"
+      ],
+      "tags": [
+        "MapLibre GL",
+        "KaTeX",
+        "Gravimetria (mGal)",
+        "MMQ"
+      ],
+      "btn": "Acessar Simulador"
+    },
+    "en": {
+      "badge": "Physical Geodesy & Gravity",
+      "title": "Gravimetric Network",
+      "desc": "Simulation of relative gravimetric surveys and gravity network adjustment (mGal) using the Least Squares Method.",
+      "features": [
+        "Relative gravity acceleration difference observations (Δg) in mGal",
+        "Stochastic weighting proportional to baseline distance (σ = σ0 √km)",
+        "Geospatial interface with MapLibre GL and KaTeX mathematical equations"
+      ],
+      "tags": [
+        "MapLibre GL",
+        "KaTeX",
+        "Gravimetry (mGal)",
+        "LSE"
+      ],
+      "btn": "Launch Simulator"
+    }
+  },
+  "estradas": {
+    "pt-BR": {
+      "badge": "Engenharia Rodoviária",
+      "title": "Projeto Rodoviário",
+      "desc": "Ferramenta completa para dimensionamento geométrico de traçado rodoviário baseada na metodologia clássica de Wolf & Ghilani.",
+      "features": [
+        "Curva horizontal circular simples com PC/PT, raio, ângulo central e deflexões",
+        "Curva vertical parabólica com cálculo de K, ponto crítico (alto/baixo) e greide",
+        "Perfil longitudinal com terreno, cubagem/terraplenagem e notas de locação"
+      ],
+      "tags": [
+        "Canvas",
+        "Curvas Horizontais",
+        "Curvas Verticais",
+        "Terraplenagem"
+      ],
+      "btn": "Acessar Simulador"
+    },
+    "en": {
+      "badge": "Highway Engineering",
+      "title": "Highway Geometric Design",
+      "desc": "Comprehensive tool for highway geometric alignment and layout design based on the classic Wolf & Ghilani methodology.",
+      "features": [
+        "Simple horizontal circular curve with PC/PT, radius, central angle, and deflections",
+        "Parabolic vertical curve with K-value, critical crest/sag points, and grade line",
+        "Longitudinal profile with natural ground, earthwork volumes, and stakeout notes"
+      ],
+      "tags": [
+        "Canvas",
+        "Horizontal Curves",
+        "Vertical Curves",
+        "Earthwork"
+      ],
+      "btn": "Launch Simulator"
+    }
+  },
+  "direcoes": {
+    "pt-BR": {
+      "badge": "Topografia & Instrumentação",
+      "title": "Direções Horizontais",
+      "desc": "Simulador didático interativo para aprendizado de medição de ângulos horizontais: conceito de Ré, Estação e Vante, pontaria e cálculo de diferença de leituras.",
+      "features": [
+        "Modais didáticos explicando os fundamentos de direções horizontais",
+        "Exercícios interativos com pontaria em Canvas 2D e cálculo em GG°MM'SS\"",
+        "Modos zerado na ré / não orientado e sentido horário / anti-horário"
+      ],
+      "tags": [
+        "Canvas 2D",
+        "Topografia",
+        "Direções Hz",
+        "Interativo"
+      ],
+      "btn": "Acessar Simulador"
+    },
+    "en": {
+      "badge": "Surveying & Instrumentation",
+      "title": "Horizontal Directions",
+      "desc": "Interactive educational simulator for learning horizontal angle measurements: Backsight, Station, and Foresight, pointing, and angle calculation.",
+      "features": [
+        "Educational modals explaining horizontal direction fundamentals",
+        "Interactive exercises with 2D Canvas pointing and DD°MM'SS\" angle computation",
+        "Zeroed on backsight / arbitrary orientation and clockwise / counter-clockwise modes"
+      ],
+      "tags": [
+        "Canvas 2D",
+        "Surveying",
+        "Hz Directions",
+        "Interactive"
+      ],
+      "btn": "Launch Simulator"
+    }
+  },
+  "surveyor_valley": {
+    "pt-BR": {
+      "badge": "Jogo Didático & Topografia",
+      "title": "Surveyor Valley",
+      "desc": "Jogo interativo e educativo de agrimensura e topografia em estética pixel-art. Página de redirecionamento para o repositório e versão web oficial.",
+      "features": [
+        "Desafios interativos e missões de campo para aprendizado de topografia",
+        "Renderização em pixel-art construída para execução direta no navegador",
+        "Acesso ao novo repositório oficial dedicado e link de reprodução online"
+      ],
+      "tags": [
+        "Jogo Educativo",
+        "Topografia",
+        "Pixel Art",
+        "Repositório Autônomo"
+      ],
+      "btn": "Jogar Online"
+    },
+    "en": {
+      "badge": "Educational Game & Surveying",
+      "title": "Surveyor Valley",
+      "desc": "Interactive educational land surveying game with pixel-art aesthetics. Redirect notice pointing to the dedicated repository and live web release.",
+      "features": [
+        "Interactive fieldwork missions and topographic challenges",
+        "Pixel-art rendering built for direct execution in modern web browsers",
+        "Direct link to the dedicated official repository and live web playable release"
+      ],
+      "tags": [
+        "Educational Game",
+        "Surveying",
+        "Pixel Art",
+        "Standalone Repo"
+      ],
+      "btn": "Play Online"
+    }
+  },
+  "pd_pi": {
+    "pt-BR": {
+      "badge": "Topografia & Instrumentação",
+      "title": "Pontaria Direta e Inversa",
+      "desc": "Simulador didático interativo do teodolito em dupla face: pontaria direta (PD) e inversa (PI), com vistas superior e lateral sincronizadas.",
+      "features": [
+        "Canvas duplo: vista superior (limbo horizontal) e vista lateral (círculo vertical) sincronizadas",
+        "Sequência guiada de 5 pontarias com animação de tombamento da luneta",
+        "Cálculo da verificação de face (Hz + 180°) e do ângulo zenital (Z = 360° − leitura PI)"
+      ],
+      "tags": [
+        "Canvas 2D",
+        "Teodolito",
+        "Dupla Face",
+        "PD/PI"
+      ],
+      "btn": "Acessar Simulador"
+    },
+    "en": {
+      "badge": "Surveying & Instrumentation",
+      "title": "Direct & Reverse Sighting (Face I / II)",
+      "desc": "Interactive educational simulator of two-face theodolite operation: Face Left (Direct / PD) and Face Right (Reverse / PI), with synchronized top and side views.",
+      "features": [
+        "Dual Canvas: synchronized top view (horizontal circle) and side view (vertical circle)",
+        "Guided 5-step sighting sequence with animated telescope transit",
+        "Face check calculation (Hz + 180°) and zenith angle verification (Z = 360° − PI reading)"
+      ],
+      "tags": [
+        "Canvas 2D",
+        "Theodolite",
+        "Two-Face",
+        "Face I/II"
+      ],
+      "btn": "Launch Simulator"
+    }
+  },
+  "med": {
+    "pt-BR": {
+      "badge": "EDM & Metrologia",
+      "title": "Medida Eletrônica de Distâncias",
+      "desc": "Apresentação didática interativa sobre Medida Eletrônica de Distâncias (EDM): princípios, refletores, erros, calibração e correções atmosféricas.",
+      "features": [
+        "10 tópicos navegáveis com resumo técnico e animação ilustrativa em Canvas 2D",
+        "Simulador interativo de resolução da ambiguidade de fase por múltiplos comprimentos de onda",
+        "Cobre estrutura interna, refletores, erros sistemáticos, calibração e correções atmosféricas"
+      ],
+      "tags": [
+        "EDM",
+        "Apresentação Interativa",
+        "Ambiguidade de Fase",
+        "Canvas 2D"
+      ],
+      "btn": "Acessar Simulador"
+    },
+    "en": {
+      "badge": "EDM & Metrology",
+      "title": "Electronic Distance Measurement (EDM)",
+      "desc": "Interactive educational laboratory on Electronic Distance Measurement (EDM): principles, retroreflectors, errors, calibration, and atmospheric corrections.",
+      "features": [
+        "10 navigable topics with technical summary and 2D Canvas illustrative animation",
+        "Interactive multi-frequency phase ambiguity resolution simulator",
+        "Covers internal structure, retroreflectors, systematic errors, baseline calibration, and atmosphere"
+      ],
+      "tags": [
+        "EDM",
+        "Interactive Lessons",
+        "Phase Ambiguity",
+        "Canvas 2D"
+      ],
+      "btn": "Launch Simulator"
+    }
+  },
+  "ajusta_planos": {
+    "pt-BR": {
+      "badge": "Ajustamento & Geodésia",
+      "title": "Ajustamento de Planos",
+      "desc": "Ajuste de planos pelo Método Combinado (MMQ) a partir de nuvens de pontos de estação total sem prisma: propagação da MVC das observações brutas, controle de qualidade e detecção de erros grosseiros.",
+      "features": [
+        "Três estratégias de gauge — injunção A²+B²+C²=1, redução de parâmetros e pseudo-inversa — comparáveis lado a lado",
+        "Todas as matrizes do ajustamento visíveis em LaTeX e exportáveis em CSV",
+        "Visualizador 3D com elipsoides de erro, plano ajustado e resíduos",
+        "Modelo 2D dos resíduos por TIN, IDW ou Krigagem, com isolinhas",
+        "Teste global χ², regra kσ, data snooping iterativo e RANSAC"
+      ],
+      "tags": [
+        "Three.js",
+        "Método Combinado",
+        "Krigagem",
+        "Estação Total"
+      ],
+      "btn": "Acessar Simulador"
+    },
+    "en": {
+      "badge": "LSE & Geodesy",
+      "title": "3D Plane Fitting",
+      "desc": "Plane fitting via the Combined Least Squares Model from reflectorless total station point clouds: error propagation from raw readings, quality control, and gross error detection.",
+      "features": [
+        "Three datum/gauge strategies — constraint A²+B²+C²=1, parameter elimination, and pseudo-inverse — compared side by side",
+        "All adjustment matrices rendered in LaTeX and exportable to CSV",
+        "3D viewer with error ellipsoids, fitted plane, and residuals",
+        "2D residual modeling via TIN, IDW, or Kriging with contour isolines",
+        "Global χ² test, kσ rule, iterative Baarda data snooping, and RANSAC"
+      ],
+      "tags": [
+        "Three.js",
+        "Combined Model",
+        "Kriging",
+        "Total Station"
+      ],
+      "btn": "Launch Simulator"
+    }
+  },
+  "intersecao_re_3D": {
+    "pt-BR": {
+      "badge": "Ajustamento & Geodésia",
+      "title": "Interseção a Ré 3D",
+      "desc": "Rede 3D de estações livres ajustada pelos métodos combinado e paramétrico (MMQ), com datum por pontos fixos ou como rede livre (injunções internas), e uma página que deduz as equações e as jacobianas de cada caso.",
+      "features": [
+        "Aproximações iniciais automáticas por resseção e irradiação, com aviso de leituras em face II não reduzidas",
+        "Teste global χ², data snooping, teste τ de Pope e regra kσ; números de redundância por componente",
+        "Vista 3D com elipsoides de erro e vistas XY, XZ e YZ com suas projeções",
+        "Todas as matrizes do ajustamento, CSV de coordenadas e resíduos e relatório em PDF",
+        "Os quatro ajustamentos lado a lado, com o teste de compatibilidade dos pontos fixos"
+      ],
+      "tags": [
+        "Three.js",
+        "Método Combinado",
+        "jsPDF",
+        "Estação Total"
+      ],
+      "btn": "Acessar Simulador"
+    },
+    "en": {
+      "badge": "LSE & Geodesy",
+      "title": "3D Resection Network",
+      "desc": "3D free-station network adjusted by combined and parametric Least Squares models, with fixed datum or free network (inner constraints), plus dedicated mathematical derivations.",
+      "features": [
+        "Automatic initial approximations via resection and radiation with alerts for unreduced Face II readings",
+        "Global χ² test, Baarda data snooping, Pope's τ test, kσ rule, and redundancy numbers per component",
+        "3D view with error ellipsoids and orthogonal XY, XZ, YZ projection viewports",
+        "Complete adjustment matrices, coordinates and residuals CSV export, and PDF technical report",
+        "Four adjustment models compared side by side with fixed benchmark compatibility testing"
+      ],
+      "tags": [
+        "Three.js",
+        "Combined Model",
+        "jsPDF",
+        "Total Station"
+      ],
+      "btn": "Launch Simulator"
+    }
+  }
+};
 
-    function updateCounts() {
-      const counts = {
-        all: 0,
-        ajustamento: 0,
-        'geodesia-3d': 0,
-        'astronomia-gnss': 0,
-        vias: 0,
-        jogos: 0
-      };
+  let currentLang = 'pt-BR';
+  let currentCategory = 'all';
+  let searchQuery = '';
 
-      simCards.forEach(card => {
-        const cat = card.getAttribute('data-category');
-        counts.all++;
-        if (counts[cat] !== undefined) counts[cat]++;
+  const searchInput = document.getElementById('searchInput');
+  const searchClear = document.getElementById('searchClear');
+  const filterBtns = document.querySelectorAll('.filter-btn');
+  const simCards = document.querySelectorAll('.sim-card');
+  const emptyState = document.getElementById('emptyState');
+  const langBtns = document.querySelectorAll('.lang-btn');
+
+  function normalizeText(text) {
+    return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+
+  function getInitialLanguage() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlLang = urlParams.get('lang');
+    if (urlLang === 'en' || urlLang === 'pt' || urlLang === 'pt-BR') {
+      return urlLang.startsWith('pt') ? 'pt-BR' : 'en';
+    }
+    const stored = localStorage.getItem('monorepo_lang');
+    if (stored === 'en' || stored === 'pt-BR') {
+      return stored;
+    }
+    return navigator.language && navigator.language.startsWith('en') ? 'en' : 'pt-BR';
+  }
+
+  function setLanguage(lang) {
+    currentLang = lang === 'en' ? 'en' : 'pt-BR';
+    localStorage.setItem('monorepo_lang', currentLang);
+    document.documentElement.lang = currentLang;
+
+    const t = uiTranslations[currentLang];
+
+    // Page title and meta
+    document.title = t.pageTitle;
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) metaDesc.setAttribute('content', t.pageDesc);
+
+    // Hero & Header
+    const badgeText = document.getElementById('badgeText');
+    if (badgeText) badgeText.textContent = t.badgeText;
+
+    const heroTitle = document.getElementById('heroTitle');
+    if (heroTitle) heroTitle.textContent = t.heroTitle;
+
+    const heroSubtitle = document.getElementById('heroSubtitle');
+    if (heroSubtitle) heroSubtitle.textContent = t.heroSubtitle;
+
+    // Stat Pills
+    document.getElementById('statTotalLabel').textContent = t.statTotalLabel;
+    document.getElementById('statArchLabel').textContent = t.statArchLabel;
+    document.getElementById('statArchVal').textContent = t.statArchVal;
+    document.getElementById('statMethodsLabel').textContent = t.statMethodsLabel;
+    document.getElementById('statMethodsVal').textContent = t.statMethodsVal;
+
+    // Search Controls
+    searchInput.placeholder = t.searchPlaceholder;
+    searchInput.setAttribute('aria-label', t.searchAria);
+    searchClear.setAttribute('aria-label', t.searchClearAria);
+
+    // Filter Buttons
+    document.querySelectorAll('[data-filter-key]').forEach(el => {
+      const key = el.getAttribute('data-filter-key');
+      if (t[key]) el.textContent = t[key];
+    });
+
+    // Empty State
+    document.getElementById('emptyTitle').textContent = t.emptyTitle;
+    document.getElementById('emptyDesc').textContent = t.emptyDesc;
+
+    // Footer
+    document.getElementById('footerPlatform').innerHTML = t.footerPlatform;
+    document.getElementById('footerTech').textContent = t.footerTech;
+
+    // Language Toggle Buttons
+    langBtns.forEach(btn => {
+      const isActive = btn.getAttribute('data-lang') === currentLang;
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-pressed', String(isActive));
+    });
+
+    // Update each simulator card
+    simCards.forEach(card => {
+      const cid = card.getAttribute('data-card-id');
+      const data = cardTranslations[cid] && cardTranslations[cid][currentLang];
+      if (!data) return;
+
+      const badge = card.querySelector('.card-category-badge');
+      if (badge) badge.textContent = data.badge;
+
+      const title = card.querySelector('.card-title');
+      if (title) title.textContent = data.title;
+
+      const desc = card.querySelector('.card-description');
+      if (desc) desc.textContent = data.desc;
+
+      const featItems = card.querySelectorAll('.card-features li');
+      data.features.forEach((featText, i) => {
+        if (featItems[i]) featItems[i].innerHTML = featText;
       });
 
-      document.getElementById('countAll').textContent = counts.all;
-      document.getElementById('countAjustamento').textContent = counts.ajustamento;
-      document.getElementById('countGeodesia').textContent = counts['geodesia-3d'];
-      document.getElementById('countAstro').textContent = counts['astronomia-gnss'];
-      document.getElementById('countVias').textContent = counts.vias;
-      document.getElementById('countJogos').textContent = counts.jogos;
-      document.getElementById('statTotalApps').textContent = counts.all;
-    }
+      const tagsContainer = card.querySelector('.card-tags');
+      if (tagsContainer) {
+        tagsContainer.innerHTML = data.tags.map(tag => '<span class="tech-tag">' + tag + '</span>').join('');
+      }
 
-    function filterCards() {
-      const query = normalizeText(searchQuery.trim());
-      let visibleCount = 0;
-
-      simCards.forEach(card => {
-        const category = card.getAttribute('data-category');
-        const title = normalizeText(card.querySelector('.card-title')?.textContent || '');
-        const desc = normalizeText(card.querySelector('.card-description')?.textContent || '');
-        const path = normalizeText(card.querySelector('.card-path')?.textContent || '');
-        const features = normalizeText(card.querySelector('.card-features')?.textContent || '');
-        const tags = Array.from(card.querySelectorAll('.tech-tag')).map(t => normalizeText(t.textContent)).join(' ');
-
-        const matchesCategory = currentCategory === 'all' || category === currentCategory;
-        const matchesSearch = !query || 
-          title.includes(query) || 
-          desc.includes(query) || 
-          path.includes(query) || 
-          features.includes(query) || 
-          tags.includes(query);
-
-        if (matchesCategory && matchesSearch) {
-          card.style.display = 'flex';
-          visibleCount++;
-        } else {
-          card.style.display = 'none';
+      const launchBtn = card.querySelector('.btn-launch');
+      if (launchBtn) {
+        const btnTextSpan = launchBtn.querySelector('.btn-text');
+        if (btnTextSpan) btnTextSpan.textContent = data.btn;
+        // Update URL param on launch link if relative
+        let baseHref = launchBtn.getAttribute('data-base-href');
+        if (!baseHref) {
+          baseHref = launchBtn.getAttribute('href');
+          launchBtn.setAttribute('data-base-href', baseHref);
         }
-      });
+        if (!baseHref.startsWith('http')) {
+          const cleanHref = baseHref.split('?')[0];
+          launchBtn.href = cleanHref + '?lang=' + (currentLang === 'en' ? 'en' : 'pt-BR');
+        }
+      }
 
-      emptyState.style.display = visibleCount === 0 ? 'block' : 'none';
-      searchClear.style.display = searchQuery ? 'flex' : 'none';
-    }
-
-    // Search event
-    searchInput.addEventListener('input', (e) => {
-      searchQuery = e.target.value;
-      filterCards();
-    });
-
-    searchClear.addEventListener('click', () => {
-      searchInput.value = '';
-      searchQuery = '';
-      searchInput.focus();
-      filterCards();
-    });
-
-    // Category button clicks
-    filterBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        filterBtns.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        currentCategory = btn.getAttribute('data-category');
-        filterCards();
-      });
-    });
-
-    // Keyboard shortcut '/' to search
-    window.addEventListener('keydown', (e) => {
-      if (e.key === '/' && document.activeElement !== searchInput) {
-        e.preventDefault();
-        searchInput.focus();
-        searchInput.select();
-      } else if (e.key === 'Escape' && document.activeElement === searchInput) {
-        searchInput.value = '';
-        searchQuery = '';
-        searchInput.blur();
-        filterCards();
+      const extBtn = card.querySelector('.btn-icon-ext');
+      if (extBtn) {
+        extBtn.setAttribute('title', t.btnExtTitle);
+        let baseHref = extBtn.getAttribute('data-base-href');
+        if (!baseHref) {
+          baseHref = extBtn.getAttribute('href');
+          extBtn.setAttribute('data-base-href', baseHref);
+        }
+        if (!baseHref.startsWith('http')) {
+          const cleanHref = baseHref.split('?')[0];
+          extBtn.href = cleanHref + '?lang=' + (currentLang === 'en' ? 'en' : 'pt-BR');
+        }
       }
     });
 
-    // Initialize counts and filter
-    updateCounts();
     filterCards();
-  </script>
-</body>
+  }
+
+  function updateCounts() {
+    const counts = {
+      all: 0,
+      ajustamento: 0,
+      'geodesia-3d': 0,
+      'astronomia-gnss': 0,
+      vias: 0,
+      jogos: 0
+    };
+
+    simCards.forEach(card => {
+      const cat = card.getAttribute('data-category');
+      counts.all++;
+      if (counts[cat] !== undefined) counts[cat]++;
+    });
+
+    document.getElementById('countAll').textContent = counts.all;
+    document.getElementById('countAjustamento').textContent = counts.ajustamento;
+    document.getElementById('countGeodesia').textContent = counts['geodesia-3d'];
+    document.getElementById('countAstro').textContent = counts['astronomia-gnss'];
+    document.getElementById('countVias').textContent = counts.vias;
+    document.getElementById('countJogos').textContent = counts.jogos;
+    document.getElementById('statTotalApps').textContent = counts.all;
+  }
+
+  function filterCards() {
+    const query = normalizeText(searchQuery.trim());
+    let visibleCount = 0;
+
+    simCards.forEach(card => {
+      const category = card.getAttribute('data-category');
+      const title = normalizeText(card.querySelector('.card-title')?.textContent || '');
+      const desc = normalizeText(card.querySelector('.card-description')?.textContent || '');
+      const path = normalizeText(card.querySelector('.card-path')?.textContent || '');
+      const features = normalizeText(card.querySelector('.card-features')?.textContent || '');
+      const tags = Array.from(card.querySelectorAll('.tech-tag')).map(t => normalizeText(t.textContent)).join(' ');
+
+      // Also match against both PT and EN metadata for the card
+      const cid = card.getAttribute('data-card-id');
+      const ptData = cardTranslations[cid]?.['pt-BR'];
+      const enData = cardTranslations[cid]?.['en'];
+      const extraKeywords = [
+        ptData?.title, ptData?.desc, ...(ptData?.features || []), ...(ptData?.tags || []),
+        enData?.title, enData?.desc, ...(enData?.features || []), ...(enData?.tags || [])
+      ].map(x => normalizeText(x || '')).join(' ');
+
+      const matchesCategory = currentCategory === 'all' || category === currentCategory;
+      const matchesSearch = !query || 
+        title.includes(query) || 
+        desc.includes(query) || 
+        path.includes(query) || 
+        features.includes(query) || 
+        tags.includes(query) ||
+        extraKeywords.includes(query);
+
+      if (matchesCategory && matchesSearch) {
+        card.style.display = 'flex';
+        visibleCount++;
+      } else {
+        card.style.display = 'none';
+      }
+    });
+
+    emptyState.style.display = visibleCount === 0 ? 'block' : 'none';
+    searchClear.style.display = searchQuery ? 'flex' : 'none';
+  }
+
+  // Language switcher buttons
+  langBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const selected = btn.getAttribute('data-lang');
+      setLanguage(selected);
+      // Update URL search query without page reload
+      const url = new URL(window.location);
+      url.searchParams.set('lang', selected === 'en' ? 'en' : 'pt');
+      window.history.replaceState(null, '', url);
+    });
+  });
+
+  // Search event
+  searchInput.addEventListener('input', (e) => {
+    searchQuery = e.target.value;
+    filterCards();
+  });
+
+  searchClear.addEventListener('click', () => {
+    searchInput.value = '';
+    searchQuery = '';
+    searchInput.focus();
+    filterCards();
+  });
+
+  // Category button clicks
+  filterBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      filterBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentCategory = btn.getAttribute('data-category');
+      filterCards();
+    });
+  });
+
+  // Keyboard shortcut '/' to search
+  window.addEventListener('keydown', (e) => {
+    if (e.key === '/' && document.activeElement !== searchInput) {
+      e.preventDefault();
+      searchInput.focus();
+      searchInput.select();
+    } else if (e.key === 'Escape' && document.activeElement === searchInput) {
+      searchInput.value = '';
+      searchQuery = '';
+      searchInput.blur();
+      filterCards();
+    }
+  });
+
+  // Initialize
+  updateCounts();
+  setLanguage(getInitialLanguage());
+</script></body>
 </html>

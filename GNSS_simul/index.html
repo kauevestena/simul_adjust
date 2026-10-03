@@ -12,24 +12,31 @@
 <body>
     <div id="cesiumContainer"></div>
     <div id="uiPanel" class="glass-panel">
-        <h1>GNSS Simulator</h1>
+        <div class="panel-header">
+            <a href="../index.html" class="back-link" id="portalLink">← Portal</a>
+            <div class="lang-switcher" role="group" aria-label="Language / Idioma">
+                <button type="button" class="lang-btn active" data-lang="pt-BR">PT</button>
+                <button type="button" class="lang-btn" data-lang="en">EN</button>
+            </div>
+        </div>
+        <h1 id="appTitle">Simulador GNSS</h1>
         <div class="stats">
-            <p>Active Satellites: <span id="satCount">0</span></p>
-            <p style="margin-top: 4px; font-size: 0.9em; color: #a0aec0;">In View: <span id="inViewCount">0</span></p>
+            <p><span id="labelActiveSats">Satélites Ativos:</span> <span id="satCount">0</span></p>
+            <p style="margin-top: 4px; font-size: 0.9em; color: #a0aec0;"><span id="labelInView">Visíveis:</span> <span id="inViewCount">0</span></p>
         </div>
         <div class="controls">
             <label>
                 <input type="checkbox" id="toggleOrbits" checked>
-                Show Orbit Paths
+                <span id="labelShowOrbits">Mostrar Trajetórias Orbitais</span>
             </label>
             <label>
                 <input type="checkbox" id="toggleLOS" checked>
-                Show Line of Sight (LOS)
+                <span id="labelShowLOS">Mostrar Linhas de Visada (LOS)</span>
             </label>
         </div>
         <div class="dop-stats" style="margin-bottom: 16px; background: rgba(0, 0, 0, 0.3); padding: 12px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.05);">
-            <h3 style="font-size: 1rem; margin: 0 0 8px 0; color: #a0aec0;">Receiver Status</h3>
-            <p id="receiverCoords" style="font-size: 0.85rem; margin: 0 0 8px 0; color: #a0aec0;">Click the globe to place receiver.</p>
+            <h3 id="labelReceiverStatus" style="font-size: 1rem; margin: 0 0 8px 0; color: #a0aec0;">Status do Receptor</h3>
+            <p id="receiverCoords" style="font-size: 0.85rem; margin: 0 0 8px 0; color: #a0aec0;">Clique no globo para posicionar o receptor.</p>
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; font-size: 0.9rem;">
                 <div><strong style="color:#a0aec0;">GDOP:</strong> <span id="gdopValue">--</span></div>
                 <div><strong style="color:#a0aec0;">HDOP:</strong> <span id="hdopValue">--</span></div>
@@ -37,9 +44,9 @@
             </div>
         </div>
         <div class="sat-list-container">
-            <h3>Constellations</h3>
+            <h3 id="labelConstellations">Constelações</h3>
             <ul id="satList">
-                <li class="loading">Loading TLE data...</li>
+                <li id="loadingItem" class="loading">Carregando dados TLE...</li>
             </ul>
         </div>
     </div>

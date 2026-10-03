@@ -1,5 +1,63 @@
 // --- Orquestração da interface do simulador de interseção a ré 3D ---
 const app = {
+    currentLang: (function() {
+        const p = new URLSearchParams(window.location.search).get('lang');
+        if (p === 'en' || p === 'pt' || p === 'pt-BR') return p.startsWith('pt') ? 'pt-BR' : 'en';
+        const s = localStorage.getItem('monorepo_lang');
+        if (s === 'en' || s === 'pt' || s === 'pt-BR') return s.startsWith('pt') ? 'pt-BR' : 'en';
+        return (navigator.language && navigator.language.startsWith('pt')) ? 'pt-BR' : 'en';
+    })(),
+
+    t(key) {
+        const dict = (window.intersecaoI18n && window.intersecaoI18n[this.currentLang]) || 
+                     (window.intersecaoI18n && window.intersecaoI18n['pt-BR']) || {};
+        return dict[key] !== undefined ? dict[key] : key;
+    },
+
+    setLanguage(lang) {
+        if (lang === 'pt') lang = 'pt-BR';
+        this.currentLang = lang;
+        localStorage.setItem('monorepo_lang', lang);
+        const url = new URL(window.location.href);
+        url.searchParams.set('lang', lang);
+        window.history.replaceState({}, '', url.toString());
+
+        this.updateLanguageUI();
+    },
+
+    updateLanguageUI() {
+        const t = (k) => this.t(k);
+        document.title = t('pageTitle');
+        const metaDesc = document.querySelector('meta[name="description"]');
+        if (metaDesc) metaDesc.setAttribute('content', t('pageDesc'));
+
+        const isPt = this.currentLang.startsWith('pt');
+        const btnPt = document.getElementById('btnLangPt');
+        const btnEn = document.getElementById('btnLangEn');
+        if (btnPt && btnEn) {
+            btnPt.className = isPt ? "px-2.5 py-1 text-xs font-bold rounded-md transition-all bg-teal-600 text-white shadow-sm" : "px-2.5 py-1 text-xs font-bold rounded-md transition-all text-stone-400 hover:text-white";
+            btnEn.className = !isPt ? "px-2.5 py-1 text-xs font-bold rounded-md transition-all bg-teal-600 text-white shadow-sm" : "px-2.5 py-1 text-xs font-bold rounded-md transition-all text-stone-400 hover:text-white";
+        }
+
+        const portalLink = document.getElementById('portalLink');
+        if (portalLink) {
+            portalLink.textContent = t('portalLink');
+            portalLink.setAttribute('title', t('portalTitle'));
+            portalLink.href = `../index.html?lang=${isPt ? 'pt' : 'en'}`;
+        }
+
+        const modLink = document.getElementById('modelosLink');
+        if (modLink) {
+            modLink.textContent = t('modelosLink');
+            modLink.href = `modelos.html?lang=${isPt ? 'pt' : 'en'}`;
+        }
+
+        const hTitle = document.querySelector('header h1');
+        if (hTitle) hTitle.textContent = t('headerTitle');
+        const hSub = document.querySelector('header p');
+        if (hSub) hSub.textContent = t('headerSubtitle');
+    },
+
     settings: Object.assign({}, RedeIO.DEFAULT_SETTINGS),
     rows: [],
     result: null,

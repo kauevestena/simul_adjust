@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Laboratório didático de Medida Eletrônica de Distâncias: tempo de voo, fase, ambiguidade, erros, calibração por mínimos quadrados, atmosfera e estações totais.">
-  <title>MED — Medida Eletrônica de Distâncias</title>
+  <title id="pageTitle">MED — Medida Eletrônica de Distâncias</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E📏%3C/text%3E%3C/svg%3E">
   <link rel="stylesheet" href="style.css">
   <script src="physics.js" defer></script>
@@ -12,30 +12,76 @@
   <script src="app.js" defer></script>
 </head>
 <body>
-  <a class="skip-link" href="#lesson">Ir para o experimento</a>
+  <a class="skip-link" href="#lesson" id="skipLink">Ir para o experimento</a>
   <header class="site-header">
-    <div class="brand"><span class="brand-mark" aria-hidden="true">MED</span><div><h1>Medida Eletrônica de Distâncias</h1><p>Topografia e Geodésia · laboratório de fundamentos</p></div></div>
-    <a class="back-link" href="../index.html">← Portal</a>
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">MED</span>
+      <div>
+        <h1 id="brandTitle">Medida Eletrônica de Distâncias</h1>
+        <p id="brandSub">Topografia e Geodésia · laboratório de fundamentos</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <a class="back-link" href="../index.html" id="portalLink">
+        <span id="portalLinkText">← Portal</span>
+      </a>
+      <div class="lang-switcher" role="group" aria-label="Language / Idioma">
+        <button type="button" class="lang-btn active" data-lang="pt-BR">PT-BR</button>
+        <button type="button" class="lang-btn" data-lang="en">EN</button>
+      </div>
+    </div>
   </header>
   <main class="layout">
     <aside class="sidebar">
-      <p class="eyebrow">Percurso de estudo</p>
+      <p class="eyebrow" id="sidebarEyebrow">Percurso de estudo</p>
       <nav id="topicNav" aria-label="Tópicos de MED"></nav>
-      <p class="sidebar-note">Preveja o resultado, altere uma variável e confronte a observação com o modelo.</p>
-      <a href="teoria.md" class="text-link">Texto de apoio e convenções ↗</a>
+      <p class="sidebar-note" id="sidebarNote">Preveja o resultado, altere uma variável e confronte a observação com o modelo.</p>
+      <a href="teoria.md" class="text-link" id="supportLink">Texto de apoio e convenções ↗</a>
     </aside>
     <article id="lesson" tabindex="-1">
-      <div class="lesson-heading"><div><p class="eyebrow" id="topicBreadcrumb"></p><h2 id="topicTitle">Medida Eletrônica de Distâncias</h2></div><button id="btnReset" type="button" class="secondary">Restaurar experimento</button></div>
+      <div class="lesson-heading">
+        <div>
+          <p class="eyebrow" id="topicBreadcrumb"></p>
+          <h2 id="topicTitle">Medida Eletrônica de Distâncias</h2>
+        </div>
+        <button id="btnReset" type="button" class="secondary">Restaurar experimento</button>
+      </div>
       <p class="lead" id="topicSummary"></p>
-      <div class="objective"><span>Investigue</span><p id="topicObjective"></p></div>
+      <div class="objective">
+        <span id="objectiveLabel">Investigue</span>
+        <p id="topicObjective"></p>
+      </div>
       <section class="laboratory" aria-label="Experimento interativo">
         <div class="controls" id="controls"></div>
-        <div class="experiment-output"><div id="visual"></div><div id="metrics" class="metrics" aria-live="off"></div><div id="interpretation" class="interpretation"></div></div>
+        <div class="experiment-output">
+          <div id="visual"></div>
+          <div id="metrics" class="metrics" aria-live="off"></div>
+          <div id="interpretation" class="interpretation"></div>
+        </div>
       </section>
       <section id="labDetail" class="lab-detail" aria-label="Resultados detalhados"></section>
-      <section class="theory" aria-labelledby="theoryTitle"><p class="eyebrow">Do fenômeno ao modelo</p><h3 id="theoryTitle">Fundamentação</h3><div id="theoryContent"></div></section>
-      <section class="exercise" aria-labelledby="exerciseTitle"><p class="eyebrow">Roteiro de investigação</p><h3 id="exerciseTitle"></h3><p id="exercisePrompt"></p><details><summary>Ver explicação</summary><div id="exerciseAnswer"></div></details></section>
-      <footer class="lesson-footer"><div id="sources" class="sources"></div><div class="lesson-actions"><button id="btnPrev" class="secondary" type="button">← Anterior</button><span id="lessonPosition"></span><button id="btnNext" type="button">Próximo →</button></div></footer>
+      <section class="theory" aria-labelledby="theoryTitle">
+        <p class="eyebrow" id="theoryEyebrow">Do fenômeno ao modelo</p>
+        <h3 id="theoryTitle">Fundamentação</h3>
+        <div id="theoryContent"></div>
+      </section>
+      <section class="exercise" aria-labelledby="exerciseTitle">
+        <p class="eyebrow" id="exerciseEyebrow">Roteiro de investigação</p>
+        <h3 id="exerciseTitle"></h3>
+        <p id="exercisePrompt"></p>
+        <details>
+          <summary id="exerciseSummary">Ver explicação</summary>
+          <div id="exerciseAnswer"></div>
+        </details>
+      </section>
+      <footer class="lesson-footer">
+        <div id="sources" class="sources"></div>
+        <div class="lesson-actions">
+          <button id="btnPrev" class="secondary" type="button">← Anterior</button>
+          <span id="lessonPosition"></span>
+          <button id="btnNext" type="button">Próximo →</button>
+        </div>
+      </footer>
     </article>
   </main>
   <noscript><p class="noscript">Ative o JavaScript para usar os experimentos. O <a href="teoria.md">texto de apoio</a> continua disponível.</p></noscript>

@@ -53,6 +53,161 @@ const MIN_DIST = 100;
 const SNAP_TOLERANCE_DEG = 3;
 const TOMBAR_DURATION_MS = 800;
 
+// ── Bilingual Dictionary ──
+const pdpiI18n = {
+  'pt-BR': {
+    docTitle: 'Pontaria Direta e Inversa (PD/PI) — Simulador Didático de Topografia',
+    headerTitle: 'Pontaria Direta e Inversa',
+    headerSub: 'Simulador Didático de Topografia — PD / PI',
+    portalLink: 'Portal',
+    faceTitle: 'Face Atual',
+    stepsTitle: 'Etapas',
+    readingsTitle: 'Leituras Coletadas',
+    labelHzRePd: 'Hz Ré (PD)',
+    labelHzVantePd: 'Hz Vante (PD)',
+    labelVVantePd: 'V Vante (PD)',
+    labelHzRePi: 'Hz Vante (PI)',
+    labelVRePi: 'V Vante (PI)',
+    btnTombarText: 'Tombar a Luneta',
+    btnNewText: 'Novo Exercício',
+    exerciseCounterLabel: 'Exercício nº',
+    topPaneLabel: 'Vista Superior — Limbo Horizontal',
+    sidePaneLabel: 'Vista Lateral — Círculo Vertical',
+    calcPanelTitle: '📐 Cálculos e Verificação de Face',
+    calcHzLabel: 'Ângulo Horizontal (Hz)',
+    calcHzCheckLabel: 'Verificação de Face (Hz)',
+    calcZVanteLabel: 'Ângulo Zenital do Vante (Z)',
+    calcZReLabel: 'Ângulo Zenital do Vante em PI (Z)',
+    btnFinalizar: '✅ Finalizar',
+    btnFinalizado: '✓ Concluído',
+    modal1Title: 'Pontaria Direta (PD) e Inversa (PI)',
+    modal1P1: 'Para eliminar erros sistemáticos do teodolito, cada direção pode ser observada em <strong>duas posições</strong> da luneta:',
+    modal1P2: '<strong>PD (Posição Direta)</strong> — posição normal da luneta.<br><strong>PI (Posição Inversa)</strong> — após "tombar" (girar 180° em torno do eixo horizontal) a luneta.',
+    modal1P3: 'Assim como no simulador de Direções, três pontos são gerados aleatoriamente: <strong>Estação</strong>, <strong>Ré</strong> e <strong>Vante</strong>. O equipamento está sempre orientado (zerado) na Ré, em sentido horário.',
+    btnModal1Next: 'Próximo →',
+    modal2Title: 'A Relação Entre as Faces',
+    modal2P1: 'Ao tombar a luneta, duas relações clássicas aparecem entre as leituras da PD e da PI, para o mesmo alvo:',
+    modal2P2: 'Você fará a pontaria no <strong>Vante</strong> (horizontal e vertical) em PD, tombará a luneta, e então fará a pontaria no <strong>Vante</strong> (horizontal e vertical) em PI. Ao final, os cálculos mostrarão essas relações na prática.',
+    btnModal2Start: '🎯 Começar Simulação',
+    stepLabels: {
+      hz_vante_pd: 'Pontaria horizontal — Vante (PD)',
+      v_vante_pd: 'Pontaria vertical — Vante (PD)',
+      tombar: 'Tombar a luneta',
+      hz_re_pi: 'Pontaria horizontal — Vante (PI)',
+      v_re_pi: 'Pontaria vertical — Vante (PI)',
+      results: 'Cálculos e finalização',
+    },
+    hints: {
+      hz_vante_pd: '🎯 Mire na direção do Vante (vista superior) para registrar a pontaria horizontal',
+      v_vante_pd: '🎯 Mire na elevação do Vante (vista lateral) para registrar a pontaria vertical',
+      tombar: '🔄 Clique em "Tombar a Luneta" para passar à posição inversa (PI)',
+      hz_re_pi: '🎯 Mire na direção do Vante (vista superior) para registrar a pontaria horizontal em PI',
+      v_re_pi: '🎯 Mire na elevação do Vante (vista lateral) para registrar a pontaria vertical em PI',
+      results: '✅ Pontarias concluídas! Revise os cálculos e finalize.',
+      tombando: '🔄 Tombando a luneta...',
+      exerciseDone: '🎉 Exercício concluído! Clique em "Novo Exercício" para tentar outro.',
+    },
+    canvas: {
+      station: 'Estação',
+      re: 'Ré',
+      vante: 'Vante',
+      zeroPi: 'Zero PI (Ré+180°)',
+      horizon: 'Horizonte Z=90°',
+      zenith: 'Zênite Z=0°',
+      tombarDiag: 'tombar (180°)',
+    },
+    calcs: {
+      hzFormula: 'Hz = Vante (PD) − Ré (PD)',
+      hzCheckFormula: 'Vante (PI) = Vante (PD) + 180°',
+      zDirect: 'Lido diretamente em PD',
+      zPiFormula: 'Z = 360° − V Vante (PI)',
+    }
+  },
+  'en': {
+    docTitle: 'Direct and Reverse Pointing (D/R) — Topography Educational Simulator',
+    headerTitle: 'Direct & Reverse Pointing',
+    headerSub: 'Topography Educational Simulator — PD / PI (Face Left / Face Right)',
+    portalLink: 'Portal',
+    faceTitle: 'Current Face',
+    stepsTitle: 'Steps',
+    readingsTitle: 'Recorded Readings',
+    labelHzRePd: 'Hz BS (Direct)',
+    labelHzVantePd: 'Hz FS (Direct)',
+    labelVVantePd: 'V FS (Direct)',
+    labelHzRePi: 'Hz FS (Reverse)',
+    labelVRePi: 'V FS (Reverse)',
+    btnTombarText: 'Plunge Telescope',
+    btnNewText: 'New Exercise',
+    exerciseCounterLabel: 'Exercise #',
+    topPaneLabel: 'Top View — Horizontal Circle',
+    sidePaneLabel: 'Side View — Vertical Circle',
+    calcPanelTitle: '📐 Calculations & Face Verification',
+    calcHzLabel: 'Horizontal Angle (Hz)',
+    calcHzCheckLabel: 'Face Check (Hz)',
+    calcZVanteLabel: 'Zenith Angle of FS (Z)',
+    calcZReLabel: 'Zenith Angle of FS in Reverse (Z)',
+    btnFinalizar: '✅ Finalize',
+    btnFinalizado: '✓ Completed',
+    modal1Title: 'Direct (PD) and Reverse (PI) Sighting',
+    modal1P1: 'To eliminate systematic errors in theodolites and total stations, each direction can be measured in <strong>two telescope faces</strong>:',
+    modal1P2: '<strong>PD (Direct / Face Left)</strong> — regular telescope position.<br><strong>PI (Reverse / Face Right)</strong> — after "plunging / transiting" (rotating 180° around horizontal axis) the telescope.',
+    modal1P3: 'Just like in the Directions simulator, three points are generated randomly: <strong>Station</strong>, <strong>Backsight (BS)</strong>, and <strong>Foresight (FS)</strong>. The instrument is always zero-indexed on Backsight, clockwise.',
+    btnModal1Next: 'Next →',
+    modal2Title: 'The Relationship Between Faces',
+    modal2P1: 'When plunging the telescope, two fundamental relationships arise between Direct and Reverse readings for the same target:',
+    modal2P2: 'You will aim at <strong>Foresight</strong> (horizontal and vertical) in Direct, plunge the telescope, and then aim at <strong>Foresight</strong> (horizontal and vertical) in Reverse. At the end, the calculations will verify these relationships in practice.',
+    btnModal2Start: '🎯 Start Simulation',
+    stepLabels: {
+      hz_vante_pd: 'Horizontal sighting — Foresight (Direct)',
+      v_vante_pd: 'Vertical sighting — Foresight (Direct)',
+      tombar: 'Plunge telescope',
+      hz_re_pi: 'Horizontal sighting — Foresight (Reverse)',
+      v_re_pi: 'Vertical sighting — Foresight (Reverse)',
+      results: 'Calculations & review',
+    },
+    hints: {
+      hz_vante_pd: '🎯 Aim towards Foresight (top view) to record horizontal reading',
+      v_vante_pd: '🎯 Aim at Foresight elevation (side view) to record vertical reading',
+      tombar: '🔄 Click "Plunge Telescope" to switch to Reverse (PI) position',
+      hz_re_pi: '🎯 Aim towards Foresight (top view) to record horizontal reading in Reverse',
+      v_re_pi: '🎯 Aim at Foresight elevation (side view) to record vertical reading in Reverse',
+      results: '✅ Sightings completed! Review calculations and finalize.',
+      tombando: '🔄 Plunging telescope...',
+      exerciseDone: '🎉 Exercise complete! Click "New Exercise" to try another.',
+    },
+    canvas: {
+      station: 'Station',
+      re: 'Backsight',
+      vante: 'Foresight',
+      zeroPi: 'Zero Rev (BS+180°)',
+      horizon: 'Horizon Z=90°',
+      zenith: 'Zenith Z=0°',
+      tombarDiag: 'plunge (180°)',
+    },
+    calcs: {
+      hzFormula: 'Hz = FS (Direct) − BS (Direct)',
+      hzCheckFormula: 'FS (Reverse) = FS (Direct) + 180°',
+      zDirect: 'Directly read in Direct',
+      zPiFormula: 'Z = 360° − V FS (Reverse)',
+    }
+  }
+};
+
+let currentLang = 'pt-BR';
+
+function t(keyPath) {
+  const parts = keyPath.split('.');
+  let cur = pdpiI18n[currentLang];
+  for (const part of parts) {
+    if (cur && cur[part] !== undefined) {
+      cur = cur[part];
+    } else {
+      return keyPath;
+    }
+  }
+  return cur;
+}
+
 // ── Step definitions ──
 const STEPS = [
   { key: 'hz_vante_pd', axis: 'hz', target: 'vante', face: 'PD' },
@@ -62,24 +217,6 @@ const STEPS = [
   { key: 'v_re_pi', axis: 'v', target: 'vante', face: 'PI' },
   { key: 'results', axis: null, target: null, face: 'PI' },
 ];
-
-const STEP_LABELS = {
-  hz_vante_pd: 'Pontaria horizontal — Vante (PD)',
-  v_vante_pd: 'Pontaria vertical — Vante (PD)',
-  tombar: 'Tombar a luneta',
-  hz_re_pi: 'Pontaria horizontal — Vante (PI)',
-  v_re_pi: 'Pontaria vertical — Vante (PI)',
-  results: 'Cálculos e finalização',
-};
-
-const HINTS = {
-  hz_vante_pd: '🎯 Mire na direção do Vante (vista superior) para registrar a pontaria horizontal',
-  v_vante_pd: '🎯 Mire na elevação do Vante (vista lateral) para registrar a pontaria vertical',
-  tombar: '🔄 Clique em "Tombar a Luneta" para passar à posição inversa (PI)',
-  hz_re_pi: '🎯 Mire na direção do Vante (vista superior) para registrar a pontaria horizontal em PI',
-  v_re_pi: '🎯 Mire na elevação do Vante (vista lateral) para registrar a pontaria vertical em PI',
-  results: '✅ Pontarias concluídas! Revise os cálculos e finalize.',
-};
 
 const READING_IDS = {
   hzVantePd: 'riHzVantePd',
@@ -110,6 +247,88 @@ let hintEl, counterEl, faceBadgeEl, stepChecklistEl;
 let topReadoutEl, sideReadoutEl;
 let btnTombar, btnNewExercise, btnFinalizar, calcPanelEl;
 
+// ── Bilingual Language Switcher ──
+function setLanguage(lang) {
+  if (!pdpiI18n[lang]) lang = 'pt-BR';
+  currentLang = lang;
+  try {
+    localStorage.setItem('monorepo_lang', lang);
+  } catch (e) {}
+
+  document.documentElement.lang = lang;
+  document.title = t('docTitle');
+
+  const setText = (id, key) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = t(key);
+  };
+  const setHtml = (id, key) => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = t(key);
+  };
+
+  setText('headerTitle', 'headerTitle');
+  setText('headerSub', 'headerSub');
+  setText('portalLinkText', 'portalLink');
+  setText('faceTitle', 'faceTitle');
+  setText('stepsTitle', 'stepsTitle');
+  setText('readingsTitle', 'readingsTitle');
+  setText('labelHzRePd', 'labelHzRePd');
+  setText('labelHzVantePd', 'labelHzVantePd');
+  setText('labelVVantePd', 'labelVVantePd');
+  setText('labelHzRePi', 'labelHzRePi');
+  setText('labelVRePi', 'labelVRePi');
+  setText('btnTombarText', 'btnTombarText');
+  setText('btnNewText', 'btnNewText');
+  setText('exerciseCounterLabel', 'exerciseCounterLabel');
+  setText('topPaneLabel', 'topPaneLabel');
+  setText('sidePaneLabel', 'sidePaneLabel');
+  setText('calcPanelTitle', 'calcPanelTitle');
+  setText('calcHzLabel', 'calcHzLabel');
+  setText('calcHzCheckLabel', 'calcHzCheckLabel');
+  setText('calcZVanteLabel', 'calcZVanteLabel');
+  setText('calcZReLabel', 'calcZReLabel');
+
+  setText('modal1Title', 'modal1Title');
+  setHtml('modal1P1', 'modal1P1');
+  setHtml('modal1P2', 'modal1P2');
+  setHtml('modal1P3', 'modal1P3');
+  setText('btnModal1Next', 'btnModal1Next');
+
+  setText('modal2Title', 'modal2Title');
+  setHtml('modal2P1', 'modal2P1');
+  setHtml('modal2P2', 'modal2P2');
+  setText('btnModal2Start', 'btnModal2Start');
+
+  const portalLink = document.getElementById('portalLink');
+  if (portalLink) {
+    portalLink.href = '../index.html?lang=' + (lang === 'en' ? 'en' : 'pt');
+  }
+
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-lang') === lang);
+  });
+
+  if (state.finalized) {
+    if (btnFinalizar) btnFinalizar.innerHTML = t('btnFinalizado');
+    if (hintEl) hintEl.textContent = t('hints.exerciseDone');
+  } else {
+    if (btnFinalizar) btnFinalizar.innerHTML = t('btnFinalizar');
+    const step = currentStep();
+    if (hintEl && step) hintEl.textContent = t('hints.' + step.key) || '';
+  }
+
+  buildStepChecklist();
+  updateStepUI();
+  drawModal1Diagram();
+  if (state.points && state.points.station) {
+    drawAll();
+  }
+  if (state.stepIndex === STEPS.length - 1 && calcPanelEl && calcPanelEl.classList.contains('visible')) {
+    computeAndShowResults();
+  }
+}
+
 // ── Initialization ──
 document.addEventListener('DOMContentLoaded', () => {
   topCanvas = document.getElementById('topCanvas');
@@ -133,6 +352,31 @@ document.addEventListener('DOMContentLoaded', () => {
   calcPanelEl = document.getElementById('calcPanel');
 
   buildStepChecklist();
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const paramLang = urlParams.get('lang');
+  let initLang = 'pt-BR';
+  if (paramLang === 'en' || paramLang === 'pt-BR') {
+    initLang = paramLang;
+  } else if (paramLang === 'pt') {
+    initLang = 'pt-BR';
+  } else {
+    try {
+      const stored = localStorage.getItem('monorepo_lang');
+      if (stored === 'en' || stored === 'pt-BR') {
+        initLang = stored;
+      }
+    } catch (e) {}
+  }
+
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const targetLang = e.currentTarget.getAttribute('data-lang');
+      setLanguage(targetLang);
+    });
+  });
+
+  setLanguage(initLang);
 
   document.getElementById('btnModal1Next').addEventListener('click', () => {
     hideModal(modalOverlay1);
@@ -271,16 +515,17 @@ function drawModal1Diagram() {
   dctx.font = '600 12px "JetBrains Mono", monospace';
   dctx.fillStyle = '#cbd5e1';
   dctx.textAlign = 'center';
-  dctx.fillText('tombar (180°)', midX, cy - 90);
+  dctx.fillText(t('canvas.tombarDiag'), midX, cy - 90);
 }
 
 // ── Step checklist ──
 function buildStepChecklist() {
+  if (!stepChecklistEl) return;
   stepChecklistEl.innerHTML = '';
   STEPS.forEach((step, i) => {
     const div = document.createElement('div');
     div.className = 'step-item';
-    div.innerHTML = `<span class="step-num">${i + 1}</span><span class="step-text">${STEP_LABELS[step.key]}</span>`;
+    div.innerHTML = `<span class="step-num">${i + 1}</span><span class="step-text">${t('stepLabels.' + step.key)}</span>`;
     stepChecklistEl.appendChild(div);
   });
 }
@@ -290,6 +535,7 @@ function currentStep() {
 }
 
 function updateStepUI() {
+  if (!stepChecklistEl) return;
   const items = stepChecklistEl.querySelectorAll('.step-item');
   items.forEach((el, i) => {
     el.classList.toggle('active', i === state.stepIndex);
@@ -297,12 +543,16 @@ function updateStepUI() {
     el.querySelector('.step-num').textContent = i < state.stepIndex ? '✓' : String(i + 1);
   });
 
-  faceBadgeEl.textContent = state.face;
-  faceBadgeEl.className = 'face-badge ' + state.face.toLowerCase();
+  if (faceBadgeEl) {
+    faceBadgeEl.textContent = state.face;
+    faceBadgeEl.className = 'face-badge ' + state.face.toLowerCase();
+  }
 
   const step = currentStep();
-  hintEl.classList.remove('hidden');
-  hintEl.textContent = HINTS[step.key] || '';
+  if (hintEl) {
+    hintEl.classList.remove('hidden');
+    hintEl.textContent = state.finalized ? t('hints.exerciseDone') : (t('hints.' + step.key) || '');
+  }
 
   btnTombar.disabled = step.key !== 'tombar';
 
@@ -403,7 +653,7 @@ function startExercise() {
   calcPanelEl.classList.remove('visible');
   calcPanelEl.style.borderColor = '';
   btnFinalizar.disabled = true;
-  btnFinalizar.innerHTML = '✅ Finalizar';
+  btnFinalizar.innerHTML = t('btnFinalizar');
 
   resetReadingDisplays();
   updateTopReadout();
@@ -620,7 +870,7 @@ function onTombarClick() {
   if (state.isTombarAnimating) return;
   state.isTombarAnimating = true;
   btnTombar.disabled = true;
-  hintEl.textContent = '🔄 Tombando a luneta...';
+  hintEl.textContent = t('hints.tombando');
 
   const startElevation = state.pose.elevation;
   const startTime = performance.now();
@@ -651,17 +901,23 @@ function computeAndShowResults() {
   const expectedHz = normAngle(hzVantePd + 180);
   const checkOk = Math.abs(normAngle(hzRePi - expectedHz)) < 0.05 || Math.abs(normAngle(hzRePi - expectedHz) - 360) < 0.05;
 
+  const hzFormula = t('calcs.hzFormula');
+  const hzCheckFormula = t('calcs.hzCheckFormula');
+  const zDirect = t('calcs.zDirect');
+  const zPiFormula = t('calcs.zPiFormula');
+  const fsLabel = currentLang === 'en' ? 'FS (Reverse)' : 'Vante (PI)';
+
   document.getElementById('calcHz').innerHTML =
-    `Hz = Vante (PD) − Ré (PD)<br>Hz = ${formatDMS(hzVantePd)} − ${formatDMS(0)}<br><span class="eq">Hz = ${formatDMS(hzVantePd)}</span>`;
+    `${hzFormula}<br>Hz = ${formatDMS(hzVantePd)} − ${formatDMS(0)}<br><span class="eq">Hz = ${formatDMS(hzVantePd)}</span>`;
 
   document.getElementById('calcHzCheck').innerHTML =
-    `Vante (PI) = Vante (PD) + 180°<br>Vante (PI) = ${formatDMS(hzVantePd)} + 180°<br><span class="eq">Vante (PI) = ${formatDMS(hzRePi)}</span> ${checkOk ? '<span class="calc-check">✓</span>' : ''}`;
+    `${hzCheckFormula}<br>${fsLabel} = ${formatDMS(hzVantePd)} + 180°<br><span class="eq">${fsLabel} = ${formatDMS(hzRePi)}</span> ${checkOk ? '<span class="calc-check">✓</span>' : ''}`;
 
   document.getElementById('calcZVante').innerHTML =
-    `Lido diretamente em PD<br><span class="eq">Z = ${formatDMS(vVantePd)}</span>`;
+    `${zDirect}<br><span class="eq">Z = ${formatDMS(vVantePd)}</span>`;
 
   document.getElementById('calcZRe').innerHTML =
-    `Z = 360° − V Vante (PI)<br>Z = 360° − ${formatDMS(vRePi)}<br><span class="eq">Z = ${formatDMS(zVantePi)}</span>`;
+    `${zPiFormula}<br>Z = 360° − ${formatDMS(vRePi)}<br><span class="eq">Z = ${formatDMS(zVantePi)}</span>`;
 
   calcPanelEl.classList.add('visible');
   btnFinalizar.disabled = false;
@@ -670,9 +926,9 @@ function computeAndShowResults() {
 function onFinalizeClick() {
   state.finalized = true;
   btnFinalizar.disabled = true;
-  btnFinalizar.innerHTML = '✓ Concluído';
+  btnFinalizar.innerHTML = t('btnFinalizado');
   calcPanelEl.style.borderColor = 'rgba(16, 185, 129, 0.4)';
-  hintEl.textContent = '🎉 Exercício concluído! Clique em "Novo Exercício" para tentar outro.';
+  hintEl.textContent = t('hints.exerciseDone');
 }
 
 // ── Drawing: shared helpers ──
@@ -829,7 +1085,7 @@ function drawStationPoint(ctx, pos) {
   ctx.fillStyle = '#fff';
   ctx.fill();
 
-  const label = 'Estação';
+  const label = t('canvas.station');
   ctx.font = '700 13px "Plus Jakarta Sans", sans-serif';
   const metrics = ctx.measureText(label);
   const lx = pos.x - metrics.width / 2 - 6;
@@ -877,7 +1133,7 @@ function drawZeroDirection(ctx, station, zeroMathAngle) {
   const badgeR = zeroLen + 20;
   const bx = station.x + Math.cos(rayAngle) * badgeR;
   const by = station.y + Math.sin(rayAngle) * badgeR;
-  drawBadge(ctx, 'Zero PI (Ré+180°)', bx, by, '#cbd5e1', 'rgba(148, 163, 184, 0.4)');
+  drawBadge(ctx, t('canvas.zeroPi'), bx, by, '#cbd5e1', 'rgba(148, 163, 184, 0.4)');
 }
 
 // ── Drawing: top view ──
@@ -930,8 +1186,8 @@ function drawTop() {
     });
   }
 
-  drawPoint(topCtx, re, 'Ré', COLORS.re);
-  drawPoint(topCtx, vante, 'Vante', COLORS.vante);
+  drawPoint(topCtx, re, t('canvas.re'), COLORS.re);
+  drawPoint(topCtx, vante, t('canvas.vante'), COLORS.vante);
   drawStationPoint(topCtx, station);
 }
 
@@ -978,7 +1234,7 @@ function drawTripod(trunnion) {
   sideCtx.lineWidth = 2;
   sideCtx.stroke();
 
-  const label = 'Estação';
+  const label = t('canvas.station');
   sideCtx.font = '700 13px "Plus Jakarta Sans", sans-serif';
   sideCtx.textAlign = 'center';
   sideCtx.textBaseline = 'top';
@@ -1013,7 +1269,7 @@ function drawSide() {
   sideCtx.setLineDash([6, 5]);
   sideCtx.stroke();
   sideCtx.setLineDash([]);
-  drawBadge(sideCtx, 'Horizonte Z=90°', w - 76, trunnion.y - 16, '#cbd5e1', 'rgba(148,163,184,0.3)');
+  drawBadge(sideCtx, t('canvas.horizon'), w - 76, trunnion.y - 16, '#cbd5e1', 'rgba(148,163,184,0.3)');
 
   const zenithPoint = sideZPoint(trunnion, 0, guideR);
   sideCtx.beginPath();
@@ -1024,7 +1280,7 @@ function drawSide() {
   sideCtx.setLineDash([6, 5]);
   sideCtx.stroke();
   sideCtx.setLineDash([]);
-  drawBadge(sideCtx, 'Zênite Z=0°', zenithPoint.x, zenithPoint.y - 18, '#cbd5e1', 'rgba(148,163,184,0.3)');
+  drawBadge(sideCtx, t('canvas.zenith'), zenithPoint.x, zenithPoint.y - 18, '#cbd5e1', 'rgba(148,163,184,0.3)');
 
   sideCtx.beginPath();
   for (let z = 60; z <= 120; z += 2) {
@@ -1046,7 +1302,7 @@ function drawSide() {
     sideCtx.stroke();
   }
 
-  drawSideFlag(trunnion, state.Z.vante, guideR, COLORS.vante, 'Vante');
+  drawSideFlag(trunnion, state.Z.vante, guideR, COLORS.vante, t('canvas.vante'));
 
   if (state.pose.elevation !== null) {
     const tubeColor = state.face === 'PD' ? COLORS.pd : COLORS.pi;

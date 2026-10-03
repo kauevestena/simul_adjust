@@ -24,12 +24,16 @@
                     algébrica e incerteza por propagação de covariâncias</p>
             </div>
             <div class="flex items-center gap-2 shrink-0">
-                <a href="../index.html"
+                <a id="portalLink" href="../index.html?lang=pt"
                     class="text-xs text-stone-300 hover:text-white border border-stone-700 rounded px-3 py-1.5 transition-colors">&#8592;
                     Portal</a>
-                <a href="index.html"
+                <a id="adjustLink" href="index.html?lang=pt"
                     class="text-xs text-stone-300 hover:text-white border border-stone-700 rounded px-3 py-1.5 transition-colors">&#8592;
                     Ajustamento</a>
+                <div class="flex bg-stone-800 p-0.5 rounded-lg border border-stone-700 ml-1">
+                    <button id="btnLangPt" onclick="volApp.setLanguage('pt-BR')" class="px-2.5 py-1 text-xs font-bold rounded-md transition-all bg-teal-600 text-white shadow-sm">PT</button>
+                    <button id="btnLangEn" onclick="volApp.setLanguage('en')" class="px-2.5 py-1 text-xs font-bold rounded-md transition-all text-stone-400 hover:text-white">EN</button>
+                </div>
             </div>
         </div>
     </header>
@@ -172,6 +176,10 @@
     <script src="adjustment.js"></script>
     <script src="volume.js"></script>
     <script src="room3d.js"></script>
+    <script type="module">
+        import { i18n } from './i18n.js';
+        window.planosI18n = i18n;
+    </script>
     <script src="volume_app.js"></script>
     <script>volApp.init();</script>
 </body>

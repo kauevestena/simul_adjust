@@ -1,5 +1,235 @@
 // --- Application Logic ---
 const app = {
+    currentLang: (function() {
+        const p = new URLSearchParams(window.location.search).get('lang');
+        if (p === 'en' || p === 'pt' || p === 'pt-BR') return p.startsWith('pt') ? 'pt-BR' : 'en';
+        const s = localStorage.getItem('monorepo_lang');
+        if (s === 'en' || s === 'pt' || s === 'pt-BR') return s.startsWith('pt') ? 'pt-BR' : 'en';
+        return (navigator.language && navigator.language.startsWith('pt')) ? 'pt-BR' : 'en';
+    })(),
+
+    t(key) {
+        const dict = (window.nivelamentoI18n && window.nivelamentoI18n[this.currentLang]) || 
+                     (window.nivelamentoI18n && window.nivelamentoI18n['pt-BR']) || {};
+        return dict[key] !== undefined ? dict[key] : key;
+    },
+
+    setLanguage(lang) {
+        if (lang === 'pt') lang = 'pt-BR';
+        this.currentLang = lang;
+        localStorage.setItem('monorepo_lang', lang);
+        const url = new URL(window.location.href);
+        url.searchParams.set('lang', lang);
+        window.history.replaceState({}, '', url.toString());
+
+        this.updateLanguageUI();
+        if (this.adjResults) {
+            this.updateUI_Results();
+        } else {
+            this.updateUI_Clear();
+        }
+        if (this._activeMatrixTab) {
+            this.renderMatrixTab();
+        }
+    },
+
+    updateLanguageUI() {
+        const t = (k) => this.t(k);
+        document.title = t('pageTitle');
+        const metaDesc = document.querySelector('meta[name="description"]');
+        if (metaDesc) metaDesc.setAttribute('content', t('pageDesc'));
+
+        const btnPt = document.getElementById('btnLangPt');
+        const btnEn = document.getElementById('btnLangEn');
+        if (btnPt && btnEn) {
+            const isPt = this.currentLang.startsWith('pt');
+            btnPt.className = isPt ? "px-2.5 py-1 text-xs font-bold rounded-md transition-all bg-teal-600 text-white shadow-sm" : "px-2.5 py-1 text-xs font-bold rounded-md transition-all text-stone-400 hover:text-white";
+            btnEn.className = !isPt ? "px-2.5 py-1 text-xs font-bold rounded-md transition-all bg-teal-600 text-white shadow-sm" : "px-2.5 py-1 text-xs font-bold rounded-md transition-all text-stone-400 hover:text-white";
+        }
+
+        const portalLink = document.getElementById('portalLink');
+        if (portalLink) {
+            portalLink.textContent = t('portalLink');
+            portalLink.setAttribute('title', t('portalTitle'));
+            portalLink.href = `../index.html?lang=${this.currentLang.startsWith('pt') ? 'pt' : 'en'}`;
+        }
+
+        const hTitle = document.getElementById('headerTitle');
+        if (hTitle) hTitle.textContent = t('headerTitle');
+        const hSub = document.getElementById('headerSubtitle');
+        if (hSub) hSub.textContent = t('headerSubtitle');
+
+        // Panels
+        const h2s = document.querySelectorAll('main h2');
+        if (h2s[0]) h2s[0].textContent = t('insertPointsTitle');
+        if (h2s[1]) h2s[1].textContent = t('networkControlTitle');
+        if (h2s[2]) h2s[2].innerHTML = `${t('globalTestTitle')}`;
+
+        const btnA = document.getElementById('btnInsertA');
+        if (btnA) btnA.innerHTML = `&#9679; ${t('addPointBtn')}`;
+        const hint = document.getElementById('insertModeHint');
+        if (hint) hint.textContent = t('insertModeHint');
+
+        const ctrlBtns = document.querySelectorAll('div.space-y-3 > button.btn');
+        if (ctrlBtns[0]) ctrlBtns[0].innerHTML = `<span>&#8635;</span> ${t('btnGenerateNetwork')}`;
+        if (ctrlBtns[1]) ctrlBtns[1].innerHTML = `<span>&#9888;</span> ${t('btnInjectOutlier')}`;
+        if (ctrlBtns[2]) ctrlBtns[2].innerHTML = `<span>&#9654;</span> ${t('btnRunAdjustment')}`;
+
+        const rndTitle = document.querySelector('div.mt-4 > h3');
+        if (rndTitle) rndTitle.innerHTML = `&sigma; ${t('randomNoiseTitle')} <span class="font-normal text-stone-400">${t('randomNoiseSub')}</span>`;
+        const rndP = document.querySelector('div.mt-4 > p');
+        if (rndP) rndP.innerHTML = t('randomNoiseHelp');
+
+        const apTitle = document.querySelector('div.mt-6 > h3');
+        if (apTitle) apTitle.textContent = t('aprioriParamsTitle');
+
+        const alphaLabel = document.querySelector('label[for="aprioriAlpha"]');
+        if (alphaLabel) alphaLabel.textContent = t('significanceLevel');
+
+        const tabMapBtn = document.getElementById('tabMapBtn');
+        if (tabMapBtn) tabMapBtn.innerHTML = `&#9635; ${t('tabMapView')}`;
+        const tabTableBtn = document.getElementById('tabTableBtn');
+        if (tabTableBtn) tabTableBtn.innerHTML = `&#9776; ${t('tabDataTable')}`;
+
+        const reliefLabel = document.querySelector('label input#toggleReliefBtn')?.parentElement;
+        if (reliefLabel) reliefLabel.childNodes[reliefLabel.childNodes.length - 1].textContent = ` ${t('toggleRelief')}`;
+
+        const mapLeg = document.getElementById('mapLegend');
+        if (mapLeg) {
+            mapLeg.innerHTML = `
+                <span class="flex items-center gap-1"><div class="w-3 h-3 bg-stone-800"></div> ${t('legendFixed')}</span>
+                <span class="flex items-center gap-1"><div class="w-3 h-3 rounded-full bg-teal-500 border border-white"></div> ${t('legendComputed')}</span>
+            `;
+        }
+
+        const fitBtn = document.querySelector('#tabMapContent button.btn');
+        if (fitBtn) fitBtn.innerHTML = `&#8982; ${t('fitNetwork')}`;
+        const errScaleLabel = document.querySelector('#tabMapContent label');
+        if (errScaleLabel) {
+            const spanVal = document.getElementById('ellipseExagVal');
+            const slider = document.getElementById('ellipseExag');
+            errScaleLabel.childNodes[0].textContent = `${t('errorBarScale')} `;
+        }
+
+        const ctrlHint = document.querySelector('#tabMapContent .flex.justify-between p:first-child');
+        if (ctrlHint) ctrlHint.textContent = t('mapHintCtrl');
+        const barsHint = document.querySelector('#tabMapContent .flex.justify-between p:last-child');
+        if (barsHint) barsHint.textContent = t('mapHintBars');
+
+        const dtHelp = document.querySelector('#tabTableContent .flex.justify-between p');
+        if (dtHelp) dtHelp.textContent = t('dataTableHelp');
+        const newSecBtn = document.querySelector('#tabTableContent button.btn');
+        if (newSecBtn) newSecBtn.innerHTML = `&#43; ${t('btnNewSection')}`;
+
+        const thsEdit = document.querySelectorAll('#tableObsEdit th');
+        if (thsEdit.length >= 4) {
+            thsEdit[0].textContent = t('colFrom');
+            thsEdit[1].textContent = t('colTo');
+            thsEdit[2].textContent = t('colDh');
+            thsEdit[3].textContent = t('colSigmaMm');
+        }
+
+        const dtFoot = document.querySelector('#tabTableContent > p');
+        if (dtFoot) dtFoot.innerHTML = t('dataTableFootnote');
+
+        // Headers of residual, reliability, coords tables
+        const resH2 = document.querySelector('#tableResiduals')?.parentElement?.parentElement?.querySelector('h2');
+        if (resH2) resH2.childNodes[0].textContent = `${t('residualsTitle')} `;
+
+        const thsRes = document.querySelectorAll('#tableResiduals th');
+        if (thsRes.length >= 6) {
+            thsRes[0].textContent = t('colSection');
+            thsRes[1].textContent = t('colObsDh');
+            thsRes[2].textContent = t('colResidualV');
+            thsRes[3].innerHTML = `${t('colStdV')} <span class="text-[9px] font-normal text-stone-400">pri (pos)</span>`;
+            thsRes[4].textContent = t('colWTest');
+            thsRes[5].textContent = t('colState');
+        }
+
+        const relH2 = document.querySelector('#tableReliability')?.parentElement?.parentElement?.querySelector('h2');
+        if (relH2) relH2.textContent = t('reliabilityTitle');
+
+        const thsRel = document.querySelectorAll('#tableReliability th');
+        if (thsRel.length >= 4) {
+            thsRel[0].textContent = t('colObs');
+            thsRel[1].textContent = t('colRedundancy');
+            thsRel[2].innerHTML = `&nabla;<sub>0</sub>l (${t('colMdb')})`;
+            thsRel[3].textContent = t('colQuality');
+        }
+        const relFoot = document.querySelector('#tableReliability')?.parentElement?.parentElement?.querySelector('p');
+        if (relFoot) relFoot.innerHTML = t('reliabilityFootnote');
+
+        const coordH2 = document.querySelector('#tableCoords')?.parentElement?.parentElement?.querySelector('h2');
+        if (coordH2) coordH2.textContent = t('coordsTitle');
+
+        const thsCoord = document.querySelectorAll('#tableCoords th');
+        if (thsCoord.length >= 5) {
+            thsCoord[0].textContent = t('colPoint');
+            thsCoord[1].innerHTML = `H<sub>adj</sub> (m)`;
+            thsCoord[2].innerHTML = `${t('colStdH')} <span class="text-[9px] font-normal text-stone-400">pri (pos)</span>`;
+            thsCoord[3].textContent = t('colExtRelMax');
+            thsCoord[4].textContent = t('colOrigin');
+        }
+        const coordFoot = document.querySelector('#tableCoords')?.parentElement?.parentElement?.querySelector('p');
+        if (coordFoot) coordFoot.innerHTML = t('coordsFootnote');
+
+        // Matrices and Monte Carlo
+        const matH2 = document.querySelector('#matrixContent')?.parentElement?.querySelector('h2');
+        if (matH2) matH2.textContent = t('matricesTitle');
+        const matSummary = document.querySelector('#matrixContent')?.parentElement?.querySelector('summary');
+        if (matSummary) matSummary.textContent = t('matrixDescSummary');
+
+        const mcH2 = document.querySelector('#tableMC')?.parentElement?.parentElement?.parentElement?.parentElement?.querySelector('h2');
+        if (mcH2) mcH2.textContent = t('mcTitle');
+        const mcP = document.querySelector('#tableMC')?.parentElement?.parentElement?.parentElement?.querySelector('p');
+        if (mcP) mcP.textContent = t('mcDesc');
+        const mcLabel = document.querySelector('label[for="mcN"]');
+        if (mcLabel) mcLabel.textContent = t('mcTrials');
+        const mcBtn = document.querySelector('button[onclick="app.runMonteCarlo()"]');
+        if (mcBtn) mcBtn.textContent = t('btnRunMonteCarlo');
+
+        const mcFit = document.querySelector('#tableMC')?.parentElement?.parentElement?.querySelector('button.btn');
+        if (mcFit) mcFit.innerHTML = `&#8982; ${t('fitNetwork')}`;
+        const mcScaleLabel = document.querySelector('#tableMC')?.parentElement?.parentElement?.querySelector('label');
+        if (mcScaleLabel) mcScaleLabel.childNodes[0].textContent = `${t('mcDispScale')} `;
+
+        const thsMC = document.querySelectorAll('#tableMC th');
+        if (thsMC.length >= 3) {
+            thsMC[0].textContent = t('colPoint');
+            thsMC[1].textContent = t('colBiasH');
+            thsMC[2].textContent = t('colSampleStdH');
+        }
+
+        const mcDocs = document.querySelectorAll('#tableMCContainer div.mt-4 p, #mcTableContainer div.mt-4 p');
+        if (mcDocs.length >= 2) {
+            mcDocs[0].innerHTML = t('mcBiasDoc');
+            mcDocs[1].innerHTML = t('mcStdDoc');
+        }
+
+        // Blunder Modal
+        const blH3 = document.querySelector('#blunderModal h3');
+        if (blH3) blH3.innerHTML = `&#9888; ${t('blunderModalTitle')}`;
+        const blMag = document.querySelector('#blunderModal label');
+        if (blMag) blMag.textContent = t('blunderMagLabel');
+        const blHelp = document.querySelector('#blunderModal p');
+        if (blHelp) blHelp.textContent = t('blunderHelp');
+        const candObs = document.querySelectorAll('#blunderModal label')[1];
+        if (candObs) candObs.innerHTML = `${t('candidateObs')} <span class="font-normal text-stone-400">${t('selectOneOrMore')}</span>`;
+        const blCancel = document.querySelector('#blunderModal button[onclick="app.closeBlunderModal()"]');
+        if (blCancel) blCancel.textContent = t('btnCancel');
+        const blConfirm = document.querySelector('#blunderModal button[onclick="app.confirmBlunder()"]');
+        if (blConfirm) blConfirm.innerHTML = `&#9888; ${t('btnInject')}`;
+
+        // Point modal buttons
+        const pCancel = document.querySelector('#pointModal button[onclick="app.closeModal()"]');
+        if (pCancel) pCancel.textContent = t('btnCancel');
+        const pConfirm = document.querySelector('#pointModal button[onclick="app.confirmPoint()"]');
+        if (pConfirm) pConfirm.textContent = t('btnConfirm');
+
+        const trashBtn = document.getElementById('canvasTrashBtn');
+        if (trashBtn) trashBtn.title = t('deletePointTitle');
+    },
+
     map: null,
     terrainLoaded: false,
     canvas: null,
@@ -121,6 +351,7 @@ const app = {
             document.getElementById('aprioriAlphaVal').textContent = '5.0%';
         }
 
+        this.updateLanguageUI();
         this.updateApriori();
         this.generateNetwork();
     },
@@ -145,7 +376,7 @@ const app = {
             this.CRIT_W_TEST = this.normInv(1 - alpha / 2);
             this.NON_CENTRALITY = this.CRIT_W_TEST + 0.8416212335; // Power 80% (Z_0.8)
             const wDisp = document.getElementById('wTestLimitDisplay');
-            if (wDisp) wDisp.textContent = `(Limite Crítico |w| > ${this.CRIT_W_TEST.toFixed(2)})`;
+            if (wDisp) wDisp.textContent = `(${this.t('critLimit')}${this.CRIT_W_TEST.toFixed(2)})`;
         }
 
         if (!this.observations) return;
@@ -792,16 +1023,17 @@ const app = {
 
     // --- UI Updaters ---
     updateUI_Clear() {
+        const awaitTxt = this.t('awaitingAdjustment');
         document.getElementById('panelGlobalTest').innerHTML = `
-            <h2 class="text-sm font-bold text-stone-500 uppercase tracking-wider mb-4 border-b pb-2">Teste Global (&chi;&sup2;)</h2>
-            <div class="text-center py-4"><p class="text-xs text-stone-400">Aguardando ajustamento...</p></div>`;
+            <h2 class="text-sm font-bold text-stone-500 uppercase tracking-wider mb-4 border-b pb-2">${this.t('globalTestTitle')}</h2>
+            <div class="text-center py-4"><p class="text-xs text-stone-400">${awaitTxt}</p></div>`;
 
-        document.querySelector('#tableResiduals tbody').innerHTML = `<tr><td colspan="6" class="text-center text-stone-400 py-4">Aguardando ajustamento...</td></tr>`;
-        document.querySelector('#tableReliability tbody').innerHTML = `<tr><td colspan="4" class="text-center text-stone-400 py-4">Aguardando ajustamento...</td></tr>`;
-        document.querySelector('#tableCoords tbody').innerHTML = `<tr><td colspan="5" class="text-center text-stone-400 py-4">Aguardando ajustamento...</td></tr>`;
+        document.querySelector('#tableResiduals tbody').innerHTML = `<tr><td colspan="6" class="text-center text-stone-400 py-4">${awaitTxt}</td></tr>`;
+        document.querySelector('#tableReliability tbody').innerHTML = `<tr><td colspan="4" class="text-center text-stone-400 py-4">${awaitTxt}</td></tr>`;
+        document.querySelector('#tableCoords tbody').innerHTML = `<tr><td colspan="5" class="text-center text-stone-400 py-4">${awaitTxt}</td></tr>`;
         
         const matContainer = document.getElementById('matrixContent');
-        if (matContainer) matContainer.innerHTML = '<p class="text-xs text-stone-400">Aguardando ajustamento...</p>';
+        if (matContainer) matContainer.innerHTML = `<p class="text-xs text-stone-400">${awaitTxt}</p>`;
     },
 
     updateUI_Results() {
@@ -811,20 +1043,20 @@ const app = {
         const panel = document.getElementById('panelGlobalTest');
         const color = res.globalPass ? 'text-teal-600' : 'text-rose-600';
         const bg    = res.globalPass ? 'bg-teal-50 border-teal-200' : 'bg-rose-50 border-rose-200';
-        const icon  = res.globalPass ? '&#10003; Aprovado' : '&#10007; Falhou';
+        const icon  = res.globalPass ? this.t('testPassed') : this.t('testFailed');
         panel.innerHTML = `
-            <h2 class="text-sm font-bold text-stone-500 uppercase tracking-wider mb-4 border-b pb-2">Teste Global (&chi;&sup2;)</h2>
+            <h2 class="text-sm font-bold text-stone-500 uppercase tracking-wider mb-4 border-b pb-2">${this.t('globalTestTitle')}</h2>
             <div class="p-3 rounded-lg border ${bg} text-center mb-3">
                 <span class="font-bold ${color}">${icon}</span>
             </div>
             <div class="space-y-1 text-sm text-stone-600 font-mono">
-                <div class="flex justify-between"><span>&chi;&sup2; calc. (V<sup>T</sup>PV):</span> <span class="font-bold">${res.VtPV.toFixed(4)}</span></div>
-                <div class="flex justify-between"><span>&chi;&sup2; inf (&alpha;/2 = ${this.ALPHA_PCT/2}%):</span> <span>${res.chi2low.toFixed(4)}</span></div>
-                <div class="flex justify-between"><span>&chi;&sup2; sup (1-&alpha;/2 = ${100 - this.ALPHA_PCT/2}%):</span> <span>${res.chi2lim.toFixed(4)}</span></div>
-                <div class="flex justify-between"><span>&sigma;&#x302;&sup2;<sub>0</sub>:</span> <span>${res.sigma02.toFixed(4)}</span></div>
-                <div class="flex justify-between"><span>Graus de Liberdade:</span> <span>${res.dof}</span></div>
+                <div class="flex justify-between"><span>${this.t('calcChi2')}</span> <span class="font-bold">${res.VtPV.toFixed(4)}</span></div>
+                <div class="flex justify-between"><span>${this.t('infChi2')}${this.ALPHA_PCT/2}%):</span> <span>${res.chi2low.toFixed(4)}</span></div>
+                <div class="flex justify-between"><span>${this.t('supChi2')}${100 - this.ALPHA_PCT/2}%):</span> <span>${res.chi2lim.toFixed(4)}</span></div>
+                <div class="flex justify-between"><span>${this.t('estVariance')}</span> <span>${res.sigma02.toFixed(4)}</span></div>
+                <div class="flex justify-between"><span>${this.t('dof')}</span> <span>${res.dof}</span></div>
             </div>
-            ${!res.globalPass ? '<p class="text-xs text-rose-600 mt-3">Anomalia detectada na rede. Analise o teste de Baarda abaixo.</p>' : ''}`;
+            ${!res.globalPass ? `<p class="text-xs text-rose-600 mt-3">${this.t('anomalyDetected')}</p>` : ''}`;
 
         // 2. Residuals Table
         const tbRes = document.querySelector('#tableResiduals tbody');
@@ -862,9 +1094,9 @@ const app = {
 
             // Color code redundancy (r > 0.5 is good, r < 0.1 is dangerous)
             let rColor = 'text-teal-600';
-            let rQual = 'Boa';
-            if(r.r < 0.3) { rColor = 'text-amber-500'; rQual = 'Média'; }
-            if(r.r < 0.1) { rColor = 'text-rose-600 font-bold'; rQual = 'Crítica (Sem Controlo)'; }
+            let rQual = this.t('qualGood');
+            if(r.r < 0.3) { rColor = 'text-amber-500'; rQual = this.t('qualMedium'); }
+            if(r.r < 0.1) { rColor = 'text-rose-600 font-bold'; rQual = this.t('qualCritical'); }
 
             const mdbDisplay = r.mdb == null ? '--' : (r.mdb * 1000).toFixed(3) + ' mm';
 
@@ -969,15 +1201,8 @@ const app = {
         container.innerHTML = '';
         const mDesc = document.getElementById('matDesc');
 
-        const explanations = {
-            'A': '<strong>Matriz de Configuração / Jacobiana (A):</strong> Contém as derivadas parciais das equações de observação em relação às incógnitas. Ela descreve matematicamente a geometria da rede, conectando os parâmetros calculados com as medições de campo.',
-            'P': '<strong>Matriz de Pesos (P):</strong> Uma matriz quadrada, que no contexto não-correlacionado, é puramente diagonal contendo o inverso das variâncias a priori. Ela quantifica o nível de incerteza da medição, fazendo com que observações mais precisas tenham maior atração/peso na solução.',
-            'L': '<strong>Vetor de Termos Independentes ou Desfechamento (L):</strong> Vetor que armazena a diferença entre os valores observados no campo (L<sub>obs</sub>) e os calculados matematicamente a partir das coordenadas atuais/aproximadas (L<sub>calc</sub>).',
-            'X': '<strong>Vetor de Solução (dx):</strong> Correções estimadas por mínimos quadrados (dx = N<sup>-1</sup>U). No nivelamento, o modelo é linear, então a solução é obtida em uma etapa após montar A, P e L.',
-            'V': '<strong>Vetor de Resíduos (V):</strong> Valores teóricos impostos pelo ajustamento que devem ser somados às observações originais (L<sub>obs</sub>) para que a rede "feche" geometricamente (L<sub>adj</sub> = L<sub>obs</sub> + V). O princípio fundamental do MMQ é fazer com que a soma global ponderada V<sup>T</sup> P V atinja seu ponto mínimo.',
-            'N': '<strong>Matriz das Equações Normais (N):</strong> Equacionada por N = A<sup>T</sup> P A, condensa o modelo estocástico (peso) e geométrico da rede numa matriz simétrica. Ela só é positiva definida quando há datum altimétrico e cada componente desconhecida está conectada a ponto fixo. <em>Nota: valores altos são normais porque os pesos são inversos das variâncias.</em>',
-            'SigmaXa': '<strong>Matriz de Variância-Covariância (MVC) dos Parâmetros Ajustados (&Sigma;<sub>X<sub>a</sub></sub>):</strong> Obtida pela propagação das variâncias multiplicando a Matriz Cofatora (Q<sub>xx</sub> = N<sup>-1</sup>) pelo Fator de Variância a posteriori (&sigma;<sub>0</sub><sup>2</sup>). Sua diagonal principal contém a variância estatística (incerteza) final de cada parâmetro ajustado, e os demais elementos representam as covariâncias entre eles.'
-        };
+        const dictExp = (window.nivelamentoI18n && window.nivelamentoI18n[this.currentLang] && window.nivelamentoI18n[this.currentLang].explanations) || {};
+        const explanations = dictExp;
 
         if (mDesc) mDesc.innerHTML = explanations[this._activeMatrixTab] || '';
 
@@ -1616,11 +1841,11 @@ const app = {
             }
 
             mcStatus.innerHTML = `
-                <div class="text-teal-600 font-bold">Aceitos no Teste Global: ${accepted} (${(100*accepted/n).toFixed(1)}%)</div>
-                <div class="text-rose-600">Rejeitados: ${rejected} (${(100*rejected/n).toFixed(1)}%)</div>
-                ${crashed > 0 ? `<div class="text-amber-600">Falhas numéricas: ${crashed}</div>` : ''}
+                <div class="text-teal-600 font-bold">${this.t('mcAccepted')} ${accepted} (${(100*accepted/n).toFixed(1)}%)</div>
+                <div class="text-rose-600">${this.t('mcRejected')} ${rejected} (${(100*rejected/n).toFixed(1)}%)</div>
+                ${crashed > 0 ? `<div class="text-amber-600">${this.t('mcCrashed')} ${crashed}</div>` : ''}
                 <div class="mt-2 text-[10px] text-stone-500 font-sans leading-tight normal-case text-justify">
-                    As simulações reprovadas não passaram em um teste global de qui-quadrado com significância de ${this.ALPHA_PCT}%. Idealmente, o número de retornos negativos deve se aproximar deste valor teórico, sobretudo quando N for grande.
+                    ${this.t('mcFootnoteTest')} ${this.ALPHA_PCT}${this.t('mcFootnoteIdeal')}
                 </div>
             `;
 

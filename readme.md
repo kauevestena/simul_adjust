@@ -17,6 +17,15 @@ The topography game that used to live in `surveyor_valley/` now has its own repo
 [kauevestena.github.io/surveyor_valley](https://kauevestena.github.io/surveyor_valley/).
 What is left in this directory is a notice pointing there.
 
+### Bilingual Monorepo Ground Rule / Regra Fundamental Bilíngue
+
+All applications, tools, simulators, and documentation within this monorepo are required to be **fully bilingual** (Portuguese `pt-BR` and English `en`):
+- **Dynamic Language Switcher**: All simulators include a persistent language toggle switch (`PT` / `EN`).
+- **Synchronized Preference**: Language state is shared across simulators via `localStorage('monorepo_lang')` and URL parameter `?lang=pt` / `?lang=en`.
+- **Complete Terminology**: Both Portuguese and English technical nomenclature are faithfully maintained for Geodesy, Topography, and Least Squares Estimation (MMQ / LSE).
+
+Todas as aplicações, ferramentas, simuladores e documentações deste monorepositório são obrigatoriamente **bilíngues** (Português `pt-BR` e Inglês `en`), contando com alternador de idioma integrado, preferência unificada e terminologia técnica especializada.
+
 ### Getting Started
 
 Refer to the individual README.md file in each application directory for specific setup instructions, system requirements, and execution guidelines.

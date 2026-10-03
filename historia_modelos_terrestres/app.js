@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { figureDetails } from './figures.js';
+import { i18n, translateControlsDOM } from './i18n.js';
 
 // Import all model modules
 import * as historicoModule from './models/historico.js';
@@ -21,6 +21,24 @@ const models = [
 ];
 
 // ============================================
+// Language State & Detection
+// ============================================
+function getInitialLang() {
+    const params = new URLSearchParams(window.location.search);
+    const langParam = params.get('lang');
+    if (langParam === 'en' || langParam === 'pt' || langParam === 'pt-BR') {
+        return langParam.startsWith('pt') ? 'pt' : 'en';
+    }
+    const saved = localStorage.getItem('monorepo_lang');
+    if (saved === 'en' || saved === 'pt' || saved === 'pt-BR') {
+        return saved.startsWith('pt') ? 'pt' : 'en';
+    }
+    return (navigator.language && navigator.language.startsWith('pt')) ? 'pt' : 'en';
+}
+
+let currentLang = getInitialLang();
+
+// ============================================
 // State
 // ============================================
 let currentModelId = null;
@@ -39,6 +57,8 @@ function init() {
     setupThreeJS();
     createStarField();
     setupLighting();
+    setupLanguageSwitcher();
+    updateLanguageUI();
     buildSidebar();
     setupTabs();
     setupPanelToggle();
@@ -152,6 +172,114 @@ function setupLighting() {
 }
 
 // ============================================
+// Language Switcher & UI Sync
+// ============================================
+function setupLanguageSwitcher() {
+    const btnPt = document.getElementById('btn-lang-pt');
+    const btnEn = document.getElementById('btn-lang-en');
+
+    if (btnPt) {
+        btnPt.addEventListener('click', () => setLanguage('pt'));
+    }
+    if (btnEn) {
+        btnEn.addEventListener('click', () => setLanguage('en'));
+    }
+}
+
+function setLanguage(lang) {
+    if (currentLang === lang) return;
+    currentLang = lang;
+    localStorage.setItem('monorepo_lang', lang);
+
+    const url = new URL(window.location.href);
+    url.searchParams.set('lang', lang);
+    window.history.replaceState({}, '', url.toString());
+
+    updateLanguageUI();
+    buildSidebar();
+
+    if (currentModelId) {
+        applyModelText(currentModelId);
+        const interactTab = document.getElementById('tab-interact');
+        translateControlsDOM(interactTab, currentLang);
+    }
+}
+
+function updateLanguageUI() {
+    const t = i18n.ui[currentLang];
+    if (!t) return;
+    document.title = t.pageTitle;
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) metaDesc.setAttribute('content', t.pageDesc);
+
+    const btnPt = document.getElementById('btn-lang-pt');
+    const btnEn = document.getElementById('btn-lang-en');
+    if (btnPt) btnPt.classList.toggle('active', currentLang === 'pt');
+    if (btnEn) btnEn.classList.toggle('active', currentLang === 'en');
+
+    const portalLink = document.getElementById('portalLink');
+    if (portalLink) {
+        portalLink.textContent = t.backToPortal;
+        portalLink.setAttribute('title', t.portalTitle);
+        portalLink.href = `../index.html?lang=${currentLang}`;
+    }
+
+    const appTitle = document.getElementById('app-title');
+    if (appTitle) appTitle.textContent = t.appTitle;
+
+    const appSubtitle = document.getElementById('app-subtitle');
+    if (appSubtitle) appSubtitle.textContent = t.appSubtitle;
+
+    const sidebarFooter = document.getElementById('sidebar-footer-text');
+    if (sidebarFooter) sidebarFooter.textContent = t.sidebarFooter;
+
+    const tabHistory = document.querySelector('#tab-btn-history .tab-label');
+    if (tabHistory) tabHistory.textContent = t.tabHistory;
+
+    const tabHow = document.querySelector('#tab-btn-how .tab-label');
+    if (tabHow) tabHow.textContent = t.tabHow;
+
+    const tabInteract = document.querySelector('#tab-btn-interact .tab-label');
+    if (tabInteract) tabInteract.textContent = t.tabInteract;
+
+    const togglePanel = document.getElementById('toggle-panel');
+    if (togglePanel) togglePanel.setAttribute('title', t.togglePanel);
+
+    const modalClose = document.getElementById('modal-close');
+    if (modalClose) modalClose.setAttribute('title', t.modalClose);
+}
+
+function getModelInfo(id) {
+    const entry = models.find(m => m.id === id);
+    if (!entry) return null;
+    const baseInfo = entry.module.modelInfo;
+    const i18nModel = i18n.models[id] && i18n.models[id][currentLang];
+    if (i18nModel) {
+        return {
+            ...baseInfo,
+            name: i18nModel.name || baseInfo.name,
+            subtitle: i18nModel.subtitle || baseInfo.subtitle,
+            history: i18nModel.history || baseInfo.history,
+            howItWorks: i18nModel.howItWorks || baseInfo.howItWorks
+        };
+    }
+    return baseInfo;
+}
+
+function applyModelText(id) {
+    const info = getModelInfo(id);
+    if (!info) return;
+
+    document.getElementById('current-model-name').textContent = info.name;
+    document.getElementById('current-model-subtitle').textContent = info.subtitle;
+
+    document.getElementById('tab-history').innerHTML = info.history;
+    document.getElementById('tab-how').innerHTML = info.howItWorks;
+
+    attachFigureCardListeners();
+}
+
+// ============================================
 // Sidebar
 // ============================================
 function buildSidebar() {
@@ -159,14 +287,15 @@ function buildSidebar() {
     nav.innerHTML = '';
 
     models.forEach(({ id, module }) => {
-        const info = module.modelInfo;
+        const info = getModelInfo(id);
         const item = document.createElement('div');
         item.className = 'nav-item';
+        if (id === currentModelId) item.classList.add('active');
         item.dataset.modelId = id;
         item.id = `nav-${id}`;
 
         item.innerHTML = `
-            <div class="nav-item-icon">${info.icon}</div>
+            <div class="nav-item-icon">${module.modelInfo.icon}</div>
             <div class="nav-item-text">
                 <div class="nav-item-name">${info.name}</div>
                 <div class="nav-item-desc">${info.subtitle}</div>
@@ -182,7 +311,7 @@ function buildSidebar() {
 // Model Selection
 // ============================================
 function selectModel(id) {
-    if (id === currentModelId) return;
+    if (id === currentModelId && currentModelInstance) return;
 
     // Cleanup previous model
     if (currentModelInstance) {
@@ -202,7 +331,7 @@ function selectModel(id) {
     if (!entry) return;
 
     const { module } = entry;
-    const info = module.modelInfo;
+    const info = getModelInfo(id);
 
     // Update title overlay with animation
     const overlay = document.getElementById('model-title-overlay');
@@ -210,15 +339,7 @@ function selectModel(id) {
     overlay.offsetHeight; // trigger reflow
     overlay.style.animation = 'fadeSlideIn 0.6s ease forwards';
 
-    document.getElementById('current-model-name').textContent = info.name;
-    document.getElementById('current-model-subtitle').textContent = info.subtitle;
-
-    // Populate info tabs
-    document.getElementById('tab-history').innerHTML = info.history;
-    document.getElementById('tab-how').innerHTML = info.howItWorks;
-
-    // Attach click listeners to figure cards for modal popups
-    attachFigureCardListeners();
+    applyModelText(id);
 
     // Setup the 3D scene
     currentModelInstance = module.setup(scene, camera, controls);
@@ -228,11 +349,12 @@ function selectModel(id) {
     interactTab.innerHTML = '';
     if (currentModelInstance.createControls) {
         currentModelInstance.createControls(interactTab);
+        translateControlsDOM(interactTab, currentLang);
     }
 
     // Reset camera if model provides a default position
-    if (info.cameraPosition) {
-        camera.position.set(...info.cameraPosition);
+    if (module.modelInfo.cameraPosition) {
+        camera.position.set(...module.modelInfo.cameraPosition);
         controls.target.set(0, 0, 0);
         controls.update();
     }
@@ -331,7 +453,8 @@ function attachFigureCardListeners() {
 }
 
 function openFigureModal(figureId) {
-    const figure = figureDetails[figureId];
+    const figure = (i18n.figures && i18n.figures[currentLang] && i18n.figures[currentLang][figureId]) ||
+                   (i18n.figures && i18n.figures['pt'] && i18n.figures['pt'][figureId]);
     if (!figure) {
         console.warn(`Figure details not found for: ${figureId}`);
         return;
@@ -342,7 +465,7 @@ function openFigureModal(figureId) {
     // Populate portrait
     const portraitImg = document.getElementById('modal-portrait');
     portraitImg.src = figure.portrait;
-    portraitImg.alt = `Retrato de ${figure.name}`;
+    portraitImg.alt = currentLang === 'en' ? `Portrait of ${figure.name}` : `Retrato de ${figure.name}`;
 
     // Populate text
     document.getElementById('modal-name').textContent = figure.name;

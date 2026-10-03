@@ -58,6 +58,106 @@ const vdopValueEl = document.getElementById('vdopValue');
 const receiverCoordsEl = document.getElementById('receiverCoords');
 const inViewCountEl = document.getElementById('inViewCount');
 
+const gnssI18n = {
+    'pt-BR': {
+        pageTitle: 'Simulador de Órbitas GNSS',
+        portal: '← Portal',
+        appTitle: 'Simulador GNSS',
+        labelActiveSats: 'Satélites Ativos:',
+        labelInView: 'Visíveis:',
+        labelShowOrbits: 'Mostrar Trajetórias Orbitais',
+        labelShowLOS: 'Mostrar Linhas de Visada (LOS)',
+        labelReceiverStatus: 'Status do Receptor',
+        clickGlobe: 'Clique no globo para posicionar o receptor.',
+        labelConstellations: 'Constelações',
+        loading: 'Carregando dados TLE...',
+        errorLoading: 'Erro ao carregar dados. Verifique o console.',
+        receiverLabel: 'Receptor'
+    },
+    'en': {
+        pageTitle: 'GNSS Orbit Simulator',
+        portal: '← Portal',
+        appTitle: 'GNSS Simulator',
+        labelActiveSats: 'Active Satellites:',
+        labelInView: 'In View:',
+        labelShowOrbits: 'Show Orbit Paths',
+        labelShowLOS: 'Show Line of Sight (LOS)',
+        labelReceiverStatus: 'Receiver Status',
+        clickGlobe: 'Click the globe to place receiver.',
+        labelConstellations: 'Constellations',
+        loading: 'Loading TLE data...',
+        errorLoading: 'Error loading data. Check console.',
+        receiverLabel: 'Receiver'
+    }
+};
+
+let currentLang = 'pt-BR';
+
+function getInitialLanguage() {
+    const urlLang = new URLSearchParams(window.location.search).get('lang');
+    if (urlLang === 'en' || urlLang === 'pt' || urlLang === 'pt-BR') {
+        return urlLang.startsWith('pt') ? 'pt-BR' : 'en';
+    }
+    const stored = localStorage.getItem('monorepo_lang');
+    if (stored === 'en' || stored === 'pt-BR') return stored;
+    return navigator.language && navigator.language.startsWith('en') ? 'en' : 'pt-BR';
+}
+
+function setLanguage(lang) {
+    currentLang = lang === 'en' ? 'en' : 'pt-BR';
+    localStorage.setItem('monorepo_lang', currentLang);
+    document.documentElement.lang = currentLang;
+
+    const t = gnssI18n[currentLang];
+    document.title = t.pageTitle;
+    const portalLink = document.getElementById('portalLink');
+    if (portalLink) {
+        portalLink.textContent = t.portal;
+        portalLink.href = `../index.html?lang=${currentLang === 'en' ? 'en' : 'pt'}`;
+    }
+    const appTitle = document.getElementById('appTitle');
+    if (appTitle) appTitle.textContent = t.appTitle;
+    const labelActiveSats = document.getElementById('labelActiveSats');
+    if (labelActiveSats) labelActiveSats.textContent = t.labelActiveSats;
+    const labelInView = document.getElementById('labelInView');
+    if (labelInView) labelInView.textContent = t.labelInView;
+    const labelShowOrbits = document.getElementById('labelShowOrbits');
+    if (labelShowOrbits) labelShowOrbits.textContent = t.labelShowOrbits;
+    const labelShowLOS = document.getElementById('labelShowLOS');
+    if (labelShowLOS) labelShowLOS.textContent = t.labelShowLOS;
+    const labelReceiverStatus = document.getElementById('labelReceiverStatus');
+    if (labelReceiverStatus) labelReceiverStatus.textContent = t.labelReceiverStatus;
+    const labelConstellations = document.getElementById('labelConstellations');
+    if (labelConstellations) labelConstellations.textContent = t.labelConstellations;
+    const loadingItem = document.getElementById('loadingItem');
+    if (loadingItem) loadingItem.textContent = t.loading;
+
+    if (!receiverGd && receiverCoordsEl) {
+        receiverCoordsEl.innerText = t.clickGlobe;
+    }
+    if (receiverPoint && receiverPoint.label) {
+        receiverPoint.label.text = t.receiverLabel;
+    }
+
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+        const isActive = btn.getAttribute('data-lang') === currentLang;
+        btn.classList.toggle('active', isActive);
+        btn.setAttribute('aria-pressed', String(isActive));
+    });
+}
+
+document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const selected = btn.getAttribute('data-lang');
+        setLanguage(selected);
+        const url = new URL(window.location);
+        url.searchParams.set('lang', selected === 'en' ? 'en' : 'pt');
+        window.history.replaceState(null, '', url);
+    });
+});
+
+setLanguage(getInitialLanguage());
+
 toggleLOSEl.addEventListener('change', (e) => {
     showLOS = e.target.checked;
     viewer.entities.suspendEvents();
@@ -265,7 +365,7 @@ handler.setInputAction((click) => {
                     outlineWidth: 2
                 },
                 label: {
-                    text: 'Receiver',
+                    text: new Cesium.CallbackProperty(() => gnssI18n[currentLang].receiverLabel, false),
                     font: '14px Inter, sans-serif',
                     fillColor: Cesium.Color.WHITE,
                     outlineColor: Cesium.Color.BLACK,

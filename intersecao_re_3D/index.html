@@ -24,12 +24,16 @@
                 <p class="text-stone-400 text-xs md:text-sm mt-1">Rede de estações livres — métodos combinado e paramétrico, com pontos fixos ou rede livre (MMQ)</p>
             </div>
             <div class="flex items-center gap-2 shrink-0">
-                <a href="../index.html"
+                <a id="portalLink" href="../index.html?lang=pt"
                     class="text-xs text-stone-300 hover:text-white border border-stone-700 rounded px-3 py-1.5 transition-colors">&#8592;
                     Portal</a>
-                <a href="modelos.html" target="_blank" rel="noopener"
+                <a id="modelosLink" href="modelos.html?lang=pt" target="_blank" rel="noopener"
                     class="text-xs text-stone-100 hover:text-white bg-stone-800 hover:bg-stone-700 border border-stone-600 rounded px-3 py-1.5 transition-colors font-semibold">&#8721;
                     Explicação dos Modelos</a>
+                <div class="flex bg-stone-800 p-0.5 rounded-lg border border-stone-700 ml-1">
+                    <button id="btnLangPt" onclick="app.setLanguage('pt-BR')" class="px-2.5 py-1 text-xs font-bold rounded-md transition-all bg-teal-600 text-white shadow-sm">PT</button>
+                    <button id="btnLangEn" onclick="app.setLanguage('en')" class="px-2.5 py-1 text-xs font-bold rounded-md transition-all text-stone-400 hover:text-white">EN</button>
+                </div>
             </div>
         </div>
     </header>
@@ -688,6 +692,10 @@
     <script src="viewer3d.js"></script>
     <script src="views2d.js"></script>
     <script src="report.js"></script>
+    <script type="module">
+        import { i18n } from './i18n.js';
+        window.intersecaoI18n = i18n;
+    </script>
     <script src="app.js"></script>
 </body>
 

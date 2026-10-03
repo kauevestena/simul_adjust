@@ -45,12 +45,16 @@
                     interseção a ré 3D</p>
             </div>
             <div class="flex items-center gap-2 shrink-0">
-                <a href="../index.html"
+                <a id="portalLink" href="../index.html?lang=pt"
                     class="text-xs text-stone-300 hover:text-white border border-stone-700 rounded px-3 py-1.5 transition-colors">&#8592;
                     Portal</a>
-                <a href="index.html"
+                <a id="simulLink" href="index.html?lang=pt"
                     class="text-xs text-stone-100 hover:text-white bg-stone-800 hover:bg-stone-700 border border-stone-600 rounded px-3 py-1.5 transition-colors font-semibold">&#9654;
                     Simulador</a>
+                <div class="flex bg-stone-800 p-0.5 rounded-lg border border-stone-700 ml-1">
+                    <button id="btnLangPt" onclick="setDocLanguage('pt-BR')" class="px-2.5 py-1 text-xs font-bold rounded-md transition-all bg-teal-600 text-white shadow-sm">PT</button>
+                    <button id="btnLangEn" onclick="setDocLanguage('en')" class="px-2.5 py-1 text-xs font-bold rounded-md transition-all text-stone-400 hover:text-white">EN</button>
+                </div>
             </div>
         </div>
     </header>
@@ -434,6 +438,43 @@
             ],
             throwOnError: false
         });"></script>
+    <script type="module">
+        import { i18n } from './i18n.js';
+        window.intersecaoI18n = i18n;
+
+        function getInitialLang() {
+            const p = new URLSearchParams(window.location.search).get('lang');
+            if (p === 'en' || p === 'pt' || p === 'pt-BR') return p.startsWith('pt') ? 'pt-BR' : 'en';
+            const s = localStorage.getItem('monorepo_lang');
+            if (s === 'en' || s === 'pt' || s === 'pt-BR') return s.startsWith('pt') ? 'pt-BR' : 'en';
+            return (navigator.language && navigator.language.startsWith('pt')) ? 'pt-BR' : 'en';
+        }
+
+        window.setDocLanguage = function(lang) {
+            if (lang === 'pt') lang = 'pt-BR';
+            localStorage.setItem('monorepo_lang', lang);
+            const url = new URL(window.location.href);
+            url.searchParams.set('lang', lang);
+            window.history.replaceState({}, '', url.toString());
+
+            const isPt = lang.startsWith('pt');
+            const btnPt = document.getElementById('btnLangPt');
+            const btnEn = document.getElementById('btnLangEn');
+            if (btnPt && btnEn) {
+                btnPt.className = isPt ? "px-2.5 py-1 text-xs font-bold rounded-md transition-all bg-teal-600 text-white shadow-sm" : "px-2.5 py-1 text-xs font-bold rounded-md transition-all text-stone-400 hover:text-white";
+                btnEn.className = !isPt ? "px-2.5 py-1 text-xs font-bold rounded-md transition-all bg-teal-600 text-white shadow-sm" : "px-2.5 py-1 text-xs font-bold rounded-md transition-all text-stone-400 hover:text-white";
+            }
+
+            const t = (k) => (i18n[lang] && i18n[lang][k]) || (i18n['pt-BR'] && i18n['pt-BR'][k]) || k;
+            document.title = t('docTitle');
+            const pLink = document.getElementById('portalLink');
+            if (pLink) pLink.href = `../index.html?lang=${isPt ? 'pt' : 'en'}`;
+            const sLink = document.getElementById('simulLink');
+            if (sLink) sLink.href = `index.html?lang=${isPt ? 'pt' : 'en'}`;
+        };
+
+        window.setDocLanguage(getInitialLang());
+    </script>
 </body>
 
 </html>

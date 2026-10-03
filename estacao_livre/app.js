@@ -1,5 +1,229 @@
 // --- Application Logic ---
 const app = {
+    currentLang: (function() {
+        const p = new URLSearchParams(window.location.search).get('lang');
+        if (p === 'en' || p === 'pt' || p === 'pt-BR') return p.startsWith('pt') ? 'pt-BR' : 'en';
+        const s = localStorage.getItem('monorepo_lang');
+        if (s === 'en' || s === 'pt' || s === 'pt-BR') return s.startsWith('pt') ? 'pt-BR' : 'en';
+        return (navigator.language && navigator.language.startsWith('pt')) ? 'pt-BR' : 'en';
+    })(),
+
+    t(key) {
+        const dict = (window.estacaoLivreI18n && window.estacaoLivreI18n[this.currentLang]) || 
+                     (window.estacaoLivreI18n && window.estacaoLivreI18n['pt-BR']) || {};
+        return dict[key] !== undefined ? dict[key] : key;
+    },
+
+    setLanguage(lang) {
+        if (lang === 'pt') lang = 'pt-BR';
+        this.currentLang = lang;
+        localStorage.setItem('monorepo_lang', lang);
+        const url = new URL(window.location.href);
+        url.searchParams.set('lang', lang);
+        window.history.replaceState({}, '', url.toString());
+
+        this.updateLanguageUI();
+        if (this.adjResults) {
+            this.updateUI_Results();
+        } else {
+            this.updateUI_Clear();
+        }
+        if (this._activeMatrixTab) {
+            this.renderMatrixTab();
+        }
+    },
+
+    updateLanguageUI() {
+        const t = (k) => this.t(k);
+        document.title = t('pageTitle');
+        const metaDesc = document.querySelector('meta[name="description"]');
+        if (metaDesc) metaDesc.setAttribute('content', t('pageDesc'));
+
+        const btnPt = document.getElementById('btnLangPt');
+        const btnEn = document.getElementById('btnLangEn');
+        if (btnPt && btnEn) {
+            const isPt = this.currentLang.startsWith('pt');
+            btnPt.className = isPt ? "px-2.5 py-1 text-xs font-bold rounded-md transition-all bg-teal-600 text-white shadow-sm" : "px-2.5 py-1 text-xs font-bold rounded-md transition-all text-stone-400 hover:text-white";
+            btnEn.className = !isPt ? "px-2.5 py-1 text-xs font-bold rounded-md transition-all bg-teal-600 text-white shadow-sm" : "px-2.5 py-1 text-xs font-bold rounded-md transition-all text-stone-400 hover:text-white";
+        }
+
+        const portalLink = document.getElementById('portalLink');
+        if (portalLink) {
+            portalLink.textContent = t('portalLink');
+            portalLink.setAttribute('title', t('portalTitle'));
+            portalLink.href = `../index.html?lang=${this.currentLang.startsWith('pt') ? 'pt' : 'en'}`;
+        }
+
+        const hTitle = document.getElementById('headerTitle');
+        if (hTitle) hTitle.textContent = t('headerTitle');
+        const hSub = document.getElementById('headerSubtitle');
+        if (hSub) hSub.textContent = t('headerSubtitle');
+
+        // Panels
+        const h2s = document.querySelectorAll('main h2');
+        if (h2s[0]) h2s[0].textContent = t('insertPointsTitle');
+        if (h2s[1]) h2s[1].textContent = t('networkControlTitle');
+        if (h2s[2]) h2s[2].innerHTML = `${t('globalTestTitle')}`;
+
+        const btnA = document.getElementById('btnInsertA');
+        if (btnA) btnA.innerHTML = `&#9632; ${t('btnInsertA')}`;
+        const btnB = document.getElementById('btnInsertB');
+        if (btnB) btnB.innerHTML = `&#9679; ${t('btnInsertB')}`;
+        const hint = document.getElementById('insertModeHint');
+        if (hint) hint.textContent = t('insertModeHint');
+
+        const ctrlBtns = document.querySelectorAll('div.space-y-3 > button.btn');
+        if (ctrlBtns[0]) ctrlBtns[0].innerHTML = `<span>&#8635;</span> ${t('btnGenerateNetwork')}`;
+        if (ctrlBtns[1]) ctrlBtns[1].innerHTML = `<span>&#9888;</span> ${t('btnInjectOutlier')}`;
+        if (ctrlBtns[2]) ctrlBtns[2].innerHTML = `<span>&#9654;</span> ${t('btnRunAdjustment')}`;
+
+        const rndTitle = document.querySelector('div.mt-4 > h3');
+        if (rndTitle) rndTitle.innerHTML = `&sigma; ${t('randomNoiseTitle')} <span class="font-normal text-stone-400">${t('randomNoiseSub')}</span>`;
+        const rndP = document.querySelector('div.mt-4 > p');
+        if (rndP) rndP.innerHTML = t('randomNoiseHelp');
+
+        const apTitle = document.querySelector('div.mt-6 > h3');
+        if (apTitle) apTitle.textContent = t('aprioriParamsTitle');
+
+        const distLabel = document.querySelector('label[for="aprioriDistMm"]');
+        if (distLabel) distLabel.textContent = t('sigmaDistLabel');
+        const dirLabel = document.querySelector('label[for="aprioriDirSec"]');
+        if (dirLabel) dirLabel.textContent = t('sigmaDirLabel');
+        const alphaLabel = document.querySelector('label[for="aprioriAlpha"]');
+        if (alphaLabel) alphaLabel.textContent = t('significanceLevel');
+
+        const tabMapBtn = document.getElementById('tabMapBtn');
+        if (tabMapBtn) tabMapBtn.innerHTML = `&#9635; ${t('tabMapView')}`;
+        const tabTableBtn = document.getElementById('tabTableBtn');
+        if (tabTableBtn) tabTableBtn.innerHTML = `&#9776; ${t('tabDataTable')}`;
+
+        const mapLeg = document.getElementById('mapLegend');
+        if (mapLeg) {
+            mapLeg.innerHTML = `
+                <span class="flex items-center gap-1"><div class="w-3 h-3 bg-stone-800"></div> ${t('legendTypeA')}</span>
+                <span class="flex items-center gap-1"><div class="w-3 h-3 rounded-full bg-teal-500 border border-white"></div> ${t('legendTypeB')}</span>
+            `;
+        }
+
+        const fitBtn = document.querySelector('#tabMapContent button.btn');
+        if (fitBtn) fitBtn.innerHTML = `&#8982; ${t('fitNetwork')}`;
+        const errScaleLabel = document.querySelector('#tabMapContent label');
+        if (errScaleLabel) {
+            errScaleLabel.childNodes[0].textContent = `${t('ellipseScale')} `;
+        }
+
+        const canvasHint = document.querySelector('#tabMapContent p');
+        if (canvasHint) canvasHint.textContent = t('canvasHint');
+
+        const dtHelp = document.querySelector('#tabTableContent .flex.justify-between p');
+        if (dtHelp) dtHelp.textContent = t('dataTableHelp');
+        const newObsBtn = document.querySelector('#tabTableContent button.btn');
+        if (newObsBtn) newObsBtn.innerHTML = `&#43; ${t('btnNewObs')}`;
+
+        const thsEdit = document.querySelectorAll('#tableObsEdit th');
+        if (thsEdit.length >= 5) {
+            thsEdit[0].textContent = t('colFrom');
+            thsEdit[1].textContent = t('colTo');
+            thsEdit[2].textContent = t('colType');
+            thsEdit[3].textContent = t('colObsVal');
+            thsEdit[4].textContent = t('colSigma');
+        }
+
+        const dtFoot = document.querySelector('#tabTableContent > p');
+        if (dtFoot) dtFoot.innerHTML = t('dataTableFootnote');
+
+        // Residuals, Reliability, Coords
+        const resH2 = document.querySelector('#tableResiduals')?.parentElement?.parentElement?.querySelector('h2');
+        if (resH2) resH2.childNodes[0].textContent = `${t('residualsTitle')} `;
+
+        const thsRes = document.querySelectorAll('#tableResiduals th');
+        if (thsRes.length >= 6) {
+            thsRes[0].textContent = t('colObsId');
+            thsRes[1].textContent = t('colValObs');
+            thsRes[2].textContent = t('colResidualV');
+            thsRes[3].innerHTML = `${t('colStdV')} <span class="text-[9px] font-normal text-stone-400">pri (pos)</span>`;
+            thsRes[4].textContent = t('colWTest');
+            thsRes[5].textContent = t('colState');
+        }
+
+        const relH2 = document.querySelector('#tableReliability')?.parentElement?.parentElement?.querySelector('h2');
+        if (relH2) relH2.textContent = t('reliabilityTitle');
+
+        const thsRel = document.querySelectorAll('#tableReliability th');
+        if (thsRel.length >= 4) {
+            thsRel[0].textContent = t('colObsId');
+            thsRel[1].textContent = t('colRedundancy');
+            thsRel[2].innerHTML = `&nabla;<sub>0</sub>l (${t('colMdb')})`;
+            thsRel[3].textContent = t('colQuality');
+        }
+        const relFoot = document.querySelector('#tableReliability')?.parentElement?.parentElement?.querySelector('p');
+        if (relFoot) relFoot.innerHTML = t('reliabilityFootnote');
+
+        const coordH2 = document.querySelector('#tableCoords')?.parentElement?.parentElement?.querySelector('h2');
+        if (coordH2) coordH2.textContent = t('coordsTitle');
+
+        const thsCoord = document.querySelectorAll('#tableCoords th');
+        if (thsCoord.length >= 8) {
+            thsCoord[0].textContent = t('colPoint');
+            thsCoord[1].textContent = t('colXadj');
+            thsCoord[2].textContent = t('colYadj');
+            thsCoord[3].textContent = t('colSemiMajor');
+            thsCoord[4].textContent = t('colSemiMinor');
+            thsCoord[5].textContent = t('colTheta');
+            thsCoord[6].textContent = t('colExtRelMax');
+            thsCoord[7].textContent = t('colOrigin');
+        }
+        const coordFoot = document.querySelector('#tableCoords')?.parentElement?.parentElement?.querySelector('p');
+        if (coordFoot) coordFoot.innerHTML = t('coordsFootnote');
+
+        // Matrices and Monte Carlo
+        const matH2 = document.querySelector('#matrixContent')?.parentElement?.querySelector('h2');
+        if (matH2) matH2.textContent = t('matricesTitle');
+        const matSummary = document.querySelector('#matrixContent')?.parentElement?.querySelector('summary');
+        if (matSummary) matSummary.textContent = t('matrixDescSummary');
+
+        const mcH2 = document.querySelector('#tableMC')?.parentElement?.parentElement?.parentElement?.parentElement?.querySelector('h2');
+        if (mcH2) mcH2.textContent = t('mcTitle');
+        const mcP = document.querySelector('#tableMC')?.parentElement?.parentElement?.parentElement?.querySelector('p');
+        if (mcP) mcP.textContent = t('mcDesc');
+        const mcLabel = document.querySelector('label[for="mcN"]');
+        if (mcLabel) mcLabel.textContent = t('mcTrials');
+        const mcBtn = document.querySelector('button[onclick="app.runMonteCarlo()"]');
+        if (mcBtn) mcBtn.textContent = t('btnRunMonteCarlo');
+
+        const mcFit = document.querySelector('#tableMC')?.parentElement?.parentElement?.querySelector('button.btn');
+        if (mcFit) mcFit.innerHTML = `&#8982; ${t('fitNetwork')}`;
+        const mcScaleLabel = document.querySelector('#tableMC')?.parentElement?.parentElement?.querySelector('label');
+        if (mcScaleLabel) mcScaleLabel.childNodes[0].textContent = `${t('mcDispScale')} `;
+
+        const thsMC = document.querySelectorAll('#tableMC th');
+        if (thsMC.length >= 3) {
+            thsMC[0].textContent = t('colPoint');
+            thsMC[1].textContent = t('colBiasPos');
+            thsMC[2].textContent = t('colSampleRms');
+        }
+
+        const mcDocs = document.querySelectorAll('#tableMCContainer div.mt-4 p, #mcTableContainer div.mt-4 p');
+        if (mcDocs.length >= 2) {
+            mcDocs[0].innerHTML = t('mcBiasDoc');
+            mcDocs[1].innerHTML = t('mcStdDoc');
+        }
+
+        // Blunder Modal
+        const blH3 = document.querySelector('#blunderModal h3');
+        if (blH3) blH3.innerHTML = `&#9888; ${t('blunderModalTitle')}`;
+        const blMag = document.querySelector('#blunderModal label');
+        if (blMag) blMag.textContent = t('blunderMagLabel');
+        const blHelp = document.querySelector('#blunderModal p');
+        if (blHelp) blHelp.textContent = t('blunderHelp');
+        const candObs = document.querySelectorAll('#blunderModal label')[1];
+        if (candObs) candObs.innerHTML = `${t('candidateObs')} <span class="font-normal text-stone-400">${t('selectOneOrMore')}</span>`;
+        const blCancel = document.querySelector('#blunderModal button[onclick="app.closeBlunderModal()"]');
+        if (blCancel) blCancel.textContent = t('btnCancel');
+        const blConfirm = document.querySelector('#blunderModal button[onclick="app.confirmBlunder()"]');
+        if (blConfirm) blConfirm.innerHTML = `&#9888; ${t('btnInject')}`;
+    },
+
     canvas: null,
     ctx: null,
     points: [], // Control points (Type A)
@@ -86,6 +310,7 @@ const app = {
             document.getElementById('aprioriAlphaVal').textContent = '5.0%';
         }
 
+        this.updateLanguageUI();
         this.updateApriori();
         this.generateNetwork();
     },
@@ -105,7 +330,7 @@ const app = {
             this.CRIT_W_TEST = this.normInv(1 - alpha / 2);
             this.NON_CENTRALITY = this.CRIT_W_TEST + 0.8416212335; // Power 80% (Z_0.8)
             const wDisp = document.getElementById('wTestLimitDisplay');
-            if (wDisp) wDisp.textContent = `(Limite Crítico |w| > ${this.CRIT_W_TEST.toFixed(2)})`;
+            if (wDisp) wDisp.textContent = `(${this.t('critLimit')}${this.CRIT_W_TEST.toFixed(2)})`;
         }
 
 
@@ -882,9 +1107,9 @@ const app = {
             
             // Color code redundancy (r > 0.5 is good, r < 0.1 is dangerous)
             let rColor = 'text-teal-600';
-            let rQual = 'Boa';
-            if(r.r < 0.3) { rColor = 'text-amber-500'; rQual = 'Média'; }
-            if(r.r < 0.1) { rColor = 'text-rose-600 font-bold'; rQual = 'Crítica (Sem Controlo)'; }
+            let rQual = this.t('qualGood');
+            if(r.r < 0.3) { rColor = 'text-amber-500'; rQual = this.t('qualMedium'); }
+            if(r.r < 0.1) { rColor = 'text-rose-600 font-bold'; rQual = this.t('qualCritical'); }
 
             const mdbDisplay = r.mdb == null
                 ? '--'

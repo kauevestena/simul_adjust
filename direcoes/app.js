@@ -57,6 +57,208 @@ const MIN_DIST = 100;
 // The user must click within ±SNAP_TOLERANCE_DEG of the Vante direction to register
 const SNAP_TOLERANCE_DEG = 3;
 
+// ── i18n (Internationalization) ──
+const direcoesI18n = {
+  'pt-BR': {
+    pageTitle: "Direções Horizontais — Simulador Didático de Topografia",
+    pageDesc: "Simulador interativo para aprendizado de medição de ângulos horizontais em topografia: conceito de Ré, Estação e Vante, leituras de direção e cálculo de ângulos.",
+    headerTitle: "Direções Horizontais",
+    headerSub: "Simulador Didático de Topografia",
+    portalLink: "Portal",
+    modeTitle: "Modo de Leitura",
+    modeLabel: "Leitura de Ré",
+    modeZeroed: "Zerado na Ré",
+    modeRandom: "Não Orientado",
+    modeInfo: "<strong>Zerado na Ré:</strong> leitura de Ré = 0°. <strong>Não Orientado:</strong> leitura de Ré depende de onde o equipamento foi zerado da última vez.",
+    dirTitle: "Sentido da Leitura",
+    dirCw: "↻ Horário",
+    dirCcw: "↺ Anti-horário",
+    resultTitle: "Resultado",
+    resultLabel: "Ângulo Horizontal",
+    resultSubDefault: "Hz = Leitura Vante − Leitura Ré",
+    resultSubZeroed: "Hz = Leitura Vante − 0°",
+    readingRe: "Leitura Ré",
+    readingVante: "Leitura Vante",
+    btnNew: "Novo Exercício",
+    btnHint: "espaço",
+    btnNewTitle: "Atalho: barra de espaço",
+    exerciseCounter: "Exercício nº",
+    zoomOut: "Diminuir zoom",
+    zoomIn: "Aumentar zoom",
+    zoomReset: "Restaurar zoom (ou dê duplo clique no canvas)",
+    hintAim: "🎯  Clique na direção do Vante para registrar a pontaria",
+    hintRecorded: "✅  Pontaria registrada! Clique em \"Novo Exercício\" para continuar.",
+    offTarget: "✕ fora do alvo",
+    ptRe: "Ré",
+    ptReSub: "Referência",
+    ptVante: "Vante",
+    ptVanteSub: "Ponto visado",
+    ptStation: "Estação",
+    badge0deg: "0° (Origem)",
+    badgeReVal: "Ré: L₁ = 65°15'",
+    badgeVanteVal: "Vante: L₂ = 140°30'",
+    modal1Title: "Medição de Direções Horizontais",
+    modal1Html: "<p>Uma medição topográfica de ângulo horizontal geralmente envolve <strong>três pontos</strong> fundamentais:</p><p><strong>Ré</strong> — ponto de referência inicial (para onde a luneta é apontada primeiro).<br><strong>Estação</strong> — onde está instalado o instrumento (teodolito/estação total).<br><strong>Vante</strong> — o ponto para o qual se deseja medir o ângulo em relação à Ré.</p><p>O <strong>ângulo horizontal (Hz)</strong> é medido no plano horizontal, a partir da direção da Ré até a direção do Vante.</p>",
+    btnNext: "Próximo →",
+    modal2Title: "Ângulo = Diferença de Leituras",
+    modal2Html: "<p>Um ângulo horizontal provém da <strong>diferença entre duas leituras de direção horizontal</strong> realizadas com o instrumento:</p><div class=\"modal-diagram\"><canvas id=\"modalDiagramCanvas\"></canvas></div><p>A primeira leitura (L₁) é feita com a luneta apontada para a <strong>Ré</strong>, e a segunda (L₂) para o <strong>Vante</strong>. O ângulo horizontal é:</p><p style=\"text-align: center; font-size: 1.1rem;\"><strong style=\"color: #a855f7;\">Hz = L₂ − L₁</strong></p>",
+    btnStart: "🎯 Começar Simulação"
+  },
+  'en': {
+    pageTitle: "Horizontal Directions — Surveying Simulator",
+    pageDesc: "Interactive educational simulator for learning horizontal angle measurements in land surveying: Backsight, Station, and Foresight, readings, and angle computation.",
+    headerTitle: "Horizontal Directions",
+    headerSub: "Educational Surveying Simulator",
+    portalLink: "Portal",
+    modeTitle: "Reading Mode",
+    modeLabel: "Backsight Reading",
+    modeZeroed: "Zeroed on Backsight",
+    modeRandom: "Arbitrary Orientation",
+    modeInfo: "<strong>Zeroed on Backsight:</strong> Backsight reading = 0°. <strong>Arbitrary Orientation:</strong> Backsight reading depends on the previous instrument orientation.",
+    dirTitle: "Reading Direction",
+    dirCw: "↻ Clockwise",
+    dirCcw: "↺ Counter-clockwise",
+    resultTitle: "Result",
+    resultLabel: "Horizontal Angle",
+    resultSubDefault: "Hz = Foresight Reading − Backsight Reading",
+    resultSubZeroed: "Hz = Foresight Reading − 0°",
+    readingRe: "Backsight Reading",
+    readingVante: "Foresight Reading",
+    btnNew: "New Exercise",
+    btnHint: "space",
+    btnNewTitle: "Shortcut: spacebar",
+    exerciseCounter: "Exercise #",
+    zoomOut: "Zoom out",
+    zoomIn: "Zoom in",
+    zoomReset: "Reset zoom (or double-click canvas)",
+    hintAim: "🎯  Click in the direction of the Foresight to record pointing",
+    hintRecorded: "✅  Pointing recorded! Click \"New Exercise\" to continue.",
+    offTarget: "✕ off target",
+    ptRe: "Backsight",
+    ptReSub: "Reference",
+    ptVante: "Foresight",
+    ptVanteSub: "Target point",
+    ptStation: "Station",
+    badge0deg: "0° (Origin)",
+    badgeReVal: "Backsight: L₁ = 65°15'",
+    badgeVanteVal: "Foresight: L₂ = 140°30'",
+    modal1Title: "Measurement of Horizontal Directions",
+    modal1Html: "<p>A surveying measurement of a horizontal angle typically involves <strong>three fundamental points</strong>:</p><p><strong>Backsight (Ré)</strong> — initial reference point (where the telescope is aimed first).<br><strong>Station (Estação)</strong> — where the instrument (theodolite/total station) is occupied.<br><strong>Foresight (Vante)</strong> — target point to which the angle is measured relative to the backsight.</p><p>The <strong>horizontal angle (Hz)</strong> is measured on the horizontal plane, from the backsight direction to the foresight direction.</p>",
+    btnNext: "Next →",
+    modal2Title: "Angle = Difference of Readings",
+    modal2Html: "<p>A horizontal angle is determined from the <strong>difference between two horizontal direction readings</strong> taken with the instrument:</p><div class=\"modal-diagram\"><canvas id=\"modalDiagramCanvas\"></canvas></div><p>The first reading (L₁) is taken with the telescope sighted on the <strong>Backsight</strong>, and the second (L₂) on the <strong>Foresight</strong>. The horizontal angle is:</p><p style=\"text-align: center; font-size: 1.1rem;\"><strong style=\"color: #a855f7;\">Hz = L₂ − L₁</strong></p>",
+    btnStart: "🎯 Start Simulation"
+  }
+};
+
+let currentLang = 'pt-BR';
+
+function t(key) {
+  return direcoesI18n[currentLang]?.[key] || key;
+}
+
+function getInitialLanguage() {
+  const urlLang = new URLSearchParams(window.location.search).get('lang');
+  if (urlLang === 'en' || urlLang === 'pt' || urlLang === 'pt-BR') {
+    return urlLang.startsWith('pt') ? 'pt-BR' : 'en';
+  }
+  const stored = localStorage.getItem('monorepo_lang');
+  if (stored === 'en' || stored === 'pt-BR') return stored;
+  return navigator.language && navigator.language.startsWith('en') ? 'en' : 'pt-BR';
+}
+
+function setLanguage(lang) {
+  currentLang = lang === 'en' ? 'en' : 'pt-BR';
+  localStorage.setItem('monorepo_lang', currentLang);
+  document.documentElement.lang = currentLang;
+
+  const dict = direcoesI18n[currentLang];
+  document.title = dict.pageTitle;
+  const metaDesc = document.querySelector('meta[name="description"]');
+  if (metaDesc) metaDesc.setAttribute('content', dict.pageDesc);
+
+  const elMap = {
+    headerTitle: dict.headerTitle,
+    headerSub: dict.headerSub,
+    portalLinkText: dict.portalLink,
+    modeTitle: dict.modeTitle,
+    modeLabel: dict.modeLabel,
+    btnModeZeroed: dict.modeZeroed,
+    btnModeRandom: dict.modeRandom,
+    dirTitle: dict.dirTitle,
+    btnDirCw: dict.dirCw,
+    btnDirCcw: dict.dirCcw,
+    resultTitle: dict.resultTitle,
+    resultLabel: dict.resultLabel,
+    readingReLabel: dict.readingRe,
+    readingVanteLabel: dict.readingVante,
+    btnNewText: dict.btnNew,
+    btnNewHint: dict.btnHint,
+    exerciseCounterLabel: dict.exerciseCounter,
+    modal1Title: dict.modal1Title,
+    btnModal1Next: dict.btnNext,
+    modal2Title: dict.modal2Title,
+    btnModal2Start: dict.btnStart
+  };
+
+  for (const [id, val] of Object.entries(elMap)) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+  }
+
+  const portalLink = document.getElementById('portalLink');
+  if (portalLink) portalLink.href = `../index.html?lang=${currentLang === 'en' ? 'en' : 'pt'}`;
+
+  const modeInfo = document.getElementById('modeInfo');
+  if (modeInfo) modeInfo.innerHTML = dict.modeInfo;
+
+  const btnNewExercise = document.getElementById('btnNewExercise');
+  if (btnNewExercise) btnNewExercise.title = dict.btnNewTitle;
+
+  const btnZoomOut = document.getElementById('btnZoomOut');
+  if (btnZoomOut) btnZoomOut.title = dict.zoomOut;
+  const btnZoomIn = document.getElementById('btnZoomIn');
+  if (btnZoomIn) btnZoomIn.title = dict.zoomIn;
+  const btnZoomReset = document.getElementById('btnZoomReset');
+  if (btnZoomReset) btnZoomReset.title = dict.zoomReset;
+
+  const modal1Body = document.getElementById('modal1Body');
+  if (modal1Body) modal1Body.innerHTML = dict.modal1Html;
+
+  const modal2Body = document.getElementById('modal2Body');
+  if (modal2Body) modal2Body.innerHTML = dict.modal2Html;
+
+  // Update Result Sub
+  const subEl = document.getElementById('resultSub');
+  if (subEl) {
+    if (!state.solved) {
+      subEl.textContent = state.zeroedOnRe ? dict.resultSubZeroed : dict.resultSubDefault;
+    } else {
+      if (state.zeroedOnRe) {
+        subEl.textContent = `Hz = ${formatDMS(state.vanteLeitura)} − 0° = ${formatDMS(state.angleResult)}`;
+      } else {
+        subEl.textContent = `Hz = ${formatDMS(state.vanteLeitura)} − ${formatDMS(state.reLeitura)} = ${formatDMS(state.angleResult)}`;
+      }
+    }
+  }
+
+  // Update hint text
+  if (hintEl) {
+    hintEl.textContent = state.solved ? dict.hintRecorded : dict.hintAim;
+  }
+
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    const isActive = btn.getAttribute('data-lang') === currentLang;
+    btn.classList.toggle('active', isActive);
+    btn.setAttribute('aria-pressed', String(isActive));
+  });
+
+  // Re-render canvas diagrams if modal is open or active
+  if (modalOverlay1 && modalOverlay1.classList.contains('active')) drawModal1Diagram();
+  if (modalOverlay2 && modalOverlay2.classList.contains('active')) drawModalDiagram();
+  if (state.points.station) drawScene();
+}
+
 // ── Zoom / Pan ──
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 5;
@@ -168,6 +370,19 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   
   document.getElementById('btnNewExercise').addEventListener('click', startExercise);
+
+  // Language buttons
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const selected = btn.getAttribute('data-lang');
+      setLanguage(selected);
+      const url = new URL(window.location);
+      url.searchParams.set('lang', selected === 'en' ? 'en' : 'pt');
+      window.history.replaceState(null, '', url);
+    });
+  });
+
+  setLanguage(getInitialLanguage());
 
   // Canvas events
   canvas.addEventListener('mousemove', onCanvasMove);
@@ -441,8 +656,8 @@ function drawModal1Diagram() {
     dctx.fillText(sublabel, lbx + 7, lby + 22);
   }
 
-  drawModalPoint(rePos, 'Ré', 'Referência', COLORS.re, 'right');
-  drawModalPoint(vantePos, 'Vante', 'Ponto visado', COLORS.vante, 'left');
+  drawModalPoint(rePos, t('ptRe'), t('ptReSub'), COLORS.re, 'right');
+  drawModalPoint(vantePos, t('ptVante'), t('ptVanteSub'), COLORS.vante, 'left');
 }
 
 // ── Modal 2 Diagram ──
@@ -508,7 +723,7 @@ function drawModalDiagram() {
   // Badge: 0° (Origem)
   const b0x = cx + Math.cos(a0) * (r0Len + 18);
   const b0y = cy + Math.sin(a0) * (r0Len + 18);
-  drawBadge(dctx, '0° (Origem)', b0x, b0y, '#cbd5e1', 'rgba(148, 163, 184, 0.4)');
+  drawBadge(dctx, t('badge0deg'), b0x, b0y, '#cbd5e1', 'rgba(148, 163, 184, 0.4)');
 
   // 2. Direction Ré
   const reLen = r + 26;
@@ -532,7 +747,7 @@ function drawModalDiagram() {
   dctx.stroke();
 
   // Label Ré & L1
-  drawBadge(dctx, 'Ré: L₁ = 65°15\'', pRe.x + 45, pRe.y - 4, COLORS.re, 'rgba(245, 158, 11, 0.4)');
+  drawBadge(dctx, t('badgeReVal'), pRe.x + 45, pRe.y - 4, COLORS.re, 'rgba(245, 158, 11, 0.4)');
 
   // 3. Direction Vante
   const vaLen = r + 26;
@@ -556,7 +771,7 @@ function drawModalDiagram() {
   dctx.stroke();
 
   // Label Vante & L2
-  drawBadge(dctx, 'Vante: L₂ = 140°30\'', pVa.x + 55, pVa.y + 4, COLORS.vante, 'rgba(16, 185, 129, 0.4)');
+  drawBadge(dctx, t('badgeVanteVal'), pVa.x + 55, pVa.y + 4, COLORS.vante, 'rgba(16, 185, 129, 0.4)');
 
   // ── 3 Arcs matching Figura 6.15 ──
   // Arc 1: L1 (0° → Ré, amber, R = 42)
@@ -582,7 +797,7 @@ function drawModalDiagram() {
   dctx.fillStyle = COLORS.station;
   dctx.textAlign = 'center';
   dctx.textBaseline = 'alphabetic';
-  dctx.fillText('Estação', cx, cy + r + 24);
+  dctx.fillText(t('ptStation'), cx, cy + r + 24);
 }
 
 function drawBadge(ctx, text, x, y, color, borderColor) {
@@ -707,14 +922,14 @@ function startExercise() {
   resultBoxEl.classList.remove('success');
   const subEl = resultBoxEl.querySelector('.result-sub');
   if (subEl) {
-    subEl.textContent = state.zeroedOnRe ? 'Hz = Leitura Vante − 0°' : 'Hz = Leitura Vante − Leitura Ré';
+    subEl.textContent = state.zeroedOnRe ? t('resultSubZeroed') : t('resultSubDefault');
   }
   readingReEl.textContent = formatDMS(state.reLeitura);
   readingVanteEl.textContent = '—';
   
   if (hintEl) {
     hintEl.classList.remove('hidden');
-    hintEl.textContent = '🎯  Clique na direção do Vante para registrar a pontaria';
+    hintEl.textContent = t('hintAim');
   }
   
   resizeCanvas();
@@ -747,14 +962,14 @@ function resetCurrentExercise() {
   resultBoxEl.classList.remove('success');
   const subEl = resultBoxEl.querySelector('.result-sub');
   if (subEl) {
-    subEl.textContent = state.zeroedOnRe ? 'Hz = Leitura Vante − 0°' : 'Hz = Leitura Vante − Leitura Ré';
+    subEl.textContent = state.zeroedOnRe ? t('resultSubZeroed') : t('resultSubDefault');
   }
   readingReEl.textContent = formatDMS(state.reLeitura);
   readingVanteEl.textContent = '—';
   
   if (hintEl) {
     hintEl.classList.remove('hidden');
-    hintEl.textContent = '🎯  Clique na direção do Vante para registrar a pontaria';
+    hintEl.textContent = t('hintAim');
   }
   
   drawScene();
@@ -943,7 +1158,7 @@ function solveExercise() {
   }
   
   if (hintEl) {
-    hintEl.textContent = '✅  Pontaria registrada! Clique em "Novo Exercício" para continuar.';
+    hintEl.textContent = t('hintRecorded');
   }
 
   drawScene();
@@ -1007,7 +1222,7 @@ function drawScene() {
       ctx.fillStyle = 'rgba(244, 63, 94, 0.8)';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('✕ fora do alvo', missEnd.x, missEnd.y - 14);
+      ctx.fillText(t('offTarget'), missEnd.x, missEnd.y - 14);
     }
   }
   
@@ -1095,8 +1310,8 @@ function drawScene() {
   }
   
   // Points
-  drawPoint(re, 'Ré', COLORS.re);
-  drawPoint(vante, 'Vante', COLORS.vante);
+  drawPoint(re, t('ptRe'), COLORS.re);
+  drawPoint(vante, t('ptVante'), COLORS.vante);
   drawStationPoint(station);
 
   ctx.restore();
@@ -1211,7 +1426,7 @@ function drawStationPoint(pos) {
   ctx.fill();
   
   // Label
-  const label = 'Estação';
+  const label = t('ptStation');
   ctx.font = '700 13px "Plus Jakarta Sans", sans-serif';
   const metrics = ctx.measureText(label);
   const lx = pos.x - metrics.width / 2 - 6;
@@ -1266,7 +1481,7 @@ function drawZeroDirection(station, zeroMathAngle) {
   const bx = station.x + Math.cos(rayAngle) * badgeR;
   const by = station.y + Math.sin(rayAngle) * badgeR;
   
-  const text = '0° (Origem)';
+  const text = t('badge0deg');
   ctx.font = '600 10px "JetBrains Mono", monospace';
   const m = ctx.measureText(text);
   const pw = m.width + 10;
