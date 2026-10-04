@@ -169,8 +169,12 @@ export class NetworkCanvas {
       if (displacement && !scene.busy) this.arrow([x, y], [x + displacement[0] * view.exaggeration * this.scale, y - displacement[1] * view.exaggeration * this.scale], '#8b4ec2', 2, 8);
       const picked = selected?.kind === 'point' && selected.id === p.id;
       if (picked || source === p.id || affected.has(p.id)) {
-        c.strokeStyle = affected.has(p.id) ? '#bd684aaa' : '#07a49c88'; c.lineWidth = 2;
+        const highlighted = picked || source === p.id;
+        c.save();
+        c.strokeStyle = highlighted ? '#6C82C5' : '#bd684aaa'; c.lineWidth = 2;
+        c.setLineDash(highlighted ? [4, 3] : []);
         c.beginPath(); c.arc(x, y, 15, 0, 2 * Math.PI); c.stroke();
+        c.restore();
       }
       c.strokeStyle = p.control === 'fixed' ? '#aa6634' : p.control === 'stochastic' ? '#9869ab' : '#146f78';
       c.fillStyle = p.active === false ? '#ccd6d7' : p.control === 'fixed' ? '#e6a45e' : p.control === 'stochastic' ? '#d2b8df' : '#e7f6f3';
