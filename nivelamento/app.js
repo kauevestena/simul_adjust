@@ -1,3 +1,6 @@
+// Shared Terrarium loader; preserve the existing z=14 nearest-pixel elevations.
+const terrainModule = import('../shared/terrarium.mjs');
+
 // --- Application Logic ---
 const app = {
     currentLang: (function() {
@@ -259,7 +262,9 @@ const app = {
     CRIT_W_TEST: 2.5758, // Z for 1 - alpha/2
     NON_CENTRALITY: 3.4174, // Z(1-alpha/2) + Z(beta=0.8)
 
-    init() {
+    async init() {
+        const terrain = await terrainModule;
+        this.terrain = terrain.createTerrarium();
         // Inicializa o MapLibre GL JS
         this.map = new maplibregl.Map({
             container: 'map',
@@ -277,13 +282,7 @@ const app = {
 
         this.map.on('load', () => {
             // Adiciona a fonte de terreno global (Mapzen Terrarium hospedado na AWS Open Data)
-            this.map.addSource('terrain', {
-                type: 'raster-dem',
-                tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
-                encoding: 'terrarium',
-                tileSize: 256,
-                maxzoom: 14
-            });
+            this.map.addSource('terrain', terrain.TERRARIUM_SOURCE);
             this.map.setTerrain({ source: 'terrain', exaggeration: 1 });
             this.terrainLoaded = true;
 
@@ -1224,55 +1223,7 @@ const app = {
     // --- Point Insertion Methods ---
 
     async getElevation(lng, lat) {
-        // Try to get from MapLibre first if available and loaded at high res
-        if (this.terrainLoaded && this.map.getZoom() > 10) {
-            const elev = this.map.queryTerrainElevation({lng, lat});
-            if (elev !== null && elev > -10000 && elev < 10000) {
-                // If it looks reasonable, we might still want to fetch the real data
-                // because queryTerrainElevation might return interpolated or exaggerated values.
-                // Actually, let's always use the direct tile fetch to guarantee precision.
-            }
-        }
-
-        // Direct tile decode (Robust Serverless approach)
-        try {
-            const zoom = 14; // Max zoom for Mapzen terrain
-            const x = Math.floor((lng + 180) / 360 * Math.pow(2, zoom));
-            const y = Math.floor((1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * Math.pow(2, zoom));
-
-            const url = `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${zoom}/${x}/${y}.png`;
-            
-            const response = await fetch(url);
-            if (!response.ok) return 100.000; // Fallback
-            
-            const blob = await response.blob();
-            const img = await createImageBitmap(blob);
-            
-            const canvas = document.createElement('canvas');
-            canvas.width = 256;
-            canvas.height = 256;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0);
-
-            const n = Math.pow(2, zoom);
-            const x_pixel = Math.floor(((lng + 180) / 360 * n - x) * 256);
-            const y_pixel = Math.floor(((1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * n - y) * 256);
-
-            // Bounds check
-            const px = Math.max(0, Math.min(255, x_pixel));
-            const py = Math.max(0, Math.min(255, y_pixel));
-
-            const pixelData = ctx.getImageData(px, py, 1, 1).data;
-            const r = pixelData[0];
-            const g = pixelData[1];
-            const b = pixelData[2];
-
-            const elev = (r * 256 + g + b / 256) - 32768;
-            return elev;
-        } catch (err) {
-            console.error("Erro ao buscar elevação", err);
-            return 100.000;
-        }
+        return this.terrain.sample(lng, lat);
     },
 
     async onMapClick(e) {
@@ -1281,10 +1232,14 @@ const app = {
             const lat = e.lngLat.lat;
             
             document.body.style.cursor = 'wait';
-            const elevation = await this.getElevation(lng, lat);
-            document.body.style.cursor = 'default';
-
-            this.openPointModal('Point', lng, lat, elevation);
+            try {
+                const elevation = await this.getElevation(lng, lat);
+                this.openPointModal('Point', lng, lat, elevation);
+            } catch {
+                alert(this.t('terrainUnavailable'));
+            } finally {
+                document.body.style.cursor = 'default';
+            }
         } else {
             this.deselectPoint();
         }
