@@ -1,3 +1,5 @@
+**English** · [Português (BR)](readme.pt-BR.md)
+
 A 3D free-station network (interseção a ré 3D) adjusted by least squares. Total-station
 sightings — horizontal reading, zenith angle and slope distance, each with its own standard
 deviation — tie free stations to each other and to fixed points. Students pick the model and the
@@ -5,7 +7,8 @@ datum:
 
 - **combined** (Gemael's "método combinado", Ghilani's "general least squares") or
   **parametric** (Gauss–Markov);
-- **fixed points** or **free network** (inner constraints).
+- **fixed points**, **free network** (inner constraints) or **minimal constraints** (the first
+  station's pose held fixed).
 
 The simulator computes initial approximations, adjusts the network, tests it and reports
 coordinates, error ellipsoids, residuals, every matrix of the adjustment and a PDF report. The
@@ -14,6 +17,10 @@ Jacobians A and B of all four variants.
 
 Serve the repository root over HTTP (`python3 -m http.server`) and open
 `intersecao_re_3D/index.html`; the sample is read with `fetch`.
+
+**Language:** the interface, the report (PDF/text), messages, the output CSVs and the models page
+are bilingual (PT-BR and EN). The language comes from `?lang=`, then `localStorage`
+(`monorepo_lang`), then the browser, and the PT/EN button switches it on the spot.
 
 ## The model
 
@@ -57,7 +64,7 @@ At convergence the two describe the same least squares problem
 `test_adjust.js` checks this both through the app's parametric model and against an
 independent Gauss–Markov solve written in the test.
 
-### Datum: fixed points or free network
+### Datum: fixed points, free network or minimal constraints
 
 The observations are blind to a translation of the whole network and to a rotation about the
 vertical, with every ω turning along. Distances fix the scale and zenith angles the vertical.
@@ -73,6 +80,18 @@ So with every point unknown, N has a **rank defect of 4**.
   - Among all datum choices, this solution has the minimum trace of Σ_Xa over the coordinates.
   - G is built once at the approximations, so the adjusted network keeps their centroid and mean
     orientation exactly, whichever model is used.
+- **Minimal constraints**: exactly the 4 constraints of the rank defect, no surplus. The first
+  station (the origin) has `X, Y, Z` and `ω` held constant at the "Datum local assumido" values
+  (default `0, 0, 0, 0`); every other point, support points included, is an unknown. N has full
+  rank, `dof = n − u`.
+  - Same solution as the free network under the constraint `CᵀX = 0` (C selects the origin's
+    `X, Y, Z, ω`): an S-transformation `S = I − H(CᵀH)⁻¹Cᵀ`. Residuals, VᵀPV, redundancy numbers,
+    point-to-point distances (and their precision) agree with the free network; coordinates, σ and
+    ellipsoids change — the origin has σ = 0 and the Σ trace is larger than the free network's
+    minimum.
+  - Unlike two fixed points there are no extra constraints, so no sighting loses redundancy and no σ
+    is cut by coordinates that actually came from the observations.
+  - CSV coordinates of "Fixo" points are not used; approximations start from the origin station.
 
 The **Comparar Modelos** tab runs the four variants side by side.
 - Between models with the same datum, everything agrees.
@@ -81,8 +100,9 @@ The **Comparar Modelos** tab runs the four variants side by side.
 - It also runs the fixed-point compatibility test, `ΔVᵀPV = VᵀPV_fixed − VᵀPV_free ~ χ²` with
   `dof_fixed − dof_free` degrees of freedom.
 
-On the sample, the free network has dof 13 (72 − 63 + 4) against 15. VᵀPV is the same 193.585,
-and ΔVᵀPV = 0, because M01/M02 come from A's own sightings.
+On the sample, the free network has dof 13 (72 − 63 + 4) against 15, and the minimal constraints
+also 13 (72 − 59, A fixed at the origin). VᵀPV is the same 193.585 in all three, and ΔVᵀPV = 0,
+because M01/M02 come from A's own sightings.
 
 ### Conventions
 
@@ -202,6 +222,9 @@ condition equations share its three observations.
   DejaVu Sans from the CDN, because jsPDF's built-in fonts cannot print σ, ω, χ² or ″. Without
   that font it transliterates to ASCII; without jsPDF it offers the plain-text report.
 
+File names and the observation-CSV headers stay in Portuguese so an export can be read back; the
+coordinate and residual CSVs and the reports follow the UI language.
+
 ## Files
 
 | File | Role |
@@ -212,6 +235,8 @@ condition equations share its three observations.
 | `views2d.js` | XY / XZ / YZ canvases |
 | `report.js` | report model (pure data), text and PDF renderers |
 | `modelos.html` | static page: models, equations, Jacobians, datum theory |
+| `modelos_en.js` | English translation of the content of `modelos.html` |
+| `i18n.js` | PT-BR / EN dictionary for the interface and the static HTML of `index.html` |
 | `app.js` | state, tabs, tables, workflow |
 | `test_adjust.js` | `node intersecao_re_3D/test_adjust.js` |
 

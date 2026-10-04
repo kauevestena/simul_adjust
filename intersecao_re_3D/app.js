@@ -1,4 +1,7 @@
 // --- Orquestração da interface do simulador de interseção a ré 3D ---
+// tr(pt, en): texto no idioma atual (português por padrão); globalThis.APP_LANG alimenta
+// também io.js, adjustment.js e report.js
+const tr = (pt, en) => (globalThis.APP_LANG === 'en' ? en : pt);
 const app = {
     currentLang: (function() {
         const p = new URLSearchParams(window.location.search).get('lang');
@@ -7,6 +10,7 @@ const app = {
         if (s === 'en' || s === 'pt' || s === 'pt-BR') return s.startsWith('pt') ? 'pt-BR' : 'en';
         return (navigator.language && navigator.language.startsWith('pt')) ? 'pt-BR' : 'en';
     })(),
+
 
     t(key) {
         const dict = (window.intersecaoI18n && window.intersecaoI18n[this.currentLang]) || 
@@ -17,12 +21,53 @@ const app = {
     setLanguage(lang) {
         if (lang === 'pt') lang = 'pt-BR';
         this.currentLang = lang;
+        globalThis.APP_LANG = lang.startsWith('pt') ? 'pt-BR' : 'en';
         localStorage.setItem('monorepo_lang', lang);
         const url = new URL(window.location.href);
         url.searchParams.set('lang', lang);
         window.history.replaceState({}, '', url.toString());
 
         this.updateLanguageUI();
+        if (this.rows.length) { this._computePreview(); this._refreshAll(false); }
+    },
+
+    // HTML estático: guarda cada elemento (ou atributo) cujo conteúdo em português tem tradução
+    // em i18n.js (domEn, chave = innerHTML com espaços colapsados) e alterna entre as duas
+    _scanDom() {
+        const map = window.intersecaoDomEn || {};
+        const norm = s => s.replace(/\s+/g, ' ').trim();
+        this._domItems = [];
+        document.querySelectorAll('body *').forEach(el => {
+            if (el.closest('svg') || ['SCRIPT', 'STYLE', 'CANVAS'].includes(el.tagName)) return;
+            const h = norm(el.innerHTML);
+            if (map[h] !== undefined) this._domItems.push({ el, pt: el.innerHTML, en: map[h] });
+            ['title', 'placeholder', 'data-tooltip', 'aria-label'].forEach(a => {
+                const v = el.getAttribute(a);
+                if (v && map[norm(v)] !== undefined) this._domItems.push({ el, attr: a, pt: v, en: map[norm(v)] });
+            });
+        });
+        // Textos soltos ao lado de campos (ex.: <label><input> Rótulos</label>)
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        let node;
+        while ((node = walker.nextNode())) {
+            const el = node.parentElement;
+            if (!el || el.closest('svg') || ['SCRIPT', 'STYLE'].includes(el.tagName)) continue;
+            const t = norm(node.textContent);
+            if (t && map[t] !== undefined && norm(el.innerHTML) !== t) {
+                const lead = node.textContent.match(/^\s*/)[0], trail = node.textContent.match(/\s*$/)[0];
+                this._domItems.push({ node, pt: node.textContent, en: lead + map[t] + trail });
+            }
+        }
+    },
+
+    _applyDomLanguage() {
+        const en = globalThis.APP_LANG === 'en';
+        (this._domItems || []).forEach(it => {
+            const v = en ? it.en : it.pt;
+            if (it.node) { if (it.node.isConnected) it.node.textContent = v; return; }
+            if (!it.el.isConnected) return;
+            if (it.attr) it.el.setAttribute(it.attr, v); else it.el.innerHTML = v;
+        });
     },
 
     updateLanguageUI() {
@@ -56,6 +101,15 @@ const app = {
         if (hTitle) hTitle.textContent = t('headerTitle');
         const hSub = document.querySelector('header p');
         if (hSub) hSub.textContent = t('headerSubtitle');
+
+        this._applyDomLanguage();
+        const optMin = document.getElementById('optDatumMinimal');
+        if (optMin) optMin.textContent = t('optDatumMinimal');
+        const localHelp = document.getElementById('datumLocalHelp');
+        if (localHelp) localHelp.textContent = t('datumLocalHelp');
+        const helpDatum = document.getElementById('helpDatum');
+        if (helpDatum) helpDatum.innerHTML = t('helpDatum');
+        this._renderModelHint();
     },
 
     settings: Object.assign({}, RedeIO.DEFAULT_SETTINGS),
@@ -76,8 +130,11 @@ const app = {
 
     // ---------------------------------------------------------------- inicialização
     init() {
+        globalThis.APP_LANG = this.currentLang.startsWith('pt') ? 'pt-BR' : 'en';
         this.viewer = new NetworkViewer3D('viewer3d');
         this.views = new NetworkViews2D({ xy: 'canvasXY', xz: 'canvasXZ', yz: 'canvasYZ' });
+        this._scanDom();
+        this.updateLanguageUI();
         this._writeSettingsForm(this.settings);
         this.updateSettings(true);
         this.updateViewOptions();
@@ -98,12 +155,15 @@ const app = {
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
             const text = await resp.text();
             if (seq !== this._loadSeq) return;
-            this._setRows(RedeIO.parseCSV(text), 'amostra inputs/observations.csv');
+            this._setRows(RedeIO.parseCSV(text), tr('amostra inputs/observations.csv', 'sample inputs/observations.csv'));
         } catch (e) {
             if (seq !== this._loadSeq) return;
-            alert(`Não foi possível ler inputs/observations.csv.\n\n${e.message}\n\n` +
+            alert(tr(`Não foi possível ler inputs/observations.csv.\n\n${e.message}\n\n` +
                 'Abra a página por um servidor HTTP (ex.: python3 -m http.server) — o navegador ' +
-                'bloqueia a leitura de arquivos locais via file://.');
+                'bloqueia a leitura de arquivos locais via file://.',
+                `Could not read inputs/observations.csv.\n\n${e.message}\n\n` +
+                'Open the page through an HTTP server (e.g. python3 -m http.server) — the browser ' +
+                'blocks reading local files via file://.'));
         }
     },
 
@@ -128,15 +188,15 @@ const app = {
             noise: document.getElementById('synthNoise').checked,
             withCoords: document.getElementById('synthCoords').checked
         }, this.settings);
-        this._setRows({ rows: g.rows, errors: [], warnings: [] }, `rede sintética (${nSt} estações)`, g.truth);
+        this._setRows({ rows: g.rows, errors: [], warnings: [] }, tr(`rede sintética (${nSt} estações)`, `synthetic network (${nSt} stations)`), g.truth);
     },
 
     _setRows(parsed, origin, truth) {
         if (parsed.errors.length) {
-            alert(`Problemas na leitura (${parsed.errors.length}):\n\n` +
+            alert(tr(`Problemas na leitura (${parsed.errors.length}):\n\n`, `Problems reading the file (${parsed.errors.length}):\n\n`) +
                 parsed.errors.slice(0, 10).join('\n') + (parsed.errors.length > 10 ? '\n...' : ''));
         }
-        if (!parsed.rows.length) { alert('Nenhuma visada válida encontrada.'); return; }
+        if (!parsed.rows.length) { alert(tr('Nenhuma visada válida encontrada.', 'No valid sighting found.')); return; }
         this._loadSeq++; // descarta qualquer carga assíncrona ainda em voo
         this.rows = RedeIO.buildRows(parsed.rows);
         this.parseWarnings = parsed.warnings || [];
@@ -176,7 +236,8 @@ const app = {
         if (this.lastComparison) {
             this.lastComparison = null;
             document.getElementById('compareContent').innerHTML =
-                '<p class="text-xs text-amber-600">Os dados ou o modelo mudaram: clique em <strong>Comparar os quatro</strong> de novo.</p>';
+                tr('<p class="text-xs text-amber-600">Os dados ou o modelo mudaram: clique em <strong>Comparar os quatro</strong> de novo.</p>',
+                    '<p class="text-xs text-amber-600">The data or the model changed: click <strong>Compare all four</strong> again.</p>');
         }
         this._computePreview();
         this._refreshAll(refit);
@@ -242,20 +303,20 @@ const app = {
 
     _modeText() {
         const r = this.result;
-        if (r) return `rede ajustada — ${r.modelLabel}, ${r.datumLabel.toLowerCase()} · elipsoides ${r.confLabel}`;
-        return this.preview && this.preview.approx ? 'aproximações iniciais (antes do ajustamento) — sem elipsoides' : '';
+        if (r) return tr(`rede ajustada — ${r.modelLabel}, ${r.datumLabel.toLowerCase()} · elipsoides ${r.confLabel}`, `adjusted network — ${r.modelLabel}, ${r.datumLabel.toLowerCase()} · ellipsoids ${r.confLabel}`);
+        return this.preview && this.preview.approx ? tr('aproximações iniciais (antes do ajustamento) — sem elipsoides', 'initial approximations (before the adjustment) — no ellipsoids') : '';
     },
 
     _updateStatus() {
         const el = document.getElementById('dataStatus');
-        if (!this.rows.length) { el.textContent = 'Nenhuma observação carregada.'; return; }
+        if (!this.rows.length) { el.textContent = tr('Nenhuma observação carregada.', 'No observations loaded.'); return; }
         const active = this.rows.filter(r => r.active).length;
         const flagged = this.rows.filter(r => r.flagged).length;
         const st = new Set(this.rows.map(r => r.station)).size;
         const pts = new Set(this.rows.map(r => r.target)).size;
-        el.innerHTML = `<strong>${this.rows.length}</strong> visadas (${this.esc(this.origin || '—')}) · ` +
-            `<strong>${active}</strong> ativas · ${st} estações · ${pts} pontos visados` +
-            (flagged ? ` · <span class="text-rose-600 font-semibold">${flagged} marcadas</span>` : '');
+        el.innerHTML = `<strong>${this.rows.length}</strong> ${tr('visadas', 'sightings')} (${this.esc(this.origin || '—')}) · ` +
+            `<strong>${active}</strong> ${tr('ativas', 'active')} · ${st} ${tr('estações', 'stations')} · ${pts} ${tr('pontos visados', 'sighted points')}` +
+            (flagged ? ` · <span class="text-rose-600 font-semibold">${flagged} ${tr('marcadas', 'flagged')}</span>` : '');
     },
 
     _updateButtons() {
@@ -287,7 +348,7 @@ const app = {
     // ---------------------------------------------------------------- ajustamento
     runAdjustment() {
         if (!this.rows.length) return;
-        const when = new Date().toLocaleTimeString('pt-BR');
+        const when = new Date().toLocaleTimeString(tr('pt-BR', 'en-GB'));
         try {
             this.result = NetAdjust.adjustNetwork(this.rows, this.settings);
         } catch (e) {
@@ -296,19 +357,23 @@ const app = {
             this.runs.push({ when, ok: false, msg: `${lbl}: ${e.message}` });
             this._computePreview();
             this._refreshAll(false);
-            alert(`Falha no ajustamento:\n\n${e.message}`);
+            alert(`${tr('Falha no ajustamento', 'Adjustment failed')}:\n\n${e.message}`);
             return;
         }
         const r = this.result;
         this.runs.push({
             when, ok: true,
-            msg: `${r.modelLabel} · ${r.datumLabel}: ${r.m} visadas, gl ${r.dof}, ${r.iterations} iterações, ${r.converged ? 'convergiu' : 'NÃO convergiu'}, ` +
-                `σ̂₀² = ${Number.isFinite(r.sigma02) ? r.sigma02.toFixed(3) : '—'}, teste global ${r.globalPass === null ? '—' : (r.globalPass ? 'aprovado' : 'reprovado')}`
+            msg: tr(`${r.modelLabel} · ${r.datumLabel}: ${r.m} visadas, gl ${r.dof}, ${r.iterations} iterações, ${r.converged ? 'convergiu' : 'NÃO convergiu'}, ` +
+                `σ̂₀² = ${Number.isFinite(r.sigma02) ? r.sigma02.toFixed(3) : '—'}, teste global ${r.globalPass === null ? '—' : (r.globalPass ? 'aprovado' : 'reprovado')}`,
+                `${r.modelLabel} · ${r.datumLabel}: ${r.m} sightings, dof ${r.dof}, ${r.iterations} iterations, ${r.converged ? 'converged' : 'did NOT converge'}, ` +
+                `σ̂₀² = ${Number.isFinite(r.sigma02) ? r.sigma02.toFixed(3) : '—'}, global test ${r.globalPass === null ? '—' : (r.globalPass ? 'passed' : 'failed')}`)
         });
         if (!this._autoScaled) { this._autoEllipseScale(); this._autoScaled = true; }
         if (!r.converged) {
-            alert(`O ajustamento não convergiu em ${this.settings.maxIter} iterações. ` +
-                'Veja os avisos e o histórico na aba Relatório.');
+            alert(tr(`O ajustamento não convergiu em ${this.settings.maxIter} iterações. ` +
+                'Veja os avisos e o histórico na aba Relatório.',
+                `The adjustment did not converge in ${this.settings.maxIter} iterations. ` +
+                'See the warnings and history in the Report tab.'));
         }
         this._refreshAll(false);
     },
@@ -320,7 +385,7 @@ const app = {
         try {
             det = NetAdjust.detectOutliers(this.rows, this.result, method, this.settings);
         } catch (e) {
-            alert(`Falha na detecção: ${e.message}`);
+            alert(`${tr('Falha na detecção', 'Detection failed')}: ${e.message}`);
             return;
         }
         this.lastDetection = det;
@@ -336,9 +401,11 @@ const app = {
 
         const lines = det.comps.map(c => `${c.id} [${c.comp}: ${Number.isFinite(c.value) ? c.value.toFixed(2) : '—'}]`);
         alert(det.flagged.length
-            ? `${det.label}: ${det.flagged.length} visada(s) marcada(s) — ${det.detail}\n\n${lines.join('\n')}\n\n` +
-            'Desative-as na tabela (ou use "Desativar marcadas") e reexecute o ajustamento.'
-            : `${det.label}: nenhum outlier detectado — ${det.detail}.`);
+            ? tr(`${det.label}: ${det.flagged.length} visada(s) marcada(s) — ${det.detail}\n\n${lines.join('\n')}\n\n` +
+            'Desative-as na tabela (ou use "Desativar marcadas") e reexecute o ajustamento.',
+            `${det.label}: ${det.flagged.length} sighting(s) flagged — ${det.detail}\n\n${lines.join('\n')}\n\n` +
+            'Deactivate them in the table (or use "Deactivate flagged") and rerun the adjustment.')
+            : tr(`${det.label}: nenhum outlier detectado — ${det.detail}.`, `${det.label}: no outlier detected — ${det.detail}.`));
     },
 
     deactivateFlagged() {
@@ -369,7 +436,7 @@ const app = {
                 <input type="checkbox" class="blunderCheck accent-rose-500" value="${r.idx}"
                     ${r.hasBlunder || !r.active ? 'disabled' : (r.idx === pre ? 'checked' : '')}>
                 <span class="font-mono">${this.esc(r.id)}</span>
-                <span class="text-stone-400 text-xs">${r.hasBlunder ? 'já contém erro' : (!r.active ? 'inativa' : '')}${red}</span>
+                <span class="text-stone-400 text-xs">${r.hasBlunder ? tr('já contém erro', 'already has an error') : (!r.active ? tr('inativa', 'inactive') : '')}${red}</span>
             </label>`;
         }).join('');
         document.getElementById('blunderComp').onchange = () => this.openBlunderModal();
@@ -380,7 +447,7 @@ const app = {
 
     confirmBlunder() {
         const sel = Array.from(document.querySelectorAll('.blunderCheck:checked')).map(c => parseInt(c.value));
-        if (!sel.length) { alert('Selecione ao menos uma visada.'); return; }
+        if (!sel.length) { alert(tr('Selecione ao menos uma visada.', 'Select at least one sighting.')); return; }
         const k = parseFloat(document.getElementById('blunderK').value);
         const comp = document.getElementById('blunderComp').value;
         const c = { hz: 0, zen: 1, dist: 2 }[comp];
@@ -394,9 +461,11 @@ const app = {
         this.lastDetection = null;
         this.closeBlunderModal();
         this._invalidate(false);
-        const label = { hz: 'leitura horizontal', zen: 'ângulo zenital', dist: 'distância inclinada' }[comp];
-        alert(`Erros grosseiros injetados (${k}σ na ${label}):\n\n${out.join('\n')}\n\n` +
-            'Execute o ajustamento para detectá-los. Em visadas com r ≈ 0 (pontos irradiados) o erro passa despercebido.');
+        const label = { hz: tr('leitura horizontal', 'horizontal reading'), zen: tr('ângulo zenital', 'zenith angle'), dist: tr('distância inclinada', 'slope distance') }[comp];
+        alert(tr(`Erros grosseiros injetados (${k}σ na ${label}):\n\n${out.join('\n')}\n\n` +
+            'Execute o ajustamento para detectá-los. Em visadas com r ≈ 0 (pontos irradiados) o erro passa despercebido.',
+            `Gross errors injected (${k}σ in the ${label}):\n\n${out.join('\n')}\n\n` +
+            'Run the adjustment to detect them. In sightings with r ≈ 0 (radiated points) the error goes unnoticed.'));
     },
 
     // ---------------------------------------------------------------- abas
@@ -464,7 +533,7 @@ const app = {
     renderDataTable() {
         const tbody = document.querySelector('#tableData tbody');
         if (!this.rows.length) {
-            tbody.innerHTML = '<tr><td colspan="12" class="text-center text-stone-400 py-4">Carregue a amostra ou um CSV.</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="12" class="text-center text-stone-400 py-4">${tr('Carregue a amostra ou um CSV.', 'Load the sample or a CSV.')}</td></tr>`;
             return;
         }
         const r = this.result;
@@ -487,10 +556,10 @@ const app = {
                 `<input type="number" class="field" step="${step}" value="${val}" data-i="${i}" data-f="${field}" oninput="app.updateCell(event)">`;
 
             let badge;
-            if (!row.active) badge = '<span class="badge badge-off">INATIVA</span>';
+            if (!row.active) badge = `<span class="badge badge-off">${tr('INATIVA', 'INACTIVE')}</span>`;
             else if (row.flagged) badge = '<span class="badge badge-out">OUTLIER</span>';
-            else if (o && !o.controlled.some(Boolean)) badge = '<span class="badge badge-free" title="Ponto irradiado de uma só estação: r = 0">SEM CONTROLE</span>';
-            else if (o) badge = o.isOutlier ? '<span class="badge badge-out">|w| ALTO</span>' : '<span class="badge badge-ok">OK</span>';
+            else if (o && !o.controlled.some(Boolean)) badge = `<span class="badge badge-free" title="${tr('Ponto irradiado de uma só estação: r = 0', 'Point radiated from a single station: r = 0')}">${tr('SEM CONTROLE', 'NO CONTROL')}</span>`;
+            else if (o) badge = o.isOutlier ? `<span class="badge badge-out">|w| ${tr('ALTO', 'HIGH')}</span>` : '<span class="badge badge-ok">OK</span>';
             else badge = '<span class="text-stone-400 text-xs">—</span>';
 
             const sigTxt = [sig.sig[0] / AS, sig.sig[1] / AS, sig.sig[2] * 1000].map((v, c) =>
@@ -504,10 +573,10 @@ const app = {
                 rCell = trio(o.r.map(x => x.toFixed(2)));
                 mCell = trio(o.mdb.map((m, c) => m === null ? '—' : (c < 2 ? (m / AS).toFixed(1) : (m * 1000).toFixed(2))));
             }
-            const fixedTxt = row.fixed ? (row.xyz ? 'sim (XYZ)' : 'sim') : 'não';
+            const fixedTxt = row.fixed ? (row.xyz ? tr('sim (XYZ)', 'yes (XYZ)') : tr('sim', 'yes')) : tr('não', 'no');
             return `<tr class="${cls}">
                 <td><input type="checkbox" class="accent-teal-600" ${row.active ? 'checked' : ''} onchange="app.toggleActive(${i}, this.checked)"></td>
-                <td class="font-mono text-xs">${this.esc(row.id)}${row.hasBlunder ? ' <span class="text-rose-500" title="Erro grosseiro injetado">&#9888;</span>' : ''}</td>
+                <td class="font-mono text-xs">${this.esc(row.id)}${row.hasBlunder ? ` <span class="text-rose-500" title="${tr('Erro grosseiro injetado', 'Injected gross error')}">&#9888;</span>` : ''}</td>
                 <td>${inp('hzDeg', +row.hzDeg.toFixed(10), 0.0001)}</td>
                 <td>${inp('zenDeg', +row.zenDeg.toFixed(10), 0.0001)}</td>
                 <td>${inp('dist', +row.dist.toFixed(6), 0.0001)}</td>
@@ -550,46 +619,46 @@ const app = {
     // ---------------------------------------------------------------- painéis
     renderGlobalTest() {
         const panel = document.getElementById('panelGlobalTest');
-        const head = '<h2 class="text-sm font-bold text-stone-500 uppercase tracking-wider mb-4 border-b pb-2">Teste Global (&chi;&sup2;)</h2>';
+        const head = `<h2 class="text-sm font-bold text-stone-500 uppercase tracking-wider mb-4 border-b pb-2">${tr('Teste Global', 'Global Test')} (&chi;&sup2;)</h2>`;
         const r = this.result;
         if (!r) {
-            panel.innerHTML = head + '<div class="text-center py-4"><p class="text-xs text-stone-400">Aguardando ajustamento...</p></div>';
+            panel.innerHTML = head + `<div class="text-center py-4"><p class="text-xs text-stone-400">${tr('Aguardando ajustamento...', 'Waiting for the adjustment...')}</p></div>`;
             return;
         }
         if (r.globalPass === null) {
-            panel.innerHTML = head + '<p class="text-xs text-amber-600">Sem redundância: o teste global não se aplica.</p>';
+            panel.innerHTML = head + `<p class="text-xs text-amber-600">${tr('Sem redundância: o teste global não se aplica.', 'No redundancy: the global test does not apply.')}</p>`;
             return;
         }
         const pass = r.globalPass;
-        const side = r.VtPV > r.chi2upp ? 'acima' : 'abaixo';
+        const side = r.VtPV > r.chi2upp ? tr('acima', 'above') : tr('abaixo', 'below');
         const color = pass ? 'text-teal-600' : 'text-rose-600';
         const bg = pass ? 'bg-teal-50 border-teal-200' : 'bg-rose-50 border-rose-200';
         const a2 = this.settings.alphaPct / 2;
         panel.innerHTML = head + `
             <div class="p-3 rounded-lg border ${bg} text-center mb-3">
-                <span class="font-bold ${color}">${pass ? '&#10003; Aprovado' : '&#10007; Reprovado (' + side + ')'}</span>
+                <span class="font-bold ${color}">${pass ? '&#10003; ' + tr('Aprovado', 'Passed') : '&#10007; ' + tr('Reprovado', 'Failed') + ' (' + side + ')'}</span>
             </div>
             <div class="space-y-1 text-xs text-stone-600 font-mono">
-                <div class="flex justify-between"><span>&chi;&sup2; calc. (V<sup>T</sup>PV):</span><span class="font-bold">${r.VtPV.toFixed(4)}</span></div>
-                <div class="flex justify-between"><span>&chi;&sup2; inf (${a2}%):</span><span>${r.chi2low.toFixed(4)}</span></div>
-                <div class="flex justify-between"><span>&chi;&sup2; sup (${100 - a2}%):</span><span>${r.chi2upp.toFixed(4)}</span></div>
+                <div class="flex justify-between"><span>&chi;&sup2; ${tr('calc.', 'calc.')} (V<sup>T</sup>PV):</span><span class="font-bold">${r.VtPV.toFixed(4)}</span></div>
+                <div class="flex justify-between"><span>&chi;&sup2; ${tr('inf', 'lower')} (${a2}%):</span><span>${r.chi2low.toFixed(4)}</span></div>
+                <div class="flex justify-between"><span>&chi;&sup2; ${tr('sup', 'upper')} (${100 - a2}%):</span><span>${r.chi2upp.toFixed(4)}</span></div>
                 <div class="flex justify-between"><span>&sigma;&#x302;&sup2;<sub>0</sub>:</span><span>${r.sigma02.toFixed(4)}</span></div>
-                <div class="flex justify-between"><span>Graus de liberdade:</span><span>${r.dof}</span></div>
-                <div class="flex justify-between"><span>Iterações:</span><span>${r.iterations}${r.converged ? '' : ' (não convergiu)'}</span></div>
+                <div class="flex justify-between"><span>${tr('Graus de liberdade', 'Degrees of freedom')}:</span><span>${r.dof}</span></div>
+                <div class="flex justify-between"><span>${tr('Iterações', 'Iterations')}:</span><span>${r.iterations}${r.converged ? '' : tr(' (não convergiu)', ' (did not converge)')}</span></div>
             </div>
             ${!pass && r.VtPV > r.chi2upp
-                ? '<p class="text-[11px] text-rose-600 mt-3 leading-tight">As visadas discordam mais do que os desvios informados preveem: erro grosseiro ou desvios otimistas. Prossiga para a detecção de outliers ou revise o modelo estocástico (Configurações).</p>'
+                ? `<p class="text-[11px] text-rose-600 mt-3 leading-tight">${tr('As visadas discordam mais do que os desvios informados preveem: erro grosseiro ou desvios otimistas. Prossiga para a detecção de outliers ou revise o modelo estocástico (Configurações).', 'The sightings disagree more than the stated deviations predict: gross error or optimistic deviations. Proceed to outlier detection or review the stochastic model (Settings).')}</p>`
                 : ''}
             ${!pass && r.VtPV < r.chi2low
-                ? '<p class="text-[11px] text-amber-600 mt-3 leading-tight">Resíduos menores que o previsto: os desvios informados estão pessimistas para estes dados.</p>'
+                ? `<p class="text-[11px] text-amber-600 mt-3 leading-tight">${tr('Resíduos menores que o previsto: os desvios informados estão pessimistas para estes dados.', 'Residuals smaller than expected: the stated deviations are pessimistic for these data.')}</p>`
                 : ''}`;
     },
 
     _currentLog() {
-        const items = this.parseWarnings.map(msg => ({ level: 'aviso', msg: `Leitura do CSV: ${msg}` }));
+        const items = this.parseWarnings.map(msg => ({ level: 'aviso', msg: `${tr('Leitura do CSV', 'CSV reading')}: ${msg}` }));
         const lastRun = this.runs[this.runs.length - 1];
         if (this.result) return items.concat(this.result.log);
-        if (lastRun && !lastRun.ok) items.push({ level: 'erro', msg: `Ajustamento: ${lastRun.msg}` });
+        if (lastRun && !lastRun.ok) items.push({ level: 'erro', msg: `${tr('Ajustamento', 'Adjustment')}: ${lastRun.msg}` });
         if (this.preview) {
             if (this.preview.error && !(lastRun && !lastRun.ok && lastRun.msg === this.preview.error)) {
                 items.push({ level: 'erro', msg: this.preview.error });
@@ -602,7 +671,7 @@ const app = {
     renderLog() {
         const el = document.getElementById('logPanel');
         const items = this._currentLog();
-        if (!items.length) { el.innerHTML = '<p class="text-xs text-stone-400">Nenhum.</p>'; return; }
+        if (!items.length) { el.innerHTML = `<p class="text-xs text-stone-400">${tr('Nenhum.', 'None.')}</p>`; return; }
         const order = { erro: 0, aviso: 1, info: 2 };
         el.innerHTML = items.slice().sort((a, b) => order[a.level] - order[b.level])
             .map(it => `<div class="log-item log-${it.level}"><strong class="uppercase text-[9px] tracking-wider">${it.level}</strong> ${this.esc(it.msg)}</div>`)
@@ -615,9 +684,9 @@ const app = {
         if (!r) {
             const p = this.preview;
             el.innerHTML = p && p.net
-                ? `<p class="text-xs text-stone-500">${p.net.rows.length} visadas ativas → ${p.net.nEq} equações de condição, ` +
-                  `${p.net.u} incógnitas, <strong>${p.net.dof} graus de liberdade</strong>. Aproximações iniciais prontas; execute o ajustamento.</p>`
-                : '<p class="text-xs text-stone-400">Aguardando ajustamento...</p>';
+                ? `<p class="text-xs text-stone-500">${p.net.rows.length} ${tr('visadas ativas', 'active sightings')} → ${p.net.nEq} ${tr('equações de condição', 'condition equations')}, ` +
+                  `${p.net.u} ${tr('incógnitas', 'unknowns')}, <strong>${p.net.dof} ${tr('graus de liberdade', 'degrees of freedom')}</strong>. ${tr('Aproximações iniciais prontas; execute o ajustamento.', 'Initial approximations ready; run the adjustment.')}</p>`
+                : `<p class="text-xs text-stone-400">${tr('Aguardando ajustamento...', 'Waiting for the adjustment...')}</p>`;
             return;
         }
         const free = r.pointResults.filter(p => !p.fixed);
@@ -631,16 +700,16 @@ const app = {
             <div class="text-[10px] uppercase tracking-wider text-stone-500 font-semibold">${label}</div>
             <div class="text-base font-bold text-stone-800 font-mono">${value}</div>
             <div class="text-[10px] text-stone-400">${sub || ''}</div></div>`;
-        const glTxt = r.d ? `gl = n − u + d = ${r.nEq} − ${r.u} + ${r.d}` : `gl = n − u = ${r.nEq} − ${r.u}`;
+        const glTxt = r.d ? `${tr('gl', 'dof')} = n − u + d = ${r.nEq} − ${r.u} + ${r.d}` : `${tr('gl', 'dof')} = n − u = ${r.nEq} − ${r.u}`;
         el.innerHTML = `<p class="text-[11px] text-stone-500 mb-2"><strong class="text-stone-700">${r.modelLabel}</strong> · ${r.datumLabel} · ${glTxt}</p>
             <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-2">
-            ${tile('Visadas', r.m, `${r.nEq} equações`)}
-            ${tile('Incógnitas', r.u, `${r.net.stations.length} estações`)}
-            ${tile('Graus de lib.', r.dof, `Σr = ${r.redundancySum.toFixed(3)}`)}
-            ${tile('Iterações', r.iterations, r.converged ? 'convergiu' : 'NÃO convergiu', r.converged ? '' : 'border-rose-200 bg-rose-50')}
-            ${tile('<span class="nc">σ̂₀</span>', Number.isFinite(r.sigma0) ? r.sigma0.toFixed(3) : '—', 'a posteriori / a priori')}
-            ${tile('Pior <span class="nc">σ</span>', (worst.s * 1000).toFixed(2) + ' mm', this.esc(worst.name))}
-            ${tile('Maior |w|', Math.abs(wmax.w).toFixed(2), this.esc(wmax.id), Math.abs(wmax.w) > r.critW ? 'border-rose-200 bg-rose-50' : '')}
+            ${tile(tr('Visadas', 'Sightings'), r.m, `${r.nEq} ${tr('equações', 'equations')}`)}
+            ${tile(tr('Incógnitas', 'Unknowns'), r.u, `${r.net.stations.length} ${tr('estações', 'stations')}`)}
+            ${tile(tr('Graus de lib.', 'Dof'), r.dof, `Σr = ${r.redundancySum.toFixed(3)}`)}
+            ${tile(tr('Iterações', 'Iterations'), r.iterations, r.converged ? tr('convergiu', 'converged') : tr('NÃO convergiu', 'did NOT converge'), r.converged ? '' : 'border-rose-200 bg-rose-50')}
+            ${tile('<span class="nc">σ̂₀</span>', Number.isFinite(r.sigma0) ? r.sigma0.toFixed(3) : '—', tr('a posteriori / a priori', 'a posteriori / a priori'))}
+            ${tile(tr('Pior', 'Worst') + ' <span class="nc">σ</span>', (worst.s * 1000).toFixed(2) + ' mm', this.esc(worst.name))}
+            ${tile(tr('Maior |w|', 'Largest |w|'), Math.abs(wmax.w).toFixed(2), this.esc(wmax.id), Math.abs(wmax.w) > r.critW ? 'border-rose-200 bg-rose-50' : '')}
             ${tile('cond(N)', r.condN === null ? '—' : r.condN.toExponential(1), '')}
         </div>`;
     },
@@ -651,16 +720,16 @@ const app = {
         const hint = document.getElementById('coordsHint');
         const r = this.result;
         const AS = NetAdjust.ARCSEC;
-        const tipoBadge = t => `<span class="badge ${t.startsWith('estação') ? 'badge-free' : ((t === 'fixo' || t.startsWith('apoio')) ? 'badge-out' : 'badge-ok')}">${t}</span>`;
+        const tipoBadge = t => `<span class="badge ${t.startsWith('estação') ? 'badge-free' : ((t === 'fixo' || t.startsWith('apoio')) ? 'badge-out' : 'badge-ok')}">${NetAdjust.term(t)}</span>`;
         if (r) {
             const truth = this.truth;
-            hint.innerHTML = `Coordenadas ajustadas (m), desvios-padrão e semieixos do elipsoide ${r.confLabel} em mm` +
-                (truth ? '. <strong>Δ verdade</strong>: distância à posição simulada.' : '.') +
-                ' Δ aprox.: quanto o ajustamento moveu o ponto em relação à aproximação inicial.';
+            hint.innerHTML = tr(`Coordenadas ajustadas (m), desvios-padrão e semieixos do elipsoide ${r.confLabel} em mm`, `Adjusted coordinates (m), standard deviations and semi-axes of the ${r.confLabel} ellipsoid in mm`) +
+                (truth ? tr('. <strong>Δ verdade</strong>: distância à posição simulada.', '. <strong>Δ truth</strong>: distance to the simulated position.') : '.') +
+                tr(' Δ aprox.: quanto o ajustamento moveu o ponto em relação à aproximação inicial.', ' Δ approx.: how far the adjustment moved the point from its initial approximation.');
             const g = s => `<span class="nc">${s}</span>`;
-            thead.innerHTML = `<tr><th>Ponto</th><th>Tipo</th><th>X</th><th>Y</th><th>Z</th><th>${g('σ')}X</th><th>${g('σ')}Y</th><th>${g('σ')}Z</th>
-                <th data-tooltip="Semieixos do elipsoide (maior, médio, menor)">a, b, c (${g(r.confLabel)})</th><th>${g('ω')}</th><th>${g('σω')} (″)</th>
-                <th>Visadas</th><th>&Delta; aprox. (mm)</th>${truth ? '<th>&Delta; verdade (mm)</th>' : ''}</tr>`;
+            thead.innerHTML = `<tr><th>${tr('Ponto', 'Point')}</th><th>${tr('Tipo', 'Type')}</th><th>X</th><th>Y</th><th>Z</th><th>${g('σ')}X</th><th>${g('σ')}Y</th><th>${g('σ')}Z</th>
+                <th data-tooltip="${tr('Semieixos do elipsoide (maior, médio, menor)', 'Ellipsoid semi-axes (largest, middle, smallest)')}">a, b, c (${g(r.confLabel)})</th><th>${g('ω')}</th><th>${g('σω')} (″)</th>
+                <th>${tr('Visadas', 'Sightings')}</th><th>&Delta; ${tr('aprox.', 'approx.')} (mm)</th>${truth ? `<th>&Delta; ${tr('verdade', 'truth')} (mm)</th>` : ''}</tr>`;
             tbody.innerHTML = r.pointResults.map(p => {
                 const d0 = p.initial ? Math.hypot(...p.xyz.map((v, i) => v - p.initial[i])) * 1000 : NaN;
                 let dt = '';
@@ -685,25 +754,26 @@ const app = {
             return;
         }
         const pv = this.preview;
-        if (!pv) { thead.innerHTML = ''; tbody.innerHTML = '<tr><td class="text-stone-400 text-xs py-4">Carregue observações.</td></tr>'; return; }
+        if (!pv) { thead.innerHTML = ''; tbody.innerHTML = `<tr><td class="text-stone-400 text-xs py-4">${tr('Carregue observações.', 'Load observations.')}</td></tr>`; return; }
         if (pv.error) {
-            hint.textContent = 'Não foi possível montar a rede com as visadas ativas.';
+            hint.textContent = tr('Não foi possível montar a rede com as visadas ativas.', 'Could not build the network with the active sightings.');
             thead.innerHTML = '';
             tbody.innerHTML = `<tr><td class="text-rose-600 text-xs py-3 whitespace-normal">${this.esc(pv.error)}</td></tr>`;
             return;
         }
-        hint.innerHTML = 'Coordenadas <strong>aproximadas</strong> (antes do ajustamento): fixos, resseção das estações e irradiação dos pontos.';
-        thead.innerHTML = '<tr><th>Ponto</th><th>Tipo</th><th>X</th><th>Y</th><th>Z</th><th>Origem da aproximação</th></tr>';
+        hint.innerHTML = tr('Coordenadas <strong>aproximadas</strong> (antes do ajustamento): fixos, resseção das estações e irradiação dos pontos.', '<strong>Approximate</strong> coordinates (before the adjustment): control points, station resection and point radiation.');
+        thead.innerHTML = `<tr><th>${tr('Ponto', 'Point')}</th><th>${tr('Tipo', 'Type')}</th><th>X</th><th>Y</th><th>Z</th><th>${tr('Origem da aproximação', 'Approximation source')}</th></tr>`;
         const rows = [];
         pv.approx.coords.forEach((xyz, name) => {
             const src = pv.approx.source.get(name) || {};
             const isSt = pv.net.stations.includes(name);
             const support = (pv.net.supportNames || []).includes(name);
             const tipo = isSt ? 'estação' : (pv.net.fixedCoords.has(name) ? 'fixo' : (support ? 'apoio (livre)' : 'livre'));
-            const fixoTxt = pv.net.free ? 'aproximação do apoio' : 'fixo';
-            const origem = src.kind === 'irradiado' ? `irradiado de ${src.origin.station}`
-                : (src.kind === 'fixo' ? (pv.net.datum.computed.includes(name) ? `${fixoTxt} irradiado (datum)` : `${fixoTxt} (CSV)`)
-                    : (src.kind === 'datum assumido' ? 'semente: datum local assumido' : (src.kind || '')));
+            const loose = pv.net.free || pv.net.minimal;
+            const fixoTxt = loose ? tr('aproximação do apoio', 'support approximation') : tr('fixo', 'control');
+            const origem = src.kind === 'irradiado' ? tr(`irradiado de ${src.origin.station}`, `radiated from ${src.origin.station}`)
+                : (src.kind === 'fixo' ? (pv.net.datum.computed.includes(name) ? tr(`${fixoTxt} irradiado (datum)`, `${fixoTxt} radiated (datum)`) : `${fixoTxt} (CSV)`)
+                    : (src.kind === 'datum assumido' ? tr('semente: datum local assumido', 'seed: assumed local datum') : NetAdjust.term(src.kind || '')));
             rows.push(`<tr><td class="font-mono text-xs font-semibold">${this.esc(name)}</td><td>${tipoBadge(tipo)}</td>
                 ${xyz.map(v => `<td class="font-mono text-xs">${v.toFixed(4)}</td>`).join('')}
                 <td class="text-xs text-stone-500">${this.esc(origem)}</td></tr>`);
@@ -720,11 +790,11 @@ const app = {
     renderReport() {
         const el = document.getElementById('reportContent');
         const runs = this.runs.length
-            ? `<h3 class="report-h">Execuções nesta sessão</h3><div class="space-y-1">${this.runs.map(x =>
-                `<div class="log-item ${x.ok ? 'log-info' : 'log-erro'}"><strong>${x.when}</strong> ${x.ok ? '' : 'FALHOU — '}${this.esc(x.msg)}</div>`).join('')}</div>`
+            ? `<h3 class="report-h">${tr('Execuções nesta sessão', 'Runs in this session')}</h3><div class="space-y-1">${this.runs.map(x =>
+                `<div class="log-item ${x.ok ? 'log-info' : 'log-erro'}"><strong>${x.when}</strong> ${x.ok ? '' : tr('FALHOU', 'FAILED') + ' — '}${this.esc(x.msg)}</div>`).join('')}</div>`
             : '';
         if (!this.result) {
-            el.innerHTML = '<p class="text-xs text-stone-400 mb-3">Aguardando ajustamento...</p>' + runs;
+            el.innerHTML = `<p class="text-xs text-stone-400 mb-3">${tr('Aguardando ajustamento...', 'Waiting for the adjustment...')}</p>` + runs;
             return;
         }
         const m = this._reportModel();
@@ -735,29 +805,29 @@ const app = {
         el.innerHTML = `
             <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
                 <div>
-                    <h3 class="report-h">Resumo</h3>${kv(m.summary)}
-                    <h3 class="report-h">Modelo estocástico</h3>${kv(m.stochastic)}
+                    <h3 class="report-h">${tr('Resumo', 'Summary')}</h3>${kv(m.summary)}
+                    <h3 class="report-h">${tr('Modelo estocástico', 'Stochastic model')}</h3>${kv(m.stochastic)}
                 </div>
                 <div>
-                    <h3 class="report-h">Iterações</h3>${tbl(m.iterations)}
-                    <h3 class="report-h">Aproximações iniciais</h3>${tbl(m.approximations)}
-                    <h3 class="report-h">Avisos e erros</h3>
-                    <div class="space-y-1 mb-4">${m.warnings.map(w => `<div class="log-item log-${w.level}"><strong class="uppercase text-[9px] tracking-wider">${w.level}</strong> ${this.esc(w.msg)}</div>`).join('') || '<p class="text-xs text-stone-400">Nenhum.</p>'}</div>
-                    ${m.detection ? `<h3 class="report-h">Detecção de outliers</h3>${kv([['Método', m.detection.label], ['Critério', m.detection.detail], ['Marcadas', m.detection.flagged.join('; ') || 'nenhuma']])}` : ''}
+                    <h3 class="report-h">${tr('Iterações', 'Iterations')}</h3>${tbl(m.iterations)}
+                    <h3 class="report-h">${tr('Aproximações iniciais', 'Initial approximations')}</h3>${tbl(m.approximations)}
+                    <h3 class="report-h">${tr('Avisos e erros', 'Warnings and errors')}</h3>
+                    <div class="space-y-1 mb-4">${m.warnings.map(w => `<div class="log-item log-${w.level}"><strong class="uppercase text-[9px] tracking-wider">${w.level}</strong> ${this.esc(w.msg)}</div>`).join('') || `<p class="text-xs text-stone-400">${tr('Nenhum.', 'None.')}</p>`}</div>
+                    ${m.detection ? `<h3 class="report-h">${tr('Detecção de outliers', 'Outlier detection')}</h3>${kv([[tr('Método', 'Method'), m.detection.label], [tr('Critério', 'Criterion'), m.detection.detail], [tr('Marcadas', 'Flagged'), m.detection.flagged.join('; ') || tr('nenhuma', 'none')]])}` : ''}
                     ${runs}
                 </div>
             </div>
-            <p class="text-[11px] text-stone-400">Coordenadas e resíduos completos nas abas <strong>Coordenadas</strong> e <strong>Observações</strong>; no PDF entram também as vistas 3D e 2D.</p>`;
+            <p class="text-[11px] text-stone-400">${tr('Coordenadas e resíduos completos nas abas <strong>Coordenadas</strong> e <strong>Observações</strong>; no PDF entram também as vistas 3D e 2D.', 'Full coordinates and residuals are in the <strong>Coordinates</strong> and <strong>Observations</strong> tabs; the PDF also includes the 3D and 2D views.')}</p>`;
     },
 
     // ---------------------------------------------------------------- comparação de modelos
     runComparison() {
         if (!this.rows.length) return;
         const el = document.getElementById('compareContent');
-        el.innerHTML = '<p class="text-xs text-stone-400">Calculando os quatro ajustamentos...</p>';
+        el.innerHTML = `<p class="text-xs text-stone-400">${tr('Calculando os quatro ajustamentos...', 'Computing the four adjustments...')}</p>`;
         setTimeout(() => {
             try { this.lastComparison = NetAdjust.compareModels(this.rows, this.settings); }
-            catch (e) { el.innerHTML = `<p class="text-xs text-rose-600">Falha na comparação: ${this.esc(e.message)}</p>`; return; }
+            catch (e) { el.innerHTML = `<p class="text-xs text-rose-600">${tr('Falha na comparação', 'Comparison failed')}: ${this.esc(e.message)}</p>`; return; }
             this.renderComparison(this.lastComparison);
         }, 20);
     },
@@ -767,42 +837,42 @@ const app = {
         const AS = NetAdjust.ARCSEC;
         const cols = cmp.runs;
         const exp = (v, d = 1) => (v === undefined || v === null || !Number.isFinite(v)) ? '—' : (v === 0 ? '0' : v.toExponential(d));
-        const head = `<tr><th></th>${cols.map(c => `<th class="whitespace-normal">${c.model === 'parametrico' ? 'Paramétrico' : 'Combinado'}` +
-            `<br><span class="font-normal normal-case text-stone-400">${c.datum === 'livre' ? 'rede livre' : 'pontos fixos'}</span></th>`).join('')}</tr>`;
-        const cell = (c, fn) => c.res ? fn(c) : `<span class="text-rose-600 text-[10px] whitespace-normal">falhou: ${this.esc(c.error || '')}</span>`;
+        const head = `<tr><th></th>${cols.map(c => `<th class="whitespace-normal">${c.model === 'parametrico' ? tr('Paramétrico', 'Parametric') : tr('Combinado', 'Combined')}` +
+            `<br><span class="font-normal normal-case text-stone-400">${c.datum === 'livre' ? tr('rede livre', 'free network') : tr('pontos fixos', 'control points')}</span></th>`).join('')}</tr>`;
+        const cell = (c, fn) => c.res ? fn(c) : `<span class="text-rose-600 text-[10px] whitespace-normal">${tr('falhou', 'failed')}: ${this.esc(c.error || '')}</span>`;
         const row = (label, fn) => `<tr><td class="text-stone-500 text-xs whitespace-normal">${label}</td>` +
             cols.map(c => `<td class="font-mono text-xs whitespace-normal">${cell(c, fn)}</td>`).join('') + '</tr>';
         const sec = (t, tone) => `<tr><td colspan="${cols.length + 1}" class="${tone || 'bg-stone-50 text-stone-500'} text-[10px] font-bold uppercase tracking-wider">${t}</td></tr>`;
         const ref = cols.find(c => c.res);
 
         const table = `<div class="table-container mb-4"><table><thead>${head}</thead><tbody>
-            ${sec('Dimensões')}
-            ${row('iterações', c => `${c.res.iterations}${c.res.converged ? '' : ' <span class="hot">(não convergiu)</span>'}`)}
-            ${row('equações n', c => c.res.nEq)}
-            ${row('incógnitas u', c => c.res.u)}
-            ${row('defeito de posto d', c => c.res.d)}
-            ${row('graus de liberdade n − u + d', c => c.res.dof)}
-            ${sec('Qualidade')}
+            ${sec(tr('Dimensões', 'Dimensions'))}
+            ${row(tr('iterações', 'iterations'), c => `${c.res.iterations}${c.res.converged ? '' : ` <span class="hot">${tr('(não convergiu)', '(did not converge)')}</span>`}`)}
+            ${row(tr('equações n', 'equations n'), c => c.res.nEq)}
+            ${row(tr('incógnitas u', 'unknowns u'), c => c.res.u)}
+            ${row(tr('defeito de posto d', 'rank defect d'), c => c.res.d)}
+            ${row(tr('graus de liberdade n − u + d', 'degrees of freedom n − u + d'), c => c.res.dof)}
+            ${sec(tr('Qualidade', 'Quality'))}
             ${row('V<sup>T</sup>PV', c => c.res.VtPV.toFixed(4))}
             ${row('&sigma;&#x302;²<sub>0</sub>', c => Number.isFinite(c.res.sigma02) ? c.res.sigma02.toFixed(4) : '—')}
-            ${row('teste global', c => c.res.globalPass === null ? '—' : (c.res.globalPass ? '<span class="text-teal-700">aprovado</span>' : '<span class="hot">reprovado</span>'))}
+            ${row(tr('teste global', 'global test'), c => c.res.globalPass === null ? '—' : (c.res.globalPass ? `<span class="text-teal-700">${tr('aprovado', 'passed')}</span>` : `<span class="hot">${tr('reprovado', 'failed')}</span>`))}
             ${row('&Sigma;r', c => c.res.redundancySum.toFixed(4))}
-            ${row('traço de &Sigma;<sub>Xa</sub> nas coordenadas (mm²)', c => (c.traceCoord * 1e6).toFixed(2))}
-            ${row('cond(N) (sem os nulos)', c => exp(c.res.condN, 2))}
-            ${sec('O que não pode mudar', 'bg-teal-50 text-teal-700')}
-            ${row('max|&Delta;X<sub>a</sub>| para o outro modelo, mesmo datum (m / ″)', c => c.dModel ? `${exp(c.dModel.lin)} / ${exp(c.dModel.ang / AS)}` : '—')}
-            ${row(`max|&Delta;V| contra ${ref ? this.esc(ref.label) : '—'} (″ / mm)`, c => c === ref ? 'referência' : (c.dV ? `${exp(c.dV.ang / AS)} / ${exp(c.dV.lin * 1000)}` : '—'))}
-            ${row('max|&Delta;| das distâncias entre pontos (mm)', c => c === ref ? 'referência' : exp(c.dDist * 1000))}
+            ${row(tr('traço de &Sigma;<sub>Xa</sub> nas coordenadas (mm²)', 'trace of &Sigma;<sub>Xa</sub> over the coordinates (mm²)'), c => (c.traceCoord * 1e6).toFixed(2))}
+            ${row(tr('cond(N) (sem os nulos)', 'cond(N) (without the nulls)'), c => exp(c.res.condN, 2))}
+            ${sec(tr('O que não pode mudar', 'What cannot change'), 'bg-teal-50 text-teal-700')}
+            ${row(tr('max|&Delta;X<sub>a</sub>| para o outro modelo, mesmo datum (m / ″)', 'max|&Delta;X<sub>a</sub>| to the other model, same datum (m / ″)'), c => c.dModel ? `${exp(c.dModel.lin)} / ${exp(c.dModel.ang / AS)}` : '—')}
+            ${row(tr(`max|&Delta;V| contra ${ref ? this.esc(ref.label) : '—'} (″ / mm)`, `max|&Delta;V| against ${ref ? this.esc(ref.label) : '—'} (″ / mm)`), c => c === ref ? tr('referência', 'reference') : (c.dV ? `${exp(c.dV.ang / AS)} / ${exp(c.dV.lin * 1000)}` : '—'))}
+            ${row(tr('max|&Delta;| das distâncias entre pontos (mm)', 'max|&Delta;| of the distances between points (mm)'), c => c === ref ? tr('referência', 'reference') : exp(c.dDist * 1000))}
         </tbody></table></div>`;
 
         // Teste de compatibilidade dos pontos fixos
         const compat = cmp.compat.map(c => {
-            const name = c.model === 'parametrico' ? 'Paramétrico' : 'Combinado';
-            if (!c.available) return `<p><strong>${name}:</strong> indisponível (uma das variantes falhou).</p>`;
-            if (!c.applicable) return `<p><strong>${name}:</strong> não se aplica — os pontos fixos não impõem injunções além do datum mínimo (gl iguais).</p>`;
+            const name = c.model === 'parametrico' ? tr('Paramétrico', 'Parametric') : tr('Combinado', 'Combined');
+            if (!c.available) return `<p><strong>${name}:</strong> ${tr('indisponível (uma das variantes falhou).', 'unavailable (one of the variants failed).')}</p>`;
+            if (!c.applicable) return `<p><strong>${name}:</strong> ${tr('não se aplica — os pontos fixos não impõem injunções além do datum mínimo (gl iguais).', 'does not apply — the control points impose no constraints beyond the minimal datum (equal dof).')}</p>`;
             const dv = Math.abs(c.dV) < 1e-6 ? 0 : c.dV;
-            return `<p><strong>${name}:</strong> &Delta;V<sup>T</sup>PV = ${dv.toFixed(4)} com ${c.ddof} graus; &chi;² crítico (${this.settings.alphaPct}%) = ${c.crit.toFixed(3)} → ` +
-                (c.pass ? '<span class="text-teal-700 font-semibold">compatíveis</span>' : '<span class="hot">INCOMPATÍVEIS</span>') + '</p>';
+            return `<p><strong>${name}:</strong> &Delta;V<sup>T</sup>PV = ${dv.toFixed(4)} ${tr('com', 'with')} ${c.ddof} ${tr('graus', 'degrees')}; &chi;² ${tr('crítico', 'critical')} (${this.settings.alphaPct}%) = ${c.crit.toFixed(3)} → ` +
+                (c.pass ? `<span class="text-teal-700 font-semibold">${tr('compatíveis', 'compatible')}</span>` : `<span class="hot">${tr('INCOMPATÍVEIS', 'INCOMPATIBLE')}</span>`) + '</p>';
         }).join('');
 
         // σ por ponto: pontos fixos × rede livre (os dois modelos são idênticos)
@@ -812,10 +882,10 @@ const app = {
             const byName = res => new Map(res.pointResults.map(p => [p.name, p]));
             const a = byName(fx.res), b = byName(lv.res);
             const names = lv.res.pointResults.map(p => p.name);
-            const trio = p => p ? (p.fixed ? '<span class="text-stone-400">fixo (0)</span>' : p.sigma.map(v => (v * 1000).toFixed(2)).join(' / ')) : '—';
-            sigTable = `<h3 class="report-h mt-4"><span class="nc">σ</span>X / <span class="nc">σ</span>Y / <span class="nc">σ</span>Z por ponto (mm, ${this.settings.sigmaXaScale === 'priori' ? 'a priori' : 'a posteriori'})</h3>
+            const trio = p => p ? (p.fixed ? `<span class="text-stone-400">${tr('fixo (0)', 'fixed (0)')}</span>` : p.sigma.map(v => (v * 1000).toFixed(2)).join(' / ')) : '—';
+            sigTable = `<h3 class="report-h mt-4"><span class="nc">σ</span>X / <span class="nc">σ</span>Y / <span class="nc">σ</span>Z ${tr('por ponto', 'per point')} (mm, ${this.settings.sigmaXaScale === 'priori' ? 'a priori' : 'a posteriori'})</h3>
             <div class="table-container mb-2" style="max-height:340px;overflow-y:auto"><table>
-                <thead><tr><th>Ponto</th><th>Pontos fixos</th><th>Rede livre</th></tr></thead>
+                <thead><tr><th>${tr('Ponto', 'Point')}</th><th>${tr('Pontos fixos', 'Control points')}</th><th>${tr('Rede livre', 'Free network')}</th></tr></thead>
                 <tbody>${names.map(n => `<tr><td class="font-mono text-xs font-semibold">${this.esc(n)}</td>
                     <td class="font-mono text-xs">${trio(a.get(n))}</td><td class="font-mono text-xs">${trio(b.get(n))}</td></tr>`).join('')}</tbody>
             </table></div>`;
@@ -824,20 +894,29 @@ const app = {
         el.innerHTML = table + `
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div class="p-3 bg-stone-50 border border-stone-200 rounded text-[11px] text-stone-600 leading-snug space-y-1.5">
-                    <h3 class="text-xs font-bold text-stone-600 uppercase tracking-wider">Compatibilidade dos pontos fixos</h3>
-                    <p>Os pontos fixos impõem 3 injunções cada; o datum só precisa de 4. As que sobram só aumentam
+                    <h3 class="text-xs font-bold text-stone-600 uppercase tracking-wider">${tr('Compatibilidade dos pontos fixos', 'Control point compatibility')}</h3>
+                    <p>${tr(`Os pontos fixos impõem 3 injunções cada; o datum só precisa de 4. As que sobram só aumentam
                         V<sup>T</sup>PV se as coordenadas fixas discordarem das observações:
-                        &Delta;V<sup>T</sup>PV = V<sup>T</sup>PV(fixos) − V<sup>T</sup>PV(livre) ~ &chi;² com gl(fixos) − gl(livre) graus.</p>
+                        &Delta;V<sup>T</sup>PV = V<sup>T</sup>PV(fixos) − V<sup>T</sup>PV(livre) ~ &chi;² com gl(fixos) − gl(livre) graus.`,
+                        `Each control point imposes 3 constraints; the datum only needs 4. The surplus only increases
+                        V<sup>T</sup>PV if the fixed coordinates disagree with the observations:
+                        &Delta;V<sup>T</sup>PV = V<sup>T</sup>PV(control) − V<sup>T</sup>PV(free) ~ &chi;² with dof(control) − dof(free) degrees.`)}</p>
                     ${compat}
                 </div>
                 <div class="p-3 bg-teal-50 border border-teal-200 rounded text-[11px] text-stone-600 leading-snug space-y-1.5">
-                    <h3 class="text-xs font-bold text-teal-800 uppercase tracking-wider">Como ler</h3>
-                    <p><strong>Combinado × paramétrico</strong> com o mesmo datum: diferenças na ordem da precisão de
-                        máquina — são o mesmo problema de mínimos quadrados escrito de duas formas.</p>
-                    <p><strong>Pontos fixos × rede livre</strong>: resíduos e forma da rede (distâncias) não mudam
+                    <h3 class="text-xs font-bold text-teal-800 uppercase tracking-wider">${tr('Como ler', 'How to read')}</h3>
+                    <p>${tr(`<strong>Combinado × paramétrico</strong> com o mesmo datum: diferenças na ordem da precisão de
+                        máquina — são o mesmo problema de mínimos quadrados escrito de duas formas.`,
+                        `<strong>Combined × parametric</strong> with the same datum: differences at machine-precision level —
+                        they are the same least-squares problem written in two ways.`)}</p>
+                    <p>${tr(`<strong>Pontos fixos × rede livre</strong>: resíduos e forma da rede (distâncias) não mudam
                         enquanto os fixos não tensionarem as observações. Mudam as coordenadas, os &sigma;, os
                         elipsoides e os graus de liberdade. Na rede livre o traço de &Sigma;<sub>Xa</sub> é o menor
-                        possível, e nenhum ponto tem &sigma; nulo.</p>
+                        possível, e nenhum ponto tem &sigma; nulo.`,
+                        `<strong>Control points × free network</strong>: residuals and network shape (distances) do not change
+                        as long as the control points do not strain the observations. The coordinates, &sigma;, ellipsoids
+                        and degrees of freedom do change. In the free network the trace of &Sigma;<sub>Xa</sub> is the smallest
+                        possible, and no point has zero &sigma;.`)}</p>
                 </div>
             </div>` + sigTable;
     },
@@ -860,7 +939,7 @@ const app = {
             (r.d ? ` Na rede livre ela é <strong>singular</strong>: posto u − ${r.d} (veja λ(N)).` : '') },
         { key: 'eigN', label: '&lambda;(N)', tex: '\\lambda(N)', rows: 'eig', vec: true, desc: r => '<strong>Autovalores de N</strong> em ordem crescente. ' + (r.d
             ? `Os ${r.d} primeiros são nulos (à precisão numérica): o defeito de posto — translações em X, Y, Z e rotação em torno da vertical, direções que as observações não enxergam.`
-            : 'Com pontos fixos, todos são positivos: o datum está definido.') },
+            : 'Com pontos fixos ou injunções mínimas, todos são positivos: o datum está definido.') },
         { key: 'G', label: 'G', tex: 'G', rows: 'unk', cols: 'g4', datum: ['livre'], desc: '<strong>Matriz das injunções internas (u × 4):</strong> o espaço nulo de N restrito às coordenadas — colunas de translação em X, Y, Z (1 nas respectivas coordenadas) e de rotação em torno da vertical (−(Y − Ȳ) em X, X − X̄ em Y), com zeros nas linhas de &omega;. A injunção G<sup>T</sup>X = 0 dá a solução de norma mínima.' },
         { key: 'Nb', label: 'N<sub>orlada</sub>', tex: '\\begin{bmatrix} N & G \\\\ G^T & 0 \\end{bmatrix}', rows: 'unkb', cols: 'unkb', datum: ['livre'], desc: '<strong>Sistema orlado [N G; G<sup>T</sup> 0]:</strong> não singular mesmo com N singular. O bloco u×u da sua inversa é Q, a inversa generalizada usada em X = −QU e em &Sigma;<sub>Xa</sub> = &sigma;&#x302;²<sub>0</sub>Q. (No cálculo, as colunas de G são escaladas ao porte de N, o que não muda a injunção.)' },
         { key: 'U', label: 'U', tex: 'U', rows: 'unk', vec: true, desc: r => r.model === 'parametrico'
@@ -882,6 +961,45 @@ const app = {
         { key: 'SigmaV', label: '&Sigma;<sub>V</sub>', tex: '\\Sigma_{V}', rows: 'obs', cols: 'obs', desc: r => '<strong>MVC dos resíduos:</strong> &sigma;&#x302;²<sub>0</sub> Q<sub>V</sub>, ' + (r.model === 'parametrico'
             ? 'Q<sub>V</sub> = P⁻¹ − A Q A<sup>T</sup>.' : 'Q<sub>V</sub> = P⁻¹B<sup>T</sup>(M⁻¹ − M⁻¹AQA<sup>T</sup>M⁻¹)BP⁻¹.') + ' Sua diagonal, vezes P, dá os números de redundância — iguais em qualquer datum.' }
     ],
+
+    // Descrições das matrizes em inglês (as em português estão em MATRICES)
+    MATRIX_DESC_EN: {
+        A: r => r.model === 'parametrico'
+            ? '<strong>Jacobian of the observation equations (A = &part;F/&part;X<sub>a</sub>):</strong> three rows (Hz, Z, S) per sighting — derivatives of atan2 and of the norm, with opposite signs at the station and at the sighted point and −1 in the &omega; column (Hz row).'
+            : '<strong>Jacobian of the condition equations with respect to the unknowns (A = &part;F/&part;X<sub>a</sub>):</strong> three rows per sighting, +I at the sighted point, −I at the station and the &omega; column, equal to the Hz column of B.',
+        B: '<strong>Jacobian with respect to the observations (B = &part;F/&part;L<sub>a</sub>):</strong> 3×3 block-diagonal per sighting — the Jacobian of the radiation (Hz, Z, S) → (X, Y, Z), the same as in the plane adjustment. In the parametric model, B = −I.',
+        SigLb: '<strong>Observation covariance:</strong> diagonal with &sigma;² of Hz, Z (rad²) and S (m²), according to the source chosen in Settings.',
+        P: '<strong>Weight matrix:</strong> P = &Sigma;<sub>Lb</sub>⁻¹, with a priori &sigma;²<sub>0</sub> = 1.',
+        M: '<strong>M = B P⁻¹ B<sup>T</sup>:</strong> 3×3 block per sighting — the Cartesian covariance of the radiated vector. In the parametric model, M = P⁻¹.',
+        W: '<strong>Misclosure</strong> of the last iteration, in Gemael\'s iterated form: W = F(L<sub>0</sub>, X<sub>0</sub>) + B(L<sub>b</sub> − L<sub>0</sub>) (m).',
+        L: '<strong>Vector L = L<sub>0</sub> − L<sub>b</sub></strong> (computed minus observed, Hz reduced to (−&pi;, &pi;]) of the last iteration (rad, rad, m).',
+        N: r => (r.model === 'parametrico'
+            ? '<strong>Normal matrix:</strong> N = A<sup>T</sup> P A.' : '<strong>Normal matrix:</strong> N = A<sup>T</sup> M⁻¹ A.') +
+            (r.d ? ` In the free network it is <strong>singular</strong>: rank u − ${r.d} (see λ(N)).` : ''),
+        eigN: r => '<strong>Eigenvalues of N</strong> in ascending order. ' + (r.d
+            ? `The first ${r.d} are null (to numerical precision): the rank defect — translations in X, Y, Z and rotation about the vertical, directions the observations cannot see.`
+            : 'With control points or minimal constraints, all are positive: the datum is defined.'),
+        G: '<strong>Inner-constraint matrix (u × 4):</strong> the null space of N restricted to the coordinates — translation columns in X, Y, Z (1 in the respective coordinates) and rotation about the vertical (−(Y − Ȳ) in X, X − X̄ in Y), with zeros in the &omega; rows. The constraint G<sup>T</sup>X = 0 gives the minimum-norm solution.',
+        Nb: '<strong>Bordered system [N G; G<sup>T</sup> 0]:</strong> non-singular even when N is singular. The u×u block of its inverse is Q, the generalized inverse used in X = −QU and in &Sigma;<sub>Xa</sub> = &sigma;&#x302;²<sub>0</sub>Q. (In the computation, the columns of G are scaled to the size of N, which does not change the constraint.)',
+        U: r => r.model === 'parametrico'
+            ? '<strong>Vector of constant terms:</strong> U = A<sup>T</sup> P L.' : '<strong>Vector of constant terms:</strong> U = A<sup>T</sup> M⁻¹ W.',
+        X: r => r.d
+            ? '<strong>Correction of the last iteration:</strong> X = −Q U, with Q of the bordered system; satisfies G<sup>T</sup>X = 0.'
+            : '<strong>Correction of the last iteration:</strong> X = −N⁻¹ U. Below the convergence criterion.',
+        Xa: '<strong>Adjusted unknowns:</strong> coordinates (m) and orientations &omega; (rad).',
+        K: '<strong>Correlates:</strong> K = −M⁻¹(AX + W).',
+        V: r => r.model === 'parametrico'
+            ? '<strong>Residuals:</strong> V = AX + L (rad, rad, m per sighting).' : '<strong>Residuals:</strong> V = P⁻¹ B<sup>T</sup> K (rad, rad, m per sighting).',
+        Lb: '<strong>Raw observations</strong> (rad, rad, m).',
+        La: '<strong>Adjusted observations:</strong> L<sub>a</sub> = L<sub>b</sub> + V.',
+        SigmaXa: r => '<strong>Covariance of the unknowns:</strong> &sigma;&#x302;²<sub>0</sub> Q (or Q with the a priori scale), ' +
+            (r.d ? 'Q of the bordered system — rank u − 4, minimum trace over the coordinates.' : 'Q = N⁻¹.') + ' The 3×3 blocks give the error ellipsoids.',
+        SigmaLa: r => r.model === 'parametrico'
+            ? '<strong>Covariance of the adjusted observations:</strong> &sigma;&#x302;²<sub>0</sub> A Q A<sup>T</sup>.'
+            : '<strong>Covariance of the adjusted observations:</strong> &sigma;&#x302;²<sub>0</sub>(P⁻¹ − Q<sub>V</sub>).',
+        SigmaV: r => '<strong>Covariance of the residuals:</strong> &sigma;&#x302;²<sub>0</sub> Q<sub>V</sub>, ' + (r.model === 'parametrico'
+            ? 'Q<sub>V</sub> = P⁻¹ − A Q A<sup>T</sup>.' : 'Q<sub>V</sub> = P⁻¹B<sup>T</sup>(M⁻¹ − M⁻¹AQA<sup>T</sup>M⁻¹)BP⁻¹.') + ' Its diagonal times P gives the redundancy numbers — the same in any datum.'
+    },
 
     _visibleMatrices() {
         const model = this.result ? this.result.model : this.settings.model;
@@ -940,7 +1058,10 @@ const app = {
         return null;
     },
 
-    _matDesc(def) { return typeof def.desc === 'function' ? def.desc(this.result) : def.desc; },
+    _matDesc(def) {
+        const d = (globalThis.APP_LANG === 'en' && this.MATRIX_DESC_EN[def.key]) || def.desc;
+        return typeof d === 'function' ? d(this.result) : d;
+    },
 
     formatMatrixToLatex(tex, mat) {
         const MAX = 20;
@@ -968,7 +1089,7 @@ const app = {
         const legend = document.getElementById('matLegend');
         const def = this.MATRICES.find(m => m.key === this.activeMatrix);
         if (!this.result) {
-            container.innerHTML = '<p class="text-xs text-stone-400">Aguardando ajustamento...</p>';
+            container.innerHTML = `<p class="text-xs text-stone-400">${tr('Aguardando ajustamento...', 'Waiting for the adjustment...')}</p>`;
             desc.innerHTML = '';
             legend.innerHTML = '';
             return;
@@ -976,18 +1097,18 @@ const app = {
         let mat;
         try { mat = this.getMatrix(this.activeMatrix); }
         catch (e) { container.innerHTML = `<p class="text-xs text-rose-500">${this.esc(e.message)}</p>`; return; }
-        if (!mat) { container.innerHTML = '<p class="text-xs text-stone-400">Matriz indisponível.</p>'; return; }
+        if (!mat) { container.innerHTML = `<p class="text-xs text-stone-400">${tr('Matriz indisponível.', 'Matrix unavailable.')}</p>`; return; }
         container.innerHTML = '';
         if (window.katex) {
             try { katex.render(this.formatMatrixToLatex(def.tex, mat), container, { displayMode: true, throwOnError: false }); }
-            catch (e) { container.innerHTML = '<p class="text-xs text-rose-500">Erro ao renderizar a matriz.</p>'; }
+            catch (e) { container.innerHTML = `<p class="text-xs text-rose-500">${tr('Erro ao renderizar a matriz.', 'Error rendering the matrix.')}</p>`; }
         } else {
-            container.innerHTML = '<p class="text-xs text-rose-500">KaTeX não carregado.</p>';
+            container.innerHTML = `<p class="text-xs text-rose-500">${tr('KaTeX não carregado.', 'KaTeX not loaded.')}</p>`;
         }
-        desc.innerHTML = `<span class="text-stone-400 font-mono text-[10px]">dimensão ${mat.length} × ${mat[0].length}</span><br>${this._matDesc(def)}`;
+        desc.innerHTML = `<span class="text-stone-400 font-mono text-[10px]">${tr('dimensão', 'size')} ${mat.length} × ${mat[0].length}</span><br>${this._matDesc(def)}`;
         const unk = this._labels('unk'), obs = this._labels('obs');
-        legend.innerHTML = `<p class="mb-1"><strong>Incógnitas (${unk.length}):</strong> ${unk.map((n, i) => `${i + 1}:${this.esc(n)}`).join(' · ')}</p>` +
-            `<p><strong>Observações (${obs.length}):</strong> ${obs.map((n, i) => `${i + 1}:${this.esc(n)}`).join(' · ')}</p>`;
+        legend.innerHTML = `<p class="mb-1"><strong>${tr('Incógnitas', 'Unknowns')} (${unk.length}):</strong> ${unk.map((n, i) => `${i + 1}:${this.esc(n)}`).join(' · ')}</p>` +
+            `<p><strong>${tr('Observações', 'Observations')} (${obs.length}):</strong> ${obs.map((n, i) => `${i + 1}:${this.esc(n)}`).join(' · ')}</p>`;
     },
 
     _matrixCSV(key) {
@@ -995,7 +1116,7 @@ const app = {
         const mat = this.getMatrix(key);
         if (!mat) return null;
         const rowL = this._labels(def.rows);
-        const colL = def.vec ? ['valor'] : this._labels(def.cols);
+        const colL = def.vec ? [tr('valor', 'value')] : this._labels(def.cols);
         const cell = s => /[",;\n]/.test(s) ? `"${String(s).replace(/"/g, '""')}"` : s;
         const out = [['', ...colL].map(cell).join(',')];
         mat.forEach((row, i) => out.push([cell(rowL ? rowL[i] : String(i + 1)), ...row.map(v => RedeIO.fmt(v))].join(',')));
@@ -1005,7 +1126,7 @@ const app = {
     exportActiveMatrix() {
         if (!this.result) return;
         const csv = this._matrixCSV(this.activeMatrix);
-        if (!csv) { alert('Matriz indisponível.'); return; }
+        if (!csv) { alert(tr('Matriz indisponível.', 'Matrix unavailable.')); return; }
         RedeIO.download(`matriz_${this.activeMatrix}.csv`, csv);
     },
 
@@ -1045,7 +1166,7 @@ const app = {
         const a0 = s.alpha0Pct / 100;
         const critW = NetAdjust.normInv(1 - a0 / 2), d0 = critW + NetAdjust.normInv(s.powerPct / 100);
         document.getElementById('delta0Info').textContent =
-            `|w| crítico = ${critW.toFixed(3)}; δ₀ = ${d0.toFixed(3)} (erro mínimo detectável ∇₀ = δ₀ σ / √r).`;
+            tr(`|w| crítico = ${critW.toFixed(3)}; δ₀ = ${d0.toFixed(3)} (erro mínimo detectável ∇₀ = δ₀ σ / √r).`, `critical |w| = ${critW.toFixed(3)}; δ₀ = ${d0.toFixed(3)} (minimal detectable error ∇₀ = δ₀ σ / √r).`);
         this._renderModelHint();
         if (silent === true) return;
         this.lastDetection = null;
@@ -1054,10 +1175,8 @@ const app = {
 
     _renderModelHint() {
         const s = this.settings;
-        const eq = s.model === 'parametrico' ? 'La = F(Xa): Hz, Z e S como funções das coordenadas'
-            : 'F(La, Xa) = 0: três equações de condição por visada';
-        const dt = s.datum === 'livre' ? 'todos os pontos incógnitos, defeito de posto 4 removido por injunções internas; gl = n − u + 4'
-            : 'pontos fixos como constantes; gl = n − u';
+        const eq = this.t(s.model === 'parametrico' ? 'hintEqParametric' : 'hintEqCombined');
+        const dt = this.t({ livre: 'hintDatumFree', minimo: 'hintDatumMinimal' }[s.datum] || 'hintDatumFixed');
         document.getElementById('modelHint').textContent = `${eq} · ${dt}.`;
     },
 
@@ -1075,17 +1194,17 @@ const app = {
     },
 
     exportCoordinates() {
-        if (!this.result) { alert('Execute o ajustamento antes de exportar.'); return; }
+        if (!this.result) { alert(tr('Execute o ajustamento antes de exportar.', 'Run the adjustment before exporting.')); return; }
         RedeIO.download('coordenadas_ajustadas.csv', RedeIO.coordinatesToCSV(this.result));
     },
 
     exportResiduals() {
-        if (!this.result) { alert('Execute o ajustamento antes de exportar.'); return; }
+        if (!this.result) { alert(tr('Execute o ajustamento antes de exportar.', 'Run the adjustment before exporting.')); return; }
         RedeIO.download('residuos_observacoes.csv', RedeIO.residualsToCSV(this.result, this.rows));
     },
 
     exportReportText() {
-        if (!this.result) { alert('Execute o ajustamento antes de gerar o relatório.'); return; }
+        if (!this.result) { alert(tr('Execute o ajustamento antes de gerar o relatório.', 'Run the adjustment before generating the report.')); return; }
         RedeIO.download('relatorio_ajustamento.txt', RedeReport.renderText(this._reportModel()), 'text/plain;charset=utf-8');
     },
 
@@ -1097,32 +1216,32 @@ const app = {
         // O 3D só renderiza com tamanho se a aba já foi exibida; garante uma vez
         const shot = this.viewer.snapshot();
         if (shot) images.push(Object.assign(shot, {
-            title: 'Vista 3D da rede ajustada',
-            caption: `Estações (laranja), fixos (vermelho), livres (verde-azulado) e visadas. ` +
-                (g('chkEllipsoids').checked ? `Elipsoides ${conf} exagerados ${Math.round(s3)}×.` : 'Elipsoides ocultos.')
+            title: tr('Vista 3D da rede ajustada', '3D view of the adjusted network'),
+            caption: tr(`Estações (laranja), fixos (vermelho), livres (verde-azulado) e visadas. `, `Stations (orange), control points (red), free points (teal) and sightings. `) +
+                (g('chkEllipsoids').checked ? tr(`Elipsoides ${conf} exagerados ${Math.round(s3)}×.`, `${conf} ellipsoids exaggerated ${Math.round(s3)}×.`) : tr('Elipsoides ocultos.', 'Ellipsoids hidden.'))
         }));
         const sizes = { xy: [900, 640], xz: [900, 360], yz: [900, 360] };
         Object.entries(this.views.panels).forEach(([key, p]) => {
             const img = p.image(sizes[key][0], sizes[key][1]);
             images.push(Object.assign(img, {
-                title: `Vista 2D — ${NetworkViews2D.PANELS[key].title}`,
-                caption: `Elipses: projeções dos elipsoides ${conf} (bloco 2×2 marginal de Σ, mesmo k), exageradas ${Math.round(s2)}×.`
+                title: `${tr('Vista 2D', '2D view')} — ${NetworkViews2D.PANELS[key].title}`,
+                caption: tr(`Elipses: projeções dos elipsoides ${conf} (bloco 2×2 marginal de Σ, mesmo k), exageradas ${Math.round(s2)}×.`, `Ellipses: projections of the ${conf} ellipsoids (marginal 2×2 block of Σ, same k), exaggerated ${Math.round(s2)}×.`)
             }));
         });
         return images;
     },
 
     async exportReportPDF() {
-        if (!this.result) { alert('Execute o ajustamento antes de gerar o relatório.'); return; }
+        if (!this.result) { alert(tr('Execute o ajustamento antes de gerar o relatório.', 'Run the adjustment before generating the report.')); return; }
         const btns = ['btnExportPDF'].map(id => document.getElementById(id));
-        btns.forEach(b => { b.disabled = true; b.dataset.label = b.innerHTML; b.innerHTML = 'Gerando PDF...'; });
+        btns.forEach(b => { b.disabled = true; b.dataset.label = b.innerHTML; b.innerHTML = tr('Gerando PDF...', 'Generating PDF...'); });
         try {
             if (this.activeTab !== 'view3d') { this.viewer.resize(); }
             const doc = await RedeReport.renderPDF(this._reportModel(), this._reportImages());
             doc.save('relatorio_ajustamento.pdf');
         } catch (e) {
             console.error(e);
-            if (confirm(`Não foi possível gerar o PDF: ${e.message}\n\nBaixar o relatório em texto?`)) this.exportReportText();
+            if (confirm(tr(`Não foi possível gerar o PDF: ${e.message}\n\nBaixar o relatório em texto?`, `Could not generate the PDF: ${e.message}\n\nDownload the text report instead?`))) this.exportReportText();
         } finally {
             btns.forEach(b => { b.innerHTML = b.dataset.label; b.disabled = !this.result; });
         }

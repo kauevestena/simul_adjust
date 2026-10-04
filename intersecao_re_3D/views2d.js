@@ -5,13 +5,14 @@
 // verdadeira os cortes viram uma linha. O exagero vale também para as elipses (D Σ D).
 (function (root) {
     'use strict';
+    const tr = (pt, en) => (globalThis.APP_LANG === 'en' ? en : pt);
 
     // h, v: índices de (X, Y, Z) nos eixos horizontal e vertical da tela.
     // Na planta, X (zero do círculo) aponta para cima e Y para a direita — sem espelhar.
     const PANELS = {
-        xy: { h: 1, v: 0, title: 'Planta XY', hName: 'Y', vName: 'X' },
-        xz: { h: 0, v: 2, title: 'Corte XZ', hName: 'X', vName: 'Z' },
-        yz: { h: 1, v: 2, title: 'Corte YZ', hName: 'Y', vName: 'Z' }
+        xy: { h: 1, v: 0, get title() { return tr('Planta XY', 'XY plan'); }, hName: 'Y', vName: 'X' },
+        xz: { h: 0, v: 2, get title() { return tr('Corte XZ', 'XZ section'); }, hName: 'X', vName: 'Z' },
+        yz: { h: 1, v: 2, get title() { return tr('Corte YZ', 'YZ section'); }, hName: 'Y', vName: 'Z' }
     };
 
     const DEFAULTS = {
@@ -129,7 +130,7 @@
                 ctx.fillStyle = '#a8a29e';
                 ctx.font = '12px Inter, sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText('Carregue observações para ver a rede.', w / 2, h / 2);
+                ctx.fillText(tr('Carregue observações para ver a rede.', 'Load observations to see the network.'), w / 2, h / 2);
                 return;
             }
             const { h: ih, v: iv } = this.def;
@@ -224,7 +225,7 @@
             ctx.fillStyle = '#292524';
             ctx.font = '700 12px Inter, sans-serif';
             ctx.textAlign = 'left';
-            ctx.fillText(this.def.title + (ve > 1 ? `  (${this.def.vName} exagerado ${+ve.toFixed(1)}×)` : ''), 10, 18);
+            ctx.fillText(this.def.title + (ve > 1 ? tr(`  (${this.def.vName} exagerado ${+ve.toFixed(1)}×)`, `  (${this.def.vName} exaggerated ${+ve.toFixed(1)}×)`) : ''), 10, 18);
             ctx.font = '10px Inter, sans-serif';
             ctx.fillStyle = '#78716c';
             ctx.fillText(`→ ${this.def.hName}   ↑ ${this.def.vName}`, 10, 32);
@@ -240,7 +241,7 @@
             if (o.showEllipses) {
                 const eM = barM / o.ellipseScale;
                 ctx.fillStyle = o.colorEllipse;
-                ctx.fillText(`elipses: barra = ${fmtLen(eM)}`, bx + barPx / 2, by + 13);
+                ctx.fillText(tr(`elipses: barra = ${fmtLen(eM)}`, `ellipses: bar = ${fmtLen(eM)}`), bx + barPx / 2, by + 13);
             }
         }
 

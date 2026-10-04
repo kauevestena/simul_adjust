@@ -5,6 +5,7 @@
 // como ela é: X para "cima", Y para a direita.
 (function (root) {
     'use strict';
+    const tr = (pt, en) => (globalThis.APP_LANG === 'en' ? en : pt);
 
     const DEFAULTS = {
         colorStation: '#d97706',
@@ -35,14 +36,15 @@
             this._ready = false;
             if (!this.container) return;
             if (typeof THREE === 'undefined') {
-                this._fail('Biblioteca three.js não carregada — verifique a conexão com a CDN.');
+                this._fail(tr('Biblioteca three.js não carregada — verifique a conexão com a CDN.', 'three.js library not loaded — check the CDN connection.'));
                 return;
             }
             try {
                 this._build();
             } catch (e) {
-                this._fail('Não foi possível criar o contexto WebGL neste navegador. ' +
-                    'As demais abas continuam funcionando.');
+                this._fail(tr('Não foi possível criar o contexto WebGL neste navegador. ' +
+                    'As demais abas continuam funcionando.', 'Could not create a WebGL context in this browser. ' +
+                    'The other tabs keep working.'));
                 console.warn('NetworkViewer3D:', e);
             }
         }

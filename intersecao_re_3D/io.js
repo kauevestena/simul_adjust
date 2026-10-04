@@ -8,6 +8,9 @@
     else root.RedeIO = api;
 })(typeof self !== 'undefined' ? self : this, function () {
 
+    const tr = (pt, en) => (globalThis.APP_LANG === 'en' ? en : pt);
+    const termOf = k => (typeof NetAdjust !== 'undefined' ? NetAdjust.term(k) : (typeof require === 'function' ? require('./adjustment.js').term(k) : k));
+
     const ARCSEC = Math.PI / (180 * 3600);
     const DEG = Math.PI / 180;
     const TWO_PI = 2 * Math.PI;
@@ -114,12 +117,12 @@
                     map = keys;
                     const need = ['station', 'target', 'hz', 'zen', 'dist'];
                     const missing = need.filter(k => !map.includes(k));
-                    if (missing.length) errors.push(`Cabeçalho sem as colunas obrigatórias: ${missing.join(', ')}.`);
+                    if (missing.length) errors.push(tr(`Cabeçalho sem as colunas obrigatórias: ${missing.join(', ')}.`, `Header missing required columns: ${missing.join(', ')}.`));
                     return;
                 }
                 // Sem cabeçalho reconhecível: ordem posicional da especificação
                 map = POSITIONAL.slice();
-                warnings.push('Cabeçalho não reconhecido; colunas lidas na ordem da especificação.');
+                warnings.push(tr('Cabeçalho não reconhecido; colunas lidas na ordem da especificação.', 'Header not recognised; columns read in the specified order.'));
             }
 
             const parts = splitLine(line, sep);
@@ -128,40 +131,40 @@
 
             const station = (f.station || '').trim();
             const target = (f.target || '').trim();
-            if (!station || !target) { errors.push(`Linha ${ln}: estação e ponto visado são obrigatórios.`); return; }
-            if (station === target) { errors.push(`Linha ${ln}: a estação ${station} visa a si mesma.`); return; }
+            if (!station || !target) { errors.push(tr(`Linha ${ln}: estação e ponto visado são obrigatórios.`, `Line ${ln}: station and sighted point are required.`)); return; }
+            if (station === target) { errors.push(tr(`Linha ${ln}: a estação ${station} visa a si mesma.`, `Line ${ln}: station ${station} sights itself.`)); return; }
 
             const hz = parseNum(f.hz, decimalComma), zen = parseNum(f.zen, decimalComma);
             const dist = parseNum(f.dist, decimalComma);
             if (![hz, zen, dist].every(v => v !== null && Number.isFinite(v))) {
-                errors.push(`Linha ${ln}: leitura horizontal, zenital e distância precisam ser numéricas.`);
+                errors.push(tr(`Linha ${ln}: leitura horizontal, zenital e distância precisam ser numéricas.`, `Line ${ln}: horizontal reading, zenith angle and distance must be numeric.`));
                 return;
             }
-            if (!(dist > 0)) { errors.push(`Linha ${ln}: distância inclinada deve ser maior que zero.`); return; }
-            if (!(zen > 0 && zen < 180)) { errors.push(`Linha ${ln}: ângulo zenital fora de (0°, 180°).`); return; }
+            if (!(dist > 0)) { errors.push(tr(`Linha ${ln}: distância inclinada deve ser maior que zero.`, `Line ${ln}: slope distance must be greater than zero.`)); return; }
+            if (!(zen > 0 && zen < 180)) { errors.push(tr(`Linha ${ln}: ângulo zenital fora de (0°, 180°).`, `Line ${ln}: zenith angle outside (0°, 180°).`)); return; }
 
             const sig = ['sHz', 'sZen', 'sDist'].map(k => parseNum(f[k], decimalComma));
-            if (sig.some(v => Number.isNaN(v))) { errors.push(`Linha ${ln}: desvio-padrão não numérico.`); return; }
+            if (sig.some(v => Number.isNaN(v))) { errors.push(tr(`Linha ${ln}: desvio-padrão não numérico.`, `Line ${ln}: non-numeric standard deviation.`)); return; }
 
             let fixed = false;
             if (f.fixed !== undefined) {
                 fixed = parseBool(f.fixed);
                 if (fixed === null) {
-                    errors.push(`Linha ${ln}: valor "${f.fixed}" inválido na coluna Fixo (use sim/não).`);
+                    errors.push(tr(`Linha ${ln}: valor "${f.fixed}" inválido na coluna Fixo (use sim/não).`, `Line ${ln}: invalid value "${f.fixed}" in the Fixo column (use sim/não or yes/no).`));
                     return;
                 }
             }
 
             const xyzRaw = ['X', 'Y', 'Z'].map(k => parseNum(f[k], decimalComma));
-            if (xyzRaw.some(v => Number.isNaN(v))) { errors.push(`Linha ${ln}: coordenada X,Y,Z não numérica.`); return; }
+            if (xyzRaw.some(v => Number.isNaN(v))) { errors.push(tr(`Linha ${ln}: coordenada X,Y,Z não numérica.`, `Line ${ln}: non-numeric X,Y,Z coordinate.`)); return; }
             const given = xyzRaw.filter(v => v !== null).length;
             if (given !== 0 && given !== 3) {
-                errors.push(`Linha ${ln}: informe X, Y e Z juntos ou deixe os três em branco.`);
+                errors.push(tr(`Linha ${ln}: informe X, Y e Z juntos ou deixe os três em branco.`, `Line ${ln}: give X, Y and Z together or leave all three blank.`));
                 return;
             }
             let xyz = given === 3 ? xyzRaw : null;
             if (xyz && !fixed) {
-                warnings.push(`Linha ${ln}: coordenadas de ${target} ignoradas (ponto não é fixo).`);
+                warnings.push(tr(`Linha ${ln}: coordenadas de ${target} ignoradas (ponto não é fixo).`, `Line ${ln}: coordinates of ${target} ignored (point is not a control point).`));
                 xyz = null;
             }
 
@@ -174,7 +177,7 @@
             });
         });
 
-        if (!map) errors.push('Arquivo vazio.');
+        if (!map) errors.push(tr('Arquivo vazio.', 'Empty file.'));
         return { rows, errors, warnings };
     }
 
@@ -369,12 +372,14 @@
 
     // Coordenadas ajustadas: uma linha por ponto (estações, pontos fixos e livres)
     function coordinatesToCSV(result) {
-        const out = ['Ponto,Tipo,X,Y,Z,sigma_X,sigma_Y,sigma_Z,omega_graus,sigma_omega_seg,' +
-            'semieixo_a_mm,semieixo_b_mm,semieixo_c_mm,nivel_confianca'];
+        const out = [tr('Ponto,Tipo,X,Y,Z,sigma_X,sigma_Y,sigma_Z,omega_graus,sigma_omega_seg,' +
+            'semieixo_a_mm,semieixo_b_mm,semieixo_c_mm,nivel_confianca',
+            'Point,Type,X,Y,Z,sigma_X,sigma_Y,sigma_Z,omega_deg,sigma_omega_arcsec,' +
+            'semiaxis_a_mm,semiaxis_b_mm,semiaxis_c_mm,confidence_level')];
         result.pointResults.forEach(p => {
             const ax = p.ellipsoid ? p.ellipsoid.axes.map(a => fixedDec(a * 1000, 4)) : ['', '', ''];
             out.push([
-                csvCell(p.name), p.tipo,
+                csvCell(p.name), termOf(p.tipo),
                 fixedDec(p.xyz[0], 5), fixedDec(p.xyz[1], 5), fixedDec(p.xyz[2], 5),
                 fixedDec(p.sigma[0], 6), fixedDec(p.sigma[1], 6), fixedDec(p.sigma[2], 6),
                 p.omega !== null ? fixedDec(p.omega / DEG, 9) : '',
@@ -390,13 +395,13 @@
         // Unidades no nome da coluna: ângulos ajustados em graus, resíduos angulares em
         // segundos, distância ajustada em m e resíduo/MDB da distância em mm
         const comp = [['Hz', 'graus', 'seg'], ['Zen', 'graus', 'seg'], ['D', 'm', 'mm']];
-        const head = ['Estacao', 'Ponto Visado', 'ativa', 'outlier'];
-        comp.forEach(([c, uL, uV]) => head.push(`${c}_ajustado_${uL}`, `v_${c}_${uV}`, `w_${c}`, `r_${c}`, `MDB_${c}_${uV}`));
+        const head = tr(['Estacao', 'Ponto Visado', 'ativa', 'outlier'], ['Station', 'Sighted Point', 'active', 'outlier']);
+        comp.forEach(([c, uL, uV]) => head.push(`${c}_${tr('ajustado', 'adjusted')}_${uL}`, `v_${c}_${uV}`, `w_${c}`, `r_${c}`, `MDB_${c}_${uV}`));
         const out = [head.join(',')];
         const byRow = new Map(result.obsData.map(o => [o.row.idx, o]));
         rows.forEach(r => {
             const o = byRow.get(r.idx);
-            const cells = [csvCell(r.station), csvCell(r.target), r.active ? 'sim' : 'não', r.flagged ? 'sim' : 'não'];
+            const cells = [csvCell(r.station), csvCell(r.target), r.active ? tr('sim', 'yes') : tr('não', 'no'), r.flagged ? tr('sim', 'yes') : tr('não', 'no')];
             if (!o) { comp.forEach(() => cells.push('', '', '', '', '')); out.push(cells.join(',')); return; }
             for (let c = 0; c < 3; c++) {
                 const ang = c < 2;

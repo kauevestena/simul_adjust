@@ -72,8 +72,9 @@
                 <a href="#datum">6. Datum e defeito de posto</a>
                 <a href="#fixos">&nbsp;&nbsp;6.1 Pontos fixos</a>
                 <a href="#livre">&nbsp;&nbsp;6.2 Rede livre</a>
-                <a href="#compat">&nbsp;&nbsp;6.3 Compatibilidade dos fixos</a>
-                <a href="#quadro">&nbsp;&nbsp;6.4 Quadro das quatro variantes</a>
+                <a href="#minimo">&nbsp;&nbsp;6.3 Injunções mínimas</a>
+                <a href="#compat">&nbsp;&nbsp;6.4 Compatibilidade dos fixos</a>
+                <a href="#quadro">&nbsp;&nbsp;6.5 Quadro das quatro variantes</a>
                 <a href="#qualidade">7. Controle de qualidade</a>
                 <a href="#elipsoides">8. Elipsoides e projeções</a>
                 <a href="#aproximacoes">9. Aproximações iniciais</a>
@@ -299,11 +300,11 @@
             <h3 id="fixos">6.1 Datum por pontos fixos</h3>
             <p>Os pontos fixos têm coordenadas conhecidas e entram como <strong>constantes</strong>: suas colunas
                 saem de \(A\), e \(N\) passa a ter posto completo. Um ponto fixo define as três translações, mas
-                não a rotação — são necessários <strong>pelo menos dois</strong>. Com \(u\) incógnitas:</p>
+                não a rotação — são necessários <strong>pelo menos dois</strong> (ou o datum mínimo da seção 6.3). Com \(u\) incógnitas:</p>
             <div class="eq">$$\nu = n - u, \qquad X = -N^{-1} U, \qquad \Sigma_{X_a} = \hat\sigma_0^2 N^{-1}$$</div>
             <p>Os \(\sigma\) e os elipsoides medem a precisão <em>em relação aos pontos fixos</em>, que têm
                 \(\sigma = 0\). Dois pontos fixos impõem 6 injunções onde bastariam 4: as 2 que sobram contam como
-                redundância e só são testadas se as coordenadas fixas forem independentes das visadas (seção 6.3).</p>
+                redundância e só são testadas se as coordenadas fixas forem independentes das visadas (seção 6.4).</p>
             <div class="warn"><p>Na amostra, os fixos M01 e M02 não têm coordenadas no CSV e são irradiados da
                 estação A, posta no datum local assumido. Como as coordenadas saem das próprias visadas, elas não
                 tensionam a rede: os resíduos dessas visadas são nulos.</p></div>
@@ -332,7 +333,40 @@
                 depende</strong>: coordenadas, \(\sigma\), elipsoides — na rede livre nenhum ponto tem
                 \(\sigma\) nulo, e as incertezas se distribuem pela rede inteira.</p>
 
-            <h3 id="compat">6.3 Compatibilidade dos pontos fixos</h3>
+            <h3 id="minimo">6.3 Injunções mínimas: estação de origem</h3>
+            <p>É o datum com <strong>exatamente</strong> as \(d = 4\) injunções do defeito de posto, sem excesso. A
+                primeira estação — a origem — tem a pose \((X_s, Y_s, Z_s, \omega_s)\) fixada em valores assumidos
+                (por padrão \(0, 0, 0, 0\), os campos "Datum local assumido"); todos os demais pontos, inclusive os
+                de apoio ("Fixo = sim"), são incógnitas. Quatro constantes bastam porque cada uma trava uma das
+                direções do espaço nulo: as três translações e a rotação em torno da vertical, esta travada por
+                \(\omega_s\) — o azimute de todas as visadas da origem fica sendo a leitura \(Hz\) mais uma
+                constante.</p>
+            <p>As colunas da origem saem de \(A\) (como as dos pontos fixos na seção 6.1), então \(N\) tem posto
+                completo e</p>
+            <div class="eq">$$\nu = n - u, \qquad X = -N^{-1} U, \qquad \Sigma_{X_a} = \hat\sigma_0^2 N^{-1}$$</div>
+            <p>com \(u\) já descontadas as 4 incógnitas da origem. É a mesma solução da rede livre escolhida com
+                \(C^T X = 0\), onde \(C\) seleciona \(\delta X_s, \delta Y_s, \delta Z_s, \delta\omega_s\). Como
+                \(C^T H\) é triangular com diagonal unitária, portanto inversível, a transformação S que leva a rede
+                livre a este datum existe e é</p>
+            <div class="eq">$$S = I - H\,(C^T H)^{-1} C^T, \qquad X_{\text{mín}} = S\,X_{\text{livre}}, \qquad \Sigma_{\text{mín}} = S\,\Sigma_{\text{livre}}\,S^T$$</div>
+            <ul>
+                <li><strong>Não muda</strong> (estimável): resíduos \(V\), \(V^TPV\), números de redundância, distâncias e
+                    ângulos entre pontos — e a precisão deles. Por isso os graus de liberdade são os mesmos da rede
+                    livre, \(n - (u_{\text{livre}} - 4)\).</li>
+                <li><strong>Muda</strong>: coordenadas, \(\sigma\) e elipsoides. A origem tem \(\sigma = 0\) e os demais
+                    \(\sigma\) passam a ser relativos a ela. O traço de \(\Sigma_{X_a}\) é maior que o da rede livre,
+                    que é o mínimo possível (seção 6.2).</li>
+                <li>Diferente de dois pontos fixos, não há excesso de injunções: nenhuma visada perde redundância e
+                    nenhum \(\sigma\) é artificialmente reduzido por coordenadas "conhecidas" que na verdade saíram das
+                    próprias observações.</li>
+                <li>As coordenadas dos pontos de apoio no CSV não são usadas: o datum é a pose da origem e as
+                    aproximações partem dela.</li>
+            </ul>
+            <p>Na amostra, com \(A\) em \((0, 0, 0)\) e \(\omega_A = 0\): \(u = 59\) e \(\nu = 72 - 59 = 13\), com o
+                mesmo \(V^TPV = 193{,}585\) da rede livre e dos pontos fixos. Mover o datum assumido translada e
+                gira a rede rigidamente, sem alterar \(V^TPV\).</p>
+
+            <h3 id="compat">6.4 Compatibilidade dos pontos fixos</h3>
             <p>As injunções que os pontos fixos impõem além do datum mínimo só aumentam \(V^TPV\) se as
                 coordenadas fixas discordarem das observações. Sob a hipótese de que são compatíveis,</p>
             <div class="eq">$$\Delta V^TPV = V^TPV_{\text{fixos}} - V^TPV_{\text{livre}} \ \sim\ \chi^2_{\nu_{\text{fixos}} - \nu_{\text{livre}}}$$</div>
@@ -340,7 +374,7 @@
                 independentes (uma rede sintética, por exemplo) o teste aprova os pontos corretos e reprova um
                 ponto fixo deslocado de poucos centímetros.</p>
 
-            <h3 id="quadro">6.4 Quadro das quatro variantes</h3>
+            <h3 id="quadro">6.5 Quadro das quatro variantes</h3>
             <div class="table-container my-3">
                 <table>
                     <thead>
@@ -428,6 +462,39 @@
         </article>
     </main>
 
+    <!-- Tradução: o HTML em português é capturado ANTES de o KaTeX renderizar (fonte LaTeX crua) -->
+    <script src="modelos_en.js"></script>
+    <script>
+        (function () {
+            const map = window.MODELOS_EN || {};
+            const norm = s => s.replace(/\s+/g, ' ').trim();
+            const items = [];
+            document.querySelectorAll('body *').forEach(el => {
+                if (['SCRIPT', 'STYLE'].includes(el.tagName)) return;
+                const label = el.getAttribute('aria-label');
+                if (label && map[norm(label)] !== undefined) items.push({ el, attr: 'aria-label', pt: label, en: map[norm(label)] });
+                if (el.closest('svg') && el.tagName !== 'text') return; // dentro do SVG, só os rótulos
+                const h = norm(el.innerHTML);
+                if (map[h] !== undefined) items.push({ el, pt: el.innerHTML, en: map[h] });
+            });
+            const MATH = {
+                delimiters: [
+                    { left: '$$', right: '$$', display: true },
+                    { left: '\\[', right: '\\]', display: true },
+                    { left: '\\(', right: '\\)', display: false }
+                ],
+                throwOnError: false
+            };
+            window.applyDocDom = function (en) {
+                items.forEach(it => {
+                    if (!it.el.isConnected) return;
+                    if (it.attr) { it.el.setAttribute(it.attr, en ? it.en : it.pt); return; }
+                    it.el.innerHTML = en ? it.en : it.pt;
+                    if (window.renderMathInElement) renderMathInElement(it.el, MATH);
+                });
+            };
+        })();
+    </script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
         onload="renderMathInElement(document.querySelector('.doc'), {
@@ -467,10 +534,16 @@
 
             const t = (k) => (i18n[lang] && i18n[lang][k]) || (i18n['pt-BR'] && i18n['pt-BR'][k]) || k;
             document.title = t('docTitle');
+            document.documentElement.lang = isPt ? 'pt-BR' : 'en';
+            const h1 = document.querySelector('header h1');
+            if (h1) h1.textContent = t('docTitle');
+            const sub = document.querySelector('header p');
+            if (sub) sub.textContent = t('docSubtitle');
+            if (window.applyDocDom) window.applyDocDom(!isPt);
             const pLink = document.getElementById('portalLink');
             if (pLink) pLink.href = `../index.html?lang=${isPt ? 'pt' : 'en'}`;
             const sLink = document.getElementById('simulLink');
-            if (sLink) sLink.href = `index.html?lang=${isPt ? 'pt' : 'en'}`;
+            if (sLink) { sLink.href = `index.html?lang=${isPt ? 'pt' : 'en'}`; sLink.textContent = t('simulLink'); }
         };
 
         window.setDocLanguage(getInitialLang());

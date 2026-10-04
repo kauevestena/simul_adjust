@@ -291,7 +291,7 @@ function maxUnknownDiff(a, b) {
 function flatV(res) { const out = []; res.V.forEach(v => out.push(...v)); return out; }
 {
     const g = synthetic({ noise: true, nStations: 3, nDetail: 8, seed: 21 });
-    ['fixos', 'livre'].forEach(datum => {
+    ['fixos', 'livre', 'minimo'].forEach(datum => {
         const c = NA.adjustNetwork(g.rows, withModel('combinado', datum));
         const p = NA.adjustNetwork(g.rows, withModel('parametrico', datum));
         assert.strictEqual(c.u, p.u);
@@ -412,6 +412,166 @@ function flatV(res) { const out = []; res.V.forEach(v => out.push(...v)); return
     const kv = new Map(model.summary);
     assert.ok(/Paramétrico/.test(kv.get('Modelo')) && /rede livre/.test(kv.get('Datum')) && /\+ 4/.test(kv.get('Graus de liberdade')));
     ok('relatório: modelo, datum e gl = n − u + d');
+}
+
+// ---------------------------------------------------------------- injunções mínimas
+console.log('\nInjunções mínimas (estação de origem: X, Y, Z e ω constantes)');
+// tolerâncias apertadas: os datums só concordam em r, V e σ de grandezas estimáveis no mesmo ponto de linearização
+const MIN = Object.assign({}, S, TIGHT, { datum: 'minimo' });
+const LIVRE = Object.assign({}, S, TIGHT, { datum: 'livre' });
+{
+    const rows = loadSample();
+    const res = NA.adjustNetwork(rows, MIN);
+    assert.ok(res.converged);
+    assert.strictEqual(res.datum, 'minimo');
+    assert.strictEqual(res.d, 0);
+    assert.strictEqual(res.nEq, 72);
+    assert.strictEqual(res.u, 59);
+    assert.strictEqual(res.dof, 13);
+    ok('amostra: u = 57 − 4 + 6 = 59, 72 equações, defeito de posto 0, 13 graus de liberdade');
+
+    const A = res.pointResults.find(p => p.name === 'A');
+    assert.ok(Math.hypot(...A.xyz) === 0 && A.omega === 0 && A.sigmaOmega === 0 && A.fixed && A.ellipsoid === null);
+    assert.ok(A.sigma.every(v => v === 0) && A.tipo === 'estação (origem)' && A.origem === 'datum assumido');
+    assert.ok(!res.unknowns.some(un => un.point === 'A'));
+    ok('estação A (origem) é constante: (0, 0, 0), ω = 0, sem incógnitas, σ = 0 e sem elipsoide');
+    const m01 = res.pointResults.find(p => p.name === 'M01');
+    assert.ok(!m01.fixed && m01.support && m01.tipo === 'apoio (livre)' && m01.sigma[0] > 0 && m01.ellipsoid);
+    ok('M01 e M02 viram incógnitas comuns (apoio livre), com σ e elipsoide');
+
+    // N de posto completo: nenhum autovalor nulo
+    const ev = res.eigN.map(Math.abs).sort((a, b) => a - b);
+    assert.ok(ev[0] > 1e-9 * ev[ev.length - 1], `λmin ${ev[0]}`);
+    ok(`N tem posto completo (λmin/λmax = ${(ev[0] / ev[ev.length - 1]).toExponential(1)}): 4 injunções bastam`);
+    approx(res.redundancySum, res.dof, 1e-6, 'Σr = gl = 13');
+
+    // Mesmos resíduos, VᵀPV, redundâncias e forma da rede que a rede livre e os pontos fixos
+    const lv = NA.adjustNetwork(rows, LIVRE);
+    const fx = NA.adjustNetwork(rows, Object.assign({}, S, TIGHT));
+    approx(res.VtPV, lv.VtPV, 1e-6, `VᵀPV igual à da rede livre (${res.VtPV.toFixed(3)})`);
+    approx(res.VtPV, fx.VtPV, 1e-6, 'VᵀPV igual à dos pontos fixos (os fixos vêm das visadas de A: ΔVᵀPV = 0)');
+    const dV = maxAbsDiff(flatV(res), flatV(lv));
+    assert.ok(dV < 1e-9, `ΔV ${dV}`);
+    const dr = Math.max(...res.obsData.map((o, i) => Math.max(...o.r.map((r, c) => Math.abs(r - lv.obsData[i].r[c])))));
+    assert.ok(dr < 1e-9, `Δr ${dr}`);
+    ok(`resíduos e números de redundância iguais aos da rede livre (ΔV ${dV.toExponential(1)}, Δr ${dr.toExponential(1)})`);
+
+    const P = res.pointResults, Pl = new Map(lv.pointResults.map(p => [p.name, p]));
+    let dd = 0;
+    for (let i = 0; i < P.length; i++) for (let j = i + 1; j < P.length; j++) {
+        const a = P[i].xyz, b = P[j].xyz, a2 = Pl.get(P[i].name).xyz, b2 = Pl.get(P[j].name).xyz;
+        dd = Math.max(dd, Math.abs(Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) - Math.hypot(a2[0] - b2[0], a2[1] - b2[1], a2[2] - b2[2])));
+    }
+    assert.ok(dd < 1e-8, `Δdistâncias ${dd}`);
+    const st = P.filter(p => p.isStation);
+    const dw = Math.max(...st.map(p => Math.abs(NA.wrapPi((p.omega - st[0].omega) - (Pl.get(p.name).omega - Pl.get(st[0].name).omega)))));
+    assert.ok(dw < 1e-9, `Δω relativo ${dw}`);
+    ok(`mesma forma: distâncias entre pontos (${dd.toExponential(1)} m) e diferenças de ω entre estações (${dw.toExponential(1)} rad)`);
+
+    // Quantidades estimáveis têm a mesma precisão em qualquer datum: σ da distância B–C
+    const sigDist = (r, n1, n2) => {
+        const a = r.pointResults.find(p => p.name === n1), b = r.pointResults.find(p => p.name === n2);
+        const d = a.xyz.map((v, i) => v - b.xyz[i]), L = Math.hypot(...d), g = d.map(v => v / L);
+        let v2 = 0;
+        for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
+            v2 += g[i] * g[j] * (a.Sigma[i][j] + b.Sigma[i][j]);
+        }
+        // covariância cruzada a–b
+        const ea = r.net.index.get(n1), eb = r.net.index.get(n2);
+        const ia = [ea.x, ea.y, ea.z], ib = [eb.x, eb.y, eb.z];
+        for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) v2 -= 2 * g[i] * g[j] * r.SigmaXa[ia[i]][ib[j]];
+        return Math.sqrt(v2);
+    };
+    const sM = sigDist(res, 'B', 'C'), sL = sigDist(lv, 'B', 'C');
+    assert.ok(Math.abs(sM - sL) < 1e-9 * Math.max(1, sL) + 1e-12, `σ(B–C): ${sM} × ${sL}`);
+    ok(`σ da distância B–C (estimável) igual nos dois datums: ${(sM * 1000).toFixed(3)} mm`);
+
+    // Os σ das coordenadas, não: crescem com a distância à origem e são nulos nela
+    const traceOf = r => r.unknowns.reduce((a, un, i) => a + (un.kind === 'w' ? 0 : r.SigmaXa[i][i]), 0);
+    assert.ok(traceOf(lv) < traceOf(res));
+    ok(`traço de Σ_Xa: ${(traceOf(lv) * 1e6).toFixed(1)} mm² na rede livre (mínimo) < ${(traceOf(res) * 1e6).toFixed(1)} mm² nas injunções mínimas`);
+}
+{
+    // Mover o datum assumido move a rede rigidamente: translação (X, Y, Z) e rotação (ω)
+    const rows = loadSample();
+    const base = NA.adjustNetwork(rows, MIN);
+    const th = 30 * DEG, T = [1000, 2000, 100];
+    const moved = NA.adjustNetwork(rows, Object.assign({}, MIN, { datumX: T[0], datumY: T[1], datumZ: T[2], datumOmegaDeg: 30 }));
+    let err = 0;
+    base.pointResults.forEach(p => {
+        const q = moved.pointResults.find(o => o.name === p.name).xyz;
+        const e = [T[0] + Math.cos(th) * p.xyz[0] - Math.sin(th) * p.xyz[1], T[1] + Math.sin(th) * p.xyz[0] + Math.cos(th) * p.xyz[1], T[2] + p.xyz[2]];
+        err = Math.max(err, Math.hypot(q[0] - e[0], q[1] - e[1], q[2] - e[2]));
+    });
+    assert.ok(err < 1e-6, `movimento rígido ${err}`);
+    approx(moved.VtPV, base.VtPV, 1e-6, `datum (X, Y, Z, ω) = (${T}, 30°): rede se move rigidamente (erro ${err.toExponential(1)} m) e VᵀPV não muda`);
+}
+{
+    // Sem nenhum ponto fixo e com um só: o datum por pontos fixos recusa, o mínimo resolve
+    const none = loadSample();
+    none.forEach(r => { r.fixed = false; });
+    assert.throws(() => NA.adjustNetwork(none, S), /Nenhum ponto fixo/);
+    const a = NA.adjustNetwork(none, MIN);
+    assert.ok(a.converged && a.dof === 13);
+    const one = loadSample();
+    one.filter(r => r.target === 'M02').forEach(r => { r.fixed = false; });
+    assert.throws(() => NA.adjustNetwork(one, S), /Só um ponto fixo/);
+    const b = NA.adjustNetwork(one, MIN);
+    assert.ok(b.converged && b.dof === 13);
+    ok('sem ponto fixo e com um só: o datum por pontos fixos recusa; as injunções mínimas resolvem (gl 13)');
+}
+{
+    // Coordenadas dos fixos no CSV não entram: o datum é a estação de origem
+    const g = synthetic({ noise: true, nStations: 3, nDetail: 6, seed: 33 });
+    const res = NA.adjustNetwork(g.rows, MIN);
+    assert.ok(res.converged && res.log.some(l => /não são usadas/.test(l.msg)));
+    const o = res.pointResults.find(p => p.isStation && p.fixed);
+    assert.strictEqual(o.name, res.net.stations[0]);
+    assert.ok(Math.hypot(...o.xyz) === 0 && o.omega === 0);
+    // A forma (distâncias) é a da rede livre
+    const lv = NA.adjustNetwork(g.rows, LIVRE);
+    approx(res.VtPV, lv.VtPV, 1e-6 * Math.max(1, lv.VtPV), 'rede sintética com fixos no CSV: VᵀPV igual à da rede livre');
+    ok(`origem do datum = primeira estação (${o.name}); coordenadas dos fixos no CSV ignoradas e registradas no log`);
+}
+{
+    const rows = loadSample();
+    const res = NA.adjustNetwork(rows, Object.assign({}, MIN, { model: 'parametrico' }));
+    const model = Report.buildReportModel(res, { rows, origin: 'x', detection: null, settings: S });
+    const kv = new Map(model.summary);
+    assert.ok(/injunções mínimas/.test(kv.get('Datum')) && /estação A/.test(kv.get('Datum')));
+    assert.ok(/13 = 72 − 59/.test(kv.get('Graus de liberdade')), kv.get('Graus de liberdade'));
+    assert.ok(/59 = 6 coordenadas de estação \+ 2 orientações \+ 51/.test(kv.get('Incógnitas')), kv.get('Incógnitas'));
+    const coords = io.coordinatesToCSV(res).trim().split('\n');
+    assert.ok(coords.some(l => l.startsWith('A,estação (origem),')));
+    assert.ok(Report.renderText(model).includes('injunções mínimas'));
+    ok('relatório e CSV com as injunções mínimas: datum, gl = 72 − 59, incógnitas e estação de origem');
+}
+
+// ---------------------------------------------------------------- idioma
+console.log('\nIdioma (PT-BR / EN)');
+{
+    const rows = loadSample();
+    const pt = NA.adjustNetwork(rows, MIN);
+    globalThis.APP_LANG = 'en';
+    try {
+        const en = NA.adjustNetwork(rows, MIN);
+        assert.strictEqual(en.VtPV, pt.VtPV);
+        assert.ok(en.log.some(l => /Minimal constraints: station A is the datum origin/.test(l.msg)));
+        assert.ok(!en.log.some(l => /Injunções mínimas/.test(l.msg)));
+        assert.strictEqual(en.datumLabel, 'Minimal constraints (origin station)');
+        assert.throws(() => NA.adjustNetwork(rows.map(r => Object.assign({}, r, { active: false })), S), /No active sightings/);
+        const m = Report.buildReportModel(en, { rows, origin: 'x', detection: null, settings: S });
+        const keys = m.summary.map(([k]) => k);
+        assert.ok(keys.includes('Degrees of freedom') && keys.includes('Convergence'));
+        assert.ok(Report.renderText(m).includes('ITERATIONS') && Report.renderText(m).includes('WARNINGS AND ERRORS'));
+        assert.ok(io.coordinatesToCSV(en).startsWith('Point,Type,X,Y,Z'));
+        assert.ok(io.coordinatesToCSV(en).includes('A,station (origin),'));
+        const bad = io.parseCSV('Estacao,Ponto Visado\nA,A\n');
+        assert.ok(bad.errors.length && bad.errors.every(e => !/Linha|Cabeçalho/.test(e)), bad.errors.join('|'));
+    } finally { delete globalThis.APP_LANG; }
+    // sem APP_LANG, tudo volta ao português
+    assert.ok(NA.adjustNetwork(rows, MIN).log.some(l => /Injunções mínimas: a estação A/.test(l.msg)));
+    ok('mensagens, rótulos, relatório e CSV saem em inglês com APP_LANG = "en" e em português por padrão');
 }
 
 // ---------------------------------------------------------------- outliers

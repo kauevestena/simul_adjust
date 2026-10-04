@@ -122,6 +122,7 @@
                                     <select id="selDatum" class="field" onchange="app.updateSettings()">
                                         <option value="fixos">Pontos fixos</option>
                                         <option value="livre">Rede livre</option>
+                                        <option value="minimo" id="optDatumMinimal">Injunções mínimas</option>
                                     </select>
                                 </div>
                             </div>
@@ -507,9 +508,10 @@
 
                             <h3 class="text-xs font-bold text-stone-500 uppercase tracking-wider mt-5 mb-2 border-b pb-1">
                                 Datum local assumido</h3>
-                            <p class="text-[10px] text-stone-400 leading-tight mb-2">Usado quando os pontos fixos não têm
+                            <p id="datumLocalHelp" class="text-[10px] text-stone-400 leading-tight mb-2">Usado quando os pontos fixos não têm
                                 X,Y,Z no CSV: eles são irradiados da única estação que os visa, posta nesta posição e
-                                orientação.</p>
+                                orientação. Nas injunções mínimas é a pose fixa (X, Y, Z, ω) da primeira estação, a
+                                origem do datum.</p>
                             <div class="grid grid-cols-4 gap-2">
                                 <div><label class="field-label" for="setDatumX">X (m)</label>
                                     <input id="setDatumX" type="number" class="field" value="0" step="1" onchange="app.updateSettings()"></div>
@@ -603,10 +605,11 @@
                                     jacobiana da irradiação, e M = B P⁻¹ B<sup>T</sup> é a MVC cartesiana de cada vetor
                                     irradiado — o mesmo &Sigma;<sub>XYZ</sub> do ajustamento de planos. N =
                                     A<sup>T</sup>M⁻¹A, X = −N⁻¹A<sup>T</sup>M⁻¹W, K = −M⁻¹(AX + W) e V = P⁻¹B<sup>T</sup>K.</p>
-                                <p><strong class="text-stone-700">Datum.</strong> Distâncias fixam a escala e os
+                                <p id="helpDatum"><strong class="text-stone-700">Datum.</strong> Distâncias fixam a escala e os
                                     zenitais a vertical; faltam três translações e a rotação em torno da vertical.
-                                    Dois pontos fixos bastam para defini-las. Cada estação ganha uma incógnita de
-                                    orientação &omega;.</p>
+                                    Dois pontos fixos bastam para defini-las — ou, sem excesso de injunções, a pose
+                                    (X, Y, Z, &omega;) de uma estação: as injunções mínimas. Cada estação ganha uma
+                                    incógnita de orientação &omega;.</p>
                                 <p><strong class="text-stone-700">Paramétrico e rede livre.</strong> O passo 1 também
                                     oferece o modelo paramétrico (L<sub>a</sub> = F(X<sub>a</sub>)) e a rede livre (todos
                                     os pontos como incógnitas, defeito de posto 4 removido por injunções internas). As
@@ -693,8 +696,9 @@
     <script src="views2d.js"></script>
     <script src="report.js"></script>
     <script type="module">
-        import { i18n } from './i18n.js';
+        import { i18n, domEn } from './i18n.js';
         window.intersecaoI18n = i18n;
+        window.intersecaoDomEn = domEn;
     </script>
     <script src="app.js"></script>
 </body>

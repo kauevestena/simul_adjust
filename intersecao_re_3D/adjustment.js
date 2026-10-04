@@ -23,6 +23,8 @@
     const ARCSEC = Math.PI / (180 * 3600);
     const DEG = Math.PI / 180;
     const TWO_PI = 2 * Math.PI;
+    // Mensagens bilíngues: português por padrão; o app define globalThis.APP_LANG = 'en'
+    const tr = (pt, en) => (globalThis.APP_LANG === 'en' ? en : pt);
 
     // ---------------------------------------------------------------- álgebra linear
     // Copiada de ajusta_planos/adjustment.js: os simuladores não compartilham código.
@@ -68,7 +70,7 @@
             for (let col = 0; col < n; col++) {
                 let piv = col;
                 for (let r = col + 1; r < n; r++) if (Math.abs(A[r][col]) > Math.abs(A[piv][col])) piv = r;
-                if (Math.abs(A[piv][col]) < 1e-300) throw new Error('Matriz singular na inversão.');
+                if (Math.abs(A[piv][col]) < 1e-300) throw new Error(tr('Matriz singular na inversão.', 'Singular matrix in inversion.'));
                 if (piv !== col) { [A[piv], A[col]] = [A[col], A[piv]]; [I[piv], I[col]] = [I[col], I[piv]]; }
                 const d = A[col][col];
                 for (let j = 0; j < n; j++) { A[col][j] /= d; I[col][j] /= d; }
@@ -88,7 +90,7 @@
             const [a, b, c] = m[0], [d, e, f] = m[1], [g, h, i] = m[2];
             const A = e * i - f * h, B = -(d * i - f * g), C = d * h - e * g;
             const det = a * A + b * B + c * C;
-            if (!(Math.abs(det) > 1e-300)) throw new Error('Bloco 3×3 singular.');
+            if (!(Math.abs(det) > 1e-300)) throw new Error(tr('Bloco 3×3 singular.', 'Singular 3×3 block.'));
             const k = 1 / det;
             return [
                 [A * k, -(b * i - c * h) * k, (b * f - c * e) * k],
@@ -450,7 +452,7 @@
     function buildNetwork(rows, S) {
         const log = makeLog();
         const act = rows.filter(r => r.active);
-        if (!act.length) throw new NetworkError('Nenhuma visada ativa.', log);
+        if (!act.length) throw new NetworkError(tr('Nenhuma visada ativa.', 'No active sightings.'), log);
 
         // "Fixo" e X,Y,Z são propriedades do ponto: lidos de todas as linhas, ativas ou não
         const flags = new Map(), given = new Map();
@@ -462,43 +464,52 @@
                 const prev = given.get(r.target);
                 if (!prev) given.set(r.target, { xyz: r.xyz.slice(), line: r.line });
                 else if (prev.xyz.some((v, i) => Math.abs(v - r.xyz[i]) > 1e-6)) {
-                    log.warn(`Coordenadas diferentes para ${r.target} (linhas ${prev.line} e ${r.line}); usadas as da linha ${prev.line}.`);
+                    log.warn(tr(`Coordenadas diferentes para ${r.target} (linhas ${prev.line} e ${r.line}); usadas as da linha ${prev.line}.`, `Different coordinates for ${r.target} (lines ${prev.line} and ${r.line}); using those of line ${prev.line}.`));
                 }
             }
         });
         flags.forEach((f, name) => {
-            if (f.yes && f.no) log.warn(`${name} está marcado como fixo em ${f.yes} linha(s) e livre em ${f.no}; tratado como fixo.`);
+            if (f.yes && f.no) log.warn(tr(`${name} está marcado como fixo em ${f.yes} linha(s) e livre em ${f.no}; tratado como fixo.`, `${name} is flagged as control in ${f.yes} line(s) and free in ${f.no}; treated as control.`));
         });
         const isFixed = name => { const f = flags.get(name); return !!f && f.yes > 0; };
 
         const stations = unique(act.map(r => r.station));
         const targets = unique(act.map(r => r.target));
         unique(rows.map(r => r.station)).filter(s => !stations.includes(s))
-            .forEach(s => log.info(`Estação ${s} ficou sem visadas ativas e saiu do ajustamento.`));
+            .forEach(s => log.info(tr(`Estação ${s} ficou sem visadas ativas e saiu do ajustamento.`, `Station ${s} has no active sightings left and was dropped from the adjustment.`)));
         unique(rows.map(r => r.target)).filter(t => !targets.includes(t) && !stations.includes(t))
-            .forEach(t => log.info(`Ponto ${t} ficou sem visadas ativas e saiu do ajustamento.`));
+            .forEach(t => log.info(tr(`Ponto ${t} ficou sem visadas ativas e saiu do ajustamento.`, `Point ${t} has no active sightings left and was dropped from the adjustment.`)));
 
         // Na rede livre os pontos de apoio ("Fixo = sim") também são incógnitas: suas
         // coordenadas, dadas ou obtidas pela regra do datum, servem só de aproximação.
+        // Injunções mínimas: idem, mas o datum vem da pose (X, Y, Z, ω) da estação de origem,
+        // tomada como constante — exatamente as 4 injunções do defeito de posto.
         const free = S.datum === 'livre';
+        const minimal = S.datum === 'minimo';
+        const loose = free || minimal;
         const fixedPts = unique(targets.concat(stations)).filter(isFixed);
-        if (!free && !fixedPts.length) {
-            throw new NetworkError('Nenhum ponto fixo entre as visadas ativas: marque os pontos de apoio com Fixo = sim ' +
-                'ou use a rede livre (injunções internas).', log);
+        if (!loose && !fixedPts.length) {
+            throw new NetworkError(tr('Nenhum ponto fixo entre as visadas ativas: marque os pontos de apoio com Fixo = sim ' +
+                'ou use a rede livre (injunções internas) ou as injunções mínimas.',
+                'No control point among the active sightings: flag the support points with Fixed = yes ' +
+                'or use the free network (inner constraints) or the minimal constraints.'), log);
         }
-        if (!free && fixedPts.length === 1) {
-            throw new NetworkError(`Só um ponto fixo (${fixedPts[0]}): ele define as três translações, mas não a rotação em torno ` +
-                'da vertical. São necessários ao menos 2 pontos fixos — ou use a rede livre (injunções internas).', log);
+        if (!loose && fixedPts.length === 1) {
+            throw new NetworkError(tr(`Só um ponto fixo (${fixedPts[0]}): ele define as três translações, mas não a rotação em torno ` +
+                'da vertical. São necessários ao menos 2 pontos fixos — ou use a rede livre (injunções internas) ou as injunções mínimas.',
+                `Only one control point (${fixedPts[0]}): it defines the three translations but not the rotation about ` +
+                'the vertical. At least 2 control points are needed — or use the free network (inner constraints) or the minimal constraints.'), log);
         }
         const fixedCoords = new Map();
         fixedPts.forEach(n => { if (given.has(n)) fixedCoords.set(n, given.get(n).xyz.slice()); });
 
         // Pontos fixos sem coordenadas: irradiados da única estação que os visa
         const missing = fixedPts.filter(n => !fixedCoords.has(n));
-        const datum = { computed: missing.slice(), origins: [] };
+        const datum = { computed: minimal ? [] : missing.slice(), origins: [] };
         // Na rede livre a regra do datum só gera aproximações: se ela não se aplica, os
-        // pontos sem coordenadas são simplesmente irradiados como os demais.
-        let ruleApplies = missing.length > 0;
+        // pontos sem coordenadas são simplesmente irradiados como os demais. Nas injunções
+        // mínimas ela nunca se aplica: o datum é a pose da estação de origem.
+        let ruleApplies = missing.length > 0 && !minimal;
         if (ruleApplies && free) {
             const obsBy = missing.map(n => unique(act.filter(r => r.target === n).map(r => r.station)));
             const origins = unique(obsBy.map(s => s[0]));
@@ -507,20 +518,21 @@
                 origins.filter(st => withCoords(st) < 2).length <= 1;
             if (!ruleApplies) {
                 datum.computed = [];
-                log.info(`Rede livre: ${missing.join(', ')} (de apoio, sem X,Y,Z) entram nas aproximações como pontos comuns.`);
+                log.info(tr(`Rede livre: ${missing.join(', ')} (de apoio, sem X,Y,Z) entram nas aproximações como pontos comuns.`, `Free network: ${missing.join(', ')} (support points without X,Y,Z) enter the approximations as ordinary points.`));
             }
         }
         if (ruleApplies) {
             const asStation = missing.filter(n => stations.includes(n));
             if (asStation.length) {
-                throw new NetworkError(`O ponto fixo ${asStation.join(', ')} também é estação e não tem coordenadas; informe X,Y,Z.`, log);
+                throw new NetworkError(tr(`O ponto fixo ${asStation.join(', ')} também é estação e não tem coordenadas; informe X,Y,Z.`, `Control point ${asStation.join(', ')} is also a station and has no coordinates; provide X,Y,Z.`), log);
             }
             const obsBy = new Map(missing.map(n => [n, unique(act.filter(r => r.target === n).map(r => r.station))]));
             const multi = missing.filter(n => obsBy.get(n).length > 1);
             if (multi.length) {
-                throw new NetworkError('Ponto fixo sem coordenadas visado de mais de uma estação: ' +
+                throw new NetworkError(tr('Ponto fixo sem coordenadas visado de mais de uma estação: ', 'Control point without coordinates sighted from more than one station: ') +
                     multi.map(n => `${n} (${obsBy.get(n).join(', ')})`).join('; ') +
-                    '. Sem X,Y,Z só é possível uma estação de origem: informe as coordenadas ou mantenha as visadas desses pontos numa única estação.', log);
+                    tr('. Sem X,Y,Z só é possível uma estação de origem: informe as coordenadas ou mantenha as visadas desses pontos numa única estação.',
+                        '. Without X,Y,Z only one origin station is possible: provide the coordinates or keep the sightings to these points on a single station.'), log);
             }
             const origins = unique(missing.map(n => obsBy.get(n)[0]));
             const assumed = [];
@@ -538,8 +550,10 @@
                 datum.origins.push({ station: st, method, xyz: pose.xyz.slice(), omega: pose.omega });
             });
             if (assumed.length > 1) {
-                throw new NetworkError(`Só uma estação pode ser a origem do datum local assumido, mas ${assumed.join(', ')} dependeriam dele. ` +
-                    'Informe X,Y,Z de pontos fixos para as demais.', log);
+                throw new NetworkError(tr(`Só uma estação pode ser a origem do datum local assumido, mas ${assumed.join(', ')} dependeriam dele. ` +
+                    'Informe X,Y,Z de pontos fixos para as demais.',
+                    `Only one station can be the origin of the assumed local datum, but ${assumed.join(', ')} would depend on it. ` +
+                    'Provide X,Y,Z of control points for the others.'), log);
             }
             missing.forEach(n => {
                 const org = datum.origins.find(o => o.station === obsBy.get(n)[0]);
@@ -554,31 +568,48 @@
             datum.origins.forEach(o => {
                 const pts = missing.filter(n => obsBy.get(n)[0] === o.station);
                 const pose = o.method === 'datum assumido'
-                    ? `datum local assumido em ${o.station}: X=${o.xyz[0]}, Y=${o.xyz[1]}, Z=${o.xyz[2]}, ω=${(o.omega / DEG).toFixed(4)}°`
-                    : `pose de ${o.station} obtida por resseção nos fixos com coordenadas`;
-                log.info(`Pontos fixos sem coordenadas no CSV (${pts.join(', ')}) foram irradiados de ${o.station} (${pose})` +
-                    (free ? ' — na rede livre, só como aproximação.' : '.'));
+                    ? tr(`datum local assumido em ${o.station}: X=${o.xyz[0]}, Y=${o.xyz[1]}, Z=${o.xyz[2]}, ω=${(o.omega / DEG).toFixed(4)}°`,
+                        `assumed local datum at ${o.station}: X=${o.xyz[0]}, Y=${o.xyz[1]}, Z=${o.xyz[2]}, ω=${(o.omega / DEG).toFixed(4)}°`)
+                    : tr(`pose de ${o.station} obtida por resseção nos fixos com coordenadas`, `pose of ${o.station} obtained by resection on the control points with coordinates`);
+                log.info(tr(`Pontos fixos sem coordenadas no CSV (${pts.join(', ')}) foram irradiados de ${o.station} (${pose})`,
+                    `Control points without coordinates in the CSV (${pts.join(', ')}) were radiated from ${o.station} (${pose})`) +
+                    (free ? tr(' — na rede livre, só como aproximação.', ' — in the free network, only as approximations.') : '.'));
                 if (o.method === 'datum assumido' && !free) {
-                    log.info(`As visadas de ${o.station} a ${pts.join(', ')} definem o datum: como as coordenadas saíram ` +
-                        'delas mesmas, seus resíduos ficam nulos enquanto o resto da rede não as tensionar.');
+                    log.info(tr(`As visadas de ${o.station} a ${pts.join(', ')} definem o datum: como as coordenadas saíram ` +
+                        'delas mesmas, seus resíduos ficam nulos enquanto o resto da rede não as tensionar.',
+                        `The sightings from ${o.station} to ${pts.join(', ')} define the datum: since the coordinates came ` +
+                        'from them, their residuals stay null as long as the rest of the network does not strain them.'));
                 }
             });
         }
 
         // Constantes do ajustamento: os pontos fixos, só no datum por pontos fixos
-        const constCoords = free ? new Map() : fixedCoords;
+        const constCoords = loose ? new Map() : fixedCoords;
         // Aproximações da rede livre: precisam de uma estação que veja 2 pontos de apoio
         // conhecidos; sem isso, partem da primeira estação no datum local assumido.
+        // Nas injunções mínimas partem sempre dela: as aproximações têm de estar no mesmo
+        // referencial das injunções, e a estação de origem é constante.
         const seedPoses = [];
-        if (free) {
+        const fixedOmega = new Map();
+        let origin = null;
+        if (minimal) {
+            origin = stations[0];
+            const pose = [S.datumX, S.datumY, S.datumZ];
+            const om = wrap2Pi(S.datumOmegaDeg * DEG);
+            if (fixedCoords.size) log.info(tr('Injunções mínimas: as coordenadas dos pontos de apoio no CSV não são usadas; o datum é a pose da estação de origem.', 'Minimal constraints: the support-point coordinates in the CSV are not used; the datum is the pose of the origin station.'));
+            fixedCoords.clear();
+            constCoords.set(origin, pose.slice());
+            fixedOmega.set(origin, om);
+            seedPoses.push({ station: origin, xyz: pose.slice(), omega: om });
+        } else if (free) {
             const startable = stations.some(st =>
                 unique(act.filter(r => r.station === st && fixedCoords.has(r.target)).map(r => r.target)).length >= 2);
             if (!startable) {
-                if (fixedCoords.size) log.info('Rede livre: os pontos de apoio com coordenadas não bastam para iniciar as aproximações; foram ignorados nelas.');
+                if (fixedCoords.size) log.info(tr('Rede livre: os pontos de apoio com coordenadas não bastam para iniciar as aproximações; foram ignorados nelas.', 'Free network: the support points with coordinates are not enough to start the approximations; they were ignored in them.'));
                 fixedCoords.clear();
                 const st = stations[0];
                 seedPoses.push({ station: st, xyz: [S.datumX, S.datumY, S.datumZ], omega: wrap2Pi(S.datumOmegaDeg * DEG) });
-                log.info(`Rede livre: as aproximações partem de ${st} no datum local assumido ` +
+                log.info(tr(`Rede livre: as aproximações partem de ${st} no datum local assumido `, `Free network: the approximations start from ${st} at the assumed local datum `) +
                     `(X=${S.datumX}, Y=${S.datumY}, Z=${S.datumZ}, ω=${S.datumOmegaDeg}°).`);
             }
         }
@@ -594,7 +625,7 @@
         stations.forEach(s => {
             const e = { x: null, y: null, z: null, w: null };
             if (!constCoords.has(s)) addXYZ(s, e);
-            e.w = unknowns.length; unknowns.push({ name: `ω_${s}`, point: s, kind: 'w' });
+            if (!fixedOmega.has(s)) { e.w = unknowns.length; unknowns.push({ name: `ω_${s}`, point: s, kind: 'w' }); }
             index.set(s, e);
         });
         targets.forEach(t => {
@@ -606,23 +637,35 @@
 
         // Defeito de posto: distâncias fixam a escala e zenitais a vertical; sobram três
         // translações e a rotação em torno da vertical. Os pontos fixos o removem; na rede
-        // livre ele fica em N e é removido pelas injunções internas (d = 4 volta ao gl).
+        // livre ele fica em N e é removido pelas injunções internas (d = 4 volta ao gl);
+        // nas injunções mínimas a estação de origem (X, Y, Z, ω constantes) o remove.
         const d = free ? 4 : 0;
         const u = unknowns.length, nEq = 3 * act.length, dof = nEq - u + d;
         if (dof < 0) {
-            throw new NetworkError(`Redundância negativa: ${nEq} equações para ${u} incógnitas` +
-                (d ? ` e defeito de posto ${d}` : '') + '. Adicione visadas.', log);
+            throw new NetworkError(tr(`Redundância negativa: ${nEq} equações para ${u} incógnitas`, `Negative redundancy: ${nEq} equations for ${u} unknowns`) +
+                (d ? tr(` e defeito de posto ${d}`, ` and rank defect ${d}`) : '') + tr('. Adicione visadas.', '. Add sightings.'), log);
         }
-        if (dof === 0) log.warn('Redundância nula: solução única, sem controle de qualidade possível.');
+        if (dof === 0) log.warn(tr('Redundância nula: solução única, sem controle de qualidade possível.', 'Zero redundancy: unique solution, no quality control possible.'));
         if (free) {
             const nPts = unknowns.filter(x => x.kind === 'X').length;
-            log.info(`Rede livre: defeito de posto 4 removido por injunções internas sobre as coordenadas dos ${nPts} pontos ` +
-                '(traço mínimo). A rede conserva o centróide e a orientação média das coordenadas aproximadas.');
+            log.info(tr(`Rede livre: defeito de posto 4 removido por injunções internas sobre as coordenadas dos ${nPts} pontos ` +
+                '(traço mínimo). A rede conserva o centróide e a orientação média das coordenadas aproximadas.',
+                `Free network: rank defect 4 removed by inner constraints on the coordinates of the ${nPts} points ` +
+                '(minimum trace). The network keeps the centroid and mean orientation of the approximate coordinates.'));
+        }
+        if (minimal) {
+            log.info(tr(`Injunções mínimas: a estação ${origin} é a origem do datum, fixada em X=${S.datumX}, Y=${S.datumY}, ` +
+                `Z=${S.datumZ} e ω=${S.datumOmegaDeg}° — 4 injunções, o defeito de posto. Os demais pontos, inclusive os de apoio, ` +
+                'são incógnitas; gl = n − u.',
+                `Minimal constraints: station ${origin} is the datum origin, fixed at X=${S.datumX}, Y=${S.datumY}, ` +
+                `Z=${S.datumZ} and ω=${S.datumOmegaDeg}° — 4 constraints, the rank defect. All other points, support points included, ` +
+                'are unknowns; dof = n − u.'));
         }
 
         return {
             rows: act, stations, targets, fixedCoords: constCoords, supportCoords: fixedCoords, supportNames: fixedPts,
-            seedPoses, free, d, isFixed, datum, unknowns, index, u, nEq, dof, log
+            seedPoses, free, minimal, origin, fixedOmega, datumKind: free ? 'livre' : (minimal ? 'minimo' : 'fixos'),
+            d, isFixed, datum, unknowns, index, u, nEq, dof, log
         };
     }
 
@@ -682,8 +725,10 @@
             if (!best) {
                 const why = Array.from(pending).map(st =>
                     `${st} (${unique(rowsBy.get(st).filter(r => known.has(r.target)).map(r => r.target)).length})`).join(', ');
-                throw new NetworkError(`Não foi possível obter aproximações para as estações ${why}: cada uma precisa visar ` +
-                    'ao menos 2 pontos já determinados (fixos ou irradiados de outra estação). Entre parênteses, quantos ela vê.', log);
+                throw new NetworkError(tr(`Não foi possível obter aproximações para as estações ${why}: cada uma precisa visar ` +
+                    'ao menos 2 pontos já determinados (fixos ou irradiados de outra estação). Entre parênteses, quantos ela vê.',
+                    `Could not obtain approximations for stations ${why}: each one must sight ` +
+                    'at least 2 already determined points (control points or radiated from another station). In parentheses, how many it sees.'), log);
             }
             const st = best.st;
             const ownXYZ = best.own ? known.get(st) : null;
@@ -708,25 +753,27 @@
                 let hint = '';
                 const src = source.get(bad.row.target);
                 if (Math.hypot(...flipped.map((v, i) => v - bad.known[i])) < tol) {
-                    hint = ` A diferença desaparece somando 180° à leitura horizontal de ${st}→${bad.row.target}: leitura em face II não reduzida?`;
+                    hint = tr(` A diferença desaparece somando 180° à leitura horizontal de ${st}→${bad.row.target}: leitura em face II não reduzida?`, ` The difference vanishes when adding 180° to the horizontal reading of ${st}→${bad.row.target}: unreduced face II reading?`);
                 } else if (src && src.kind === 'irradiado') {
                     const o = src.origin;
                     const alt = applyPose(known.get(o.station) || [0, 0, 0], omega.get(o.station), flip(local(src.row)));
                     if (Math.hypot(...alt.map((v, i) => v - predicted[i])) < tol) {
-                        hint = ` A diferença desaparece somando 180° à leitura horizontal de ${src.row.station}→${bad.row.target}: leitura em face II não reduzida?`;
+                        hint = tr(` A diferença desaparece somando 180° à leitura horizontal de ${src.row.station}→${bad.row.target}: leitura em face II não reduzida?`, ` The difference vanishes when adding 180° to the horizontal reading of ${src.row.station}→${bad.row.target}: unreduced face II reading?`);
                         known.set(bad.row.target, predicted);
                         source.set(bad.row.target, { kind: 'irradiado', origin: { station: st }, row: bad.row });
                     }
                 }
-                log.warn(`Aproximações: ${bad.row.target} destoa ${fmtLen(pose.misfits[worst])} na resseção de ${st} e foi deixado de fora dela.${hint}`);
+                log.warn(tr(`Aproximações: ${bad.row.target} destoa ${fmtLen(pose.misfits[worst])} na resseção de ${st} e foi deixado de fora dela.${hint}`, `Approximations: ${bad.row.target} deviates ${fmtLen(pose.misfits[worst])} in the resection of ${st} and was left out of it.${hint}`));
                 excluded.push({ target: bad.row.target, misfit: pose.misfits[worst] });
                 pairs = rest;
                 pose = refit;
             }
             const maxMis = Math.max(...pose.misfits);
             if (maxMis > tol) {
-                log.warn(`Aproximações: a resseção de ${st} só dispõe de ${pairs.length} ponto(s) e eles discordam ${fmtLen(maxMis)}; ` +
-                    `confira as visadas ${pairs.map(p => `${st}→${p.row.target}`).join(', ')}.`);
+                log.warn(tr(`Aproximações: a resseção de ${st} só dispõe de ${pairs.length} ponto(s) e eles discordam ${fmtLen(maxMis)}; ` +
+                    `confira as visadas ${pairs.map(p => `${st}→${p.row.target}`).join(', ')}.`,
+                    `Approximations: the resection of ${st} has only ${pairs.length} point(s) and they disagree by ${fmtLen(maxMis)}; ` +
+                    `check the sightings ${pairs.map(p => `${st}→${p.row.target}`).join(', ')}.`));
             }
             if (!best.own) { known.set(st, pose.xyz); source.set(st, { kind: 'resseção' }); }
             omega.set(st, pose.omega);
@@ -753,7 +800,7 @@
         if (model === 'parametrico') {
             return net.rows.map((r, k) => {
                 const es = idx.get(r.station), et = idx.get(r.target);
-                const om = Xv[es.w];
+                const om = es.w !== null ? Xv[es.w] : net.fixedOmega.get(r.station);
                 const st = coordOf(r.station), tg = coordOf(r.target);
                 const F = observationF(st, om, tg);
                 const W = [wrapPi(F[0] - Lb[k][0]), F[1] - Lb[k][1], F[2] - Lb[k][2]];
@@ -767,8 +814,10 @@
                     cols.push(es.x, es.y, es.z);
                     Acols.push(J[0].map(v => -v), J[1].map(v => -v), J[2].map(v => -v));
                 }
-                cols.push(es.w);
-                Acols.push([-1, 0, 0]);
+                if (es.w !== null) {
+                    cols.push(es.w);
+                    Acols.push([-1, 0, 0]);
+                }
                 const s2 = sig[k].map(v => v * v);
                 return {
                     cols, Acols, F, W,
@@ -781,7 +830,7 @@
         return net.rows.map((r, k) => {
             const L0 = La[k];
             const es = idx.get(r.station), et = idx.get(r.target);
-            const om = Xv[es.w];
+            const om = es.w !== null ? Xv[es.w] : net.fixedOmega.get(r.station);
             const st = coordOf(r.station), tg = coordOf(r.target);
             const F = conditionF(L0, st, om, tg);
             const B = jacobianB(L0, om);
@@ -803,8 +852,10 @@
                 cols.push(es.x, es.y, es.z);
                 Acols.push([-1, 0, 0], [0, -1, 0], [0, 0, -1]);
             }
-            cols.push(es.w);
-            Acols.push(omegaColumn(L0, om));
+            if (es.w !== null) {
+                cols.push(es.w);
+                Acols.push(omegaColumn(L0, om));
+            }
             return { cols, Acols, B, M, Minv, W, F };
         });
     }
@@ -854,8 +905,16 @@
         return linalg.inv(Nb).slice(0, u).map(r => r.slice(0, u));
     }
 
-    const MODEL_LABELS = { combinado: 'Combinado (Gauss–Helmert)', parametrico: 'Paramétrico (Gauss–Markov)' };
-    const DATUM_LABELS = { fixos: 'Pontos fixos', livre: 'Rede livre (injunções internas)' };
+    // Getters: o rótulo segue o idioma atual, mesmo lido depois de o módulo carregar
+    const MODEL_LABELS = {
+        get combinado() { return tr('Combinado (Gauss–Helmert)', 'Combined (Gauss–Helmert)'); },
+        get parametrico() { return tr('Paramétrico (Gauss–Markov)', 'Parametric (Gauss–Markov)'); }
+    };
+    const DATUM_LABELS = {
+        get fixos() { return tr('Pontos fixos', 'Control points'); },
+        get livre() { return tr('Rede livre (injunções internas)', 'Free network (inner constraints)'); },
+        get minimo() { return tr('Injunções mínimas (estação de origem)', 'Minimal constraints (origin station)'); }
+    };
 
     // ---------------------------------------------------------------- ajustamento
     function adjustNetwork(rows, S) {
@@ -871,7 +930,7 @@
         const sig = sigInfo.map(s => s.sig);
         const nomRows = net.rows.filter((r, i) => sigInfo[i].nominalUsed.some(Boolean));
         if (nomRows.length) {
-            log.warn(`${nomRows.length} visada(s) sem desvio-padrão válido no CSV usaram o nominal: ` +
+            log.warn(tr(`${nomRows.length} visada(s) sem desvio-padrão válido no CSV usaram o nominal: `, `${nomRows.length} sighting(s) without a valid standard deviation in the CSV used the nominal one: `) +
                 nomRows.slice(0, 8).map(r => r.id).join(', ') + (nomRows.length > 8 ? '…' : '') + '.');
         }
 
@@ -918,9 +977,11 @@
                     Ninv = borderedInverse(N, G);
                 } else Ninv = linalg.inv(N);
             } catch (e) {
-                throw new NetworkError('Sistema normal singular: a geometria não determina todas as incógnitas ' +
-                    '(estação com visadas insuficientes ou pontos alinhados)' +
-                    (net.free ? '.' : ' — ou os pontos fixos não bastam para o datum.'), log);
+                throw new NetworkError(tr('Sistema normal singular: a geometria não determina todas as incógnitas ' +
+                    '(estação com visadas insuficientes ou pontos alinhados)', 'Singular normal system: the geometry does not determine all unknowns ' +
+                    '(station with too few sightings or aligned points)') +
+                    (net.free ? '.' : (net.minimal ? tr(` — ou a estação de origem ${net.origin} não liga o resto da rede.`, ` — or the origin station ${net.origin} does not connect the rest of the network.`)
+                        : tr(' — ou os pontos fixos não bastam para o datum.', ' — or the control points are not enough for the datum.'))), log);
             }
             X = linalg.matvec(Ninv, U).map(v => -v);
 
@@ -948,7 +1009,7 @@
             });
             history.push({ iter: iterations, maxLin, maxAng, VtPV, normW: Math.sqrt(normW) });
             if (![maxLin, maxAng, VtPV].every(Number.isFinite)) {
-                throw new NetworkError(`O ajustamento divergiu na iteração ${iterations} (valores não finitos).`, log);
+                throw new NetworkError(tr(`O ajustamento divergiu na iteração ${iterations} (valores não finitos).`, `The adjustment diverged at iteration ${iterations} (non-finite values).`), log);
             }
             if (maxLin < tolLin && maxAng < tolAng) { converged = true; break; }
         }
@@ -956,8 +1017,8 @@
 
         if (!converged) {
             const h = history[history.length - 1];
-            log.warn(`Não convergiu em ${S.maxIter} iterações: última correção ${fmtLen(h.maxLin)} / ` +
-                `${(h.maxAng / ARCSEC).toFixed(4)}″ (critério ${S.tolLinMm} mm / ${S.tolAngSec}″).`);
+            log.warn(tr(`Não convergiu em ${S.maxIter} iterações: última correção ${fmtLen(h.maxLin)} / `, `Did not converge in ${S.maxIter} iterations: last correction ${fmtLen(h.maxLin)} / `) +
+                tr(`${(h.maxAng / ARCSEC).toFixed(4)}″ (critério ${S.tolLinMm} mm / ${S.tolAngSec}″).`, `${(h.maxAng / ARCSEC).toFixed(4)}″ (criterion ${S.tolLinMm} mm / ${S.tolAngSec}″).`));
         }
 
         // ---- controle de qualidade
@@ -1025,15 +1086,18 @@
                 const ii = [e.x, e.y, e.z];
                 Sig = ii.map(a => ii.map(b2 => SigmaXa[a][b2]));
             } else xyz = net.fixedCoords.get(name).slice();
-            const omega = isStation ? X0[e.w] : null;
+            // Estação de origem das injunções mínimas: X, Y, Z e ω constantes (σ = 0)
+            const isOrigin = net.origin === name;
+            const omega = !isStation ? null : (e.w !== null ? X0[e.w] : net.fixedOmega.get(name));
             pointResults.push({
                 name, isStation, fixed, support,
-                tipo: isStation ? (fixed ? 'estação (fixa)' : (support ? 'estação (apoio, livre)' : 'estação'))
+                tipo: isStation ? (isOrigin ? 'estação (origem)' : (fixed ? 'estação (fixa)' : (support ? 'estação (apoio, livre)' : 'estação')))
                     : (fixed ? 'fixo' : (support ? 'apoio (livre)' : 'livre')),
-                origem: (fixed || support) ? (net.datum.computed.includes(name) ? 'irradiado (datum)' : 'CSV') : null,
+                origem: isOrigin ? 'datum assumido'
+                    : ((fixed || support) ? (net.datum.computed.includes(name) ? 'irradiado (datum)' : 'CSV') : null),
                 xyz, Sigma: Sig,
                 sigma: [0, 1, 2].map(i => Math.sqrt(Math.max(Sig[i][i], 0))),
-                omega, sigmaOmega: isStation ? Math.sqrt(Math.max(SigmaXa[e.w][e.w], 0)) : null,
+                omega, sigmaOmega: !isStation ? null : (e.w !== null ? Math.sqrt(Math.max(SigmaXa[e.w][e.w], 0)) : 0),
                 ellipsoid: fixed ? null : ellipsoid3D(Sig, confK3),
                 initial: approx.coords.get(name) ? approx.coords.get(name).slice() : null,
                 nObs: net.rows.filter(r => r.target === name).length
@@ -1052,35 +1116,38 @@
             const mn = ev[net.d], mx = ev[ev.length - 1];
             condN = mn > 0 ? mx / mn : Infinity;
             if (condN > 1e12) {
-                log.warn(`Sistema normal mal condicionado: cond(N) = ${condN.toExponential(2)}` +
-                    (net.d ? ` (sem os ${net.d} autovalores nulos do defeito de posto).` : '.'));
+                log.warn(tr(`Sistema normal mal condicionado: cond(N) = ${condN.toExponential(2)}`, `Ill-conditioned normal system: cond(N) = ${condN.toExponential(2)}`) +
+                    (net.d ? tr(` (sem os ${net.d} autovalores nulos do defeito de posto).`, ` (without the ${net.d} null eigenvalues of the rank defect).`) : '.'));
             }
         }
         if (dof > 0) {
             if (!globalPass) {
-                log.warn(`Teste global (χ², α = ${S.alphaPct}%) reprovado: VᵀPV = ${VtPV.toFixed(3)} fora de ` +
+                log.warn(tr(`Teste global (χ², α = ${S.alphaPct}%) reprovado: VᵀPV = ${VtPV.toFixed(3)} fora de `, `Global test (χ², α = ${S.alphaPct}%) failed: VᵀPV = ${VtPV.toFixed(3)} outside `) +
                     `[${chi2low.toFixed(3)}; ${chi2upp.toFixed(3)}], σ̂₀² = ${sigma02.toFixed(3)}. ` +
-                    (VtPV > chi2upp ? 'As observações discordam mais do que os desvios informados preveem (desvios otimistas ou erros grosseiros).'
-                        : 'Os desvios informados parecem pessimistas.'));
+                    (VtPV > chi2upp ? tr('As observações discordam mais do que os desvios informados preveem (desvios otimistas ou erros grosseiros).',
+                        'The observations disagree more than the stated deviations predict (optimistic deviations or gross errors).')
+                        : tr('Os desvios informados parecem pessimistas.', 'The stated deviations look pessimistic.')));
             } else {
-                log.info(`Teste global (χ², α = ${S.alphaPct}%) aprovado: σ̂₀² = ${sigma02.toFixed(3)}.`);
+                log.info(tr(`Teste global (χ², α = ${S.alphaPct}%) aprovado: σ̂₀² = ${sigma02.toFixed(3)}.`, `Global test (χ², α = ${S.alphaPct}%) passed: σ̂₀² = ${sigma02.toFixed(3)}.`));
             }
         }
         const free = obsData.filter(o => o.r.every(x => x <= 1e-6));
         if (free.length) {
-            log.warn(`${free.length} visada(s) sem controle (r ≈ 0): ${free.map(o => o.row.id).join(', ')}. ` +
-                'São pontos irradiados de uma só estação: o ajustamento reproduz a medida e nenhum erro grosseiro nelas é detectável.');
+            log.warn(tr(`${free.length} visada(s) sem controle (r ≈ 0): ${free.map(o => o.row.id).join(', ')}. ` +
+                'São pontos irradiados de uma só estação: o ajustamento reproduz a medida e nenhum erro grosseiro nelas é detectável.',
+                `${free.length} sighting(s) without control (r ≈ 0): ${free.map(o => o.row.id).join(', ')}. ` +
+                'These are points radiated from a single station: the adjustment reproduces the measurement and no gross error in them is detectable.'));
         }
         const weak = obsData.filter(o => o.r.some(x => x > 1e-6 && x < 0.1));
         if (weak.length) {
-            log.warn(`${weak.length} visada(s) com controle fraco (alguma componente com r < 0,1): ` +
+            log.warn(tr(`${weak.length} visada(s) com controle fraco (alguma componente com r < 0,1): `, `${weak.length} sighting(s) with weak control (some component with r < 0.1): `) +
                 weak.map(o => o.row.id).join(', ') + '.');
         }
 
         return {
             net, approx, settings: Object.assign({}, S),
-            model, datum: net.free ? 'livre' : 'fixos', d: net.d,
-            modelLabel: MODEL_LABELS[model], datumLabel: DATUM_LABELS[net.free ? 'livre' : 'fixos'],
+            model, datum: net.datumKind, d: net.d,
+            modelLabel: MODEL_LABELS[model], datumLabel: DATUM_LABELS[net.datumKind],
             G, eigN,
             log: log.items,
             iterations, converged, history,
@@ -1099,7 +1166,7 @@
     // Montadas sob demanda (aba Matrizes / exportação): B, P, M, Σ_La e Σ_V têm 3m × 3m.
     function fullMatrices(result) {
         const m = result.m, u = result.u, n3 = 3 * m;
-        if (n3 > 1800) throw new Error(`Rede grande demais para montar as matrizes completas (${n3} equações).`);
+        if (n3 > 1800) throw new Error(tr(`Rede grande demais para montar as matrizes completas (${n3} equações).`, `Network too large to build the full matrices (${n3} equations).`));
         const Z = linalg.zeros;
         const A = Z(n3, u), B = Z(n3, n3), M = Z(n3, n3), SigLb = Z(n3, n3), P = Z(n3, n3);
         const W = [], K = [], V = [], Lb = [], La = [];
@@ -1164,7 +1231,7 @@
             if (ratio > k) comps.push({ idx: o.row.idx, id: o.row.id, comp: COMP[c], value: ratio });
         }));
         return {
-            method: 'ksigma', label: `Regra ${k}σ`,
+            method: 'ksigma', label: tr(`Regra ${k}σ`, `${k}σ rule`),
             flagged: unique(comps.map(c => c.idx)), comps,
             detail: `|v| / σ(a priori) > ${k.toFixed(1)}`
         };
@@ -1174,14 +1241,14 @@
     function detectPope(result, S) {
         const crit = result.tauCrit;
         if (!Number.isFinite(crit)) {
-            return { method: 'tau', label: 'Teste τ de Pope', flagged: [], comps: [], detail: 'redundância insuficiente (r < 2)' };
+            return { method: 'tau', label: tr('Teste τ de Pope', 'Pope τ test'), flagged: [], comps: [], detail: tr('redundância insuficiente (r < 2)', 'insufficient redundancy (r < 2)') };
         }
         const comps = [];
         result.obsData.forEach(o => o.tau.forEach((t, c) => {
             if (Number.isFinite(t) && Math.abs(t) > crit) comps.push({ idx: o.row.idx, id: o.row.id, comp: COMP[c], value: t });
         }));
         return {
-            method: 'tau', label: 'Teste τ de Pope',
+            method: 'tau', label: tr('Teste τ de Pope', 'Pope τ test'),
             flagged: unique(comps.map(c => c.idx)), comps,
             detail: `|τ| > ${crit.toFixed(3)} (α₀ = ${S.alpha0Pct}%, r = ${result.dof})`
         };
@@ -1204,9 +1271,11 @@
                         history.pop();
                         const c = comps.pop();
                         essential.push(c);
-                        stop = `${c.id} também excede (|w| = ${Math.abs(c.value).toFixed(2)} em ${c.comp}), ` +
-                            'mas sem ela a rede fica sem solução: visada essencial, não marcada';
-                    } else stop = `interrompido: ${e.message}`;
+                        stop = tr(`${c.id} também excede (|w| = ${Math.abs(c.value).toFixed(2)} em ${c.comp}), ` +
+                            'mas sem ela a rede fica sem solução: visada essencial, não marcada',
+                            `${c.id} also exceeds (|w| = ${Math.abs(c.value).toFixed(2)} in ${c.comp}), ` +
+                            'but without it the network has no solution: essential sighting, not flagged');
+                    } else stop = tr(`interrompido: ${e.message}`, `stopped: ${e.message}`);
                     break;
                 }
                 last = res;
@@ -1315,6 +1384,16 @@
     // ---------------------------------------------------------------- elipsoides e elipses
     const CONF_LABELS = { '1sigma': '1σ', '95': '95%', '99': '99%' };
 
+    // Rótulos de exibição para chaves internas (tipos de ponto e origens das aproximações),
+    // que ficam em português nos dados e nos testes
+    const TERMS_EN = {
+        'estação': 'station', 'estação (origem)': 'station (origin)', 'estação (fixa)': 'station (fixed)',
+        'estação (apoio, livre)': 'station (support, free)', 'fixo': 'control', 'apoio (livre)': 'support (free)',
+        'livre': 'free', 'irradiado (datum)': 'radiated (datum)', 'datum assumido': 'assumed datum',
+        'resseção': 'resection', 'irradiado': 'radiated'
+    };
+    const term = k => (globalThis.APP_LANG === 'en' && TERMS_EN[k]) || k;
+
     // Fator de escala do elipsoide (dim = 3) ou da elipse (dim = 2) para o nível pedido
     function confidenceK(conf, dim) {
         if (conf === '95') return Math.sqrt(chi2Inv(0.95, dim));
@@ -1344,7 +1423,7 @@
     }
 
     return {
-        ARCSEC, DEG, TWO_PI, COMP, CONF_LABELS,
+        ARCSEC, DEG, TWO_PI, COMP, CONF_LABELS, term,
         linalg,
         logGamma, regularizedGammaP, chi2CDF, chi2Inv, normInv, tCDF, tInv, tauCritical,
         wrap2Pi, wrapPi, polarToDelta, conditionF, jacobianB, omegaColumn, obsSigmas,
