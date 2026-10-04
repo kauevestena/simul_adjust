@@ -5,6 +5,7 @@
 
 export const i18n = {
     'pt-BR': {
+        terrainUnavailable: "Não foi possível obter a elevação do terreno. Tente novamente.",
         pageTitle: "Simulador de Nivelamento - MMQ",
         pageDesc: "Simulação de Ajustamento de Redes de Nivelamento Geométrico pelo Método dos Mínimos Quadrados.",
         headerTitle: "Rede de Nivelamento",
@@ -150,6 +151,7 @@ export const i18n = {
     },
 
     'en': {
+        terrainUnavailable: "Terrain elevation could not be loaded. Please try again.",
         pageTitle: "Leveling Network Simulator - LSE",
         pageDesc: "Simulation of Geometric Leveling Network Adjustment using the Method of Least Squares.",
         headerTitle: "Leveling Network",

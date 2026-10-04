@@ -1,0 +1,24 @@
+name: Network pre-analysis tests
+on:
+  push:
+    paths: ["network_preanalysis/**", "shared/terrarium.mjs", "nivelamento/**", "index.html", ".github/workflows/network-preanalysis.yml"]
+  pull_request:
+    paths: ["network_preanalysis/**", "shared/terrarium.mjs", "nivelamento/**", "index.html", ".github/workflows/network-preanalysis.yml"]
+permissions:
+  contents: read
+jobs:
+  network-preanalysis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: network_preanalysis/package-lock.json
+      - run: npm ci --prefix network_preanalysis
+      - run: npm test --prefix network_preanalysis
+      - run: node test.js
+      - run: npx --prefix network_preanalysis playwright install --with-deps chromium
+      - run: npm run test:browser --prefix network_preanalysis
