@@ -1,5 +1,6 @@
 import { errorEllipse } from './network/reliability.mjs';
 import { t } from './i18n.mjs';
+import { resolvePointPlacement, STREET_LIMIT } from './network/constraints.mjs';
 
 export class NetworkCanvas {
   constructor(canvas, getScene, onAction) {
@@ -33,6 +34,13 @@ export class NetworkCanvas {
     const es = pts.map(p => p.E), ns = pts.map(p => p.N), minE = Math.min(...es), maxE = Math.max(...es), minN = Math.min(...ns), maxN = Math.max(...ns);
     this.center = [(minE + maxE) / 2, (minN + maxN) / 2];
     this.scale = Math.max(.01, Math.min((this.width - 180) / Math.max(200, maxE - minE), (this.height - 190) / Math.max(150, maxN - minN)));
+    this.draw();
+  }
+  fitArea() {
+    const bounds = this.getScene().constraints.bounds;
+    if (!bounds) return this.fit();
+    this.center = [(bounds[0] + bounds[2]) / 2, (bounds[1] + bounds[3]) / 2];
+    this.scale = Math.max(.01, Math.min((this.width - 80) / (bounds[2] - bounds[0]), (this.height - 90) / (bounds[3] - bounds[1])));
     this.draw();
   }
   pointAt(pos) {
@@ -100,10 +108,11 @@ export class NetworkCanvas {
     const scene = this.getScene(); if (!scene) return;
     const { network, result, selected, view, source, effect, visibility } = scene, c = this.ctx;
     c.clearRect(0, 0, this.width, this.height); c.fillStyle = '#f0f5f5'; c.fillRect(0, 0, this.width, this.height);
-    if (this.terrain && network.level === 1 && view.terrain) {
+    if (this.terrain && network.level > 0 && view.terrain) {
       const [e0, n0, e1, n1] = this.terrain.bounds, a = this.project({ E: e0, N: n1 }), b = this.project({ E: e1, N: n0 });
       c.globalAlpha = .8; c.drawImage(this.terrain.image, a[0], a[1], b[0] - a[0], b[1] - a[1]); c.globalAlpha = 1;
     }
+    if (network.level === 2) this.drawStreets(scene.constraints);
     // Metric grid, independent of device pixels and geographic projection.
     const raw = 80 / this.scale, power = 10 ** Math.floor(Math.log10(raw));
     const step = [1, 2, 5, 10].find(x => x * power >= raw) * power;
@@ -113,7 +122,14 @@ export class NetworkCanvas {
     for (let e = Math.ceil(lo[0] / step) * step; e < hi[0]; e += step) { const [x] = this.project({ E: e, N: 0 }); c.moveTo(x, 0); c.lineTo(x, this.height); }
     for (let n = Math.ceil(lo[1] / step) * step; n < hi[1]; n += step) { const [, y] = this.project({ E: 0, N: n }); c.moveTo(0, y); c.lineTo(this.width, y); }
     c.stroke();
-    const pts = network.points.map(p => this.preview?.point?.id === p.id ? this.preview.point : p);
+    let placement = null, proposed = this.preview?.point;
+    if (!proposed && ['station', 'sighted_only'].includes(scene.tool) && this.preview?.cursor) {
+      const [E, N] = this.unproject(this.preview.cursor); proposed = { E, N };
+    }
+    if (proposed && network.level === 2 && !scene.busy) placement = resolvePointPlacement(proposed, scene.constraints, view.snap);
+    const previewPoint = this.preview?.point && (!placement || placement.valid)
+      ? { ...this.preview.point, ...(placement?.position ?? {}) } : null;
+    const pts = network.points.map(p => previewPoint?.id === p.id ? previewPoint : p);
     const bad = new Set((result?.invalidSights ?? []).map(s => s.id));
     for (const s of network.sights) {
       const line = this.sightLine(s, pts); if (!line) continue;
@@ -166,6 +182,21 @@ export class NetworkCanvas {
       if (view.labels) c.fillText(p.label || p.id, x + 13, y - 11);
       if (view.precisionLabels && precision && !scene.busy) { c.fillStyle = '#507982'; c.font = '10px system-ui'; c.fillText(`σU ${(precision.sigma[2] * 1000).toFixed(2)} mm`, x + 13, y + 5); }
     }
+    const feedback = this.canvas.parentElement.querySelector('#placement-feedback');
+    if (feedback) {
+      feedback.hidden = !placement;
+      feedback.className = placement?.valid ? 'valid' : 'invalid';
+      if (placement) feedback.textContent = placement.snapped
+        ? t('snapPreview', { distance: placement.snapDistance.toFixed(1) })
+        : placement.valid ? t('placementDistance', { distance: placement.distance.toFixed(2) }) : t(placement.reason);
+    }
+    if (placement) {
+      const [x, y] = this.project(placement.position), raw = this.project(proposed);
+      c.strokeStyle = placement.valid ? '#087f80' : '#bc3d26'; c.lineWidth = 2;
+      if (placement.snapped) { c.setLineDash([4, 4]); c.beginPath(); c.moveTo(...raw); c.lineTo(x, y); c.stroke(); c.setLineDash([]); }
+      c.beginPath(); c.arc(x, y, 11, 0, Math.PI * 2); c.stroke();
+      if (!placement.valid) { c.beginPath(); c.moveTo(x - 6, y - 6); c.lineTo(x + 6, y + 6); c.moveTo(x - 6, y + 6); c.lineTo(x + 6, y - 6); c.stroke(); }
+    }
     // North/east cue and true-length scale bar.
     const ax = this.width - 48, ay = 67;
     this.arrow([ax, ay], [ax, ay - 24], '#526e76', 1, 5); this.arrow([ax, ay], [ax + 21, ay], '#526e76', 1, 5);
@@ -173,6 +204,36 @@ export class NetworkCanvas {
     const size = step * this.scale, sx = this.width - size - 24, sy = this.height - 25;
     c.strokeStyle = '#526e76'; c.beginPath(); c.moveTo(sx, sy - 4); c.lineTo(sx, sy); c.lineTo(sx + size, sy); c.lineTo(sx + size, sy - 4); c.stroke();
     c.textAlign = 'center'; c.fillText(`${step} m`, sx + size / 2, sy - 7); c.textAlign = 'left';
+  }
+  drawStreets(scenario) {
+    const c = this.ctx;
+    c.save(); c.lineCap = 'round'; c.lineJoin = 'round';
+    const path = () => {
+      c.beginPath();
+      for (const line of scenario.streets ?? []) {
+        c.moveTo(...this.project({ E: line[0][0], N: line[0][1] }));
+        for (const [E, N] of line.slice(1)) c.lineTo(...this.project({ E, N }));
+      }
+      c.stroke();
+    };
+    c.strokeStyle = '#f8fcfbe8'; c.lineWidth = Math.max(3, 2 * STREET_LIMIT * this.scale + 2); path();
+    c.strokeStyle = '#55a7b85c'; c.lineWidth = 2 * STREET_LIMIT * this.scale; path();
+    c.strokeStyle = '#668d9788'; c.lineWidth = .8; path();
+    const names = new Set(), labels = [];
+    for (const f of scenario.streetFeatures ?? []) {
+      if (!f.name || names.has(f.name)) continue;
+      const a = this.project({ E: f.line[0][0], N: f.line[0][1] }), b = this.project({ E: f.line[1][0], N: f.line[1][1] });
+      const x = (a[0] + b[0]) / 2, y = (a[1] + b[1]) / 2;
+      if (Math.hypot(b[0] - a[0], b[1] - a[1]) < 85 || x < 90 || x > this.width - 90 || y < 85 || y > this.height - 65 || labels.some(p => Math.abs(x-p[0])<150 && Math.abs(y-p[1])<45)) continue;
+      names.add(f.name); labels.push([x, y]);
+      let angle = Math.atan2(b[1] - a[1], b[0] - a[0]);
+      if (angle > Math.PI / 2) angle -= Math.PI; if (angle < -Math.PI / 2) angle += Math.PI;
+      c.save(); c.translate(x, y); c.rotate(angle); c.font = '10px system-ui'; c.textAlign = 'center';
+      c.strokeStyle = '#f5faf2e0'; c.lineWidth = 3; c.strokeText(f.name, 0, -6); c.fillStyle = '#52717b'; c.fillText(f.name, 0, -6); c.restore();
+    }
+    const b = scenario.bounds, a = this.project({ E: b[0], N: b[3] }), z = this.project({ E: b[2], N: b[1] });
+    c.strokeStyle = '#67828b'; c.lineWidth = 1; c.setLineDash([5, 5]); c.strokeRect(a[0], a[1], z[0] - a[0], z[1] - a[1]);
+    c.restore();
   }
   async terrainImage(terrain) {
     const width = 130, height = 100, [e0, n0, e1, n1] = terrain.bounds;

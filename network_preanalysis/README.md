@@ -11,8 +11,8 @@ python -m http.server 8000
 ```
 
 Then visit `http://localhost:8000/network_preanalysis/`. No build or runtime package
-install is needed. Level 0 runs without external requests; Level 1 fetches public
-AWS Terrarium elevation tiles. ES modules require HTTP, not `file://`.
+install is needed. Level 0 runs without external requests; Levels 1–2 fetch public
+AWS Terrarium elevation tiles; Level 2 loads its pinned street snapshot locally. ES modules require HTTP, not `file://`.
 
 ## Explore
 
@@ -29,7 +29,7 @@ AWS Terrarium elevation tiles. ES modules require HTTP, not `file://`.
   exaggeration. Inspect sigma E/N/U, orientation sigma, ellipses and component-wise
   redundancy/MDB. Select an MDB to show the coordinate disturbance vectors.
 - Pin a before/after comparison, undo/redo edits, and save/load versioned JSON.
-  Imported rural networks have heights and LOS re-evaluated; saved LOS is not trusted.
+  Imported rural/urban networks have heights and LOS re-evaluated; saved LOS is not trusted.
 - The matrix dialog shows A, P, N and Sigma xx with labelled row/column ordering.
   Its preview is capped at 40 rows/columns; the JSON export contains full matrices.
 
@@ -134,7 +134,7 @@ with the same explicitly labelled graphical exaggeration as ellipses. This is a
 single-bias sensitivity calculation, not simulated residuals, outlier detection,
 family-wise multiple-testing control or a posterior hypothesis test.
 
-## Shared rural terrain
+## Shared terrain
 
 `shared/terrarium.mjs` extracts the original `nivelamento` tile path, z=14 mapping,
 RGB decode and floored nearest-pixel sampling. Both simulators call this loader.
@@ -168,13 +168,43 @@ DEM resolution and buildings/vegetation are not resolved by this exercise.
 
 ## Scope and extension points
 
-This implements **Level 0, Level 1 and the reliability milestone**. The full Level 2
-Pato Branco exercise is intentionally deferred as Part 2 of the supplied spec.
-`validatePointPlacement` already separates placement from canvas handling and
-supports a tested <=3 m street-distance rule for future metre-based street lines.
-It does not download or pretend to supply a completed urban scenario.
+This implements **Levels 0–2 and the reliability milestone**. Level 2 is a
+1.3 × 1.3 km central Pato Branco exercise, centred at **26.229° S, 52.671° W**.
+The checked-in OSM snapshot contains 288 street ways, projected into the same
+local ENU frame as the network. Full ways are clipped to the exercise bounds
+before nearest-street queries, rendering or snapping.
 
-Future work: full Pato Branco streets/scenario, building obstruction, centering and
+Stations and sighted-only points must lie **within 3.0 horizontal metres of a
+street centerline**. The blue corridor shows this allowed band; it is not a road
+width or sidewalk model. Optional snapping, enabled by default, moves an invalid
+canvas placement to the nearest centerline only within 15 m. Already valid
+positions retain their offset. The preview shows the snapped position/displacement
+or a red rejection marker. Disable snapping for exact placement; use **Fit area**
+to see the complete exercise extent.
+
+The rule applies to additions, dragging, typed coordinates, imports and inactive
+points. Typed coordinates and imports are validated without snapping. Failed
+edits leave the previous network and undo history intact. JSON retains the
+`streetDataset` identifier and geographic origin, not a user-supplied street
+geometry or cached visibility result. A mismatched dataset/origin is rejected.
+The computation API is `analyze(network, visibility, scenario)` for Level 2;
+missing street constraints fail closed. Level 0/1 JSON remains compatible.
+
+The same terrain sampling, height convention and LOS calculation are used in
+both real scenarios. Street constraints restrict design positions only; they do
+not add observations or alter covariance propagation. Default control points are
+fictional GNSS control roles on real streets, not published survey monuments.
+A default sight can be terrain-blocked: inspect its clearance, move a station or
+change instrument/target height to redesign. Buildings, vegetation, bridges and
+tunnels are not modeled. The 3 m rule is pedagogical and does not imply 3 m OSM
+accuracy or legal access to a road.
+
+Street data © OpenStreetMap contributors, ODbL-1.0; attribution remains visible
+on the urban canvas. See [data/README.md](data/README.md) for the exact source,
+filter, retrieval timestamp, hashes and regeneration procedure. No street API is
+contacted at runtime. Failed street downloads keep the prior scenario usable.
+
+Future work: building obstruction, centering and
 HI/HT uncertainties, curvature/refraction/vertical deflection, scenario challenge
 targets and richer candidate-sight comparison. Existing comparison is deterministic
 before/after metrics. This is not a field-observation adjustment application.
@@ -211,9 +241,11 @@ Tests cover LLH/ECEF/ENU, observation geometry and HI/HT, Jacobians, the two-GNS
 traverse, generic resection and angular intersection, deficient/disconnected and
 distance-only networks, closed-form polar covariance, full control correlations,
 confidence ellipses, redundancy sums, MDB, external reliability, invalid inputs,
-JSON, terrain decode/LOS and localization. Browser tests exercise actual mouse and
-form actions, JSON downloads/imports, rural decoding, rapid scenario changes and
-mobile layout. CI uses the clearly synthetic `tests/synthetic-terrain.png` for
+JSON, terrain decode/LOS, localization, exact street boundaries, snapping limits,
+clipping, dataset integrity, import constraints and Level 2 rank/LOS behavior. Browser tests exercise actual mouse and
+form actions, JSON downloads/imports, rural/urban decoding, rejected and snapped
+canvas edits, rejected typed/imported positions, street-load retry, rapid scenario
+changes and mobile layout. CI uses the clearly synthetic `tests/synthetic-terrain.png` for
 determinism; no outside service is needed for that test.
 
 ## Dependencies and structure

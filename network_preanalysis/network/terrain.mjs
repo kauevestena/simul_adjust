@@ -1,8 +1,9 @@
 import { createTerrarium, pixelResolution } from '../../shared/terrarium.mjs';
 import { enuToLlh, llhToEnu } from './coordinates.mjs';
-import { RURAL, validatePointPlacement } from './scenarios.mjs';
+import { RURAL } from './scenarios.mjs';
+import { validatePointPlacement } from './constraints.mjs';
 
-export async function createRuralTerrain(config = RURAL, tiles = createTerrarium()) {
+export async function createTerrain(config = RURAL, tiles = createTerrarium()) {
   const H0 = await tiles.sample(config.lon, config.lat);
   const origin = config.origin ?? { lat: config.lat, lon: config.lon, h: H0 + config.geoidUndulation };
   const resolution = pixelResolution(origin.lat);
@@ -27,6 +28,7 @@ export async function createRuralTerrain(config = RURAL, tiles = createTerrarium
   };
   return sampler;
 }
+export const createRuralTerrain = createTerrain;
 
 export async function lineOfSight(from, to, terrain, sight = {}, tolerance = 0.02) {
   const dx = to.E - from.E, dy = to.N - from.N, length = Math.hypot(dx, dy);

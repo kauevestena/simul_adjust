@@ -1,5 +1,6 @@
 import { Matrix, SingularValueDecomposition } from '../vendor/ml-matrix.mjs';
 import { validateNetwork } from './model.mjs';
+import { validateNetworkPlacement } from './constraints.mjs';
 import { COMPONENTS, sightGeometry, sightJacobian, observationSigma } from './observations.mjs';
 import { zeros, dot, covarianceBlock, controlCovariance } from './stochastic.mjs';
 import { noncentrality, errorEllipse } from './reliability.mjs';
@@ -21,14 +22,17 @@ function connectedComponents(points, edges) {
   return components;
 }
 
-/** Pure deterministic pre-analysis. visibility is required for EVERY Level 1 sight.
+/** Pure deterministic pre-analysis. visibility is required for EVERY terrain sight.
  * No observations/residuals, no posterior variance estimate, no hidden datum fixing.
  * Fixed coordinates eliminated; stochastic coordinates remain unknowns with priors.
  */
-export function analyze(network, visibility = {}) {
+export function analyze(network, visibility = {}, scenario = null) {
   const result = { solvable: false, diagnostics: [], invalidSights: [], rows: [], parameters: [],
     rank: 0, defect: 0, dof: 0, observationCount: 0, controlCount: 0, precision: Object.create(null), covariance: null };
-  try { validateNetwork(network); } catch (error) { result.diagnostics.push({ code: error.message }); return result; }
+  try {
+    validateNetwork(network);
+    if (network.level === 2) validateNetworkPlacement(network, scenario);
+  } catch (error) { result.diagnostics.push({ code: error.message }); return result; }
   const points = network.points.filter(p => p.active !== false), byId = new Map(points.map(p => [p.id, p]));
   const candidates = [], orientations = new Set(), A = [], blocks = [];
   for (const sight of network.sights) {

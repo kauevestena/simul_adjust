@@ -12,8 +12,8 @@ python -m http.server 8000
 
 Acesse `http://localhost:8000/network_preanalysis/`. Não é necessário compilar nem
 instalar pacotes para usar a aplicação. Módulos ES precisam de HTTP, não `file://`.
-O nível 0 funciona sem requisições externas. O nível 1 carrega elevações públicas
-AWS Terrarium. Idioma: parâmetro `?lang=pt-BR`/`?lang=en`, preferência compartilhada
+O nível 0 funciona sem requisições externas. Os níveis 1–2 carregam elevações
+públicas AWS Terrarium; o recorte de ruas do nível 2 é carregado localmente. Idioma: parâmetro `?lang=pt-BR`/`?lang=en`, preferência compartilhada
 `monorepo_lang` e, por último, idioma do navegador, nessa ordem. O seletor PT/EN
 atualiza a interface, a preferência e o link de retorno ao portal.
 
@@ -33,7 +33,7 @@ atualiza a interface, a preferência e o link de retorno ao portal.
   redundância e MDB por componente. Selecione um MDB para visualizar os vetores
   de deslocamento que esse erro causaria nas coordenadas.
 - Fixe uma referência para comparar antes/depois; use desfazer/refazer e salve/abra
-  JSON. Ao importar uma rede rural, alturas e visibilidade são recalculadas.
+  JSON. Ao importar uma rede rural/urbana, alturas e visibilidade são recalculadas.
 - A janela de matrizes mostra A, P, N e Σxx com a ordem das incógnitas e observações.
   A prévia limita-se a 40 linhas/colunas; a exportação JSON contém as matrizes completas.
 
@@ -169,12 +169,43 @@ são resolvidos neste exercício.
 
 ## Escopo, arquivos e evolução
 
-Esta entrega cobre **níveis 0 e 1 e confiabilidade**. O nível 2 urbano de Pato
-Branco permanece como Parte 2 da especificação. A API `validatePointPlacement`
-separa restrições da interface e já testa a regra de distância ≤3 m a linhas de
-ruas em coordenadas métricas. Não fornece nem apresenta um cenário urbano completo.
+Esta entrega cobre **níveis 0–2 e confiabilidade**. O nível 2 usa uma área de
+1,3 × 1,3 km no centro de Pato Branco, com origem em **26,229° S, 52,671° W**.
+O recorte OSM incluído contém 288 vias, projetadas no mesmo referencial ENU local
+da rede. As linhas são recortadas nos limites do exercício antes da consulta de
+distância, desenho e aproximação.
 
-Ficam para etapas futuras: cenário/ruas de Pato Branco, edifícios, centragem,
+Estações e pontos somente visados devem ficar **até 3,0 m horizontais do eixo de
+uma rua**. A faixa azul representa essa região permitida, não a largura da via
+ou suas calçadas. A aproximação opcional, inicialmente ligada, leva uma posição
+inválida do canvas ao eixo mais próximo somente até 15 m de distância. Posições
+já válidas mantêm seu afastamento. A prévia mostra a posição aproximada e o
+deslocamento ou um marcador vermelho de rejeição. Desligue a aproximação para
+colocação exata; **Enquadrar área** mostra todo o recorte.
+
+A restrição vale para inclusão, arraste, coordenadas digitadas, importação e
+pontos inativos. Coordenadas digitadas e JSON são validados sem aproximação
+automática. Edições rejeitadas preservam a rede e o histórico de desfazer.
+O JSON guarda `streetDataset` e a origem geográfica, não geometria de ruas
+fornecida pelo usuário nem visibilidade em cache. Recorte/origem incompatíveis
+são rejeitados. A API de cálculo do nível 2 é
+`analyze(network, visibility, scenario)`; sem restrições de ruas, o cálculo é
+recusado. Os arquivos JSON dos níveis 0/1 permanecem compatíveis.
+
+Ambos os cenários reais usam o mesmo MDT, convenção de alturas e algoritmo de
+visibilidade. A regra de ruas limita as posições de projeto; não acrescenta
+observações nem altera a propagação de covariâncias. Os apoios iniciais são
+papéis GNSS fictícios sobre ruas reais, não marcos geodésicos publicados. Uma
+visada inicial pode estar bloqueada: inspecione a folga, mova a estação ou altere
+HI/HT para redesenhar. Não são modelados edifícios, vegetação, pontes e túneis.
+A regra de 3 m é didática; não implica precisão OSM de 3 m nem acesso legal à via.
+
+Dados de ruas © colaboradores do OpenStreetMap, ODbL-1.0; a atribuição permanece
+visível no canvas urbano. [data/README.md](data/README.md) registra fonte exata,
+filtro, data, hashes e reprodução. Nenhuma API de ruas é consultada durante o uso.
+Falhas no carregamento das ruas preservam o cenário anterior.
+
+Ficam para etapas futuras: edifícios, centragem,
 incertezas de HI/HT, curvatura/refração/desvio da vertical, metas de exercícios e
 prévia mais detalhada de visadas candidatas. A comparação existente usa indicadores
 determinísticos antes/depois. Não é um processador de observações de campo.
@@ -214,8 +245,11 @@ python network_preanalysis/tests/generate_reference.py
 A suíte verifica transformações, geometria/alturas, jacobianos, apoio GNSS em dois
 pontos, interseções genéricas, deficiências de posto, covariância polar fechada,
 correlações, elipses, redundância, MDB, confiabilidade externa, entradas inválidas,
-JSON, terreno e idiomas. O navegador testa ações reais de mouse/formulários,
-importação/exportação, terreno, troca rápida de cenário e tela pequena. A imagem
+JSON, terreno, idiomas, limite exato de ruas, aproximação, recorte, integridade
+do conjunto de dados e posto/visibilidade no nível 2. O navegador testa ações reais de mouse/formulários,
+importação/exportação, terreno rural/urbano, rejeição e aproximação no canvas,
+rejeição de coordenadas digitadas/JSON, nova tentativa após falha das ruas, troca
+rápida de cenário e tela pequena. A imagem
 `tests/synthetic-terrain.png` é explicitamente sintética e torna a CI independente
 de serviço externo. Defina `NETWORK_SCREENSHOTS=/tmp/pasta` para guardar capturas.
 

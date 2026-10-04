@@ -1,4 +1,7 @@
 import { emptyNetwork, makePoint, makeSight } from './model.mjs';
+import { nearestStreet } from './constraints.mjs';
+import { PATO_BRANCO } from './streets.mjs';
+export { validatePointPlacement } from './constraints.mjs';
 
 export function example(name = 'traverse') {
   const n = emptyNetwork(); n.scenario = name;
@@ -29,24 +32,24 @@ export function example(name = 'traverse') {
   return n;
 }
 
-// Constraint extension point. Level 2 needs street data in this same metre frame.
-// The UI intentionally does not offer the unfinished urban scenario.
-export function validatePointPlacement(point, scenario = {}) {
-  if (![point.E, point.N].every(Number.isFinite) || Math.abs(point.E) > 1e6 || Math.abs(point.N) > 1e6) return { valid: false, reason: 'coordinateRange' };
-  if (scenario.bounds && (point.E < scenario.bounds[0] || point.E > scenario.bounds[2] || point.N < scenario.bounds[1] || point.N > scenario.bounds[3])) return { valid: false, reason: 'outsideTerrain' };
-  if (scenario.level === 2) {
-    if (!scenario.streets?.length) return { valid: false, reason: 'streetsMissing' };
-    let distance = Infinity, nearest = null;
-    for (const line of scenario.streets) for (let i = 1; i < line.length; i++) {
-      const a = line[i - 1], b = line[i], dx = b[0] - a[0], dy = b[1] - a[1];
-      const den = dx * dx + dy * dy;
-      const t = den ? Math.max(0, Math.min(1, ((point.E - a[0]) * dx + (point.N - a[1]) * dy) / den)) : 0;
-      const p = [a[0] + t * dx, a[1] + t * dy], d = Math.hypot(point.E - p[0], point.N - p[1]);
-      if (d < distance) { distance = d; nearest = p; }
-    }
-    return { valid: distance <= 3, reason: distance <= 3 ? null : 'streetDistance', distance, nearest };
+export function urbanExample(scenario) {
+  const n = emptyNetwork(); n.level = 2; n.scenario = 'pato-branco'; n.streetDataset = PATO_BRANCO.id;
+  n.origin = scenario.origin; n.geoidUndulation = PATO_BRANCO.geoidUndulation;
+  n.heightDatum = PATO_BRANCO.heightDatum;
+  // A compact design network, anchored to the actual pinned street geometry.
+  const seeds = [[-220, -160], [-110, -80], [0, 30], [140, 80], [260, 160]];
+  n.points = seeds.map(([E, N], i) => {
+    const { nearest } = nearestStreet({ E, N }, scenario.streets);
+    if (!nearest) throw Error('streetsMissing');
+    const fixed = i === 0 || i === seeds.length - 1;
+    const p = makePoint(i === 0 ? 'G01' : fixed ? 'G02' : `S0${i}`, ...nearest, 'station', fixed ? 'fixed' : 'unknown');
+    if (fixed) p.role = i === 0 ? 'gnssStart' : 'gnssFinish';
+    return p;
+  });
+  for (let i = 1; i < n.points.length; i++) {
+    n.sights.push(makeSight(n.points[i - 1].id, n.points[i].id), makeSight(n.points[i].id, n.points[i - 1].id));
   }
-  return { valid: true };
+  return n;
 }
 export const RURAL = Object.freeze({
   lat: -25.454, lon: -49.07, bounds: [-650, -500, 650, 500],

@@ -124,7 +124,7 @@ test('invalid inputs are diagnosed, impossible sights excluded, JSON round trip'
   const bad=example();bad.points[0].E=null;assert.equal(analyze(bad).solvable,false);
   const negative=example();negative.points[0].HI=-1;assert.equal(analyze(negative).solvable,false);
 });
-test('placement API separates the future 3 metre urban rule from UI', () => {
+test('placement API separates the 3 metre urban rule from UI', () => {
   const scenario={level:2,streets:[[[0,0],[100,0]]]};
   assert.equal(validatePointPlacement({E:50,N:3},scenario).valid,true);
   assert.equal(validatePointPlacement({E:50,N:3.01},scenario).valid,false);
