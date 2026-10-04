@@ -1,8 +1,10 @@
-import { example, RURAL, validatePointPlacement } from './network/scenarios.mjs';
+import { example, urbanExample, RURAL } from './network/scenarios.mjs';
+import { resolvePointPlacement, validateNetworkPlacement } from './network/constraints.mjs';
+import { PATO_BRANCO, loadStreetData, projectStreets } from './network/streets.mjs';
 import { INSTRUMENTS, makePoint, makeSight, validateNetwork, serialize, deserialize } from './network/model.mjs';
 import { analyze } from './network/preanalysis.mjs';
 import { externalReliability } from './network/reliability.mjs';
-import { createRuralTerrain, networkVisibility } from './network/terrain.mjs';
+import { createTerrain, networkVisibility } from './network/terrain.mjs';
 import { createTerrarium } from '../shared/terrarium.mjs';
 import { NetworkCanvas } from './canvas.mjs';
 import { renderContext, esc, fmt, mm, field } from './inspector.mjs';
@@ -11,16 +13,18 @@ import { t, setLanguage, getLanguage, initialLanguage } from './i18n.mjs';
 const $ = id => document.getElementById(id);
 let network = example(), result = analyze(network), selected = null, tool = 'select', source = null;
 let visibility = {}, terrain = null, busy = false, revision = 0, effect = null, baseline = null, lastError = null;
+let constraints = {}, loadingLevel = null;
 const tiles = createTerrarium(), undo = [], redo = [];
 const instrumentKeys = ['directionArcsec', 'zenithArcsec', 'distanceMm', 'ppm'];
-const view = { labels: true, ellipses: true, precisionLabels: false, redundancy: false, terrain: true, confidence: '1sigma', exaggeration: 5000 };
-const scene = () => ({ network, result: busy ? null : result, selected, tool, source, view, visibility, effect: busy ? null : effect, busy });
+const view = { labels: true, ellipses: true, precisionLabels: false, redundancy: false, terrain: true, snap: true, confidence: '1sigma', exaggeration: 5000 };
+const scene = () => ({ network, constraints, result: busy ? null : result, selected, tool, source, view, visibility, effect: busy ? null : effect, busy });
 const canvas = new NetworkCanvas($('canvas'), scene, action => { handleAction(action).catch(fail); });
 export const getState = () => structuredClone(network);
 export const getResult = () => result;
 export const getView = () => ({ center: [...canvas.center], scale: canvas.scale, width: canvas.width, height: canvas.height });
 export const isBusy = () => busy;
 export const getVisibility = () => structuredClone(visibility);
+export const getConstraints = () => structuredClone(constraints);
 
 function fail(error) { lastError=error.message || 'invalidNetwork'; $('error').textContent = t(lastError); $('error').hidden = false; }
 function clearError() { lastError=null; $('error').hidden = true; document.querySelectorAll('[aria-invalid]').forEach(e=>e.removeAttribute('aria-invalid')); }
@@ -33,11 +37,13 @@ function updateHint() {
   $('hint').textContent = t(tool==='sight'?(source?'targetHint':'sightHint'):tool==='delete'?'deleteHint':tool==='select'?'pointHint':'addHint');
 }
 function render() {
-  $('level').value = String(busy ? 1 : network.level); $('example').disabled = busy || network.level === 1;
+  $('level').value = String(loadingLevel ?? network.level); $('example').disabled = busy || network.level > 0;
   $('example').value = ['traverse','weak','resection','intersection','mixed'].includes(network.scenario)?network.scenario:'traverse';
   $('busy').hidden = !busy; $('terrain-note').hidden = network.level === 0;
   document.querySelector('[data-t="terrainApprox"]').textContent=t('terrainApprox',{geoid:fmt(network.geoidUndulation??0,1)});
-  $('canvas-level').textContent = t(network.level?'rural':'plane'); updateHint();
+  $('canvas-level').textContent = t(['plane','rural','urban'][network.level]); updateHint();
+  $('urban-tools').hidden = $('street-attribution').hidden = $('urban-note').hidden = network.level !== 2;
+  $('snap-streets').disabled = busy;
   $('canvas-legend').textContent = `${t('exaggerationNote')} ×${view.exaggeration.toLocaleString(getLanguage())} · ${t(view.confidence==='95'?'confidence95':'oneSigma')}`;
   if (view.redundancy) $('canvas-legend').textContent += ` · ${t('redundancy')}: 0 → 1`;
   document.querySelectorAll('[data-tool]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tool===tool)));
@@ -61,29 +67,36 @@ function render() {
   canvas.draw();
 }
 
-async function commit(draft, { fit = false, history = true, prepareTerrain = false } = {}) {
+async function commit(draft, { fit = false, history = true, prepareTerrain = false, seedUrban = false } = {}) {
   clearError();
   const token = ++revision;
-  // Rural origin is established from the terrain before normal schema validation.
-  let nextTerrain = terrain, nextVisibility = {};
-  busy = draft.level === 1; effect = null; render();
+  // The local origin is established from terrain before normal schema validation.
+  let nextTerrain = terrain, nextVisibility = {}, nextConstraints = constraints;
+  busy = draft.level > 0; loadingLevel = busy ? draft.level : null; effect = null; render();
   try {
-    if (draft.level === 1) {
+    if (draft.level > 0) {
       if (!nextTerrain || prepareTerrain) {
-        const config = draft.origin ? { ...RURAL, lat: draft.origin.lat, lon: draft.origin.lon,
-          origin: draft.origin, geoidUndulation: draft.geoidUndulation, heightDatum: draft.heightDatum } : RURAL;
-        nextTerrain = await createRuralTerrain(config, tiles);
+        const defaults = draft.level === 2 ? PATO_BRANCO : RURAL;
+        const config = draft.origin ? { ...defaults, lat: draft.origin.lat, lon: draft.origin.lon,
+          origin: draft.origin, geoidUndulation: draft.geoidUndulation, heightDatum: draft.heightDatum } : defaults;
+        const [loadedTerrain, streetData] = await Promise.all([createTerrain(config, tiles), draft.level === 2 ? loadStreetData() : null]);
+        nextTerrain = loadedTerrain;
+        nextConstraints = draft.level === 2 ? projectStreets(streetData, nextTerrain.origin) : { level: 1, bounds: config.bounds };
       }
+      if (seedUrban) draft = urbanExample(nextConstraints);
       draft.origin = nextTerrain.origin; draft.geoidUndulation = nextTerrain.geoidUndulation;
       draft.heightDatum = nextTerrain.metadata.heightDatum;
+      validateNetworkPlacement(draft, nextConstraints);
       await Promise.all(draft.points.map(async p => { const g = await nextTerrain.ground(p.E,p.N); p.U=g.U; p.geographic=g; }));
       validateNetwork(draft);
       nextVisibility = await networkVisibility(draft,nextTerrain);
-    } else { validateNetwork(draft); nextTerrain = null; }
+    } else { validateNetwork(draft); nextTerrain = null; nextConstraints = {}; }
     if (token !== revision) return;
     if (history) { undo.push(structuredClone(network)); if(undo.length>40)undo.shift(); redo.length=0; }
+    if (terrain !== nextTerrain) canvas.terrain = null;
     network = draft; terrain = nextTerrain; visibility = nextVisibility;
-    result = analyze(network,visibility); busy = false;
+    constraints = nextConstraints;
+    result = analyze(network,visibility,constraints); busy = false; loadingLevel = null;
     render(); if(fit){canvas.fit();$('inspector').scrollTop=0;}
     if (terrain && (prepareTerrain || !canvas.terrain)) {
       const imageToken = token;
@@ -92,7 +105,7 @@ async function commit(draft, { fit = false, history = true, prepareTerrain = fal
     }
   } catch(error) {
     if(token!==revision)return;
-    busy=false;render();fail(error);
+    busy=false;loadingLevel=null;render();fail(error);
   }
 }
 async function mutate(fn) {
@@ -108,10 +121,11 @@ async function handleAction(a) {
     await mutate(n=>{if(a.kind==='point'){n.points=n.points.filter(p=>p.id!==a.id);n.sights=n.sights.filter(s=>s.from!==a.id&&s.to!==a.id);}else n.sights=n.sights.filter(s=>s.id!==a.id);});selected=null;source=null;render();return;
   }
   if(a.type==='move'||a.type==='add') {
-    const placement=validatePointPlacement(a,network.level?{bounds:RURAL.bounds}:{});if(!placement.valid)throw Error(placement.reason);
+    const placement=resolvePointPlacement(a,constraints,view.snap);if(!placement.valid)throw Error(placement.reason);
+    const { E, N } = placement.position;
     await mutate(n=>{
-      if(a.type==='move'){const p=n.points.find(p=>p.id===a.id);p.E=a.E;p.N=a.N;}
-      else {let i=1,id;do{id=`${a.pointType==='station'?'S':'P'}${String(i++).padStart(2,'0')}`;}while(n.points.some(p=>p.id===id));n.points.push(makePoint(id,a.E,a.N,a.pointType));selected={kind:'point',id};}
+      if(a.type==='move'){const p=n.points.find(p=>p.id===a.id);p.E=E;p.N=N;}
+      else {let i=1,id;do{id=`${a.pointType==='station'?'S':'P'}${String(i++).padStart(2,'0')}`;}while(n.points.some(p=>p.id===id));n.points.push(makePoint(id,E,N,a.pointType));selected={kind:'point',id};}
     });return;
   }
   if(a.type==='sight'&&a.id) {
@@ -128,6 +142,9 @@ function applyPoint() {
   const p=network.points.find(p=>p.id===selected?.id);if(!p)return;
   const values={label:$('p-label').value,type:$('p-type').value,control:$('p-control').value,
     E:read('p-E'),N:read('p-N'),HI:read('p-HI',0,100),HT:read('p-HT',0,100),active:$('p-active').checked};
+  // Display rounding must not move a point at the 3 m boundary when only its
+  // label, height or control type changes.
+  for (const axis of ['E','N']) if (values[axis] === Number(fmt(p[axis],3))) values[axis] = p[axis];
   let sigma=null;
   if($('p-sigma-0'))sigma=[0,1,2].map(i=>read(`p-sigma-${i}`,.000001,1e6)/1000);
   return mutate(n=>{
@@ -161,7 +178,9 @@ $('fit').onclick=()=>canvas.fit();
 $('clear-selection').onclick=()=>select(null);
 $('toggle-panel').onclick=()=>{const hidden=$('workspace').classList.toggle('panel-hidden');$('toggle-panel').setAttribute('aria-expanded',String(!hidden));};
 $('example').onchange=()=>{selected=null;source=null;baseline=null;commit(example($('example').value),{fit:true});};
-$('level').onchange=()=>{selected=null;source=null;baseline=null;const n=example($('level').value==='1'?'rural':'traverse');n.level=Number($('level').value);commit(n,{fit:true,prepareTerrain:true});};
+$('level').onchange=()=>{selected=null;source=null;baseline=null;const level=Number($('level').value),n=example(level===1?'rural':'traverse');n.level=level;commit(n,{fit:true,prepareTerrain:true,seedUrban:level===2});};
+$('snap-streets').onchange=()=>{view.snap=$('snap-streets').checked;canvas.draw();};
+$('fit-area').onclick=()=>canvas.fitArea();
 $('instrument').onchange=()=>{const preset=INSTRUMENTS[$('instrument').value];if(preset)mutate(n=>{n.instrument={...preset};});};
 $('instrument-fields').addEventListener('change',()=>{
   try{const instrument=Object.fromEntries(instrumentKeys.map(k=>[k,read(`i-${k}`,0,10000)]));$('instrument').value='custom';mutate(n=>{n.instrument=instrument;});}catch(e){fail(e);}

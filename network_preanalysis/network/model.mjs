@@ -1,3 +1,5 @@
+import { PATO_BRANCO } from './streets.mjs';
+
 export const INSTRUMENTS = Object.freeze({
   educational: { directionArcsec: 5, zenithArcsec: 5, distanceMm: 5, ppm: 5 },
   standard: { directionArcsec: 2, zenithArcsec: 2, distanceMm: 2, ppm: 2 },
@@ -15,7 +17,7 @@ export const emptyNetwork = () => ({ version: 1, level: 0, scenario: 'plane', or
 
 // Limits bound interactive computation and reject invalid JSON before editing state.
 export function validateNetwork(n) {
-  if (!n || n.version !== 1 || ![0, 1].includes(n.level) || !Array.isArray(n.points) || !Array.isArray(n.sights) ||
+  if (!n || n.version !== 1 || ![0, 1, 2].includes(n.level) || !Array.isArray(n.points) || !Array.isArray(n.sights) ||
       n.points.length > 100 || n.sights.length > 500) throw Error('invalidNetwork');
   const ids = new Set(), sightIds = new Set();
   for (const p of n.points) {
@@ -38,8 +40,10 @@ export function validateNetwork(n) {
       i.directionArcsec <= 0 || i.zenithArcsec <= 0 || i.distanceMm < 0 || i.ppm < 0 || (!i.distanceMm && !i.ppm)) throw Error('invalidSigma');
   if (!n.statistics || !(n.statistics.alpha >= 1e-6 && n.statistics.alpha <= 0.2) ||
       !(n.statistics.power >= 0.5 && n.statistics.power < 0.9999)) throw Error('invalidStatistics');
-  if (n.level === 1 && (!n.origin || ![n.origin.lat, n.origin.lon, n.origin.h, n.geoidUndulation].every(Number.isFinite) ||
+  if (n.level > 0 && (!n.origin || ![n.origin.lat, n.origin.lon, n.origin.h, n.geoidUndulation].every(Number.isFinite) ||
       Math.abs(n.origin.lat) > 85 || Math.abs(n.origin.lon) > 180 || Math.abs(n.origin.h) > 12000 || Math.abs(n.geoidUndulation) > 200)) throw Error('coordinateRange');
+  if (n.level === 2 && (n.scenario !== 'pato-branco' || n.streetDataset !== PATO_BRANCO.id ||
+      n.origin.lat !== PATO_BRANCO.lat || n.origin.lon !== PATO_BRANCO.lon)) throw Error('urbanReference');
   return n;
 }
 export const serialize = n => JSON.stringify(validateNetwork(n), null, 2);

@@ -1,6 +1,7 @@
 import { t } from './i18n.mjs';
 import { errorEllipse } from './network/reliability.mjs';
 import { ARCSECOND, sightGeometry } from './network/observations.mjs';
+import { validatePointPlacement } from './network/constraints.mjs';
 export const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export const fmt = (v, digits = 3) => Number.isFinite(v) ? v.toFixed(digits) : '—';
 export const mm = v => Number.isFinite(v) ? `${(v * 1000).toFixed(2)} mm` : '—';
@@ -11,16 +12,18 @@ const check = (id, key, checked) => `<label><input id="${id}" type="checkbox" ${
 const sightButton = s => `<button data-select-sight="${esc(s.id)}">${esc(s.from)} → ${esc(s.to)}</button>`;
 export const componentValue = (v, component) => Number.isFinite(v) ? (component === 'distance' ? mm(v) : `${fmt(v / ARCSECOND, 2)}″`) : t('undetectable');
 
-export function renderContext(container, { network, result, selected, visibility, view, effect }) {
+export function renderContext(container, { network, constraints, result, selected, visibility, view, effect }) {
   const p = selected?.kind === 'point' ? network.points.find(p => p.id === selected.id) : null;
   const s = selected?.kind === 'sight' ? network.sights.find(s => s.id === selected.id) : null;
   if (p) {
     const pr = result?.precision[p.id], ellipse = pr ? errorEllipse(pr.covariance, view.confidence) : null;
     const omega = result?.parameters.findIndex(x => x.id === p.id && x.axis === 'omega');
+    const placement = network.level === 2 ? validatePointPlacement(p, constraints) : null;
     container.innerHTML = `<h3>${esc(p.label || p.id)}</h3><span class="badge">${esc(t(p.type))} · ${esc(p.id)}</span>
       <label>${esc(t('label'))}<input id="p-label" value="${esc(p.label || p.id)}" maxlength="100"></label>
       ${select('p-type', t('type'), ['station', 'sighted_only'], p.type)}
       <div class="fields three">${['E','N','U'].map(k => field(`p-${k}`, `${k} (m)`, fmt(p[k], 3), k === 'U')).join('')}</div>
+      ${placement ? `<p class="note">${esc(t('placementDistance',{distance:fmt(placement.distance,2)}))}<br>${esc(constraints.streetFeatures[placement.streetIndex]?.name)}</p>` : ''}
       ${select('p-control', t('control'), ['unknown','fixed','stochastic'], p.control)}
       <div class="fields two">${field('p-HI', t('HI'), fmt(p.HI), p.type !== 'station')}${field('p-HT', t('HT'), fmt(p.HT))}</div>
       <div class="checks">${check('p-active','active',p.active !== false)}</div>
