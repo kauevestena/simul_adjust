@@ -34,6 +34,37 @@
       --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
       --shadow-glow: 0 0 25px rgba(99, 102, 241, 0.15);
       --transition-smooth: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      --utfpr-primary: #f1f5f9;
+      --utfpr-yellow: #f6c212;
+      --input-bg: rgba(30, 41, 59, 0.6);
+      --pill-bg: rgba(15, 23, 42, 0.7);
+      --mesh-line: rgba(255, 255, 255, 0.015);
+      --footer-bg: rgba(8, 12, 20, 0.88);
+    }
+
+    [data-theme="light"] {
+      --bg-base: #f1f5f9;
+      --bg-card: #ffffff;
+      --bg-card-hover: #ffffff;
+      --border-subtle: #cbd5e1;
+      --border-hover: #6366f1;
+      --text-primary: #0f172a;
+      --text-secondary: #334155;
+      --text-muted: #64748b;
+      --card-feature-text: #1e293b;
+      --tag-bg: #e2e8f0;
+      --tag-text: #334155;
+      --tag-border: #cbd5e1;
+      --shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.08);
+      --shadow-glow: 0 10px 25px rgba(99, 102, 241, 0.12);
+      --utfpr-primary: #0f172a;
+      --utfpr-yellow: #d97706;
+      --input-bg: #ffffff;
+      --input-border: #cbd5e1;
+      --pill-bg: #ffffff;
+      --pill-border: #cbd5e1;
+      --mesh-line: rgba(15, 23, 42, 0.04);
+      --footer-bg: #e2e8f0;
     }
 
     * {
@@ -51,10 +82,18 @@
       flex-direction: column;
       line-height: 1.6;
       background-image: 
-        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.18), transparent 70%),
-        radial-gradient(ellipse 60% 40% at 85% 60%, rgba(6, 182, 212, 0.08), transparent 60%),
-        radial-gradient(ellipse 50% 30% at 15% 40%, rgba(168, 85, 247, 0.08), transparent 60%);
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.14), transparent 70%),
+        radial-gradient(ellipse 60% 40% at 85% 60%, rgba(6, 182, 212, 0.06), transparent 60%),
+        radial-gradient(ellipse 50% 30% at 15% 40%, rgba(168, 85, 247, 0.06), transparent 60%);
       background-attachment: fixed;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    [data-theme="light"] body {
+      background-image: 
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.09), transparent 70%),
+        radial-gradient(ellipse 60% 40% at 85% 60%, rgba(6, 182, 212, 0.05), transparent 60%),
+        radial-gradient(ellipse 50% 30% at 15% 40%, rgba(168, 85, 247, 0.05), transparent 60%);
     }
 
     /* Ambient animated mesh backdrop */
@@ -68,8 +107,234 @@
       z-index: 0;
       background-size: 40px 40px;
       background-image: 
-        linear-gradient(to right, rgba(255, 255, 255, 0.015) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+        linear-gradient(to right, var(--mesh-line) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--mesh-line) 1px, transparent 1px);
+    }
+
+    /* Light Mode Contrast Enhancements */
+    [data-theme="light"] h1 {
+      background: linear-gradient(135deg, #0f172a 30%, #1e293b 70%, #334155 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    [data-theme="light"] .monorepo-badge {
+      background: #e0e7ff;
+      border-color: #c7d2fe;
+      color: #3730a3;
+      font-weight: 700;
+    }
+
+    [data-theme="light"] .stat-pill {
+      background: #ffffff;
+      border-color: #cbd5e1;
+      color: #475569;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+    }
+
+    [data-theme="light"] .stat-pill strong {
+      color: #0f172a;
+    }
+
+    [data-theme="light"] .controls-panel {
+      background: #ffffff;
+      border-color: #cbd5e1;
+      box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.07), 0 4px 10px -2px rgba(15, 23, 42, 0.04);
+    }
+
+    [data-theme="light"] .search-input {
+      background: #f8fafc;
+      border-color: #cbd5e1;
+      color: #0f172a;
+    }
+
+    [data-theme="light"] .search-input:focus {
+      background: #ffffff;
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    }
+
+    [data-theme="light"] .search-input::placeholder {
+      color: #94a3b8;
+    }
+
+    [data-theme="light"] .filter-btn {
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+      color: #334155;
+    }
+
+    [data-theme="light"] .filter-btn:hover {
+      background: #e2e8f0;
+      color: #0f172a;
+      border-color: #94a3b8;
+    }
+
+    [data-theme="light"] .filter-btn.active {
+      background: #4f46e5;
+      color: #ffffff;
+      border-color: #4f46e5;
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+    }
+
+    [data-theme="light"] .filter-count {
+      background: rgba(0, 0, 0, 0.08);
+      color: inherit;
+    }
+
+    [data-theme="light"] .filter-btn.active .filter-count {
+      background: rgba(255, 255, 255, 0.25);
+      color: #ffffff;
+    }
+
+    [data-theme="light"] .sim-card {
+      background: #ffffff;
+      border-color: #e2e8f0;
+      box-shadow: 0 4px 12px -2px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
+    }
+
+    [data-theme="light"] .sim-card:hover {
+      border-color: var(--card-accent, #6366f1);
+      box-shadow: 0 16px 28px -6px rgba(15, 23, 42, 0.12), 0 6px 14px -3px rgba(99, 102, 241, 0.12);
+      transform: translateY(-4px);
+    }
+
+    [data-theme="light"] .card-category-badge {
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+      color: #1e293b;
+      font-weight: 800;
+    }
+
+    [data-theme="light"] .card-path {
+      color: #64748b;
+    }
+
+    [data-theme="light"] .card-description {
+      color: #334155;
+    }
+
+    [data-theme="light"] .card-features {
+      border-top-color: #e2e8f0;
+    }
+
+    [data-theme="light"] .card-features li {
+      color: #1e293b;
+      font-weight: 500;
+    }
+
+    [data-theme="light"] .tech-tag {
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+      color: #334155;
+      font-weight: 600;
+    }
+
+    [data-theme="light"] .btn-icon-ext {
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+      color: #334155;
+    }
+
+    [data-theme="light"] .btn-icon-ext:hover {
+      background: #e2e8f0;
+      color: #0f172a;
+      border-color: #94a3b8;
+    }
+
+    [data-theme="light"] .empty-state {
+      background: #ffffff;
+      border-color: #cbd5e1;
+    }
+
+    [data-theme="light"] footer {
+      background: #e2e8f0;
+      border-top-color: #cbd5e1;
+    }
+
+    [data-theme="light"] .footer-content {
+      color: #334155;
+    }
+
+    [data-theme="light"] .theme-btn {
+      background: #ffffff;
+      border-color: #cbd5e1;
+      color: #1e293b;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+    }
+
+    [data-theme="light"] .theme-btn:hover {
+      background: #f8fafc;
+      border-color: #6366f1;
+      color: #4f46e5;
+    }
+
+    [data-theme="light"] .lang-switcher {
+      background: #ffffff;
+      border-color: #cbd5e1;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+    }
+
+    [data-theme="light"] .lang-btn {
+      color: #64748b;
+    }
+
+    [data-theme="light"] .lang-btn:hover {
+      color: #0f172a;
+      background: #f1f5f9;
+    }
+
+    [data-theme="light"] .lang-btn.active {
+      background: #4f46e5;
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+    }
+
+    [data-theme="light"] .hero-subheading {
+      color: #0f172a;
+    }
+
+    [data-theme="light"] .hero-desc {
+      color: #334155;
+    }
+
+    [data-theme="light"] .hero-contact {
+      background: #e0e7ff;
+      border-color: #c7d2fe;
+      color: #3730a3;
+      font-weight: 600;
+    }
+
+    [data-theme="light"] .hero-contact:hover {
+      background: #4f46e5;
+      border-color: #4f46e5;
+      color: #ffffff;
+    }
+
+    [data-theme="light"] .unfinished-toggle-btn {
+      background: #fffbeb;
+      border-color: #f59e0b;
+      color: #b45309;
+      font-weight: 700;
+    }
+
+    [data-theme="light"] .unfinished-toggle-btn:hover {
+      background: #fef3c7;
+      border-color: #d97706;
+      color: #92400e;
+    }
+
+    [data-theme="light"] .unfinished-toggle-btn.active {
+      background: #f59e0b;
+      color: #ffffff;
+      border-color: #d97706;
+    }
+
+    [data-theme="light"] .badge-unfinished {
+      background: #fef3c7;
+      border-color: #fcd34d;
+      color: #92400e;
+      font-weight: 700;
     }
 
     .container {
@@ -579,25 +844,66 @@
     }
   
     /* Header Top & Language Switcher */
+    .top-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+
     .header-top {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      max-width: 960px;
-      margin: 0 auto 20px auto;
+      max-width: 1020px;
+      margin: 0 auto 24px auto;
       gap: 16px;
+    }
+
+    .theme-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 38px;
+      height: 38px;
+      border-radius: var(--radius-md);
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: var(--transition-smooth);
+      backdrop-filter: blur(12px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .theme-btn:hover {
+      color: var(--text-primary);
+      border-color: var(--border-hover);
+      transform: translateY(-1px);
+    }
+
+    .theme-icon {
+      width: 18px;
+      height: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .theme-icon svg {
+      width: 100%;
+      height: 100%;
     }
 
     .lang-switcher {
       display: inline-flex;
       align-items: center;
-      background: rgba(15, 23, 42, 0.75);
+      background: var(--bg-card);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-md);
       padding: 3px;
       gap: 2px;
       backdrop-filter: blur(12px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     }
 
     .lang-btn {
@@ -618,7 +924,7 @@
 
     .lang-btn:hover {
       color: var(--text-primary);
-      background: rgba(255, 255, 255, 0.04);
+      background: rgba(255, 255, 255, 0.05);
     }
 
     .lang-btn.active {
@@ -627,10 +933,204 @@
       box-shadow: 0 2px 10px rgba(99, 102, 241, 0.4);
     }
 
+    /* Hero Profile / Identity Banner */
+    .hero-identity {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 32px;
+      max-width: 1020px;
+      margin: 0 auto 28px auto;
+      text-align: left;
+    }
+
+    .hero-avatar-box {
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .hero-avatar {
+      width: 124px;
+      height: 124px;
+      border-radius: 50%;
+      object-fit: cover;
+      display: block;
+      border: 3px solid var(--accent-indigo);
+      box-shadow: 0 0 24px rgba(99, 102, 241, 0.35), var(--shadow-sm);
+      transition: var(--transition-smooth);
+    }
+
+    .hero-avatar:hover {
+      transform: scale(1.03);
+      box-shadow: 0 0 32px rgba(99, 102, 241, 0.5), var(--shadow-sm);
+    }
+
+    .hero-text-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .hero-text-content h1 {
+      font-size: clamp(2rem, 4vw, 3rem);
+      margin-bottom: 8px;
+      line-height: 1.15;
+    }
+
+    .hero-subheading {
+      font-size: clamp(1.05rem, 2vw, 1.28rem);
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1.4;
+      margin-bottom: 8px;
+    }
+
+    .hero-author-title {
+      color: var(--accent-cyan);
+    }
+
+    .hero-contact {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.88rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--accent-indigo);
+      text-decoration: none;
+      background: rgba(99, 102, 241, 0.1);
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      padding: 4px 12px;
+      border-radius: 9999px;
+      margin-bottom: 12px;
+      transition: var(--transition-smooth);
+    }
+
+    .hero-contact:hover {
+      background: rgba(99, 102, 241, 0.2);
+      border-color: var(--accent-indigo);
+      color: #ffffff;
+      transform: translateY(-1px);
+    }
+
+    .hero-desc {
+      font-size: 0.98rem;
+      color: var(--text-secondary);
+      line-height: 1.55;
+      margin: 0;
+    }
+
+    /* Unfinished Simulators Filter Controls & Badges */
+    .filter-tabs-wrapper {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .unfinished-toggle-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border-radius: var(--radius-md);
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px dashed rgba(245, 158, 11, 0.35);
+      color: var(--accent-amber);
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: var(--transition-smooth);
+    }
+
+    .unfinished-toggle-btn:hover {
+      background: rgba(245, 158, 11, 0.18);
+      border-color: var(--accent-amber);
+    }
+
+    .unfinished-toggle-btn.active {
+      background: var(--accent-amber);
+      color: #000;
+      border-style: solid;
+      font-weight: 700;
+      box-shadow: 0 2px 10px rgba(245, 158, 11, 0.35);
+    }
+
+    .badge-unfinished {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 3px 8px;
+      border-radius: var(--radius-sm);
+      background: rgba(245, 158, 11, 0.18);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      margin-left: 6px;
+    }
+
+    /* Footer Enhancements & UTFPR Logo */
+    .footer-brand {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .footer-utfpr-logo {
+      height: 40px;
+      width: auto;
+      max-width: 140px;
+      display: block;
+      transition: var(--transition-smooth);
+    }
+
+    .footer-utfpr-svg {
+      height: 40px;
+      width: auto;
+      display: block;
+    }
+
+    .footer-utfpr-svg .utfpr-main {
+      fill: var(--utfpr-primary);
+      transition: fill 0.3s ease;
+    }
+
+    .footer-utfpr-svg .utfpr-yellow {
+      fill: var(--utfpr-yellow);
+      transition: fill 0.3s ease;
+    }
+
+    @media (max-width: 768px) {
+      .hero-identity {
+        flex-direction: column;
+        text-align: center;
+        gap: 18px;
+      }
+      .hero-text-content {
+        text-align: center;
+      }
+      .filter-tabs-wrapper {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .footer-brand {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+    }
+
     @media (max-width: 640px) {
       .header-top {
         flex-direction: column;
         gap: 14px;
+      }
+      .top-actions {
+        width: 100%;
+        justify-content: center;
       }
     }
 </style>
@@ -638,47 +1138,109 @@
 <body>
 <div class="mesh-glow"></div>
 <div class="container">
-<header><div class="header-top"><div class="monorepo-badge"><span class="pulse-dot"></span><span id="badgeText">MONOREPO • APLICAÇÕES CIENTÍFICAS SERVERLESS</span></div><div aria-label="Language / Idioma" class="lang-switcher" role="group"><button aria-pressed="true" class="lang-btn active" data-lang="pt-BR" type="button">PT-BR</button><button aria-pressed="false" class="lang-btn" data-lang="en" type="button">EN</button></div></div>
+<header>
+  <div class="header-top">
+    <div class="monorepo-badge">
+      <span class="pulse-dot"></span>
+      <span id="badgeText">MONOREPO • APLICAÇÕES CIENTÍFICAS SERVERLESS</span>
+    </div>
+    <div class="top-actions">
+      <!-- Light / Dark Mode Toggle Button -->
+      <button type="button" class="theme-btn" id="themeToggleBtn" aria-label="Alternar tema claro/escuro" title="Alternar tema">
+        <span class="theme-icon" id="themeIcon">
+          <!-- Sun icon (shown in dark mode to switch to light) -->
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+        </span>
+      </button>
 
-<h1 id="heroTitle">Simuladores de Geodésia &amp; Topografia</h1>
-<p class="hero-subtitle" id="heroSubtitle">
+      <!-- Language Selector -->
+      <div aria-label="Language / Idioma" class="lang-switcher" role="group">
+        <button aria-pressed="true" class="lang-btn active" data-lang="pt-BR" type="button">PT-BR</button>
+        <button aria-pressed="false" class="lang-btn" data-lang="en" type="button">EN</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hero Identity: Photo on the left, Titles & Contact on the right -->
+  <div class="hero-identity">
+    <div class="hero-avatar-box">
+      <img src="shared/assets/prof_kaue.png" alt="Professor Kauê de Moraes Vestena" class="hero-avatar" width="124" height="124" loading="eager" />
+    </div>
+    <div class="hero-text-content">
+      <h1 id="heroTitle">Simuladores Interativos</h1>
+      <div class="hero-subheading" id="heroAuthor">
+        Professor Kauê de Moraes Vestena — Departamento de Agrimensura da Universidade Tecnológica Federal do Paraná
+      </div>
+      <div>
+        <a href="mailto:kauevestena@utfpr.edu.br" class="hero-contact" title="Enviar e-mail">
+          <svg fill="none" height="14" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+            <polyline points="22,6 12,13 2,6"></polyline>
+          </svg>
+          kauevestena@utfpr.edu.br
+        </a>
+      </div>
+      <p class="hero-desc" id="heroSubtitle">
         Portal centralizado com ferramentas interativas, visualizadores 3D e laboratórios de ajustamento por Mínimos Quadrados. Todas as ferramentas executam 100% no navegador.
       </p>
-<div class="hero-stats">
-<div class="stat-pill">
-<span id="statTotalLabel">📦 Total de Simuladores:</span>
-<strong id="statTotalApps">12</strong>
-</div>
-<div class="stat-pill">
-<span id="statArchLabel">⚡ Arquitetura:</span>
-<strong id="statArchVal">Client-side (Sem Servidor)</strong>
-</div>
-<div class="stat-pill">
-<span id="statMethodsLabel">📐 Métodos:</span>
-<strong id="statMethodsVal">MMQ, Órbitas, 3D &amp; Vias</strong>
-</div>
-</div>
-<!-- Controls Panel: Instant Search and Category Pills -->
-<div class="controls-panel">
-<div class="search-wrapper">
-<div class="search-icon">
-<svg fill="none" height="20" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="20">
-<circle cx="11" cy="11" r="8"></circle>
-<line x1="21" x2="16.65" y1="21" y2="16.65"></line>
-</svg>
-</div>
-<input aria-label="Buscar simuladores" class="search-input" id="searchInput" placeholder="Buscar por nome, método (ex: MMQ, GNSS, Geoide, Curvas), biblioteca..." type="text"/>
-<button aria-label="Limpar busca" class="search-clear" id="searchClear">×</button>
-</div>
-<div class="filter-tabs" id="filterTabs">
-<button class="filter-btn active" data-category="all"><span class="filter-label" data-filter-key="filterAll">Todos</span> <span class="filter-count" id="countAll">10</span></button>
-<button class="filter-btn" data-category="ajustamento"><span class="filter-label" data-filter-key="filterAjustamento">📐 Ajustamento &amp; MMQ</span> <span class="filter-count" id="countAjustamento">4</span></button>
-<button class="filter-btn" data-category="geodesia-3d"><span class="filter-label" data-filter-key="filterGeodesia">🌍 Geodésia &amp; Modelos 3D</span> <span class="filter-count" id="countGeodesia">2</span></button>
-<button class="filter-btn" data-category="astronomia-gnss"><span class="filter-label" data-filter-key="filterAstro">📡 GNSS &amp; Astronomia</span> <span class="filter-count" id="countAstro">2</span></button>
-<button class="filter-btn" data-category="vias"><span class="filter-label" data-filter-key="filterVias">🛣️ Rodovias &amp; Traçado</span> <span class="filter-count" id="countVias">1</span></button>
-<button class="filter-btn" data-category="jogos"><span class="filter-label" data-filter-key="filterJogos">🎮 Jogos Educativos</span> <span class="filter-count" id="countJogos">1</span></button>
-</div>
-</div>
+    </div>
+  </div>
+
+  <div class="hero-stats">
+    <div class="stat-pill">
+      <span id="statTotalLabel">📦 Total de Simuladores:</span>
+      <strong id="statTotalApps">12</strong>
+    </div>
+    <div class="stat-pill">
+      <span id="statArchLabel">⚡ Arquitetura:</span>
+      <strong id="statArchVal">Client-side (Sem Servidor)</strong>
+    </div>
+    <div class="stat-pill">
+      <span id="statMethodsLabel">📐 Métodos:</span>
+      <strong id="statMethodsVal">MMQ, Órbitas, 3D &amp; Vias</strong>
+    </div>
+  </div>
+
+  <!-- Controls Panel: Instant Search, Category Pills & Unfinished Filter Toggle -->
+  <div class="controls-panel">
+    <div class="search-wrapper">
+      <div class="search-icon">
+        <svg fill="none" height="20" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="20">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" x2="16.65" y1="21" y2="16.65"></line>
+        </svg>
+      </div>
+      <input aria-label="Buscar simuladores" class="search-input" id="searchInput" placeholder="Buscar por nome, método (ex: MMQ, GNSS, Geoide, Curvas), biblioteca..." type="text"/>
+      <button aria-label="Limpar busca" class="search-clear" id="searchClear">×</button>
+    </div>
+    
+    <div class="filter-tabs-wrapper">
+      <div class="filter-tabs" id="filterTabs">
+        <button class="filter-btn active" data-category="all"><span class="filter-label" data-filter-key="filterAll">Todos</span> <span class="filter-count" id="countAll">12</span></button>
+        <button class="filter-btn" data-category="ajustamento"><span class="filter-label" data-filter-key="filterAjustamento">📐 Ajustamento &amp; MMQ</span> <span class="filter-count" id="countAjustamento">7</span></button>
+        <button class="filter-btn" data-category="geodesia-3d"><span class="filter-label" data-filter-key="filterGeodesia">🌍 Geodésia &amp; Modelos 3D</span> <span class="filter-count" id="countGeodesia">3</span></button>
+        <button class="filter-btn" data-category="astronomia-gnss"><span class="filter-label" data-filter-key="filterAstro">📡 GNSS &amp; Astronomia</span> <span class="filter-count" id="countAstro">2</span></button>
+        <button class="filter-btn" data-category="vias"><span class="filter-label" data-filter-key="filterVias">🛣️ Rodovias &amp; Traçado</span> <span class="filter-count" id="countVias">1</span></button>
+        <button class="filter-btn" data-category="jogos"><span class="filter-label" data-filter-key="filterJogos">🎮 Jogos Educativos</span> <span class="filter-count" id="countJogos">1</span></button>
+      </div>
+
+      <!-- Toggle to show/hide unfinished projects -->
+      <button type="button" class="unfinished-toggle-btn" id="unfinishedToggleBtn" aria-pressed="false">
+        <span>🚧</span>
+        <span id="unfinishedToggleText">Ver projetos em desenvolvimento (5)</span>
+      </button>
+    </div>
+  </div>
 </header>
 <!-- Simulators Grid -->
 <main class="simulators-grid" id="simulatorsGrid">
@@ -701,10 +1263,10 @@
 <div class="card-actions"><a class="btn-launch" href="camera_proj/"><span class="btn-text">Abrir Simulador →</span></a><a class="btn-icon-ext" href="camera_proj/" rel="noopener" target="_blank" title="Abrir em nova aba">↗</a></div>
 </article>
 <!-- 1. Sistemas de Coordenadas -->
-<article class="sim-card" data-card-id="sistemas_coordenadas" data-category="geodesia-3d" style="--card-accent: #06b6d4; --card-accent-glow: rgba(6, 182, 212, 0.25); --card-icon-bg: rgba(6, 182, 212, 0.12); --card-btn-bg: linear-gradient(135deg, #0891b2, #06b6d4);">
+<article class="sim-card" data-card-id="sistemas_coordenadas" data-status="unfinished" data-category="geodesia-3d" style="--card-accent: #06b6d4; --card-accent-glow: rgba(6, 182, 212, 0.25); --card-icon-bg: rgba(6, 182, 212, 0.12); --card-btn-bg: linear-gradient(135deg, #0891b2, #06b6d4);">
 <div class="card-top">
 <div class="card-icon-box">📐</div>
-<span class="card-category-badge">Geodésia Fundamental</span>
+<div style="display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;"><span class="card-category-badge">Geodésia Fundamental</span><span class="badge-unfinished">🚧 Em desenvolvimento</span></div>
 </div>
 <h2 class="card-title">Sistemas de Coordenadas</h2>
 <div class="card-path">
@@ -798,10 +1360,10 @@
 </div>
 </article>
 <!-- 4. Astrometria -->
-<article class="sim-card" data-card-id="astrometria" data-category="astronomia-gnss" style="--card-accent: #ec4899; --card-accent-glow: rgba(236, 72, 153, 0.25); --card-icon-bg: rgba(236, 72, 153, 0.12); --card-btn-bg: linear-gradient(135deg, #db2777, #ec4899);">
+<article class="sim-card" data-card-id="astrometria" data-status="unfinished" data-category="astronomia-gnss" style="--card-accent: #ec4899; --card-accent-glow: rgba(236, 72, 153, 0.25); --card-icon-bg: rgba(236, 72, 153, 0.12); --card-btn-bg: linear-gradient(135deg, #db2777, #ec4899);">
 <div class="card-top">
 <div class="card-icon-box">🔭</div>
-<span class="card-category-badge">Geodésia Celeste</span>
+<div style="display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;"><span class="card-category-badge">Geodésia Celeste</span><span class="badge-unfinished">🚧 Em desenvolvimento</span></div>
 </div>
 <h2 class="card-title">Astrometria de Posição</h2>
 <div class="card-path">
@@ -958,10 +1520,10 @@
 </div>
 </article>
 <!-- 9. Projeto Rodoviário -->
-<article class="sim-card" data-card-id="estradas" data-category="vias" style="--card-accent: #f97316; --card-accent-glow: rgba(249, 115, 22, 0.25); --card-icon-bg: rgba(249, 115, 22, 0.12); --card-btn-bg: linear-gradient(135deg, #ea580c, #f97316);">
+<article class="sim-card" data-card-id="estradas" data-status="unfinished" data-category="vias" style="--card-accent: #f97316; --card-accent-glow: rgba(249, 115, 22, 0.25); --card-icon-bg: rgba(249, 115, 22, 0.12); --card-btn-bg: linear-gradient(135deg, #ea580c, #f97316);">
 <div class="card-top">
 <div class="card-icon-box">🛣️</div>
-<span class="card-category-badge">Engenharia Rodoviária</span>
+<div style="display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;"><span class="card-category-badge">Engenharia Rodoviária</span><span class="badge-unfinished">🚧 Em desenvolvimento</span></div>
 </div>
 <h2 class="card-title">Projeto Rodoviário</h2>
 <div class="card-path">
@@ -1054,10 +1616,10 @@
 </div>
 </article>
 <!-- 12. Pontaria Direta e Inversa (pd_pi) -->
-<article class="sim-card" data-card-id="pd_pi" data-category="ajustamento" style="--card-accent: #a855f7; --card-accent-glow: rgba(168, 85, 247, 0.25); --card-icon-bg: rgba(168, 85, 247, 0.12); --card-btn-bg: linear-gradient(135deg, #9333ea, #a855f7);">
+<article class="sim-card" data-card-id="pd_pi" data-status="unfinished" data-category="ajustamento" style="--card-accent: #a855f7; --card-accent-glow: rgba(168, 85, 247, 0.25); --card-icon-bg: rgba(168, 85, 247, 0.12); --card-btn-bg: linear-gradient(135deg, #9333ea, #a855f7);">
 <div class="card-top">
 <div class="card-icon-box">🔄</div>
-<span class="card-category-badge">Topografia &amp; Instrumentação</span>
+<div style="display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;"><span class="card-category-badge">Topografia &amp; Instrumentação</span><span class="badge-unfinished">🚧 Em desenvolvimento</span></div>
 </div>
 <h2 class="card-title">Pontaria Direta e Inversa</h2>
 <div class="card-path">
@@ -1086,10 +1648,10 @@
 </div>
 </article>
 <!-- 13. Medida Eletrônica de Distâncias (med) -->
-<article class="sim-card" data-card-id="med" data-category="ajustamento" style="--card-accent: #14b8a6; --card-accent-glow: rgba(20, 184, 166, 0.25); --card-icon-bg: rgba(20, 184, 166, 0.12); --card-btn-bg: linear-gradient(135deg, #0d9488, #14b8a6);">
+<article class="sim-card" data-card-id="med" data-status="unfinished" data-category="ajustamento" style="--card-accent: #14b8a6; --card-accent-glow: rgba(20, 184, 166, 0.25); --card-icon-bg: rgba(20, 184, 166, 0.12); --card-btn-bg: linear-gradient(135deg, #0d9488, #14b8a6);">
 <div class="card-top">
 <div class="card-icon-box">📏</div>
-<span class="card-category-badge">EDM &amp; Metrologia</span>
+<div style="display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;"><span class="card-category-badge">EDM &amp; Metrologia</span><span class="badge-unfinished">🚧 Em desenvolvimento</span></div>
 </div>
 <h2 class="card-title">Medida Eletrônica de Distâncias</h2>
 <div class="card-path">
@@ -1189,23 +1751,35 @@
 </div>
 <!-- Footer -->
 <footer>
-<div class="container footer-content">
-<div id="footerPlatform">
-<strong>Simuladores Monorepo</strong> • Plataforma educacional e científica de Geodésia &amp; Topografia.
+  <div class="container footer-content">
+    <div class="footer-brand">
+      <a href="http://www.utfpr.edu.br" target="_blank" rel="noopener" class="footer-utfpr-logo" title="Universidade Tecnológica Federal do Paraná">
+        <svg class="footer-utfpr-svg" viewBox="0 0 2333 874" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Logo UTFPR">
+          <path class="utfpr-yellow" fill-rule="evenodd" clip-rule="evenodd" d="M952.069 736.445V146.661H1504.97V262.784H1099.76V736.445H952.069Z"/>
+          <path class="utfpr-main" d="M453.188 -0.000183105V424.792C453.188 550.226 413.118 632.439 300.351 632.439C187.582 632.439 147.547 550.226 147.547 424.792V-0.000183105H0V470.116C0 667.203 111.688 748.411 300.351 748.411C488.999 748.411 600.69 667.203 600.69 470.116V115.936H771.207V735.748H918.755V115.936H1505.87V-0.000183105H453.188Z"/>
+          <path class="utfpr-main" d="M1132.25 736.445V297.478H1504.97V413.53H1271.05V736.445H1132.25Z"/>
+          <path class="utfpr-main" d="M1568 735V297H1709.88C1763.65 297 1798.69 299.191 1815.02 303.573C1840.11 310.146 1861.12 324.487 1878.05 346.596C1894.97 368.506 1903.44 396.889 1903.44 431.746C1903.44 458.636 1898.56 481.243 1888.8 499.568C1879.04 517.892 1866.6 532.333 1851.46 542.889C1836.53 553.247 1821.29 560.119 1805.76 563.505C1784.65 567.688 1754.09 569.779 1714.06 569.779H1656.41V735H1568ZM1656.41 371.095V495.385H1704.8C1739.65 495.385 1762.95 493.094 1774.7 488.513C1786.45 483.932 1795.61 476.761 1802.18 467.001C1808.95 457.241 1812.33 445.888 1812.33 432.941C1812.33 417.007 1807.65 403.861 1798.29 393.503C1788.94 383.146 1777.09 376.673 1762.75 374.083C1752.2 372.091 1730.99 371.095 1699.13 371.095H1656.41Z"/>
+          <path class="utfpr-main" d="M1934.32 735V297H2120.41C2167.2 297 2201.15 300.984 2222.26 308.951C2243.57 316.719 2260.59 330.662 2273.34 350.779C2286.08 370.896 2292.46 393.902 2292.46 419.795C2292.46 452.66 2282.8 479.849 2263.48 501.36C2244.17 522.673 2215.29 536.117 2176.86 541.694C2195.98 552.849 2211.71 565.098 2224.05 578.443C2236.6 591.789 2253.43 615.491 2274.53 649.551L2328 735H2222.26L2158.34 639.692C2135.64 605.632 2120.11 584.22 2111.74 575.456C2103.38 566.492 2094.52 560.417 2085.16 557.231C2075.8 553.844 2060.97 552.151 2040.65 552.151H2022.73V735H1934.32ZM2022.73 482.239H2088.15C2130.56 482.239 2157.05 480.446 2167.6 476.861C2178.15 473.276 2186.42 467.101 2192.39 458.337C2198.37 449.573 2201.35 438.618 2201.35 425.472C2201.35 410.733 2197.37 398.881 2189.4 389.918C2181.64 380.756 2170.59 374.98 2156.25 372.589C2149.08 371.593 2127.57 371.095 2091.73 371.095H2022.73V482.239Z"/>
+        </svg>
+      </a>
+      <div id="footerPlatform">
+        <strong>Simuladores Monorepo</strong> • Plataforma educacional e científica de Geodésia &amp; Topografia — UTFPR.
       </div>
-<div id="footerTech">
-        100% Client-Side • Desenvolvido com HTML, CSS e JavaScript Vanilla
-      </div>
-</div>
+    </div>
+    <div id="footerTech">
+      100% Client-Side • Desenvolvido com HTML, CSS e JavaScript Vanilla
+    </div>
+  </div>
 </footer>
 
 <script>
   const uiTranslations = {
   "pt-BR": {
-    "pageTitle": "Simuladores de Geodésia, Topografia e Ajustamento — Portal Monorepo",
-    "pageDesc": "Portal central de simuladores científicos e didáticos para Geodésia, Topografia, Ajustamento por Mínimos Quadrados, Órbitas GNSS e Engenharia Rodoviária.",
+    "pageTitle": "Simuladores Interativos — Prof. Kauê Vestena (UTFPR)",
+    "pageDesc": "Portal centralizado de simuladores científicos e didáticos para Geodésia, Topografia, Ajustamento por Mínimos Quadrados, Órbitas GNSS e Engenharia Rodoviária.",
     "badgeText": "MONOREPO • APLICAÇÕES CIENTÍFICAS SERVERLESS",
-    "heroTitle": "Simuladores de Geodésia & Topografia",
+    "heroTitle": "Simuladores Interativos",
+    "heroAuthor": "Professor Kauê de Moraes Vestena — Departamento de Agrimensura da Universidade Tecnológica Federal do Paraná",
     "heroSubtitle": "Portal centralizado com ferramentas interativas, visualizadores 3D e laboratórios de ajustamento por Mínimos Quadrados. Todas as ferramentas executam 100% no navegador.",
     "statTotalLabel": "📦 Total de Simuladores:",
     "statArchLabel": "⚡ Arquitetura:",
@@ -1221,20 +1795,26 @@
     "filterAstro": "📡 GNSS & Astronomia",
     "filterVias": "🛣️ Rodovias & Traçado",
     "filterJogos": "🎮 Jogos Educativos",
+    "unfinishedToggleHide": "Ocultar em desenvolvimento",
+    "unfinishedToggleShow": "Ver projetos em desenvolvimento",
+    "badgeUnfinished": "🚧 Em desenvolvimento",
+    "themeToggleLight": "Alternar para tema claro",
+    "themeToggleDark": "Alternar para tema escuro",
     "emptyTitle": "Nenhum simulador encontrado",
     "emptyDesc": "Tente ajustar os termos da pesquisa ou selecionar outra categoria.",
     "btnLaunch": "Acessar Simulador",
     "btnLaunchAlt": "Abrir Simulador →",
     "btnPlay": "Jogar Online",
     "btnExtTitle": "Abrir em nova aba",
-    "footerPlatform": "<strong>Simuladores Monorepo</strong> • Plataforma educacional e científica de Geodésia & Topografia.",
+    "footerPlatform": "<strong>Simuladores Monorepo</strong> • Plataforma educacional e científica de Geodésia &amp; Topografia — UTFPR.",
     "footerTech": "100% Client-Side • Desenvolvido com HTML, CSS e JavaScript Vanilla"
   },
   "en": {
-    "pageTitle": "Geodesy, Surveying & Adjustment Simulators — Monorepo Portal",
-    "pageDesc": "Central portal of scientific and educational simulators for Geodesy, Surveying, Least Squares Estimation, GNSS Orbits, and Highway Engineering.",
+    "pageTitle": "Interactive Simulators — Prof. Kauê Vestena (UTFPR)",
+    "pageDesc": "Centralized portal of scientific and educational simulators for Geodesy, Surveying, Least Squares Estimation, GNSS Orbits, and Highway Engineering.",
     "badgeText": "MONOREPO • SERVERLESS SCIENTIFIC APPS",
-    "heroTitle": "Geodesy & Surveying Simulators",
+    "heroTitle": "Interactive Simulators",
+    "heroAuthor": "Professor Kauê de Moraes Vestena — Department of Surveying, Federal University of Technology – Paraná (UTFPR)",
     "heroSubtitle": "Centralized portal with interactive tools, 3D visualizers, and Least Squares adjustment laboratories. All tools run 100% in your browser.",
     "statTotalLabel": "📦 Total Simulators:",
     "statArchLabel": "⚡ Architecture:",
@@ -1250,13 +1830,18 @@
     "filterAstro": "📡 GNSS & Astronomy",
     "filterVias": "🛣️ Highways & Alignment",
     "filterJogos": "🎮 Educational Games",
+    "unfinishedToggleHide": "Hide in-development",
+    "unfinishedToggleShow": "Show in-development projects",
+    "badgeUnfinished": "🚧 Unfinished",
+    "themeToggleLight": "Switch to light mode",
+    "themeToggleDark": "Switch to dark mode",
     "emptyTitle": "No simulators found",
     "emptyDesc": "Try adjusting your search terms or selecting another category.",
     "btnLaunch": "Launch Simulator",
     "btnLaunchAlt": "Launch Simulator →",
     "btnPlay": "Play Online",
     "btnExtTitle": "Open in new tab",
-    "footerPlatform": "<strong>Simulators Monorepo</strong> • Educational and scientific platform for Geodesy & Surveying.",
+    "footerPlatform": "<strong>Simulators Monorepo</strong> • Educational and scientific platform for Geodesy & Surveying — UTFPR.",
     "footerTech": "100% Client-Side • Built with HTML, CSS, and Vanilla JavaScript"
   }
 };
@@ -1884,6 +2469,8 @@
   let currentLang = 'pt-BR';
   let currentCategory = 'all';
   let searchQuery = '';
+  let showUnfinished = false;
+  let currentTheme = 'dark';
 
   const searchInput = document.getElementById('searchInput');
   const searchClear = document.getElementById('searchClear');
@@ -1891,9 +2478,60 @@
   const simCards = document.querySelectorAll('.sim-card');
   const emptyState = document.getElementById('emptyState');
   const langBtns = document.querySelectorAll('.lang-btn');
+  const themeToggleBtn = document.getElementById('themeToggleBtn');
+  const themeIcon = document.getElementById('themeIcon');
+  const unfinishedToggleBtn = document.getElementById('unfinishedToggleBtn');
+  const unfinishedToggleText = document.getElementById('unfinishedToggleText');
 
   function normalizeText(text) {
     return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+
+  // Theme Management (Dark theme is default)
+  function getInitialTheme() {
+    const stored = localStorage.getItem('monorepo_theme');
+    if (stored === 'light' || stored === 'dark') return stored;
+    return 'dark'; // Always default to dark mode unless explicitly chosen
+  }
+
+  function setTheme(theme) {
+    currentTheme = theme;
+    localStorage.setItem('monorepo_theme', currentTheme);
+    if (currentTheme === 'light') {
+      document.documentElement.setAttribute('data-theme', 'light');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+    updateThemeButton();
+  }
+
+  function updateThemeButton() {
+    const t = uiTranslations[currentLang];
+    if (currentTheme === 'light') {
+      // Show Moon icon (to switch to dark)
+      themeIcon.innerHTML = `
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>`;
+      themeToggleBtn.setAttribute('title', t.themeToggleDark);
+      themeToggleBtn.setAttribute('aria-label', t.themeToggleDark);
+    } else {
+      // Show Sun icon (to switch to light)
+      themeIcon.innerHTML = `
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+          <line x1="1" y1="12" x2="3" y2="12"></line>
+          <line x1="21" y1="12" x2="23" y2="12"></line>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>`;
+      themeToggleBtn.setAttribute('title', t.themeToggleLight);
+      themeToggleBtn.setAttribute('aria-label', t.themeToggleLight);
+    }
   }
 
   function getInitialLanguage() {
@@ -1928,6 +2566,9 @@
     const heroTitle = document.getElementById('heroTitle');
     if (heroTitle) heroTitle.textContent = t.heroTitle;
 
+    const heroAuthor = document.getElementById('heroAuthor');
+    if (heroAuthor) heroAuthor.textContent = t.heroAuthor;
+
     const heroSubtitle = document.getElementById('heroSubtitle');
     if (heroSubtitle) heroSubtitle.textContent = t.heroSubtitle;
 
@@ -1949,6 +2590,9 @@
       if (t[key]) el.textContent = t[key];
     });
 
+    // Unfinished Toggle Button Text
+    updateUnfinishedToggleButton();
+
     // Empty State
     document.getElementById('emptyTitle').textContent = t.emptyTitle;
     document.getElementById('emptyDesc').textContent = t.emptyDesc;
@@ -1964,6 +2608,9 @@
       btn.setAttribute('aria-pressed', String(isActive));
     });
 
+    // Update Theme button aria labels
+    updateThemeButton();
+
     // Update each simulator card
     simCards.forEach(card => {
       const cid = card.getAttribute('data-card-id');
@@ -1972,6 +2619,12 @@
 
       const badge = card.querySelector('.card-category-badge');
       if (badge) badge.textContent = data.badge;
+
+      // Unfinished status badge inside card
+      const unfBadge = card.querySelector('.badge-unfinished');
+      if (unfBadge) {
+        unfBadge.textContent = t.badgeUnfinished;
+      }
 
       const title = card.querySelector('.card-title');
       if (title) title.textContent = data.title;
@@ -2020,7 +2673,20 @@
       }
     });
 
+    updateCounts();
     filterCards();
+  }
+
+  function updateUnfinishedToggleButton() {
+    const t = uiTranslations[currentLang];
+    const unfinishedTotal = Array.from(simCards).filter(c => c.getAttribute('data-status') === 'unfinished').length;
+    unfinishedToggleBtn.classList.toggle('active', showUnfinished);
+    unfinishedToggleBtn.setAttribute('aria-pressed', String(showUnfinished));
+    if (showUnfinished) {
+      unfinishedToggleText.textContent = `${t.unfinishedToggleHide} (${unfinishedTotal})`;
+    } else {
+      unfinishedToggleText.textContent = `${t.unfinishedToggleShow} (${unfinishedTotal})`;
+    }
   }
 
   function updateCounts() {
@@ -2034,6 +2700,9 @@
     };
 
     simCards.forEach(card => {
+      const isUnfinished = card.getAttribute('data-status') === 'unfinished';
+      if (!showUnfinished && isUnfinished) return;
+
       const cat = card.getAttribute('data-category');
       counts.all++;
       if (counts[cat] !== undefined) counts[cat]++;
@@ -2053,6 +2722,12 @@
     let visibleCount = 0;
 
     simCards.forEach(card => {
+      const isUnfinished = card.getAttribute('data-status') === 'unfinished';
+      if (!showUnfinished && isUnfinished) {
+        card.style.display = 'none';
+        return;
+      }
+
       const category = card.getAttribute('data-category');
       const title = normalizeText(card.querySelector('.card-title')?.textContent || '');
       const desc = normalizeText(card.querySelector('.card-description')?.textContent || '');
@@ -2089,6 +2764,19 @@
     emptyState.style.display = visibleCount === 0 ? 'block' : 'none';
     searchClear.style.display = searchQuery ? 'flex' : 'none';
   }
+
+  // Theme button click
+  themeToggleBtn.addEventListener('click', () => {
+    setTheme(currentTheme === 'light' ? 'dark' : 'light');
+  });
+
+  // Unfinished toggle button click
+  unfinishedToggleBtn.addEventListener('click', () => {
+    showUnfinished = !showUnfinished;
+    updateUnfinishedToggleButton();
+    updateCounts();
+    filterCards();
+  });
 
   // Language switcher buttons
   langBtns.forEach(btn => {
@@ -2140,7 +2828,7 @@
   });
 
   // Initialize
-  updateCounts();
+  setTheme(getInitialTheme());
   setLanguage(getInitialLanguage());
 </script></body>
 </html>
