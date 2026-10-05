@@ -166,15 +166,16 @@ field book (several face-left/face-right series per sighting, like
     independently of the angles (any face, any series).
   - Standard deviation with n − 1 (default) or n; a σ floor avoids zero weights.
   - Preset **Reproduce reference file**: mean of the 2n reduced readings with population σ —
-    regenerates the A and B rows of `inputs/observations.csv` exactly.
+    regenerates all 24 rows of `inputs/observations.csv` exactly.
 - **Global errors:** ε and c from every complete series of every sighting, with optional
   trimming of extremes (k·s or % per tail), shown as a strip plot.
 - **Screening:** each reading is compared with the mean of the other readings of its group, one at
   a time, against k·σ of the network (pooled estimate; default), k·nominal σ, a robust MAD score
   or the Grubbs test. Series whose ε or c departs from the global value and groups with excessive
   scatter are flagged too. Readings can be excluded per observable (Hz, Z, S) by hand or with
-  *Exclude flagged*. Identical station blocks are reported — in the sample, station C's raw
-  readings are a copy of station B's.
+  *Exclude flagged*. Readings repeated verbatim at another station (a copied station block or
+  sighting) are reported — in the sample, C→00d, C→00e and C→00f repeat B's readings; they are not
+  part of `inputs/observations.csv`.
 - **Output:** `observations.csv` (control points and optional X,Y,Z ticked in the page), a
   per-reading report CSV, or **Open in simulator**, which hands the file to `index.html` through
   `localStorage` (`?source=preproc`).

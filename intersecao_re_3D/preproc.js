@@ -316,21 +316,34 @@
         return { groups, warnings };
     }
 
-    // Blocos de estações idênticos costumam ser cópia e cola na caderneta
+    // Leituras idênticas em estações diferentes são cópia e cola na caderneta: duas
+    // estações não medem o mesmo ponto com os mesmos Hz, Z e S. Se o bloco inteiro de uma
+    // estação repete o de outra, um único aviso; senão, um por visada copiada.
     function duplicateStationWarnings(groups) {
-        const sig = new Map();
+        const sigOf = g => g.readings.map(r => [r.hz, r.z, r.d].join('|')).join(';');
+        const byStation = new Map();
         groups.forEach(g => {
-            const s = g.readings.map(r => [g.target, r.hz, r.z, r.d].join('|')).join(';');
-            if (!sig.has(g.station)) sig.set(g.station, []);
-            sig.get(g.station).push(s);
+            if (!byStation.has(g.station)) byStation.set(g.station, []);
+            byStation.get(g.station).push(g);
         });
-        const st = [...sig.keys()], out = [];
+        const st = [...byStation.keys()], out = [], wholeCopy = new Set();
+        const block = s => byStation.get(s).map(g => g.target + '@' + sigOf(g)).sort().join('#');
         for (let i = 0; i < st.length; i++) for (let j = i + 1; j < st.length; j++) {
-            const a = sig.get(st[i]).slice().sort().join('#'), b = sig.get(st[j]).slice().sort().join('#');
-            if (a === b) out.push(tr(
+            if (block(st[i]) !== block(st[j])) continue;
+            wholeCopy.add(st[j]);
+            out.push(tr(
                 `As leituras da estação ${st[j]} são idênticas às da estação ${st[i]} — provável cópia na caderneta.`,
                 `Station ${st[j]} readings are identical to station ${st[i]} — probably copied in the field book.`));
         }
+        const first = new Map(); // assinatura -> primeira visada com ela
+        groups.forEach(g => {
+            const s = sigOf(g), prev = first.get(s);
+            if (!prev) { first.set(s, g); return; }
+            if (prev.station === g.station || wholeCopy.has(g.station)) return;
+            out.push(tr(
+                `${g.station}→${g.target}: leituras idênticas às de ${prev.station}→${prev.target} — provável cópia na caderneta.`,
+                `${g.station}→${g.target}: readings identical to ${prev.station}→${prev.target} — probably copied in the field book.`));
+        });
         return out;
     }
 

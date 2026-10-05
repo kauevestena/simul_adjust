@@ -49,7 +49,7 @@ console.log('Leitura');
     assert.strictEqual(P.detectFormat(RAW), 'gmmss'); ok('formato detectado: g.mmss');
 
     const g = groupsOf(RAW).groups;
-    assert.strictEqual(g.length, 24); ok('24 visadas na caderneta de exemplo');
+    assert.strictEqual(g.length, 27); ok('27 visadas na caderneta de exemplo');
     assert.ok(g.every(x => x.pairs.length === 3)); ok('3 séries PD/PI em cada visada');
 
     // Mesmos dados em graus decimais e em G, M, S (3 colunas) dão os mesmos grupos
@@ -74,7 +74,20 @@ console.log('Leitura');
 console.log('Estrutura');
 (() => {
     const b = groupsOf(RAW);
-    assert.ok(b.warnings.some(w => /C/.test(w) && /B/.test(w))); ok('aviso: estação C é cópia da estação B');
+    // Na amostra, C→00d, C→00e e C→00f repetem leitura a leitura as visadas de B
+    assert.deepStrictEqual(b.warnings.map(w => w.split(':')[0]), ['C→00d', 'C→00e', 'C→00f']);
+    ok('amostra: avisos só para as visadas de C copiadas de B');
+
+    const book = rows => P.buildGroups(P.parseRaw('E,P,Hz,Z,D\n' + rows.join('\n'), { angleFormat: 'deg' }).readings).warnings;
+    const blk = ['10,90,5', '190,270,5.001', '50,80,7', '230,280,7'];
+    const whole = book([...blk.slice(0, 2).map(r => 'A,P1,' + r), ...blk.slice(2).map(r => 'A,P2,' + r),
+        ...blk.slice(0, 2).map(r => 'B,P1,' + r), ...blk.slice(2).map(r => 'B,P2,' + r)]);
+    assert.strictEqual(whole.length, 1); assert.ok(/B/.test(whole[0]) && /A/.test(whole[0]));
+    ok('estação inteira copiada: um único aviso');
+    const one = book([...blk.slice(0, 2).map(r => 'A,P1,' + r), ...blk.slice(0, 2).map(r => 'B,P1,' + r), 'B,P3,40,85,3', 'B,P3,220,275,3']);
+    assert.strictEqual(one.length, 1); assert.ok(one[0].startsWith('B→P1')); ok('visada copiada de outra estação: aviso por visada');
+    assert.deepStrictEqual(book(['A,P1,10,90,5', 'A,P1,190,270,5', 'B,P1,10.001,90,5', 'B,P1,190,270,5']), []);
+    ok('leituras parecidas mas não idênticas: sem aviso');
     const odd = P.buildGroups(P.parseRaw('E,P,Hz,Z,D\nA,P1,10,90,5\nA,P1,190,270,5\nA,P1,10,90,5', { angleFormat: 'deg' }).readings);
     assert.strictEqual(odd.groups[0].pairs.length, 1);
     assert.ok(odd.warnings.length === 1); ok('PD sem PI correspondente gera aviso e não forma série');
@@ -85,11 +98,12 @@ console.log('Arquivo de referência');
     const { groups } = groupsOf(RAW);
     const S = P.applyPreset(P.DEFAULT_SETTINGS, 'reference');
     P.compute(groups, S);
-    // As estações A e B da caderneta correspondem às 15 primeiras linhas de observations.csv
+    // Todas as linhas de observations.csv saem da caderneta (que tem ainda C→00d/00e/00f)
+    const byKey = new Map(groups.map(g => [`${g.station}→${g.target}`, g]));
     let m = { hz: 0, sHz: 0, z: 0, sZ: 0, d: 0, sD: 0 };
-    groups.slice(0, 15).forEach((g, i) => {
-        const r = REF[i];
-        assert.strictEqual(`${g.station}→${g.target}`, `${r.station}→${r.target}`);
+    REF.forEach(r => {
+        const g = byKey.get(`${r.station}→${r.target}`);
+        assert.ok(g, `${r.station}→${r.target} ausente da caderneta`);
         m.hz = Math.max(m.hz, Math.abs(P.wrapPM180(g.out.hz.value - r.hzDeg)));
         m.sHz = Math.max(m.sHz, Math.abs(g.out.hz.sigma - r.sHz));
         m.z = Math.max(m.z, Math.abs(g.out.z.value - r.zenDeg));
@@ -97,7 +111,8 @@ console.log('Arquivo de referência');
         m.d = Math.max(m.d, Math.abs(g.out.d.value - r.dist));
         m.sD = Math.max(m.sD, Math.abs(g.out.d.sigma - r.sDist));
     });
-    assert.ok(m.hz < 1e-9 && m.z < 1e-9 && m.d < 1e-9, JSON.stringify(m)); ok('médias de Hz, Z e S iguais às de observations.csv');
+    assert.strictEqual(REF.length, 24);
+    assert.ok(m.hz < 1e-9 && m.z < 1e-9 && m.d < 1e-9, JSON.stringify(m)); ok('médias de Hz, Z e S iguais às das 24 linhas de observations.csv');
     assert.ok(m.sHz < 1e-8 && m.sZ < 1e-8 && m.sD < 1e-10, JSON.stringify(m)); ok('σ iguais às de observations.csv (2n leituras, s populacional)');
 
     P.compute(groups, P.DEFAULT_SETTINGS);
@@ -175,21 +190,21 @@ console.log('Exportação');
     P.compute(groups, P.DEFAULT_SETTINGS);
     const fixed = new Map([['M01', { fixed: true, xyz: null }], ['M02', { fixed: true, xyz: [10, 20, 30] }]]);
     const out = P.toObservationsCSV(groups, fixed);
-    assert.strictEqual(out.n, 24); assert.deepStrictEqual(out.skipped, []);
+    assert.strictEqual(out.n, 27); assert.deepStrictEqual(out.skipped, []);
     const back = io.parseCSV(out.csv);
     assert.deepStrictEqual(back.errors, []);
-    assert.strictEqual(back.rows.length, 24); ok('observations.csv exportado é lido pelo simulador sem erros');
+    assert.strictEqual(back.rows.length, 27); ok('observations.csv exportado é lido pelo simulador sem erros');
     assert.ok(back.rows[0].fixed && back.rows[1].fixed && !back.rows[2].fixed); ok('coluna Fixo segue os pontos marcados');
     assert.deepStrictEqual(back.rows[1].xyz, [10, 20, 30]); ok('X, Y, Z dos fixos exportados');
     approx(back.rows[0].sHz, groups[0].out.hz.sigma, 1e-9, 'σ em segundos no arquivo');
     const rep = P.toReportCSV(P.compute(groups, P.DEFAULT_SETTINGS));
-    assert.strictEqual(rep.trim().split('\n').length, 3 + 144); ok('relatório com uma linha por leitura');
+    assert.strictEqual(rep.trim().split('\n').length, 3 + 162); ok('relatório com uma linha por leitura');
 
     // Visada sem nenhuma distância incluída fica fora do arquivo
     groups[3].readings.forEach(r => { r.use.d = false; });
     P.compute(groups, P.DEFAULT_SETTINGS);
     const out2 = P.toObservationsCSV(groups, fixed);
-    assert.strictEqual(out2.n, 23); assert.deepStrictEqual(out2.skipped, ['A→00d']); ok('visada sem distância incluída não é exportada');
+    assert.strictEqual(out2.n, 26); assert.deepStrictEqual(out2.skipped, ['A→00d']); ok('visada sem distância incluída não é exportada');
 })();
 
 console.log(`\n${passed} verificações passaram.`);

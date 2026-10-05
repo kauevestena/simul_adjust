@@ -166,15 +166,16 @@ uma caderneta bruta (várias séries em PD e PI por visada, como
     independentemente dos ângulos (qualquer face, qualquer série).
   - Desvio-padrão com n − 1 (padrão) ou n; um piso de σ evita pesos infinitos.
   - Predefinição **Reproduzir arquivo de referência**: média das 2n leituras reduzidas com σ
-    populacional — regenera exatamente as linhas de A e B de `inputs/observations.csv`.
+    populacional — regenera exatamente as 24 linhas de `inputs/observations.csv`.
 - **Erros globais:** ε e c de todas as séries completas de todas as visadas, com eliminação
   opcional de extremos (k·s ou % por cauda), num diagrama de pontos.
 - **Triagem:** cada leitura é comparada à média das demais do seu grupo, uma por vez, contra
   k·σ da rede (estimativa combinada; padrão), k·σ nominal, escore robusto (MAD) ou teste de
   Grubbs. Séries cujo ε ou c destoa do global e grupos com dispersão excessiva também são
   marcados. Leituras podem ser excluídas por observável (Hz, Z, S) à mão ou com *Excluir
-  marcadas*. Blocos de estação idênticos são avisados — na amostra, as leituras brutas da
-  estação C são cópia das da estação B.
+  marcadas*. Leituras repetidas literalmente em outra estação (bloco ou visada copiada) são
+  avisadas — na amostra, C→00d, C→00e e C→00f repetem as leituras de B; elas não fazem parte de
+  `inputs/observations.csv`.
 - **Saída:** `observations.csv` (pontos fixos e X,Y,Z opcionais marcados na página), um CSV de
   relatório por leitura, ou **Abrir no simulador**, que entrega o arquivo ao `index.html` via
   `localStorage` (`?source=preproc`).
