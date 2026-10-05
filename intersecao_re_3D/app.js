@@ -96,6 +96,11 @@ const app = {
             modLink.textContent = t('modelosLink');
             modLink.href = `modelos.html?lang=${isPt ? 'pt' : 'en'}`;
         }
+        const ppLink = document.getElementById('preprocLink');
+        if (ppLink) {
+            ppLink.textContent = t('preprocLink');
+            ppLink.href = `preprocessamento.html?lang=${isPt ? 'pt' : 'en'}`;
+        }
 
         const hTitle = document.querySelector('header h1');
         if (hTitle) hTitle.textContent = t('headerTitle');
@@ -140,7 +145,17 @@ const app = {
         this.updateViewOptions();
         this._buildMatrixTabs();
         window.addEventListener('resize', () => { if (this.activeTab === 'views2d') this.views.render(); });
-        this.loadSample();
+        if (!this._loadFromPreproc()) this.loadSample();
+    },
+
+    // Aberto pelo botão "Abrir no simulador" da página de pré-processamento (?source=preproc)
+    _loadFromPreproc() {
+        if (new URLSearchParams(window.location.search).get('source') !== 'preproc') return false;
+        let text = null;
+        try { text = localStorage.getItem('intersecao_re_3D_preproc_csv'); } catch (e) { /* sem armazenamento */ }
+        if (!text) return false;
+        this._setRows(RedeIO.parseCSV(text), tr('pré-processamento (preprocessamento.html)', 'pre-processing (preprocessamento.html)'));
+        return true;
     },
 
     esc(s) {

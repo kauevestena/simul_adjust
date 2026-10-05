@@ -13,7 +13,8 @@ datum:
 O simulador calcula as aproximações iniciais, ajusta a rede, a testa e informa coordenadas,
 elipsoides de erro, resíduos, todas as matrizes do ajustamento e um relatório em PDF. O botão
 **Explicação dos Modelos** abre `modelos.html`, que deduz as equações e as jacobianas A e B das
-quatro variantes.
+quatro variantes. O botão **Pré-Processamento** abre `preprocessamento.html`, que reduz cadernetas
+brutas ao CSV de entrada (ver abaixo).
 
 Sirva a raiz do repositório por HTTP (`python3 -m http.server`) e abra
 `intersecao_re_3D/index.html`; a amostra é lida com `fetch`.
@@ -145,6 +146,39 @@ dois pontos conhecidos o removem por inteiro.
 Quando o datum vem dessas mesmas visadas, seus resíduos são nulos por construção: as coordenadas
 foram derivadas delas e nada mais na rede puxa a pose daquela estação. O log avisa.
 
+## Pré-processamento (`preprocessamento.html`)
+
+O botão **Pré-Processamento**, ao lado de *Explicação dos Modelos*, abre uma página que transforma
+uma caderneta bruta (várias séries em PD e PI por visada, como
+`inputs/raw_obs/raw_observations.csv`) num arquivo no formato acima.
+
+- **Entrada:** `Estação, Ponto, Leitura horizontal, Ângulo zenital, Distância inclinada`, uma
+  linha por pontaria. Formato dos ângulos num menu (detectado ao carregar): **g.mmss**
+  compactado (`134.1704` = 134°17′04″; zeros à direita podem faltar: `163.033` = 163°03′30″),
+  **graus decimais** ou **G, M, S em 3 colunas** por ângulo. A face vem do zenital (PD: Z < 180°);
+  a k-ésima leitura PD forma a série k com a k-ésima PI.
+- **Política de exportação por observável**, em três colunas (Hz, Z, S), cada uma com regra de
+  valor e de σ (desvio-padrão empírico da média, modelo nominal propagado ou o maior dos dois):
+  - Hz e Z: média das séries (padrão), média das 2n leituras reduzidas à PD, uma única série,
+    uma única leitura (sem correção) ou a média de uma face corrigida pelo **erro de colimação /
+    de índice vertical global**, com o σ da estimativa propagado.
+  - S: média de todas, das N primeiras, uma só leitura ou a mediana. As distâncias são tratadas
+    independentemente dos ângulos (qualquer face, qualquer série).
+  - Desvio-padrão com n − 1 (padrão) ou n; um piso de σ evita pesos infinitos.
+  - Predefinição **Reproduzir arquivo de referência**: média das 2n leituras reduzidas com σ
+    populacional — regenera exatamente as linhas de A e B de `inputs/observations.csv`.
+- **Erros globais:** ε e c de todas as séries completas de todas as visadas, com eliminação
+  opcional de extremos (k·s ou % por cauda), num diagrama de pontos.
+- **Triagem:** cada leitura é comparada à média das demais do seu grupo, uma por vez, contra
+  k·σ da rede (estimativa combinada; padrão), k·σ nominal, escore robusto (MAD) ou teste de
+  Grubbs. Séries cujo ε ou c destoa do global e grupos com dispersão excessiva também são
+  marcados. Leituras podem ser excluídas por observável (Hz, Z, S) à mão ou com *Excluir
+  marcadas*. Blocos de estação idênticos são avisados — na amostra, as leituras brutas da
+  estação C são cópia das da estação B.
+- **Saída:** `observations.csv` (pontos fixos e X,Y,Z opcionais marcados na página), um CSV de
+  relatório por leitura, ou **Abrir no simulador**, que entrega o arquivo ao `index.html` via
+  `localStorage` (`?source=preproc`).
+
 ## A amostra
 
 `inputs/observations.csv`: estações A, B, C encadeadas por pontos comuns, 24 visadas. A vê os
@@ -237,9 +271,13 @@ escolhido na interface.
 | `report.js` | modelo do relatório (dados puros), renderizadores de texto e PDF |
 | `modelos.html` | página estática: modelos, equações, jacobianas, teoria do datum |
 | `modelos_en.js` | tradução para inglês do conteúdo de `modelos.html` |
-| `i18n.js` | dicionário PT-BR / EN da interface e do HTML estático de `index.html` |
+| `i18n.js` | dicionário PT-BR / EN da interface, do HTML estático de `index.html` e da página de pré-processamento |
 | `app.js` | estado, abas, tabelas, fluxo de trabalho |
+| `preprocessamento.html` | página de pré-processamento: caderneta bruta → `observations.csv` |
+| `preproc.js` | leitura bruta (g.mmss, graus, G/M/S), redução das séries, erros de índice/colimação globais, políticas de exportação, triagem, escritores de CSV |
+| `preproc_app.js` | interface da página de pré-processamento |
 | `test_adjust.js` | `node intersecao_re_3D/test_adjust.js` |
+| `test_preproc.js` | `node intersecao_re_3D/test_preproc.js` |
 
 ## Referências
 

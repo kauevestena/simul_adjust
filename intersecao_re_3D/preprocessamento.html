@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pré-Processamento — Interseção a Ré 3D</title>
+    <meta name="description"
+        content="Pré-processamento das cadernetas de estação total: redução de séries PD/PI, erros de índice e colimação globais, triagem de leituras discrepantes e exportação de observations.csv com política escolhida por observável.">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚙</text></svg>">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .card { background: #fff; padding: 1.1rem; border-radius: 0.75rem; border: 1px solid #e7e5e4; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+        .card-title { font-size: 0.8rem; font-weight: 700; color: #78716c; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem; padding-bottom: 0.4rem; border-bottom: 1px solid #e7e5e4; }
+        .policy { border: 1px solid #e7e5e4; border-radius: 0.6rem; padding: 0.8rem; background: #fafaf9; }
+        .policy h3 { font-size: 0.85rem; font-weight: 700; color: #0f766e; margin-bottom: 0.5rem; }
+        .hint { font-size: 0.68rem; color: #78716c; line-height: 1.35; }
+        .preset { font-size: 0.7rem; font-weight: 600; padding: 0.25rem 0.6rem; border-radius: 9999px; border: 1px solid #d6d3d1; background: #fff; color: #44403c; }
+        .preset:hover { border-color: #14b8a6; color: #0f766e; }
+        .badge { display: inline-block; font-size: 0.62rem; font-weight: 700; padding: 0.05rem 0.4rem; border-radius: 9999px; }
+        .badge-flag { background: #ffe4e6; color: #9f1239; }
+        .badge-note { background: #f5f5f4; color: #57534e; }
+        .badge-ok { background: #ccfbf1; color: #115e59; }
+        tr.grp { cursor: pointer; }
+        tr.grp:hover td { background: #f0fdfa; }
+        tr.grp-open td { background: #f0fdfa; }
+        td.cell-flag { background: #fff1f2; color: #9f1239; font-weight: 600; }
+        td.cell-off { color: #a8a29e; text-decoration: line-through; }
+        .detail td { white-space: nowrap; }
+        .detail td.marks { white-space: normal; min-width: 16rem; max-width: 26rem; }
+        .detail-wrap { background: #fafaf9; padding: 0.5rem 0.75rem 0.75rem; }
+        #resultTable td, #resultTable th { padding: 0.35rem 0.5rem; }
+        .doc h3 { font-size: 0.9rem; font-weight: 700; color: #0f766e; margin: 1.1rem 0 0.3rem; }
+        .doc p, .doc li { font-size: 0.85rem; line-height: 1.55; color: #44403c; }
+        .doc p { margin: 0.4rem 0; }
+        .doc ul { list-style: disc; padding-left: 1.3rem; }
+        .doc .eq { background: #fafaf9; border: 1px solid #e7e5e4; border-radius: 0.5rem; padding: 0.3rem 0.8rem; margin: 0.5rem 0; overflow-x: auto; }
+        .strip circle { transition: r 0.1s; }
+        .strip circle:hover { r: 6; }
+    </style>
+</head>
+
+<body class="text-stone-800 antialiased min-h-screen flex flex-col">
+
+    <header class="bg-stone-900 text-stone-50 py-4 shadow-md">
+        <div class="max-w-[1600px] mx-auto px-4 sm:px-6 flex flex-wrap justify-between items-center gap-4">
+            <div>
+                <h1 class="text-xl md:text-2xl font-bold tracking-tight">Pré-Processamento</h1>
+                <p class="text-stone-400 text-xs md:text-sm mt-1">Das leituras brutas da estação total ao arquivo de
+                    observações do ajustamento</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 shrink-0">
+                <a id="portalLink" href="../index.html?lang=pt"
+                    class="text-xs text-stone-300 hover:text-white border border-stone-700 rounded px-3 py-1.5 transition-colors">&#8592;
+                    Portal</a>
+                <a id="simulLink" href="index.html?lang=pt"
+                    class="text-xs text-stone-100 hover:text-white bg-stone-800 hover:bg-stone-700 border border-stone-600 rounded px-3 py-1.5 transition-colors font-semibold">&#9654;
+                    Simulador</a>
+                <a id="modelosLink" href="modelos.html?lang=pt" target="_blank" rel="noopener"
+                    class="text-xs text-stone-100 hover:text-white bg-stone-800 hover:bg-stone-700 border border-stone-600 rounded px-3 py-1.5 transition-colors font-semibold">&#8721;
+                    Explicação dos Modelos</a>
+                <div class="flex bg-stone-800 p-0.5 rounded-lg border border-stone-700 ml-1">
+                    <button id="btnLangPt" onclick="pre.setLanguage('pt-BR')" class="px-2.5 py-1 text-xs font-bold rounded-md transition-all bg-teal-600 text-white shadow-sm">PT</button>
+                    <button id="btnLangEn" onclick="pre.setLanguage('en')" class="px-2.5 py-1 text-xs font-bold rounded-md transition-all text-stone-400 hover:text-white">EN</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-[1600px] mx-auto px-4 sm:px-6 py-6 flex-grow w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- ============================ PAINEL ESQUERDO ============================ -->
+        <div class="lg:col-span-3 space-y-6">
+
+            <section class="card">
+                <h2 class="card-title" data-i18n="secInput">Caderneta bruta</h2>
+                <button onclick="pre.loadSample()"
+                    class="btn w-full py-1.5 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-xs font-semibold"
+                    data-i18n="btnSample">&#9651; Exemplo: raw_observations.csv</button>
+                <div class="mt-3">
+                    <label class="field-label" for="rawFile" data-i18n="lblRawFile">Carregar caderneta (CSV)</label>
+                    <input id="rawFile" type="file" accept=".csv,.txt" onchange="pre.loadUserFile(event)"
+                        class="w-full text-xs text-stone-600 file:mr-2 file:py-1 file:px-2 file:rounded file:border file:border-stone-300 file:text-xs file:font-semibold file:bg-stone-100 file:text-stone-700 hover:file:bg-stone-200 cursor-pointer">
+                </div>
+                <div class="mt-3">
+                    <label class="field-label" for="angleFormat" data-i18n="lblFormat">Formato dos ângulos</label>
+                    <select id="angleFormat" class="field" onchange="pre.onFormatChange()">
+                        <option value="gmmss" data-i18n="fmtGmmss">g.mmss compactado (134.1704 = 134°17′04″)</option>
+                        <option value="deg" data-i18n="fmtDeg">Graus decimais (134.284444)</option>
+                        <option value="dms3" data-i18n="fmtDms3">G, M, S em 3 colunas por ângulo</option>
+                    </select>
+                    <p class="hint mt-1" data-i18n="formatHelp">Colunas: Estação, Ponto visado, Leitura horizontal, Ângulo
+                        zenital, Distância inclinada (no formato G/M/S: Hz G, M, S e Z G, M, S). Separador vírgula, ou
+                        ponto e vírgula com vírgula decimal. A face vem do zenital (PD: Z &lt; 180°) e a k-ésima PD forma a
+                        série k com a k-ésima PI.</p>
+                </div>
+                <p id="dataStatus" class="text-[11px] text-stone-500 mt-3 leading-tight"></p>
+                <ul id="warnList" class="mt-2 space-y-1"></ul>
+            </section>
+
+            <section class="card">
+                <h2 class="card-title" data-i18n="secInstrument">Precisão nominal do instrumento</h2>
+                <div class="grid grid-cols-3 gap-2">
+                    <div>
+                        <label class="field-label" for="sigAngSec" data-i18n="lblSigAng">σ ângulo (″)</label>
+                        <input id="sigAngSec" type="number" step="0.1" min="0.1" class="field" onchange="pre.readSettings()">
+                    </div>
+                    <div>
+                        <label class="field-label" for="edmMm" data-i18n="lblEdmMm">MED a (mm)</label>
+                        <input id="edmMm" type="number" step="0.1" min="0" class="field" onchange="pre.readSettings()">
+                    </div>
+                    <div>
+                        <label class="field-label" for="edmPpm" data-i18n="lblEdmPpm">MED b (ppm)</label>
+                        <input id="edmPpm" type="number" step="0.1" min="0" class="field" onchange="pre.readSettings()">
+                    </div>
+                </div>
+                <p class="hint mt-1" data-i18n="instrHelp">σ de <strong>uma</strong> leitura angular (pontaria +
+                    leitura) numa face; σ<sub>D</sub> = a + b·S por leitura de distância.</p>
+                <div class="grid grid-cols-2 gap-2 mt-2">
+                    <div>
+                        <label class="field-label" for="floorAngSec" data-i18n="lblFloorAng">Piso σ ângulo (″)</label>
+                        <input id="floorAngSec" type="number" step="0.1" min="0" class="field" onchange="pre.readSettings()">
+                    </div>
+                    <div>
+                        <label class="field-label" for="floorDistMm" data-i18n="lblFloorDist">Piso σ distância (mm)</label>
+                        <input id="floorDistMm" type="number" step="0.01" min="0" class="field" onchange="pre.readSettings()">
+                    </div>
+                </div>
+                <p class="hint mt-1" data-i18n="floorHelp">Desvios exportados menores que o piso são elevados a ele
+                    (σ = 0 daria peso infinito no ajustamento).</p>
+            </section>
+
+            <section class="card">
+                <h2 class="card-title" data-i18n="secScreen">Triagem de leituras</h2>
+                <label class="field-label" for="flagMethod" data-i18n="lblFlagMethod">Teste</label>
+                <select id="flagMethod" class="field" onchange="pre.readSettings()">
+                    <option value="pooled" data-i18n="flagPooled">k·σ da rede (estimado de todas as visadas)</option>
+                    <option value="nominal" data-i18n="flagNominal">k·σ nominal do instrumento</option>
+                    <option value="mad" data-i18n="flagMad">Escore robusto (mediana / MAD)</option>
+                    <option value="grubbs" data-i18n="flagGrubbs">Teste de Grubbs (iterativo)</option>
+                </select>
+                <div class="grid grid-cols-3 gap-2 mt-2">
+                    <div>
+                        <label class="field-label" for="flagK">k</label>
+                        <input id="flagK" type="number" step="0.1" min="1" class="field" onchange="pre.readSettings()">
+                    </div>
+                    <div>
+                        <label class="field-label" for="flagAlphaPct" data-i18n="lblAlpha">α Grubbs (%)</label>
+                        <input id="flagAlphaPct" type="number" step="0.5" min="0.1" max="20" class="field" onchange="pre.readSettings()">
+                    </div>
+                    <div>
+                        <label class="field-label" for="groupK" data-i18n="lblGroupK">Grupo (×)</label>
+                        <input id="groupK" type="number" step="0.1" min="1" class="field" onchange="pre.readSettings()">
+                    </div>
+                </div>
+                <div id="pooledBox" class="mt-2 text-[11px] text-stone-600 font-mono leading-snug"></div>
+                <p class="hint mt-1" data-i18n="screenHelp">Cada leitura é comparada à média das <strong>demais</strong>
+                    do mesmo grupo, já livre do erro de colimação/índice do grupo. Séries cujo erro de índice ou de
+                    colimação destoa do global também são marcadas, e o grupo é marcado se a dispersão passar de
+                    "Grupo ×" a de referência. Hz, Z e S são triados separadamente.</p>
+                <div class="flex gap-1.5 mt-3">
+                    <button onclick="pre.excludeFlagged()"
+                        class="btn flex-1 py-1.5 bg-amber-500 text-white rounded shadow hover:bg-amber-600 text-[11px] font-bold"
+                        data-i18n="btnExclude">Excluir marcadas</button>
+                    <button onclick="pre.includeAll()"
+                        class="btn flex-1 py-1.5 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-[11px] font-semibold"
+                        data-i18n="btnInclude">Reincluir todas</button>
+                </div>
+            </section>
+
+            <section class="card">
+                <h2 class="card-title" data-i18n="secGlobal">Erros instrumentais globais</h2>
+                <div class="grid grid-cols-3 gap-2">
+                    <div class="col-span-1">
+                        <label class="field-label" for="trim" data-i18n="lblTrim">Extremos</label>
+                        <select id="trim" class="field" onchange="pre.readSettings()">
+                            <option value="none" data-i18n="trimNone">manter</option>
+                            <option value="ksigma" data-i18n="trimK">k·s</option>
+                            <option value="pct" data-i18n="trimPct">% por cauda</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="field-label" for="trimK">k</label>
+                        <input id="trimK" type="number" step="0.1" min="1" class="field" onchange="pre.readSettings()">
+                    </div>
+                    <div>
+                        <label class="field-label" for="trimPct">%</label>
+                        <input id="trimPct" type="number" step="1" min="0" max="45" class="field" onchange="pre.readSettings()">
+                    </div>
+                </div>
+                <h3 class="text-xs font-bold text-stone-700 mt-4" data-i18n="hIndex">Erro de índice vertical ε</h3>
+                <div id="indexBox" class="text-[11px] font-mono text-stone-700 mt-1"></div>
+                <div id="indexPlot" class="mt-1"></div>
+                <h3 class="text-xs font-bold text-stone-700 mt-4" data-i18n="hColl">Erro de colimação c</h3>
+                <div id="collBox" class="text-[11px] font-mono text-stone-700 mt-1"></div>
+                <div id="collPlot" class="mt-1"></div>
+                <p class="hint mt-2" data-i18n="globalHelp">Um valor por série completa (PD + PI) de todas as visadas.
+                    Círculos vazados: extremos eliminados. A linha marca a média adotada.</p>
+            </section>
+        </div>
+
+        <!-- ============================ PAINEL DIREITO ============================ -->
+        <div class="lg:col-span-9 space-y-6">
+
+            <section class="card">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2 border-b border-stone-200">
+                    <h2 class="text-[0.8rem] font-bold text-stone-500 uppercase tracking-wider" data-i18n="secPolicy">Política
+                        de exportação por observável</h2>
+                    <div class="flex items-center gap-2">
+                        <label class="field-label !mb-0" for="stdConv" data-i18n="lblStdConv">Desvio-padrão</label>
+                        <select id="stdConv" class="field !w-auto" onchange="pre.readSettings()">
+                            <option value="sample" data-i18n="convSample">amostral (n − 1)</option>
+                            <option value="population" data-i18n="convPop">populacional (n)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-1.5 mb-3 items-center">
+                    <span class="text-[11px] font-semibold text-stone-500 mr-1" data-i18n="lblPresets">Predefinições:</span>
+                    <button class="preset" onclick="pre.applyPreset('default')" data-i18n="presetDefault">Padrão: média das séries</button>
+                    <button class="preset" onclick="pre.applyPreset('reference')" data-i18n="presetReference">Reproduzir arquivo de referência</button>
+                    <button class="preset" onclick="pre.applyPreset('oneSeries')" data-i18n="presetOneSeries">Só uma série</button>
+                    <button class="preset" onclick="pre.applyPreset('oneFace')" data-i18n="presetOneFace">Só a 1ª leitura PD</button>
+                    <button class="preset" onclick="pre.applyPreset('nominal')" data-i18n="presetNominal">Modelo de erro nominal</button>
+                    <button class="preset" onclick="pre.applyPreset('index')" data-i18n="presetIndex">Z: PD + erro de índice global</button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <!-- Leitura horizontal -->
+                    <div class="policy">
+                        <h3 data-i18n="polHz">Leitura horizontal (Hz)</h3>
+                        <label class="field-label" for="hzValue" data-i18n="lblValue">Valor exportado</label>
+                        <select id="hzValue" class="field" onchange="pre.readSettings()">
+                            <option value="series" data-i18n="valSeries">Média das séries (PD + PI)/2</option>
+                            <option value="reduced" data-i18n="valReduced">Média de todas as leituras reduzidas à PD</option>
+                            <option value="oneSeries" data-i18n="valOneSeries">Uma única série</option>
+                            <option value="oneFace" data-i18n="valOneFace">Uma única leitura (sem correção)</option>
+                            <option value="facePlusCorr" data-i18n="valFaceColl">Média de uma face + colimação global</option>
+                        </select>
+                        <label class="field-label mt-2" for="hzSigma" data-i18n="lblSigma">Desvio-padrão exportado</label>
+                        <select id="hzSigma" class="field" onchange="pre.readSettings()">
+                            <option value="empirical" data-i18n="sigEmp">Empírico: desvio da média</option>
+                            <option value="nominal" data-i18n="sigNom">Nominal propagado</option>
+                            <option value="max" data-i18n="sigMax">Maior dos dois</option>
+                        </select>
+                        <div class="grid grid-cols-2 gap-2 mt-2">
+                            <div data-show="hz:oneSeries,oneFace">
+                                <label class="field-label" for="hzSeries" data-i18n="lblSeries">Série k</label>
+                                <input id="hzSeries" type="number" min="1" step="1" class="field" onchange="pre.readSettings()">
+                            </div>
+                            <div data-show="hz:oneFace,facePlusCorr">
+                                <label class="field-label" for="hzFace" data-i18n="lblFace">Face</label>
+                                <select id="hzFace" class="field" onchange="pre.readSettings()">
+                                    <option value="PD" data-i18n="facePD">PD (Z &lt; 180°)</option>
+                                    <option value="PI" data-i18n="facePI">PI (Z &gt; 180°)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <p id="hzHint" class="hint mt-2"></p>
+                    </div>
+
+                    <!-- Ângulo zenital -->
+                    <div class="policy">
+                        <h3 data-i18n="polZ">Ângulo zenital (Z)</h3>
+                        <label class="field-label" for="zValue" data-i18n="lblValue">Valor exportado</label>
+                        <select id="zValue" class="field" onchange="pre.readSettings()">
+                            <option value="series" data-i18n="valSeriesZ">Média das séries (PD − PI + 360°)/2</option>
+                            <option value="reduced" data-i18n="valReduced">Média de todas as leituras reduzidas à PD</option>
+                            <option value="oneSeries" data-i18n="valOneSeries">Uma única série</option>
+                            <option value="oneFace" data-i18n="valOneFace">Uma única leitura (sem correção)</option>
+                            <option value="facePlusCorr" data-i18n="valFaceIndex">Média de uma face + erro de índice global</option>
+                        </select>
+                        <label class="field-label mt-2" for="zSigma" data-i18n="lblSigma">Desvio-padrão exportado</label>
+                        <select id="zSigma" class="field" onchange="pre.readSettings()">
+                            <option value="empirical" data-i18n="sigEmp">Empírico: desvio da média</option>
+                            <option value="nominal" data-i18n="sigNom">Nominal propagado</option>
+                            <option value="max" data-i18n="sigMax">Maior dos dois</option>
+                        </select>
+                        <div class="grid grid-cols-2 gap-2 mt-2">
+                            <div data-show="z:oneSeries,oneFace">
+                                <label class="field-label" for="zSeries" data-i18n="lblSeries">Série k</label>
+                                <input id="zSeries" type="number" min="1" step="1" class="field" onchange="pre.readSettings()">
+                            </div>
+                            <div data-show="z:oneFace,facePlusCorr">
+                                <label class="field-label" for="zFace" data-i18n="lblFace">Face</label>
+                                <select id="zFace" class="field" onchange="pre.readSettings()">
+                                    <option value="PD" data-i18n="facePD">PD (Z &lt; 180°)</option>
+                                    <option value="PI" data-i18n="facePI">PI (Z &gt; 180°)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <p id="zHint" class="hint mt-2"></p>
+                    </div>
+
+                    <!-- Distância inclinada -->
+                    <div class="policy">
+                        <h3 data-i18n="polD">Distância inclinada (S)</h3>
+                        <label class="field-label" for="dValue" data-i18n="lblValue">Valor exportado</label>
+                        <select id="dValue" class="field" onchange="pre.readSettings()">
+                            <option value="all" data-i18n="valAll">Média de todas as leituras incluídas</option>
+                            <option value="firstN" data-i18n="valFirstN">Média das N primeiras incluídas</option>
+                            <option value="one" data-i18n="valOne">Só a primeira leitura incluída</option>
+                            <option value="median" data-i18n="valMedian">Mediana das leituras incluídas</option>
+                        </select>
+                        <label class="field-label mt-2" for="dSigma" data-i18n="lblSigma">Desvio-padrão exportado</label>
+                        <select id="dSigma" class="field" onchange="pre.readSettings()">
+                            <option value="empirical" data-i18n="sigEmp">Empírico: desvio da média</option>
+                            <option value="nominal" data-i18n="sigNom">Nominal propagado</option>
+                            <option value="max" data-i18n="sigMax">Maior dos dois</option>
+                        </select>
+                        <div class="grid grid-cols-2 gap-2 mt-2">
+                            <div data-show="d:firstN">
+                                <label class="field-label" for="dN">N</label>
+                                <input id="dN" type="number" min="1" step="1" class="field" onchange="pre.readSettings()">
+                            </div>
+                        </div>
+                        <p id="dHint" class="hint mt-2"></p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2 border-b border-stone-200">
+                    <h2 class="text-[0.8rem] font-bold text-stone-500 uppercase tracking-wider" data-i18n="secResult">Observações
+                        reduzidas</h2>
+                    <div class="flex flex-wrap gap-1.5">
+                        <button onclick="pre.exportObservations()" id="btnExport" disabled
+                            class="btn py-1.5 px-3 bg-teal-600 text-white rounded shadow hover:bg-teal-700 text-xs font-bold"
+                            data-i18n="btnExport">&#8615; observations.csv</button>
+                        <button onclick="pre.openInSimulator()" id="btnOpenSim" disabled
+                            class="btn py-1.5 px-3 bg-indigo-600 text-white rounded shadow hover:bg-indigo-700 text-xs font-bold"
+                            data-i18n="btnOpenSim">&#9654; Abrir no simulador</button>
+                        <button onclick="pre.exportReport()" id="btnReport" disabled
+                            class="btn py-1.5 px-3 bg-stone-100 text-stone-700 border border-stone-300 rounded hover:bg-stone-200 text-xs font-semibold"
+                            data-i18n="btnReport">&#8615; Relatório por leitura (CSV)</button>
+                    </div>
+                </div>
+                <p class="hint mb-2" data-i18n="resultHelp">Clique numa visada para ver as leituras brutas, os resíduos e
+                    incluir/excluir cada leitura de Hz, Z e S separadamente. Células em vermelho estão marcadas pela
+                    triagem; riscadas estão excluídas.</p>
+                <div class="table-container max-h-[70vh] overflow-y-auto border border-stone-200 rounded-lg">
+                    <table id="resultTable">
+                        <thead>
+                            <tr>
+                                <th data-i18n="thStation">Estação</th>
+                                <th data-i18n="thTarget">Ponto</th>
+                                <th>Hz</th>
+                                <th class="normal-case">σ<sub>Hz</sub> (″)</th>
+                                <th>Z</th>
+                                <th class="normal-case">σ<sub>Z</sub> (″)</th>
+                                <th>S (m)</th>
+                                <th class="normal-case">σ<sub>S</sub> (mm)</th>
+                                <th>n Hz/Z/S</th>
+                                <th data-i18n="thFlags">Avisos</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultBody">
+                            <tr><td colspan="10" class="text-center text-stone-400 py-6" data-i18n="noData">Carregue uma caderneta.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p id="exportStatus" class="text-[11px] text-stone-500 mt-2"></p>
+            </section>
+
+            <section class="card">
+                <h2 class="card-title" data-i18n="secFixed">Pontos fixos (coluna Fixo do arquivo exportado)</h2>
+                <p class="hint mb-2" data-i18n="fixedHelp">Marque os pontos de controle. X, Y, Z são opcionais: em branco,
+                    o simulador irradia os fixos da estação que os visa (datum local).</p>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th data-i18n="thTarget">Ponto</th>
+                                <th data-i18n="thFixed">Fixo</th>
+                                <th>X (m)</th>
+                                <th>Y (m)</th>
+                                <th>Z (m)</th>
+                                <th data-i18n="thSeenFrom">Visado de</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fixedBody"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <details class="card doc" id="theory">
+                <summary class="text-sm font-bold text-stone-600 cursor-pointer select-none" data-i18n="secTheory">Teoria: reduções e propagação</summary>
+
+                <h3 data-i18n="thFacesH">1. Faces, séries e leituras reduzidas</h3>
+                <p data-i18n="thFacesP">Em cada série a visada é feita em posição direta (PD, \(Z&lt;180^\circ\)) e inversa
+                    (PI). Reduzindo a PI à PD, os erros de colimação \(c\) e de índice \(\varepsilon\) aparecem com
+                    sinais opostos nas duas faces:</p>
+                <div class="eq">$$H_{PD}=H+\frac{c}{\sin Z},\quad H_{PI}-180^\circ=H-\frac{c}{\sin Z},\qquad Z_{PD}=Z+\varepsilon,\quad 360^\circ-Z_{PI}=Z-\varepsilon$$</div>
+                <p data-i18n="thFacesP2">A média das duas faces elimina \(c\) e \(\varepsilon\); a semidiferença os estima:</p>
+                <div class="eq">$$H_k=\tfrac12\left(H_{PD}+H_{PI}\mp180^\circ\right),\qquad Z_k=\tfrac12\left(Z_{PD}-Z_{PI}+360^\circ\right)$$$$c_k=\tfrac12\left(H_{PD}-H_{PI}\pm180^\circ\right)\sin Z,\qquad \varepsilon_k=\tfrac12\left(Z_{PD}+Z_{PI}-360^\circ\right)$$</div>
+
+                <h3 data-i18n="thMeanH">2. Média e desvio-padrão da média</h3>
+                <div class="eq" data-i18n="eqMean">$$\bar x=\frac1n\sum x_i,\qquad s=\sqrt{\frac{\sum (x_i-\bar x)^2}{n-1}}\;\;\left(\text{ou } n\right),\qquad \sigma_{\bar x}=\frac{s}{\sqrt n}$$</div>
+                <p data-i18n="thMeanP">Com \(x_i=H_k\) (ou \(Z_k\)) usam-se \(n\) séries independentes. Com as \(2n\) leituras
+                    reduzidas, \(\pm c\) e \(\pm\varepsilon\) inflam \(s\), e as duas leituras de uma série não são
+                    independentes — o arquivo de referência usa essa forma com \(s\) populacional.</p>
+
+                <h3 data-i18n="thNomH">3. Modelo de erro nominal</h3>
+                <p data-i18n="thNomP">Com \(\sigma_0\) o desvio de uma leitura numa face e \(\sigma_D=a+b\,S\):</p>
+                <div class="eq" data-i18n="eqNom">$$\sigma_{H_k}=\frac{\sigma_0}{\sqrt2},\quad \sigma_{\bar H}=\frac{\sigma_0}{\sqrt{2n}},\quad \sigma_{\text{leituras}}=\frac{\sigma_0}{\sqrt m},\quad \sigma_{\bar D}=\frac{a+b\,S}{\sqrt N},\quad \sigma_{\tilde D}\approx\sqrt{\frac{\pi}{2}}\,\frac{\sigma_D}{\sqrt N}$$</div>
+
+                <h3 data-i18n="thIdxH">4. Erro de índice global e leitura em uma só face</h3>
+                <p data-i18n="thIdxP">Todas as séries de todas as visadas estimam o mesmo \(\varepsilon\) do instrumento.
+                    Após eliminar extremos, \(\bar\varepsilon\) e \(\sigma_{\bar\varepsilon}=s_\varepsilon/\sqrt m\)
+                    corrigem a média das \(m_F\) leituras de uma face, e a incerteza da correção é propagada:</p>
+                <div class="eq" data-i18n="eqIdx">$$Z=\overline{Z_{PD}}-\bar\varepsilon\;\;\text{ou}\;\;Z=\overline{360^\circ-Z_{PI}}+\bar\varepsilon,\qquad \sigma_Z^2=\sigma^2_{\overline{Z_F}}+\sigma^2_{\bar\varepsilon}$$</div>
+                <p data-i18n="thIdxP2">Na horizontal o análogo usa \(\bar c\): \(H=\overline{H_{PD}}-\bar c/\sin Z\), com \(\sigma_H^2=\sigma^2_{\overline{H_F}}+(\sigma_{\bar c}/\sin Z)^2\).
+                    A opção "uma única leitura" não corrige nada — útil para ver o viés de \(\varepsilon\) chegar ao ajustamento.</p>
+
+                <h3 data-i18n="thScrH">5. Triagem</h3>
+                <p data-i18n="thScrP">Os valores de teste são as leituras reduzidas menos \(\pm\) o erro de colimação/índice
+                    global (\(\bar c/\sin Z\) ou \(\bar\varepsilon\); com menos de 3 séries na rede, a mediana do
+                    próprio grupo). A triagem é feita uma leitura por vez: a pior é marcada e sai da média das demais. Para a leitura \(i\) de um grupo com \(m\) leituras incluídas, o resíduo em relação à
+                    média das demais tem</p>
+                <div class="eq" data-i18n="eqScr">$$v_i=x_i-\bar x_{(-i)},\qquad \sigma_{v_i}=\sigma\sqrt{\frac{m}{m-1}},\qquad |v_i|>k\,\sigma_{v_i}\Rightarrow\text{marcada}$$</div>
+                <p data-i18n="thScrP2">\(\sigma\) é o nominal ou o estimado da rede (variância combinada de todos os grupos,
+                    \(\hat\sigma^2=\sum\sum(x_i-\bar x_g)^2/\sum(m_g-p_g)\), com duas passagens descartando desvios
+                    \(>3\hat\sigma\)). O escore robusto usa \(|x_i-\tilde x|/(1{,}4826\,\mathrm{MAD})\) e o teste de Grubbs
+                    \(G=\max|x_i-\bar x|/s\). As distâncias são triadas e combinadas à parte: excluir uma distância não
+                    exclui os ângulos da mesma pontaria.</p>
+            </details>
+        </div>
+    </main>
+
+    <footer class="text-center text-[11px] text-stone-400 py-4" data-i18n="footer">
+        Pré-processamento da interseção a ré 3D — os cálculos rodam no navegador; nenhum dado é enviado.
+    </footer>
+
+    <script src="io.js"></script>
+    <script src="adjustment.js"></script>
+    <script src="preproc.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <script type="module">
+        import { i18n, preprocEn } from './i18n.js';
+        window.intersecaoI18n = i18n;
+        window.intersecaoPreprocEn = preprocEn;
+    </script>
+    <script src="preproc_app.js"></script>
+</body>
+
+</html>

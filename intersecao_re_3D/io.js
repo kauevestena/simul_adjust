@@ -433,6 +433,6 @@
         ARCSEC, DEG, TWO_PI, DEFAULT_SETTINGS, CANONICAL_HEADER,
         normKey, splitLine, parseBool, parseCSV, buildRows, rowsToCSV,
         seededRandom, gaussFrom, wrap2Pi, exactObservation, generateSyntheticNetwork, injectBlunder,
-        matrixToCSV, fmt, coordinatesToCSV, residualsToCSV, download
+        matrixToCSV, fmt, csvCell, coordinatesToCSV, residualsToCSV, download
     };
 });

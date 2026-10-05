@@ -13,7 +13,8 @@ datum:
 The simulator computes initial approximations, adjusts the network, tests it and reports
 coordinates, error ellipsoids, residuals, every matrix of the adjustment and a PDF report. The
 **Explicação dos Modelos** button opens `modelos.html`, which derives the equations and the
-Jacobians A and B of all four variants.
+Jacobians A and B of all four variants. The **Pré-Processamento** button opens
+`preprocessamento.html`, which reduces raw field books into the input CSV (see below).
 
 Serve the repository root over HTTP (`python3 -m http.server`) and open
 `intersecao_re_3D/index.html`; the sample is read with `fetch`.
@@ -145,6 +146,39 @@ When the datum comes from those same sightings, their residuals are zero by cons
 coordinates were derived from them and nothing else in the network pulls on that station's pose.
 The log says so.
 
+## Pre-processing (`preprocessamento.html`)
+
+The **Pré-Processamento** button, next to *Explicação dos Modelos*, opens a page that turns a raw
+field book (several face-left/face-right series per sighting, like
+`inputs/raw_obs/raw_observations.csv`) into a file in the format above.
+
+- **Input:** `Station, Point, Horizontal reading, Zenith angle, Slope distance`, one row per
+  pointing. Angle format from a dropdown (auto-detected on load): packed **d.mmss**
+  (`134.1704` = 134°17′04″; trailing zeros may be missing: `163.033` = 163°03′30″), **decimal
+  degrees**, or **D, M, S in 3 columns** per angle. The face comes from the zenith angle
+  (PD = face left, Z < 180°); the k-th PD reading forms series k with the k-th PI reading.
+- **Export policy per observable**, in three columns (Hz, Z, S), each with a value rule and a
+  σ rule (empirical std. dev. of the mean, propagated nominal model, or the larger of the two):
+  - Hz and Z: mean of the series (default), mean of all 2n readings reduced to PD, a single
+    series, a single reading (uncorrected), or the mean of one face corrected by the **global
+    collimation / vertical index error**, whose estimation σ is propagated.
+  - S: mean of all, of the first N, a single reading, or the median. Distances are handled
+    independently of the angles (any face, any series).
+  - Standard deviation with n − 1 (default) or n; a σ floor avoids zero weights.
+  - Preset **Reproduce reference file**: mean of the 2n reduced readings with population σ —
+    regenerates the A and B rows of `inputs/observations.csv` exactly.
+- **Global errors:** ε and c from every complete series of every sighting, with optional
+  trimming of extremes (k·s or % per tail), shown as a strip plot.
+- **Screening:** each reading is compared with the mean of the other readings of its group, one at
+  a time, against k·σ of the network (pooled estimate; default), k·nominal σ, a robust MAD score
+  or the Grubbs test. Series whose ε or c departs from the global value and groups with excessive
+  scatter are flagged too. Readings can be excluded per observable (Hz, Z, S) by hand or with
+  *Exclude flagged*. Identical station blocks are reported — in the sample, station C's raw
+  readings are a copy of station B's.
+- **Output:** `observations.csv` (control points and optional X,Y,Z ticked in the page), a
+  per-reading report CSV, or **Open in simulator**, which hands the file to `index.html` through
+  `localStorage` (`?source=preproc`).
+
 ## The sample
 
 `inputs/observations.csv`: stations A, B, C chained through shared points, 24 sightings. A sees
@@ -236,9 +270,13 @@ coordinate and residual CSVs and the reports follow the UI language.
 | `report.js` | report model (pure data), text and PDF renderers |
 | `modelos.html` | static page: models, equations, Jacobians, datum theory |
 | `modelos_en.js` | English translation of the content of `modelos.html` |
-| `i18n.js` | PT-BR / EN dictionary for the interface and the static HTML of `index.html` |
+| `i18n.js` | PT-BR / EN dictionary for the interface, the static HTML of `index.html` and the pre-processing page |
 | `app.js` | state, tabs, tables, workflow |
+| `preprocessamento.html` | pre-processing page: raw field book → `observations.csv` |
+| `preproc.js` | raw parsing (d.mmss, degrees, D/M/S), series reduction, global index/collimation errors, export policies, screening, CSV writers |
+| `preproc_app.js` | interface of the pre-processing page |
 | `test_adjust.js` | `node intersecao_re_3D/test_adjust.js` |
+| `test_preproc.js` | `node intersecao_re_3D/test_preproc.js` |
 
 ## References
 
