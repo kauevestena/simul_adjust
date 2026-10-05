@@ -1,0 +1,3711 @@
+% E quando as montanhas não saem do caminho? — Molodensky, o teluróide, o quase-geoide e as
+% altitudes normais. Continuação de gravimetria.tex ("Na próxima aula: Molodensky, teluróide e
+% quase-geoide"). Quatro partes, uma por aula de 50 minutos. Tudo começa em linguagem de ensino
+% médio, em passos bem pequenos; o apêndice técnico fica no fim.
+%
+% Bilíngue (AGENTS.md): o mesmo arquivo gera as duas versões.
+%   Português:  latexmk -pdf quase_geoide.tex      -> quase_geoide.pdf
+%   English:    latexmk -pdf quase_geoide_en.tex   -> quase_geoide_en.pdf
+%   Limpar auxiliares:  latexmk -c quase_geoide.tex quase_geoide_en.tex
+% Todo texto visível passa por \tr{português}{english}. Números decimais passam por \num{}, que
+% troca vírgula por ponto na versão em inglês.
+%
+% Acompanha os simuladores rede_gravimetrica/ (Rede Gravimétrica) e historia_modelos_terrestres/
+% (Modelos Terrestres, aba Teluróide). Mesmo formato e mesma paleta de gravimetria.tex.
+%
+% Fontes dos fatos e números citados (conferidos em 2026-10-05):
+%   Molodensky — 16/06/1909 a 12/11/1991; Universidade de Moscou (1932); TsNIIGAiK; construiu o
+%     primeiro gravímetro soviético; "Questões básicas da gravimetria geodésica" (1945), onde
+%     propõe altitude normal e quase-geoide no lugar de altitude ortométrica e geoide; nome das
+%     transformações de datum de Molodensky. Molodensky, Eremeev & Yurkina (1960/1962).
+%   Teoria — Heiskanen & Moritz (1967) e Hofmann-Wellenhof & Moritz (2006), Physical Geodesy,
+%     cap. 4 (altitudes, correção normal), cap. 8 (Molodensky, teluróide, série, G1); Moritz
+%     (1980), Advanced Physical Geodesy (convergência para inclinações < 45°); Hotine (1969).
+%   Densidades das rochas — médias de Telford, Geldart & Sheriff (1990), Applied Geophysics,
+%     tab. 6.1. Terceiro planalto paranaense: derrames de basalto da Formação Serra Geral.
+%   Brasil — IBGE: altitudes do SGB são normais desde 30/07/2018 (REALT-2018, 2ª ed. 2019);
+%     normais × normais-ortométricas com os mesmos dados: 94 % das RNs entre -15 mm e +5 mm;
+%     ~50 000 RNs (76 %) com +20 a +30 cm em relação às antigas, em boa parte do N, NE, CO e
+%     SE. hgeoHNOR2020 (agosto de 2021): fator de conversão η e incerteza entre h SIRGAS2000 e
+%     as altitudes normais do REALT-2018, data de Imbituba e Santana; não é quase-geoide
+%     gravimétrico; |hgeoHNOR2020 - MAPGEO2015| < 50 cm na maior parte do país, até -95 cm na
+%     Amazônia; incerteza menor que a metade da do modelo anterior; nivelamento do IBGE desde
+%     1945. Relatórios Metodológicos v. 47.
+%   Mundo — EVRS: altitudes normais a partir de números geopotenciais (EVRF2000, 2007, 2019);
+%     DHHN2016 (Alemanha) ~1 cm do EVRF2000; a maioria dos países europeus usa altitudes
+%     normais; China e Rússia, normais; EUA (NAVD 88), ortométricas de Helmert; Canadá
+%     (CGVD2013), ortométricas sobre o geoide CGG2013; Grandes Lagos (IGLD), dinâmicas.
+%   Colorado — Wang et al. (2021), J Geod 95:127: 14 grupos de 14 países, área de 730 x 560 km,
+%     223 marcos do GSVS17, precisão ~2 cm, exatidão 1,2 a 3,4 cm, meta de 1 cm não atingida.
+%   Curitiba — g = 978 760,387 mGal (RENEGA), φ = -25°27'15", H ≈ 910 m, como em gravimetria.tex.
+%   Números derivados (γ, γ̄, ḡ de Prey, C ilustrativo, H, H*, N - ζ, anomalias, exercícios):
+%     quase_geoide_numeros.py, nesta pasta.
+
+\newif\ifEN
+\ifdefined\aulaEN \ENtrue \fi
+
+\documentclass[aspectratio=169,11pt]{beamer}
+
+\usetheme[progressbar=frametitle, sectionpage=progressbar, numbering=fraction]{metropolis}
+\metroset{block=fill}
+
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\ifEN
+  \usepackage[brazilian,english]{babel}
+\else
+  \usepackage[english,brazilian]{babel}
+\fi
+\usepackage{amsmath, amssymb, mathtools}
+\usepackage{booktabs}
+\usepackage{siunitx}
+\usepackage[most]{tcolorbox}
+\usepackage{xspace}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, calc, positioning, decorations.pathreplacing,
+                decorations.pathmorphing, patterns, babel}
+
+% ------------------------------------------------------------------ idioma / language
+\newcommand{\tr}[2]{\ifEN#2\else#1\fi}
+\ifEN
+  \sisetup{output-decimal-marker={.}, group-separator={\,}, group-minimum-digits=4,
+           group-digits=integer}
+\else
+  \sisetup{output-decimal-marker={,}, group-separator={\,}, group-minimum-digits=4,
+           group-digits=integer}
+\fi
+
+% ------------------------------------------------------------------ paleta (a mesma das outras aulas)
+\definecolor{mStone}{HTML}{1C1917}
+\definecolor{mStoneMid}{HTML}{78716C}
+\definecolor{mStoneLight}{HTML}{F5F5F4}
+\definecolor{mTeal}{HTML}{0D9488}
+\definecolor{mRose}{HTML}{E11D48}
+\definecolor{mAmber}{HTML}{D97706}
+\definecolor{mIndigo}{HTML}{4F46E5}
+\definecolor{mSky}{HTML}{0284C7}
+
+% As ideias que se repetem em toda figura desta aula (as mesmas de gravimetria.tex)
+\colorlet{corIdeal}{mIndigo}    % o IDEALIZADO — elipsoide, campo normal, γ, U, teluróide, H*
+\colorlet{corMedido}{mTeal}     % o MEDIDO — g, C, h do GNSS
+\colorlet{corMassa}{mAmber}     % a MASSA — terreno, rocha, densidade
+\colorlet{corGeoide}{mSky}      % o GEOIDE — superfícies de nível, água, H e N
+\colorlet{corQuase}{mRose}      % o QUASE-GEOIDE e ζ — a diferença entre o real e o normal
+
+\setbeamercolor{normal text}{fg=mStone, bg=white}
+\setbeamercolor{palette primary}{fg=white, bg=mStone}
+\setbeamercolor{frametitle}{fg=white, bg=mStone}
+\setbeamercolor{alerted text}{fg=mRose}
+\setbeamercolor{example text}{fg=mTeal}
+\setbeamercolor{progress bar}{fg=mTeal, bg=mTeal!20}
+\setbeamercolor{progress bar in head/foot}{fg=mTeal, bg=mTeal!20}
+\setbeamercolor{progress bar in section page}{fg=mTeal, bg=mTeal!20}
+\setbeamercolor{title separator}{fg=mTeal}
+\setbeamercolor{block title}{fg=white, bg=mTeal}
+\setbeamercolor{block body}{fg=mStone, bg=mTeal!8}
+
+% ------------------------------------------------------------------ caixas
+\newtcolorbox{ideia}[1][]{enhanced, colback=mTeal!7, colframe=mTeal, boxrule=0.6pt, arc=2pt,
+  left=6pt, right=6pt, top=4pt, bottom=4pt, fonttitle=\bfseries\small, coltitle=white, #1}
+\newtcolorbox{cuidado}[1][]{enhanced, colback=mAmber!8, colframe=mAmber, boxrule=0.6pt, arc=2pt,
+  left=6pt, right=6pt, top=4pt, bottom=4pt, fonttitle=\bfseries\small, coltitle=white, #1}
+\newtcolorbox{armadilha}[1][]{enhanced, colback=mRose!6, colframe=mRose, boxrule=0.6pt, arc=2pt,
+  left=6pt, right=6pt, top=4pt, bottom=4pt, fonttitle=\bfseries\small, coltitle=white, #1}
+\newtcolorbox{regra}[1][]{enhanced, colback=mIndigo!7, colframe=mIndigo, boxrule=0.6pt, arc=2pt,
+  left=6pt, right=6pt, top=4pt, bottom=4pt, fonttitle=\bfseries\small, coltitle=white, #1}
+
+% ------------------------------------------------------------------ estilos TikZ
+\tikzset{
+  seta/.style={-{Stealth[length=2.4mm]}, thick},
+  seta2/.style={{Stealth[length=2mm]}-{Stealth[length=2mm]}},
+  rotulo/.style={font=\scriptsize, text=mStone},
+  nivel/.style={corGeoide!55, thick},
+  caixa/.style={draw, rounded corners=3pt, thick, align=center, font=\scriptsize},
+  terreno/.style={corMassa, very thick},
+  elip/.style={corIdeal, very thick},
+  telur/.style={corIdeal, thick, dashed},
+  geoide/.style={corGeoide, very thick},
+  quase/.style={corQuase, very thick, dashed},
+  pessoa/.pic={
+    \fill (0,0.40) circle (0.075);
+    \draw[line width=0.9pt] (0,0.33) -- (0,0.13);
+    \draw[line width=0.9pt] (0,0.13) -- (-0.08,0) (0,0.13) -- (0.08,0);
+    \draw[line width=0.9pt] (-0.11,0.26) -- (0.11,0.26);
+  },
+  gravimetro/.pic={
+    \draw[thick, fill=white] (-0.14,0) rectangle (0.14,0.32);
+    \draw[thick] (-0.08,0.32) -- (-0.08,0.40) -- (0.08,0.40) -- (0.08,0.32);
+  },
+}
+
+\newcommand{\bnum}[1]{\textbf{\textcolor{mTeal}{#1}}}
+\newcommand{\mGal}{\ensuremath{\,\mathrm{mGal}}\xspace}
+\newcommand{\uGal}{\ensuremath{\,\mu\mathrm{Gal}}\xspace}
+\newcommand{\mss}{\ensuremath{\,\mathrm{m/s^2}}\xspace}
+\newcommand{\mmss}{\ensuremath{\,\mathrm{m^2/s^2}}\xspace}
+\newcommand{\gmed}{\textcolor{corMedido}{g}}
+\newcommand{\gam}{\textcolor{corIdeal}{\gamma}}
+\newcommand{\gambar}{\textcolor{corIdeal}{\bar\gamma}}
+\newcommand{\gbar}{\textcolor{corMassa}{\bar g}}
+\newcommand{\anom}{\textcolor{mRose}{\Delta g}}
+\newcommand{\Hn}{\textcolor{corIdeal}{H^{*}}}
+\newcommand{\Ho}{\textcolor{corGeoide}{H}}
+\newcommand{\Nn}{\textcolor{corGeoide}{N}}
+\newcommand{\zet}{\textcolor{corQuase}{\zeta}}
+\newcommand{\hh}{\textcolor{corMedido}{h}}
+\newcommand{\Cc}{\textcolor{corMedido}{C}}
+
+\title{\tr{E quando as montanhas não saem do caminho?}{What if the mountains won't get out of the
+way?}}
+\subtitle{\tr{Molodensky, o teluróide, o quase-geoide e as altitudes normais --- quatro aulas}
+{Molodensky, the telluroid, the quasigeoid and normal heights --- four classes}}
+\author{}
+\institute{\tr{Simulador de Rede Gravimétrica}{Gravimetric Network Simulator}}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+% ==================================================================
+\begin{frame}{\tr{O que vamos ver}{What we will see}}
+  \setbeamertemplate{section in toc}[sections numbered]
+  \footnotesize
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \tableofcontents[sections={1-7}]
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \tableofcontents[sections={8-14}]
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Quatro aulas}{Four classes}}
+  \begin{columns}[T]
+    \begin{column}{0.47\textwidth}
+      \begin{regra}[title={\tr{Aula 1 · A montanha no caminho}{Class 1 · The mountain in the way}}]
+        \small\tr{Por que a fórmula de Stokes tropeça nos continentes --- e o que a densidade
+        das rochas tem a ver com isso.}{Why Stokes' formula trips over the continents --- and
+        what the density of rocks has to do with it.}
+      \end{regra}
+      \vspace{2pt}
+      \begin{regra}[title={\tr{Aula 3 · O problema de Molodensky}{Class 3 · Molodensky's
+        problem}}]
+        \small\tr{Como calcular $\zeta$ com medidas feitas na superfície: Stokes, mais
+        correções.}{How to compute $\zeta$ from measurements made on the surface: Stokes, plus
+        corrections.}
+      \end{regra}
+    \end{column}
+    \begin{column}{0.47\textwidth}
+      \begin{regra}[title={\tr{Aula 2 · Uma altura sem densidade}{Class 2 · A height without
+        density}}]
+        \small\tr{Altitude normal, teluróide, anomalia de altura $\zeta$ e
+        quase-geoide.}{Normal height, telluroid, height anomaly $\zeta$ and quasigeoid.}
+      \end{regra}
+      \vspace{2pt}
+      \begin{regra}[title={\tr{Aula 4 · Na prática}{Class 4 · In practice}}]
+        \small\tr{GNSS + quase-geoide = altitude normal. O Brasil, o mundo e o
+        IHRS.}{GNSS + quasigeoid = normal height. Brazil, the world and the IHRS.}
+      \end{regra}
+    \end{column}
+  \end{columns}
+  \medskip
+  \centering
+  \tr{Cada aula tem 50 minutos, começa relembrando a anterior e termina com um resumo.
+  Vamos \bnum{devagar}: uma ideia por slide.}{Each class is 50 minutes long, starts by
+  recalling the previous one and ends with a summary. We will go \bnum{slowly}: one idea per
+  slide.}
+\end{frame}
+
+% ==================================================================
+\begin{frame}[standout]
+  \tr{Parte 1}{Part 1}\\[6pt]
+  {\normalsize \tr{A montanha no caminho}{The mountain in the way}}\\[4pt]
+  {\scriptsize \tr{aula 1 de 4}{class 1 of 4}}
+\end{frame}
+
+\section{\tr{Onde paramos}{Where we left off}}
+
+\begin{frame}{\tr{As perguntas de hoje}{Today's questions}}
+  \begin{columns}[T]
+    \begin{column}{0.58\textwidth}
+      \begin{enumerate}
+        \setlength{\itemsep}{8pt}
+        \item \tr{Por onde passa o geoide quando há um continente em cima dele?}{Where does
+              the geoid run when there is a continent on top of it?}
+        \item \tr{Por que a fórmula de Stokes não gosta de montanhas?}{Why doesn't Stokes'
+              formula like mountains?}
+        \item \tr{Por que a altitude ``acima do nível do mar'' precisa saber de que a montanha
+              é feita?}{Why does the height ``above sea level'' need to know what the
+              mountain is made of?}
+        \item \tr{Qual foi a ideia de Molodensky?}{What was Molodensky's idea?}
+      \end{enumerate}
+    \end{column}
+    \begin{column}{0.38\textwidth}
+      \begin{ideia}[title={\tr{Combinado}{Deal}}]
+        \tr{No fim da aula, você vai saber responder às quatro --- com as suas palavras.}{By
+        the end of the class you will be able to answer all four --- in your own words.}
+        \medskip
+
+        \tr{Elas voltam no último slide.}{They come back on the last slide.}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{A corrente da aula passada}{Last class's chain}}
+  \begin{columns}[T]
+    \begin{column}{0.42\textwidth}
+      \small
+      \tr{Na aula de gravimetria montamos uma corrente de quatro elos:}{In the gravimetry class
+      we built a chain with four links:}
+      \begin{enumerate}
+        \setlength{\itemsep}{1pt}
+        \item \tr{medir a gravidade $\gmed$;}{measure gravity $\gmed$;}
+        \item \tr{tirar a gravidade da Terra lisa: $\anom = \gmed - \gam$;}{subtract the
+              gravity of the smooth Earth: $\anom = \gmed - \gam$;}
+        \item \tr{somar as anomalias do planeta inteiro com Stokes, e achar o geoide
+              $\Nn$;}{add up the anomalies of the whole planet with Stokes, and find the geoid
+              $\Nn$;}
+        \item \tr{com o GNSS, achar a altitude: $\Ho = \hh - \Nn$.}{with GNSS, find the
+              height: $\Ho = \hh - \Nn$.}
+      \end{enumerate}
+      \smallskip
+      \tr{Hoje vamos puxar um desses elos --- e ouvir ele \alert{ranger}.}{Today we will pull on
+      one of these links --- and hear it \alert{creak}.}
+    \end{column}
+    \begin{column}{0.54\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=1.0, caixa/.append style={font=\footnotesize}]
+        \node[caixa, draw=corMedido, fill=corMedido!10, text width=2.3cm] (A) at (0,2.1)
+          {\tr{1 · $g$ medido}{1 · measured $g$}\\[1pt]{\scriptsize\tr{gravímetros}{gravimeters}}};
+        \node[caixa, draw=mRose, fill=mRose!8, text width=2.3cm] (B) at (3.9,2.1)
+          {\tr{2 · anomalia}{2 · anomaly}\\[1pt]$\Delta g = g - \gamma$};
+        \node[caixa, draw=corGeoide, fill=corGeoide!8, text width=2.3cm] (C) at (3.9,0)
+          {\tr{3 · Stokes}{3 · Stokes}\\[1pt]\tr{geoide}{geoid} $N$};
+        \node[caixa, draw=corIdeal, fill=corIdeal!8, text width=2.3cm] (D) at (0,0)
+          {\tr{4 · altitude}{4 · height}\\[1pt]$H = h - N$};
+        \draw[seta, mStoneMid] (A) -- (B);
+        \draw[seta, mStoneMid] (B) -- (C);
+        \draw[seta, mStoneMid] (C) -- (D);
+        \draw[mRose, very thick] (3.9,1.05) circle (0.32);
+        \node[rotulo, text=mRose, right] at (4.25,1.05) {\tr{range!}{creaks!}};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{A promessa de Stokes}{Stokes' promise}}
+  \begin{columns}[T]
+    \begin{column}{0.44\textwidth}
+      \begin{regra}[title={\tr{O problema de Stokes, em uma linha}{Stokes' problem, in one
+        line}}]
+        \textbf{\tr{Entra}{In}}: \tr{$\Delta g$ na Terra inteira.}{$\Delta g$ over the whole
+        Earth.}
+        \medskip
+
+        \textbf{\tr{Sai}{Out}}: \tr{$N$ em qualquer lugar.}{$N$ anywhere.}
+      \end{regra}
+      \medskip
+      \tr{Uma fórmula linda, de 1849. Mas ela vinha com \bnum{quatro exigências}. A aula passada
+      terminou apontando para a primeira.}{A beautiful formula, from 1849. But it came with
+      \bnum{four requirements}. Last class ended by pointing at the first one.}
+    \end{column}
+    \begin{column}{0.52\textwidth}
+      \begin{cuidado}[title={\tr{Para a fórmula valer}{For the formula to hold}}]
+        \small
+        \begin{enumerate}
+          \item \alert{\tr{nenhuma massa acima do geoide}{no mass above the geoid}};
+          \item \tr{$\Delta g$ conhecida na Terra inteira;}{$\Delta g$ known over the whole
+                Earth;}
+          \item \tr{a Terra tratada como quase esfera;}{the Earth treated as almost a
+                sphere;}
+          \item \tr{elipsoide com a mesma massa e o mesmo potencial da Terra.}{an ellipsoid
+                with the same mass and the same potential as the Earth.}
+        \end{enumerate}
+      \end{cuidado}
+      \medskip
+      \centering
+      \tr{Hoje: \alert{a exigência número 1}.}{Today: \alert{requirement number 1}.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{\tr{A montanha no caminho}{The mountain in the way}}
+
+\begin{frame}{\tr{Uma frase que parece inocente}{A sentence that looks harmless}}
+  \begin{columns}[T]
+    \begin{column}{0.46\textwidth}
+      \centering
+      \Large\alert{\tr{``Nenhuma massa acima\\do geoide.''}{``No mass above\\the geoid.''}}
+      \normalsize
+      \par\bigskip
+      \raggedright
+      \tr{No \bnum{mar}, tudo bem: a superfície da água fica praticamente em cima do geoide, e
+      acima dela só há ar.}{At \bnum{sea}, fine: the water surface lies practically on the
+      geoid, and above it there is only air.}
+      \medskip
+
+      \tr{Em \alert{terra firme}, não: há rocha acima do geoide. Às vezes, quilômetros de
+      rocha.}{On \alert{dry land}, no: there is rock above the geoid. Sometimes kilometers of
+      rock.}
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \fill[corGeoide!18] (0,0) rectangle (2.6,-0.7);
+        \draw[corGeoide, thick] (0,0) -- (2.6,0);
+        \fill[corMassa!30] (2.6,-0.7) -- (2.6,0) .. controls (3.4,0.3) and (3.8,2.2) ..
+          (4.6,2.3) .. controls (5.3,2.4) and (5.6,1.2) .. (6.4,1.1) -- (6.4,-0.7) -- cycle;
+        \draw[terreno] (2.6,0) .. controls (3.4,0.3) and (3.8,2.2) .. (4.6,2.3)
+          .. controls (5.3,2.4) and (5.6,1.2) .. (6.4,1.1);
+        \draw[geoide] (0,0) -- (6.4,0);
+        \node[rotulo, text=corGeoide, below] at (5.6,-0.05) {\tr{geoide}{geoid}};
+        \node[rotulo, text=corGeoide] at (1.3,-0.38) {\tr{mar}{sea}};
+        \node[rotulo, text=corMedido, font=\scriptsize\bfseries] at (1.3,0.55) {\tr{só ar: ok}{only
+          air: ok}};
+        \node[rotulo, text=mRose, font=\scriptsize\bfseries] at (4.6,0.9) {\tr{rocha!}{rock!}};
+        \draw[mRose, seta2] (4.6,0.05) -- (4.6,0.65);
+        \draw[mRose, seta2] (4.6,1.15) -- (4.6,2.25);
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Por onde passa o geoide debaixo de um continente?}{Where does the geoid run
+  under a continent?}}
+  \begin{columns}[T]
+    \begin{column}{0.44\textwidth}
+      \tr{Imagine cavar um \bnum{canal fininho} do mar até o meio do continente.}{Imagine
+      digging a \bnum{very thin canal} from the sea to the middle of the continent.}
+      \medskip
+
+      \tr{A água do mar entra no canal e para numa certa altura. Essa altura é a do
+      \bnum{geoide}.}{Sea water flows into the canal and stops at a certain level. That level
+      is the \bnum{geoid}.}
+      \medskip
+
+      \tr{Debaixo das terras altas, então, o geoide passa \alert{por dentro da rocha}.}{So,
+      under high ground, the geoid runs \alert{inside the rock}.}
+    \end{column}
+    \begin{column}{0.52\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.88]
+        \fill[corGeoide!18] (0,0) rectangle (1.6,-1.0);
+        \fill[corMassa!30] (1.6,-1.0) -- (1.6,0) .. controls (2.4,0.4) and (2.8,2.4) ..
+          (3.9,2.5) .. controls (5.0,2.6) and (5.5,1.6) .. (6.6,1.5) -- (6.6,-1.0) -- cycle;
+        \draw[terreno] (1.6,0) .. controls (2.4,0.4) and (2.8,2.4) .. (3.9,2.5)
+          .. controls (5.0,2.6) and (5.5,1.6) .. (6.6,1.5);
+        \draw[corGeoide, thick] (0,0) -- (1.6,0);
+        \node[rotulo, text=corGeoide] at (0.8,-0.5) {\tr{mar}{sea}};
+        % o canal
+        \fill[white] (1.6,-0.32) rectangle (6.3,-0.12);
+        \fill[white] (6.1,-0.32) rectangle (6.3,1.62);
+        \draw[mStoneMid] (1.6,-0.32) -- (6.3,-0.32) -- (6.3,1.62) (6.1,1.62) -- (6.1,-0.12)
+          -- (1.6,-0.12);
+        \fill[corGeoide!45] (1.6,-0.32) rectangle (6.3,-0.12);
+        \fill[corGeoide!45] (6.1,-0.32) rectangle (6.3,0.0);
+        \draw[geoide, dashed] (1.6,0.0) -- (6.6,0.0);
+        \node[rotulo, text=corGeoide, above] at (4.4,0.02) {\tr{geoide, dentro da rocha}{geoid,
+          inside the rock}};
+        \draw[mStoneMid, seta] (6.2,2.3) -- (6.2,0.08);
+        \node[rotulo, above, align=center] at (6.2,2.3) {\tr{a água para aqui}{water stops
+          here}};
+        \node[rotulo, below] at (4.0,-0.35) {\tr{canal}{canal}};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Curitiba: 900 metros de rocha em cima do geoide}{Curitiba: 900 meters of rock
+  above the geoid}}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \tr{A estação gravimétrica absoluta de Curitiba --- a da aula passada --- está a uns
+      \bnum{910 m} de altitude.}{The absolute gravity station in Curitiba --- the one from last
+      class --- sits at about \bnum{910 m} of height.}
+      \medskip
+
+      \tr{Entre o gravímetro e o geoide há, então, uns \alert{900 metros de rocha}.}{So between
+      the gravimeter and the geoid there are about \alert{900 meters of rock}.}
+      \medskip
+      \begin{itemize}
+        \item \tr{Brasília: uns 1\,100 m de rocha;}{Brasília: about 1\,100 m of rock;}
+        \item \tr{os Andes: 4 a 6 km;}{the Andes: 4 to 6 km;}
+        \item \tr{o Everest: quase 9 km.}{Everest: almost 9 km.}
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \fill[corMassa!30] (0.6,0) rectangle (3.4,3.2);
+        \draw[terreno] (0.4,3.2) -- (3.6,3.2);
+        \draw[geoide] (0.4,0) -- (3.6,0);
+        \node[rotulo, text=corGeoide, below] at (2.0,-0.05) {\tr{geoide}{geoid}};
+        \node[rotulo, text=corMassa, font=\scriptsize\bfseries] at (2.0,1.6) {\tr{rocha}{rock}};
+        \pic[corMedido, scale=1.4] at (2.0,3.2) {gravimetro};
+        \node[rotulo, text=corMedido, above] at (2.0,3.8) {Curitiba};
+        \draw[mRose, seta2] (4.0,0) -- (4.0,3.2);
+        \node[rotulo, text=mRose, right] at (4.05,1.6) {$\approx 910$ m};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Por que Stokes quer o espaço vazio}{Why Stokes wants empty space}}
+  \begin{columns}[T]
+    \begin{column}{0.44\textwidth}
+      \tr{Lembra do \bnum{spray de tinta}? O puxão da gravidade se espalha pelo espaço como a
+      tinta se espalha pela parede.}{Remember the \bnum{spray paint}? The pull of gravity
+      spreads through space the way paint spreads over the wall.}
+      \medskip
+
+      \tr{Stokes conta com isso: do geoide para cima, o efeito das massas \bnum{só se espalha}
+      --- não aparece nenhum puxão novo no caminho.}{Stokes counts on that: from the geoid up,
+      the effect of the masses \bnum{only spreads out} --- no new pull appears on the way.}
+      \medskip
+
+      \tr{Se houver rocha no meio, cada pedaço dela é um \alert{puxão novo} que a fórmula não
+      sabe contar.}{If there is rock in between, each piece of it is a \alert{new pull} that
+      the formula cannot account for.}
+    \end{column}
+    \begin{column}{0.52\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.85]
+        \foreach \x/\lab in {0/{\tr{vazio: só se espalha}{empty: it only spreads}},
+                             3.7/{\tr{com rocha: puxões novos}{with rock: new pulls}}} {
+          \draw[geoide] (\x,0) -- (\x+3.0,0);
+          \node[rotulo, below, align=center] at (\x+1.5,-0.1) {\lab};
+        }
+        \foreach \a in {60,75,90,105,120} {
+          \draw[corMedido!70] (1.5,0) -- ++(\a:2.6);
+          \draw[corMedido!70] (5.2,0) -- ++(\a:2.6);
+        }
+        \fill[corMassa!55] (5.2,1.35) ellipse (0.75 and 0.45);
+        \foreach \a in {0,60,120,180,240,300} {
+          \draw[mRose, -{Stealth[length=1.6mm]}, thick] ($(5.2,1.35)+(\a:0.85)$) --
+            ($(5.2,1.35)+(\a:0.55)$);
+        }
+        \node[rotulo, text=white] at (5.2,1.35) {\tr{rocha}{rock}};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Pare e pense}{Stop and think}}
+  \centering
+  \tr{A fórmula quer o espaço \bnum{vazio} acima do geoide. A montanha \alert{está lá}.
+  \\ O que você faria?}{The formula wants \bnum{empty} space above the geoid. The mountain
+  \alert{is there}.\\ What would you do?}
+  \bigskip
+
+  \begin{columns}[T]
+    \begin{column}{0.31\textwidth}
+      \begin{regra}[title={\tr{(a) Fingir}{(a) Pretend}}]
+        \small\raggedright\tr{Fingir que a montanha não existe, e fazer a conta assim
+        mesmo.}{Pretend the mountain does not exist and do the sum anyway.}
+      \end{regra}
+    \end{column}
+    \begin{column}{0.31\textwidth}
+      \begin{regra}[title={\tr{(b) Tirar}{(b) Remove}}]
+        \small\raggedright\tr{Tirar a montanha --- no papel --- e calcular quanto ela
+        puxava.}{Remove the mountain --- on paper --- and compute how much it was pulling.}
+      \end{regra}
+    \end{column}
+    \begin{column}{0.31\textwidth}
+      \begin{regra}[title={\tr{(c) Amassar}{(c) Squash}}]
+        \small\raggedright\tr{Amassar a montanha até virar uma folha fininha em cima do
+        geoide.}{Squash the mountain into a very thin sheet lying on the geoid.}
+      \end{regra}
+    \end{column}
+  \end{columns}
+  \bigskip
+
+  \tr{Os geodesistas fizeram as três. E as três esbarram no mesmo problema.}{Geodesists have
+  done all three. And all three run into the same problem.}
+\end{frame}
+
+\begin{frame}{\tr{As três saídas têm nome}{The three ways out have names}}
+  \centering
+  \begin{tikzpicture}[scale=0.9]
+    \foreach \x/\nome in {0/{\tr{(a) ar-livre}{(a) free-air}},
+                          4.6/{\tr{(b) Bouguer}{(b) Bouguer}},
+                          9.2/{\tr{(c) condensação de Helmert}{(c) Helmert condensation}}} {
+      \draw[geoide] (\x,0) -- (\x+3.6,0);
+      \node[rotulo, font=\scriptsize\bfseries, below] at (\x+1.8,-0.15) {\nome};
+    }
+    % (a) montanha "fantasma"
+    \draw[corMassa!60, thick, dashed] (0.3,0) .. controls (1.2,1.8) and (2.4,1.8) .. (3.3,0);
+    \fill[corMedido] (1.8,1.35) circle (0.07);
+    \node[rotulo, text=mStoneMid, align=center] at (1.8,0.55) {\tr{como se}{as if}\\\tr{não
+      existisse}{absent}};
+    % (b) removida
+    \fill[corMassa!12] (4.9,0) .. controls (5.8,1.8) and (7.0,1.8) .. (7.9,0) -- cycle;
+    \draw[corMassa, thick, dashed] (4.9,0) .. controls (5.8,1.8) and (7.0,1.8) .. (7.9,0);
+    \draw[mRose, line width=1.4pt] (5.6,0.35) -- (7.2,1.15) (5.6,1.15) -- (7.2,0.35);
+    \node[rotulo, text=mRose, above] at (6.4,1.45) {\tr{tirada}{removed}};
+    % (c) amassada
+    \draw[corMassa!50, thin, dashed] (9.5,0) .. controls (10.4,1.8) and (11.6,1.8) .. (12.5,0);
+    \fill[corMassa] (9.5,0) rectangle (12.5,0.12);
+    \draw[seta, corMassa] (11.0,1.25) -- (11.0,0.35);
+    \node[rotulo, text=corMassa, above] at (11.0,1.4) {\tr{amassada}{squashed}};
+  \end{tikzpicture}
+  \bigskip
+
+  \begin{cuidado}[title={\tr{O problema comum}{The common problem}}]
+    \tr{Para tirar ou amassar uma montanha --- e para saber quanto ``fingir'' custa --- é
+    preciso saber \alert{quanto ela pesa}.}{To remove or squash a mountain --- and to know how
+    much ``pretending'' costs --- you need to know \alert{how much it weighs}.}
+  \end{cuidado}
+\end{frame}
+
+\begin{frame}{\tr{Quanto pesa uma montanha?}{How much does a mountain weigh?}}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \tr{O \bnum{tamanho} da montanha a gente conhece: o relevo é medido por satélites e
+      radar, metro a metro.}{The \bnum{size} of the mountain we know: the relief is measured by
+      satellites and radar, meter by meter.}
+      \medskip
+
+      \tr{Mas peso não é só tamanho:}{But weight is not just size:}
+      \[ \text{\tr{massa}{mass}} = \text{\tr{volume}{volume}} \times
+         \textcolor{corMassa}{\textbf{\tr{densidade}{density}}} \]
+      \tr{E a densidade da rocha \alert{lá dentro}, ninguém mediu.}{And the density of the rock
+      \alert{deep inside}, nobody has measured.}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \fill[mRose!12] (0.8,0) rectangle (3.6,2.0);
+        \draw[mRose, thick] (0.8,0) rectangle (3.6,2.0);
+        \fill[corMedido!25] (2.05,0) rectangle (2.35,2.0);
+        \fill[corMedido!25] (0.8,0.85) rectangle (3.6,1.15);
+        \draw[corMedido, thick] (2.2,2.0) .. controls (1.6,2.6) and (1.2,2.2) .. (2.2,2.0)
+          .. controls (3.2,2.2) and (2.8,2.6) .. (2.2,2.0);
+        \node[font=\Huge\bfseries, text=mRose] at (2.2,1.0) {?};
+        \draw[mStoneMid, seta2] (0.8,-0.3) -- (3.6,-0.3);
+        \node[rotulo, below] at (2.2,-0.35) {\tr{tamanho: conhecido}{size: known}};
+        \node[rotulo, text=mRose, below] at (2.2,-0.75) {\tr{o que tem dentro: ?}{what is inside:
+          ?}};
+      \end{tikzpicture}
+      \smallskip
+
+      \tr{É como adivinhar o peso de um \bnum{presente embrulhado}.}{It is like guessing the
+      weight of a \bnum{wrapped present}.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Rochas diferentes, pesos diferentes}{Different rocks, different weights}}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \centering
+      \footnotesize
+      \renewcommand{\arraystretch}{1.3}
+      \begin{tabular}{lr}
+        \toprule
+        \tr{material}{material} & kg/m$^3$ \\
+        \midrule
+        \tr{água}{water} & \num{1000} \\
+        \tr{sal-gema}{rock salt} & $\approx \num{2220}$ \\
+        \tr{arenito}{sandstone} & $\approx \num{2350}$ \\
+        \tr{calcário}{limestone} & $\approx \num{2550}$ \\
+        \tr{granito}{granite} & $\approx \num{2640}$ \\
+        \tr{basalto}{basalt} & $\approx \num{2990}$ \\
+        \midrule
+        \tr{\textbf{padrão das reduções}}{\textbf{standard in reductions}} &
+          \textcolor{corMassa}{\textbf{\num{2670}}} \\
+        \bottomrule
+      \end{tabular}
+
+      {\scriptsize\textcolor{mStoneMid}{\tr{Médias de Telford et al. (1990). Cada rocha varia
+      bastante em torno delas.}{Averages from Telford et al. (1990). Each rock varies a lot
+      around them.}}}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{ideia}[title={\tr{O valor padrão é um chute educado}{The standard value is an
+        educated guess}}]
+        \small\tr{2\,670 kg/m$^3$ é uma média típica da crosta. A rocha de verdade, num lugar
+        qualquer, pode estar \alert{10\,\% acima ou abaixo}.}{2\,670 kg/m$^3$ is a typical
+        average for the crust. Real rock, at any given place, may be \alert{10\,\% above or
+        below}.}
+      \end{ideia}
+      \medskip
+      \begin{cuidado}[title={\tr{Aqui perto}{Close to home}}]
+        \small\tr{O terceiro planalto do Paraná --- metade oeste do estado --- é feito de
+        \bnum{derrames de basalto} empilhados: bem mais pesados que a média.}{The third
+        plateau of Paraná --- the western half of the state --- is made of stacked
+        \bnum{basalt flows}: much heavier than average.}
+      \end{cuidado}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{O preço de chutar a densidade}{The price of guessing the density}}
+  \begin{columns}[T]
+    \begin{column}{0.54\textwidth}
+      \tr{A estação de Curitiba, com a placa de Bouguer da aula passada (910 m de rocha),
+      calculada com três densidades:}{The Curitiba station, with last class's Bouguer plate
+      (910 m of rock), computed with three densities:}
+      \par\medskip
+      \centering
+      \small
+      \renewcommand{\arraystretch}{1.3}
+      \begin{tabular}{rrr}
+        \toprule
+        \tr{densidade}{density} & \tr{placa}{plate} & \tr{anomalia de Bouguer}{Bouguer
+          anomaly} \\
+        \midrule
+        \num{2350} & \num{89.7}\mGal & $\num{-35.6}$\mGal \\
+        \textbf{\num{2670}} & \textbf{\num{101.9}}\mGal & $\mathbf{\num{-47.8}}$\mGal \\
+        \num{3000} & \num{114.5}\mGal & $\num{-60.4}$\mGal \\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{armadilha}[title={\tr{O tamanho do chute}{The size of the guess}}]
+        \tr{Só por causa da densidade, o número muda \alert{$\pm 12$\mGal}.}{Just because of the
+        density, the number changes by \alert{$\pm 12$\mGal}.}
+        \medskip
+
+        \tr{Um gravímetro absoluto erra \bnum{poucos \uGal}: o chute é \alert{milhares de
+        vezes} maior que o erro da medida.}{An absolute gravimeter errs by \bnum{a few \uGal}:
+        the guess is \alert{thousands of times} larger than the measurement error.}
+      \end{armadilha}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{\tr{A altura que mora dentro da montanha}{The height that lives inside the mountain}}
+
+\begin{frame}{\tr{Relembrando: a altura medida em esforço}{Recall: height measured as effort}}
+  \begin{columns}[T]
+    \begin{column}{0.54\textwidth}
+      \tr{Na aula do geoide vimos que a altura ``de verdade'' se mede em \bnum{esforço}: o
+      número geopotencial}{In the geoid class we saw that the ``real'' height is measured as
+      \bnum{effort}: the geopotential number}
+      \[ \Cc = W_0 - W \]
+      \tr{é o trabalho, por quilo, para subir do geoide até o ponto. Para virar metros:}{is the
+      work, per kilogram, to climb from the geoid to the point. To turn it into meters:}
+      \[ \boxed{\; \Ho = \frac{\Cc}{\gbar} \;} \]
+      \tr{Essa é a altitude \bnum{ortométrica}: a ``altura acima do nível do mar'' clássica.}{That
+      is the \bnum{orthometric} height: the classic ``height above sea level''.}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{ideia}[title={\tr{E o $\bar g$?}{And $\bar g$?}}]
+        \tr{É a \bnum{gravidade média ao longo do fio de prumo}, do geoide até o ponto.}{It is
+        the \bnum{mean gravity along the plumb line}, from the geoid up to the point.}
+        \medskip
+
+        \tr{Repare no caminho desse fio de prumo. Por onde ele passa?}{Look at the path of that
+        plumb line. Where does it run?}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Um fio de prumo que atravessa a rocha}{A plumb line that crosses the rock}}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \tr{Do geoide até você, o fio de prumo passa \alert{por dentro da montanha}.}{From the
+      geoid up to you, the plumb line runs \alert{inside the mountain}.}
+      \medskip
+
+      \tr{Para saber $\bar g$ de verdade, seria preciso medir a gravidade lá dentro, metro a
+      metro, até o geoide.}{To know the real $\bar g$, you would have to measure gravity in
+      there, meter by meter, down to the geoid.}
+      \medskip
+
+      \tr{Ninguém leva um gravímetro para \alert{dentro} de uma montanha.}{Nobody takes a
+      gravimeter \alert{inside} a mountain.}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \fill[corMassa!30] (0,0) -- (0,0.6) .. controls (1.2,0.9) and (2.0,3.3) .. (3.0,3.3)
+          .. controls (4.0,3.3) and (4.8,0.9) .. (6.0,0.6) -- (6.0,0) -- cycle;
+        \draw[terreno] (0,0.6) .. controls (1.2,0.9) and (2.0,3.3) .. (3.0,3.3)
+          .. controls (4.0,3.3) and (4.8,0.9) .. (6.0,0.6);
+        \draw[geoide] (0,0) -- (6.0,0);
+        \node[rotulo, text=corGeoide, below] at (5.2,-0.05) {\tr{geoide}{geoid}};
+        \draw[corGeoide, very thick] (3.0,0) -- (3.0,3.3);
+        \fill[mStone] (3.0,3.3) circle (0.08);
+        \node[rotulo, above] at (3.0,3.4) {\tr{você}{you}};
+        \pic[corMedido, scale=1.2] at (3.0,3.32) {gravimetro};
+        \foreach \y in {0.6,1.4,2.2} {
+          \pic[mStoneMid, scale=1.0] at (3.45,\y) {gravimetro};
+          \node[rotulo, text=mRose, font=\scriptsize\bfseries, right] at (3.65,\y+0.15) {?};
+        }
+        \node[rotulo, text=corGeoide, left, align=right] at (2.9,1.5) {\tr{fio de}{plumb}\\
+          \tr{prumo}{line}};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Então se calcula --- com uma hipótese}{So it is computed --- with an assumption}}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \tr{Desça, em pensamento, de você até o geoide. \bnum{A cada metro} descido, duas coisas
+      acontecem:}{Go down, in your mind, from you to the geoid. \bnum{For every meter} you
+      descend, two things happen:}
+      \begin{enumerate}
+        \setlength{\itemsep}{4pt}
+        \item \tr{você chega mais perto do centro: $g$ \bnum{aumenta} \num{0.3086}\mGal --- o
+              ar-livre;}{you get closer to the center: $g$ \bnum{increases} by
+              \num{0.3086}\mGal --- free-air;}
+        \item \tr{agora há rocha \emph{acima} de você, puxando para cima, e rocha a menos
+              \emph{embaixo}: $g$ \alert{diminui} $2 \times \num{0.1119} = \num{0.2238}$\mGal.}{now
+              there is rock \emph{above} you, pulling up, and less rock \emph{below}: $g$
+              \alert{decreases} by $2 \times \num{0.1119} = \num{0.2238}$\mGal.}
+      \end{enumerate}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \draw[mStoneMid] (0,0) -- (5.2,0);
+        \fill[corMedido!70] (0.5,0) rectangle (1.5,3.086);
+        \fill[corMassa!80] (2.1,3.086) rectangle (3.1,0.862);
+        \draw[mStoneMid, dashed] (1.5,3.086) -- (2.1,3.086);
+        \fill[mRose!80] (3.7,0) rectangle (4.7,0.848);
+        \draw[mStoneMid, dashed] (3.1,0.862) -- (3.7,0.862);
+        \node[rotulo, above, text=corMedido] at (1.0,3.1) {$+\num{0.3086}$};
+        \node[rotulo, below, text=corMassa] at (2.6,0.85) {$-\num{0.2238}$};
+        \node[rotulo, above, text=mRose] at (4.2,0.85) {$+\num{0.0848}$};
+        \node[rotulo, below, align=center] at (1.0,-0.05) {\tr{ar-}{free-}\\\tr{livre}{air}};
+        \node[rotulo, below, align=center] at (2.6,-0.05) {\tr{rocha}{rock}};
+        \node[rotulo, below, align=center] at (4.2,-0.05) {\tr{saldo}{net}};
+        \node[rotulo, text=mStoneMid] at (2.6,3.95) {\tr{mGal por metro descido}{mGal per meter
+          descended}};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{A conta de Poincaré e Prey}{The Poincaré--Prey sum}}
+  \begin{columns}[T]
+    \begin{column}{0.54\textwidth}
+      \tr{Saldo: $g$ cresce \bnum{\num{0.0848}\mGal por metro} descido. Na média do caminho
+      todo, metade disso:}{Net result: $g$ grows by \bnum{\num{0.0848}\mGal per meter}
+      descended. Averaged over the whole path, half of that:}
+      \[ \boxed{\; \gbar \approx \gmed + \num{0.0424}\,\Ho \;} \qquad
+         \text{\scriptsize(\tr{mGal, com $H$ em metros}{mGal, with $H$ in meters})} \]
+      \tr{Curitiba:}{Curitiba:}
+      \[ \bar g \approx \num{978760.4} + \num{0.0424} \times 910
+         \approx \bnum{\num{978799.0}}\mGal \]
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{armadilha}[title={\tr{Onde está a hipótese?}{Where is the assumption?}}]
+        \tr{No \num{0.1119}. Ele vale para rocha de \alert{2\,670 kg/m$^3$}.}{In the
+        \num{0.1119}. It holds for rock of \alert{2\,670 kg/m$^3$}.}
+        \medskip
+
+        \tr{Rocha mais pesada, outro número. A altitude ortométrica \alert{herda o chute} da
+        densidade.}{Heavier rock, another number. The orthometric height \alert{inherits the
+        guess} about the density.}
+      \end{armadilha}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Sua vez}{Your turn}}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{regra}[title={\tr{Uma estação a 2\,000 m}{A station at 2\,000 m}}]
+        \begin{enumerate}
+          \item[(a)] \tr{Com a regra de Prey, quanto $\bar g$ fica \emph{acima} do $g$ medido
+                lá em cima?}{With Prey's rule, how much \emph{higher} than the $g$ measured up
+                there is $\bar g$?}
+          \item[(b)] \tr{Se a montanha for de basalto (\num{2990} kg/m$^3$), esse número fica
+                maior ou menor?}{If the mountain is basalt (\num{2990} kg/m$^3$), does that
+                number get bigger or smaller?}
+        \end{enumerate}
+      \end{regra}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \onslide<2->{
+      \begin{ideia}[title={\tr{Respostas}{Answers}}]
+        \small\raggedright
+        (a) $\num{0.0424} \times 2000 = \bnum{\num{84.8}}$\mGal.
+        \medskip
+
+        (b) \tr{\alert{Menor}. Rocha mais densa puxa mais para cima quando você está debaixo
+        dela: o saldo por metro cai de \num{0.0848} para \num{0.0578}, e a conta dá uns
+        \bnum{58}\mGal.}{\alert{Smaller}. Denser rock pulls up harder when you are under it:
+        the net per meter drops from \num{0.0848} to \num{0.0578}, and the sum gives about
+        \bnum{58}\mGal.}
+      \end{ideia}
+      }
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Quanto a altitude erra}{How wrong the height gets}}
+  \begin{columns}[T]
+    \begin{column}{0.46\textwidth}
+      \tr{Com o esforço $C$ fixo, $H = C/\bar g$. Errar a densidade em \bnum{300 kg/m$^3$} (uns
+      10\,\%) muda $\bar g$ --- e, com ele, $H$:}{With the effort $C$ fixed, $H = C/\bar g$.
+      Getting the density wrong by \bnum{300 kg/m$^3$} (about 10\,\%) changes $\bar g$ --- and,
+      with it, $H$:}
+      \par\smallskip
+      \centering
+      \small
+      \renewcommand{\arraystretch}{1.2}
+      \begin{tabular}{rr}
+        \toprule
+        \tr{altitude}{height} & \tr{erro em $H$}{error in $H$} \\
+        \midrule
+        500 m & \num{0.3} cm \\
+        \num{1000} m & \num{1.3} cm \\
+        \num{2000} m & \num{5.1} cm \\
+        \num{3000} m & \num{11.6} cm \\
+        \num{4000} m & \alert{\num{20.5} cm} \\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \draw[mStoneMid, seta] (0,0) -- (5.6,0) node[above left, rotulo] {$H$ (km)};
+        \draw[mStoneMid, seta] (0,0) -- (0,3.0) node[above, rotulo] {\tr{erro (cm)}{error
+          (cm)}};
+        \foreach \k in {1,2,3,4} {
+          \draw[mStoneMid] ({1.25*\k},-0.06) -- ({1.25*\k},0.06);
+          \node[rotulo, below] at ({1.25*\k},-0.08) {\k};
+        }
+        \foreach \c in {10,20} {
+          \draw[mStoneMid] (-0.06,{\c/8}) -- (0.06,{\c/8});
+          \node[rotulo, left] at (-0.08,{\c/8}) {\c};
+        }
+        \draw[mRose, very thick, domain=0:4.2, samples=60, smooth, variable=\k]
+          plot ({1.25*\k}, {0.128374*\k*\k*10/8});
+        \fill[corMedido] ({1.25*0.91},{0.128374*0.91*0.91*10/8}) circle (0.07);
+        \node[rotulo, text=corMedido, above left] at ({1.25*0.91},0.15) {Curitiba};
+        \node[rotulo, text=mRose, align=center] at (2.4,2.4) {\tr{dobrou a altitude:}{double
+          the height:}\\\tr{o erro quadruplica}{the error quadruples}};
+      \end{tikzpicture}
+      \smallskip
+
+      {\small\tr{Em Curitiba: de \num{909.989} a \num{910.012} m, só trocando a rocha.}{In
+      Curitiba: from \num{909.989} to \num{910.012} m, just by changing the rock.}}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{A densidade entra duas vezes}{Density comes in twice}}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{armadilha}[title={\tr{1 · No geoide}{1 · In the geoid}}]
+        \tr{Para usar Stokes, é preciso tirar ou amassar as montanhas: \alert{precisa da
+        densidade}.}{To use Stokes, you must remove or squash the mountains: \alert{you need
+        the density}.}
+      \end{armadilha}
+      \medskip
+      \begin{armadilha}[title={\tr{2 · Na altitude ortométrica}{2 · In the orthometric height}}]
+        \tr{$\bar g$ mora dentro da montanha: \alert{precisa da densidade}.}{$\bar g$ lives
+        inside the mountain: \alert{you need the density}.}
+      \end{armadilha}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95, caixa/.append style={font=\footnotesize}]
+        \node[caixa, draw=corGeoide, fill=corGeoide!8, text width=2.2cm] (N) at (0,2.2)
+          {\tr{geoide}{geoid} $N$};
+        \node[caixa, draw=corGeoide, fill=corGeoide!8, text width=2.2cm] (H) at (3.6,2.2)
+          {\tr{altitude}{height} $H$};
+        \node[caixa, draw=corMassa, fill=corMassa!12, text width=2.6cm] (D) at (1.8,0)
+          {\textbf{\tr{densidade}{density}}\\\tr{das rochas}{of the rocks}\\[1pt]
+          {\Large\textcolor{mRose}{?}}};
+        \draw[seta, corMassa] (D) -- (N);
+        \draw[seta, corMassa] (D) -- (H);
+      \end{tikzpicture}
+      \bigskip
+
+      \tr{A pergunta de Molodensky:}{Molodensky's question:}\\[2pt]
+      \bnum{\tr{e se a gente nunca entrasse na montanha?}{what if we never went inside the
+      mountain?}}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{\tr{A grande ideia de Molodensky}{Molodensky's big idea}}
+
+\begin{frame}{\tr{Quem foi Molodensky}{Who Molodensky was}}
+  \begin{columns}[T]
+    \begin{column}{0.56\textwidth}
+      \tr{\textbf{Mikhail Sergeevich Molodensky} (1909--1991) estudou na Universidade de
+      Moscou e trabalhou no instituto central de geodésia e cartografia da União Soviética, o
+      TsNIIGAiK.}{\textbf{Mikhail Sergeevich Molodensky} (1909--1991) studied at Moscow
+      University and worked at the Soviet Union's central institute of geodesy and
+      cartography, TsNIIGAiK.}
+      \medskip
+
+      \tr{Construiu o \bnum{primeiro gravímetro soviético}. Em \bnum{1945}, num trabalho chamado
+      \emph{Questões básicas da gravimetria geodésica}, propôs trocar o geoide e a altitude
+      ortométrica por duas ideias novas.}{He built the \bnum{first Soviet gravimeter}. In
+      \bnum{1945}, in a work called \emph{Basic problems of geodetic gravimetry}, he proposed
+      replacing the geoid and the orthometric height with two new ideas.}
+    \end{column}
+    \begin{column}{0.40\textwidth}
+      \begin{ideia}[title={\tr{Você talvez já tenha visto o nome}{You may have seen the name}}]
+        \small\raggedright\tr{Num programa de SIG, entre as opções de transformação de datum, aparecem as
+        ``\bnum{transformações de Molodensky}''.}{In GIS software, among the datum
+        transformation options, there are the ``\bnum{Molodensky transformations}''.}
+        \medskip
+
+        \tr{É o mesmo homem.}{Same man.}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{A ideia, em uma frase}{The idea, in one sentence}}
+  \begin{regra}
+    \centering
+    \tr{Não levar as medidas para \alert{dentro} da Terra.\\ Resolver o problema \bnum{na
+    superfície}, onde as medidas são feitas.}{Do not take the measurements \alert{inside} the
+    Earth.\\ Solve the problem \bnum{on the surface}, where the measurements are made.}
+  \end{regra}
+  \medskip
+  \centering
+  \begin{tikzpicture}[scale=0.9]
+    \foreach \x/\nome/\cor in {0/Stokes/corGeoide, 7.0/Molodensky/mRose} {
+      \fill[corMassa!30] (\x,0) -- (\x,0.4) .. controls (\x+1.2,0.6) and (\x+1.8,2.2) ..
+        (\x+2.8,2.2) .. controls (\x+3.8,2.2) and (\x+4.4,0.6) .. (\x+5.6,0.4) -- (\x+5.6,0)
+        -- cycle;
+      \draw[terreno] (\x,0.4) .. controls (\x+1.2,0.6) and (\x+1.8,2.2) .. (\x+2.8,2.2)
+        .. controls (\x+3.8,2.2) and (\x+4.4,0.6) .. (\x+5.6,0.4);
+      \draw[geoide] (\x,0) -- (\x+5.6,0);
+      \pic[corMedido, scale=1.2] at (\x+2.8,2.22) {gravimetro};
+      \node[rotulo, font=\scriptsize\bfseries, text=\cor] at (\x+2.8,-0.35) {\nome};
+    }
+    \draw[seta, corGeoide, line width=1.3pt] (2.8,2.1) -- (2.8,0.12);
+    \node[rotulo, text=mRose, right] at (2.9,1.0) {\tr{densidade?}{density?}};
+    \draw[mRose, line width=1.3pt, -{Stealth[length=2.4mm]}] (9.8,2.75) arc (110:-200:0.33);
+    \node[rotulo, text=mRose, right] at (10.2,3.0) {\tr{fica aqui}{stays here}};
+  \end{tikzpicture}
+\end{frame}
+
+\begin{frame}{\tr{O que muda --- e quanto custa}{What changes --- and what it costs}}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{ideia}[title={\tr{O ganho}{The gain}}]
+        \tr{\bnum{Nenhuma hipótese} sobre a densidade das rochas. Só entram coisas que se
+        medem: gravidade, nivelamento, posição.}{\bnum{No assumption} about rock density.
+        Only measurable things go in: gravity, leveling, position.}
+      \end{ideia}
+      \smallskip
+      \begin{cuidado}[title={\tr{O preço}{The price}}]
+        \tr{Molodensky \alert{não calcula o geoide}. Calcula uma superfície vizinha dele, que
+        no mar coincide com ele.}{Molodensky \alert{does not compute the geoid}. He computes a
+        neighboring surface, which coincides with it at sea.}
+      \end{cuidado}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \tr{Três palavras novas vêm aí:}{Three new words are coming:}
+      \medskip
+      \begin{enumerate}
+        \setlength{\itemsep}{6pt}
+        \item \textcolor{corIdeal}{\textbf{\tr{altitude normal}{normal height}}} $H^{*}$;
+        \item \textcolor{corIdeal}{\textbf{\tr{teluróide}{telluroid}}};
+        \item \textcolor{corQuase}{\textbf{\tr{quase-geoide}{quasigeoid}}}, \tr{e a sua
+              distância}{and its distance} $\zeta$.
+      \end{enumerate}
+      \medskip
+      \tr{\bnum{Uma de cada vez}, na próxima aula.}{\bnum{One at a time}, next class.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Para levar para casa --- aula 1}{Take-home --- class 1}}
+  \small
+  \begin{enumerate}
+    \setlength{\itemsep}{2pt}
+    \item \tr{Debaixo dos continentes, o geoide passa \bnum{por dentro da rocha}: é a altura em
+          que pararia a água de um canal ligado ao mar.}{Under the continents the geoid runs
+          \bnum{inside the rock}: it is the level where water would stop in a canal connected
+          to the sea.}
+    \item \tr{Stokes quer \alert{espaço vazio} acima do geoide: cada pedaço de rocha no meio é
+          um puxão que a fórmula não sabe contar.}{Stokes wants \alert{empty space} above the
+          geoid: each piece of rock in between is a pull the formula cannot account for.}
+    \item \tr{Tirar ou amassar a montanha exige saber \bnum{quanto ela pesa} --- e a densidade
+          lá dentro é um chute (2\,670 kg/m$^3$, $\pm 10\,\%$).}{Removing or squashing the
+          mountain requires knowing \bnum{how much it weighs} --- and the density in there is a
+          guess (2\,670 kg/m$^3$, $\pm 10\,\%$).}
+    \item \tr{A altitude ortométrica $H = C/\bar g$ também depende dela: o erro cresce com o
+          \bnum{quadrado} da altitude.}{The orthometric height $H = C/\bar g$ depends on it
+          too: the error grows with the \bnum{square} of the height.}
+    \item \tr{Molodensky (1945): \bnum{resolver tudo na superfície}, sem entrar na
+          montanha.}{Molodensky (1945): \bnum{solve everything on the surface}, without going
+          into the mountain.}
+  \end{enumerate}
+  \begin{ideia}
+    \scriptsize \tr{\textbf{Na próxima aula:} como transformar esforço em metros sem saber do
+    que a montanha é feita --- a altitude normal, o teluróide e o quase-geoide.}{\textbf{Next
+    class:} how to turn effort into meters without knowing what the mountain is made of ---
+    the normal height, the telluroid and the quasigeoid.}
+  \end{ideia}
+\end{frame}
+
+% ==================================================================
+\begin{frame}[standout]
+  \tr{Parte 2}{Part 2}\\[6pt]
+  {\normalsize \tr{Uma altura que não precisa da densidade}{A height that does not need the
+  density}}\\[4pt]
+  {\scriptsize \tr{aula 2 de 4}{class 2 of 4}}
+\end{frame}
+
+\section{\tr{De esforço para metros}{From effort to meters}}
+
+\begin{frame}{\tr{Onde paramos}{Where we left off}}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \tr{Na aula 1:}{In class 1:}
+      \begin{enumerate}
+        \setlength{\itemsep}{4pt}
+        \item \tr{debaixo dos continentes, o geoide passa \bnum{por dentro da rocha};}{under
+              the continents, the geoid runs \bnum{inside the rock};}
+        \item \tr{Stokes e a altitude ortométrica precisam saber \alert{quanto a rocha pesa}
+              --- e isso é um chute;}{Stokes and the orthometric height need to know \alert{how
+              much the rock weighs} --- and that is a guess;}
+        \item \tr{Molodensky: resolver tudo \bnum{na superfície}.}{Molodensky: solve everything
+              \bnum{on the surface}.}
+      \end{enumerate}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{ideia}[title={\tr{A pergunta de hoje, em uma linha}{Today's question, in one
+        line}}]
+        \tr{Como dizer ``quantos metros acima do mar'' \bnum{sem saber} do que a montanha é
+        feita?}{How do you say ``how many meters above the sea'' \bnum{without knowing} what
+        the mountain is made of?}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{As perguntas de hoje}{Today's questions}}
+  \begin{columns}[T]
+    \begin{column}{0.58\textwidth}
+      \begin{enumerate}
+        \setlength{\itemsep}{8pt}
+        \item \tr{Como transformar esforço em metros sem entrar na montanha?}{How do you turn
+              effort into meters without going into the mountain?}
+        \item \tr{O que é o \textcolor{corIdeal}{\textbf{teluróide}}?}{What is the
+              \textcolor{corIdeal}{\textbf{telluroid}}?}
+        \item \tr{O que é a \textcolor{corQuase}{\textbf{anomalia de altura}} $\zeta$?}{What is
+              the \textcolor{corQuase}{\textbf{height anomaly}} $\zeta$?}
+        \item \tr{O que é o \textcolor{corQuase}{\textbf{quase-geoide}} --- e quão longe ele
+              fica do geoide?}{What is the \textcolor{corQuase}{\textbf{quasigeoid}} --- and
+              how far is it from the geoid?}
+      \end{enumerate}
+    \end{column}
+    \begin{column}{0.38\textwidth}
+      \begin{cuidado}[title={\tr{Devagar}{Slowly}}]
+        \tr{Três palavras novas numa aula só. Vamos uma de cada vez, sempre com um
+        desenho.}{Three new words in a single class. We will take them one at a time, always
+        with a drawing.}
+      \end{cuidado}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{O esforço $C$ se mede}{The effort $C$ is measured}}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \small
+      \tr{Comece no marégrafo, onde o geoide encosta no mar, e suba de lance em lance:}{Start
+      at the tide gauge, where the geoid touches the sea, and climb one step at a time:}
+      \begin{itemize}
+        \item \tr{o \bnum{nível e a mira} medem quanto cada lance sobe: $\Delta n$;}{the
+              \bnum{level and staff} measure how much each step rises: $\Delta n$;}
+        \item \tr{o \bnum{gravímetro} mede quanto a Terra puxa ali: $g$;}{the \bnum{gravimeter}
+              measures how hard the Earth pulls there: $g$;}
+        \item \tr{o esforço de cada lance é $g \times \Delta n$.}{the effort of each step is
+              $g \times \Delta n$.}
+      \end{itemize}
+      \tr{Somando todos os lances:}{Adding up all the steps:}
+      \[ \boxed{\; \Cc = g_1\,\Delta n_1 + g_2\,\Delta n_2 + g_3\,\Delta n_3 + \cdots \;} \]
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95]
+        \fill[corGeoide!18] (-0.9,0) rectangle (0,-0.45);
+        \draw[geoide] (-0.9,0) -- (0,0);
+        \node[rotulo, text=corGeoide, below] at (-0.45,-0.45) {\tr{mar}{sea}};
+        \foreach \i in {0,1,2,3} {
+          \draw[corMassa, very thick] ({1.2*\i},{0.7*\i}) -- ({1.2*\i+1.2},{0.7*\i})
+            -- ({1.2*\i+1.2},{0.7*\i+0.7});
+          \draw[mStoneMid, seta2] ({1.2*\i+1.42},{0.7*\i}) -- ({1.2*\i+1.42},{0.7*\i+0.7});
+          \pic[corMedido, scale=0.9] at ({1.2*\i+0.6},{0.7*\i}) {gravimetro};
+        }
+        \foreach \i/\lab in {0/1,1/2,2/3,3/4} {
+          \node[rotulo, text=corMedido] at ({1.2*\i+0.6},{0.7*\i+0.55}) {$g_{\lab}$};
+          \node[rotulo, right] at ({1.2*\i+1.45},{0.7*\i+0.35}) {$\Delta n_{\lab}$};
+        }
+        \fill[mStone] (4.8,2.8) circle (0.08);
+        \node[rotulo, above] at (4.8,2.85) {P};
+      \end{tikzpicture}
+      \smallskip
+      \begin{ideia}
+        \footnotesize\tr{Só nível, mira e gravímetro. \bnum{Nenhuma rocha, nenhuma densidade}: $C$ é
+        uma medida.}{Only level, staff and gravimeter. \bnum{No rock, no density}: $C$ is a
+        measurement.}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{De esforço para metros}{From effort to meters}}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \tr{$C$ é energia por quilo, em m$^2$/s$^2$. Ninguém quer uma placa de estrada escrita
+      assim.}{$C$ is energy per kilogram, in m$^2$/s$^2$. Nobody wants a road sign written
+      like that.}
+      \medskip
+
+      \tr{Para virar metros, divide-se $C$ por um ``esforço por metro'' --- uma
+      \bnum{gravidade}:}{To turn it into meters, divide $C$ by an ``effort per meter'' --- a
+      \bnum{gravity}:}
+      \[ \text{\tr{metros}{meters}} = \frac{\text{\tr{esforço}{effort}}}{\text{\tr{esforço por
+         metro}{effort per meter}}} \qquad
+         \frac{\text{m}^2/\text{s}^2}{\text{m}/\text{s}^2} = \text{m} \]
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{regra}[title={\tr{A pergunta toda é esta}{The whole question is this}}]
+        \centering\large \tr{\textbf{Qual} gravidade?}{\textbf{Which} gravity?}
+      \end{regra}
+      \medskip
+      \tr{A resposta da aula 1 --- a gravidade média \emph{dentro da rocha} --- traz a
+      densidade de volta. Precisamos de outra.}{The answer from class 1 --- the mean gravity
+      \emph{inside the rock} --- brings the density back. We need another one.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Uma analogia: o combustível}{An analogy: fuel}}
+  \begin{columns}[T]
+    \begin{column}{0.46\textwidth}
+      \tr{Você sabe \bnum{quantos litros} gastou numa viagem. Quantos quilômetros andou?}{You
+      know \bnum{how many liters} you used on a trip. How many kilometers did you drive?}
+      \medskip
+
+      \tr{Depende do \bnum{consumo}: litros por quilômetro.}{It depends on the \bnum{fuel
+      consumption}: liters per kilometer.}
+      \[ \text{km} = \frac{\text{\tr{litros}{liters}}}{\text{\tr{litros por km}{liters per
+         km}}} \]
+      \tr{Aqui, os litros são o esforço $C$; os quilômetros são a altura; e o consumo é a
+      gravidade.}{Here, the liters are the effort $C$; the kilometers are the height; and the
+      consumption is gravity.}
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \begin{cuidado}[title={\tr{Consumo 1 · o real}{Consumption 1 · the real one}}]
+        \small\tr{Medido na estrada. Mas a estrada passou \alert{por dentro de uma montanha}
+        onde ninguém consegue dirigir. $\Rightarrow$ altitude \textbf{ortométrica}.}{Measured
+        on the road. But the road went \alert{through a mountain} nobody can drive into.
+        $\Rightarrow$ \textbf{orthometric} height.}
+      \end{cuidado}
+      \medskip
+      \begin{regra}[title={\tr{Consumo 2 · o da tabela}{Consumption 2 · the table value}}]
+        \small\tr{A tabela do fabricante: um número \bnum{conhecido exatamente}, sem entrar em
+        lugar nenhum. $\Rightarrow$ altitude \textbf{normal}.}{The manufacturer's table: a
+        number \bnum{known exactly}, without going anywhere. $\Rightarrow$ \textbf{normal}
+        height.}
+      \end{regra}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{As duas réguas}{The two rulers}}
+  \centering
+  \small
+  \renewcommand{\arraystretch}{1.45}
+  \begin{tabular}{l>{\raggedright\arraybackslash}p{4.6cm}>{\raggedright\arraybackslash}p{4.6cm}}
+    \toprule
+    & \textcolor{corGeoide}{\textbf{\tr{ortométrica}{orthometric}}} &
+      \textcolor{corIdeal}{\textbf{\tr{normal}{normal}}} \\
+    \midrule
+    \tr{fórmula}{formula} & $\Ho = \Cc / \gbar$ & $\Hn = \Cc / \gambar$ \\
+    \tr{a gravidade}{the gravity} & \tr{a \emph{real}, média ao longo do prumo, dentro da
+      rocha}{the \emph{real} one, averaged along the plumb line, inside the rock} &
+      \tr{a \emph{normal}, da Terra de mentirinha, média ao longo da vertical}{the
+      \emph{normal} one, of the pretend Earth, averaged along the vertical} \\
+    \tr{de onde vem}{where it comes from} & \tr{medida + hipótese}{measurement +
+      assumption} & \tr{fórmula do elipsoide (GRS80)}{ellipsoid formula (GRS80)} \\
+    \tr{precisa de densidade?}{needs density?} & \textcolor{mRose}{\tr{sim}{yes}} &
+      \textcolor{mTeal}{\textbf{\tr{não}{no}}} \\
+    \bottomrule
+  \end{tabular}
+  \bigskip
+
+  \tr{O mesmo $C$. \bnum{Só muda a régua} usada para traduzi-lo em metros.}{The same $C$.
+  \bnum{Only the ruler changes} that translates it into meters.}
+\end{frame}
+
+\begin{frame}{\tr{$\bar\gamma$, com calma}{$\bar\gamma$, slowly}}
+  \begin{columns}[T]
+    \begin{column}{0.54\textwidth}
+      \tr{A gravidade normal depende de duas coisas:}{Normal gravity depends on two things:}
+      \begin{enumerate}
+        \setlength{\itemsep}{4pt}
+        \item \tr{da \bnum{latitude} --- a fórmula da aula de gravimetria dá $\gamma_0$, no
+              elipsoide;}{the \bnum{latitude} --- the formula from the gravimetry class gives
+              $\gamma_0$, on the ellipsoid;}
+        \item \tr{da \bnum{altura} --- subindo, ela diminui \num{0.3086}\mGal por metro, o
+              mesmo ar-livre de sempre.}{the \bnum{height} --- going up, it drops by
+              \num{0.3086}\mGal per meter, the same old free-air.}
+      \end{enumerate}
+      \tr{A média, do elipsoide até $H^{*}$, fica na metade do caminho:}{The average, from the
+      ellipsoid up to $H^{*}$, sits halfway:}
+      \[ \boxed{\; \gambar \approx \gamma_0 - \num{0.1543}\,\Hn \;} \qquad
+         \text{\scriptsize(mGal, $H^{*}$ \tr{em metros}{in meters})} \]
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \draw[elip] (0,0) -- (4.2,0);
+        \node[rotulo, text=corIdeal, below] at (3.4,-0.05) {\tr{elipsoide}{ellipsoid}};
+        \draw[corIdeal, thick] (1.0,0) -- (1.0,3.0);
+        \fill[corIdeal] (1.0,3.0) circle (0.07);
+        \node[rotulo, left] at (0.9,3.0) {$H^{*}$};
+        \foreach \y/\w in {0/2.0, 0.75/1.85, 1.5/1.7, 2.25/1.55, 3.0/1.4} {
+          \draw[corIdeal!70, -{Stealth[length=1.6mm]}] (1.15,\y) -- ++(\w,0);
+        }
+        \draw[corIdeal, very thick, dashed] (1.0,1.5) -- (3.4,1.5);
+        \node[rotulo, text=corIdeal, right] at (3.4,1.5) {$\bar\gamma$};
+        \node[rotulo, text=corIdeal, right] at (3.2,0.12) {$\gamma_0$};
+        \node[rotulo, align=center, text=mStoneMid] at (2.2,3.6) {\tr{a seta encurta ao
+          subir}{the arrow shortens going up}};
+      \end{tikzpicture}
+      \medskip
+      \begin{ideia}
+        \small\tr{\bnum{Nenhuma rocha} na conta. Uma calculadora basta.}{\bnum{No rock} in the
+        sum. A calculator is enough.}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Exemplo: Curitiba}{Example: Curitiba}}
+  \begin{columns}[T]
+    \begin{column}{0.54\textwidth}
+      \centering
+      \small
+      \renewcommand{\arraystretch}{1.3}
+      \begin{tabular}{lr}
+        \toprule
+        \tr{esforço $C$ (ilustrativo)}{effort $C$ (illustrative)} & \num{8907.07}\mmss \\
+        \midrule
+        $\gamma_0$ \tr{em $\varphi = -25^{\circ}27'$}{at $\varphi = -25^{\circ}27'$} &
+          \num{978987.2}\mGal \\
+        $\gambar \approx \gamma_0 - \num{0.1543} \times 910$ & \num{978846.7}\mGal \\
+        $\Hn = C/\bar\gamma$ & \textcolor{corIdeal}{$\mathbf{\num{909.956}}$\,m} \\
+        \midrule
+        $\gbar$ (Prey, \num{2670} kg/m$^3$) & \num{978799.0}\mGal \\
+        $\Ho = C/\bar g$ & \textcolor{corGeoide}{$\mathbf{\num{910.000}}$\,m} \\
+        \bottomrule
+      \end{tabular}
+      \par\smallskip
+      {\scriptsize\textcolor{mStoneMid}{\tr{$C$ de um ponto a 910 m de altitude ortométrica,
+      com o $g$ da estação de Curitiba.}{$C$ of a point at 910 m orthometric height, with the
+      $g$ of the Curitiba station.}}}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{ideia}[title={\tr{E se a rocha fosse outra?}{What if the rock were different?}}]
+        \small\tr{De \num{2350} a \num{3000} kg/m$^3$:}{From \num{2350} to \num{3000}
+        kg/m$^3$:}
+        \medskip
+
+        $H$: \tr{de \num{909.989} a \num{910.012} m}{from \num{909.989} to \num{910.012} m}
+        \medskip
+
+        $H^{*}$: \bnum{\num{909.956} m}, \tr{sempre.}{always.}
+      \end{ideia}
+      \medskip
+      \tr{A diferença entre as duas é de \bnum{\num{4.4} cm}. Guarde esse número: ele volta
+      daqui a pouco.}{The difference between the two is \bnum{\num{4.4} cm}. Keep that number
+      in mind: it comes back shortly.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Sua vez}{Your turn}}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{regra}[title={\tr{Um ponto na latitude de $45^{\circ}$}{A point at latitude
+        $45^{\circ}$}}]
+        \tr{Dados:}{Given:} $\gamma_0 = \num{980619.9}$\mGal \tr{e}{and}
+        $C = \num{9804.66}$\mmss.
+        \begin{enumerate}
+          \item[(a)] \tr{Supondo $H^{*} \approx 1\,000$ m, quanto vale $\bar\gamma$?}{Assuming
+                $H^{*} \approx 1\,000$ m, what is $\bar\gamma$?}
+          \item[(b)] \tr{Quanto vale $H^{*}$?}{What is $H^{*}$?}
+        \end{enumerate}
+      \end{regra}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \onslide<2->{
+      \begin{ideia}[title={\tr{Respostas}{Answers}}]
+        \small\raggedright
+        (a) $\num{980619.9} - \num{0.1543} \times 1000 = \num{980465.6}$\mGal, \tr{ou
+        seja}{that is,} $\num{9.804656}$\mss.
+        \medskip
+
+        (b) $H^{*} = \num{9804.66} / \num{9.804656} \approx \bnum{\num{1000.00}}$ m.
+        \medskip
+
+        \tr{Repare: usamos um $H^{*}$ \emph{chutado} para achar $\bar\gamma$ --- e a conta
+        confirmou o chute. É assim mesmo: \bnum{chuta, calcula, confere}.}{Notice: we used a
+        \emph{guessed} $H^{*}$ to find $\bar\gamma$ --- and the result confirmed the guess.
+        That is how it is done: \bnum{guess, compute, check}.}
+      \end{ideia}
+      }
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{\tr{O teluróide}{The telluroid}}
+
+\begin{frame}{\tr{Quem é quem nos desenhos}{Who is who in the drawings}}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95]
+        \foreach \y/\estilo/\nome in {
+            3.2/terreno/{\tr{terreno --- a Terra de verdade}{terrain --- the real Earth}},
+            2.4/telur/{\tr{teluróide}{telluroid}},
+            1.6/quase/{\tr{quase-geoide}{quasigeoid}},
+            0.8/geoide/{\tr{geoide}{geoid}},
+            0.0/elip/{\tr{elipsoide}{ellipsoid}}} {
+          \draw[\estilo] (0,\y) -- (1.4,\y);
+          \node[rotulo, right] at (1.6,\y) {\nome};
+        }
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \small
+      \renewcommand{\arraystretch}{1.35}
+      \begin{tabular}{cl}
+        \toprule
+        $\hh$ & \tr{altura do GNSS (medida)}{GNSS height (measured)} \\
+        $\Hn$ & \tr{altitude normal}{normal height} \\
+        $\Ho$ & \tr{altitude ortométrica}{orthometric height} \\
+        $\zet$ & \tr{anomalia de altura}{height anomaly} \\
+        $\Nn$ & \tr{ondulação do geoide}{geoid undulation} \\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+  \end{columns}
+  \bigskip
+  \centering
+  \tr{Algumas ainda não apareceram --- vão aparecer hoje. Cada uma mantém a \bnum{mesma cor}
+  até o fim das quatro aulas.}{Some have not appeared yet --- they will today. Each one keeps
+  the \bnum{same color} until the end of the four classes.}
+\end{frame}
+
+\begin{frame}{\tr{Duas Terras, de novo}{Two Earths, again}}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \tr{Lembra da aula de gravimetria?}{Remember the gravimetry class?}
+      \begin{itemize}
+        \setlength{\itemsep}{4pt}
+        \item \tr{a \textcolor{corMassa}{\textbf{Terra de verdade}} tem potencial $W$ --- o
+              ``nível de energia'' de cada lugar;}{the \textcolor{corMassa}{\textbf{real
+              Earth}} has potential $W$ --- the ``energy level'' of each place;}
+        \item \tr{a \textcolor{corIdeal}{\textbf{Terra de mentirinha}} --- o elipsoide com a
+              massa e a rotação da Terra --- tem potencial $U$, que \bnum{se calcula
+              exatamente}.}{the \textcolor{corIdeal}{\textbf{pretend Earth}} --- the ellipsoid
+              with the Earth's mass and rotation --- has potential $U$, which \bnum{can be
+              computed exactly}.}
+      \end{itemize}
+      \tr{E combina-se que as duas têm o mesmo ``zero'': $U_0 = W_0$.}{And it is agreed that
+      both have the same ``zero'': $U_0 = W_0$.}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \fill[corMassa!18] plot[smooth cycle, tension=0.8] coordinates {(1.5,1.55) (2.35,1.2)
+          (2.75,0.3) (2.45,-0.8) (1.5,-1.5) (0.6,-1.1) (0.15,0.1) (0.55,1.2)};
+        \draw[terreno] plot[smooth cycle, tension=0.8] coordinates {(1.5,1.55) (2.35,1.2)
+          (2.75,0.3) (2.45,-0.8) (1.5,-1.5) (0.6,-1.1) (0.15,0.1) (0.55,1.2)};
+        \node[rotulo, font=\scriptsize\bfseries] at (1.45,0) {$W$};
+        \node[rotulo, text=corMassa, align=center] at (1.45,-2.0) {\tr{de verdade}{real}};
+        \fill[corIdeal!10] (5.0,0) ellipse (1.35 and 1.2);
+        \draw[elip] (5.0,0) ellipse (1.35 and 1.2);
+        \node[rotulo, font=\scriptsize\bfseries] at (5.0,0) {$U$};
+        \node[rotulo, text=corIdeal, align=center] at (5.0,-2.0) {\tr{de mentirinha}{pretend}};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{O sósia de cada ponto}{Every point has a twin}}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \tr{Você está em $P$, na Terra de verdade. Seu nível de energia é $W_P$.}{You are at $P$,
+      on the real Earth. Your energy level is $W_P$.}
+      \medskip
+
+      \tr{Agora, na Terra de mentirinha, ande pela mesma vertical --- para baixo ou para cima
+      --- até achar o ponto onde a energia é \bnum{a mesma}:}{Now, on the pretend Earth, move
+      along the same vertical --- down or up --- until you find the point where the energy is
+      \bnum{the same}:}
+      \[ \boxed{\; U_Q = W_P \;} \]
+      \tr{Esse ponto $Q$ é o \bnum{sósia} de $P$. E a altura de $Q$ acima do elipsoide é a
+      \textcolor{corIdeal}{\textbf{altitude normal}} $H^{*}$.}{That point $Q$ is the
+      \bnum{twin} of $P$. And the height of $Q$ above the ellipsoid is the
+      \textcolor{corIdeal}{\textbf{normal height}} $H^{*}$.}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \fill[corMassa!25] (0,0) -- (0,1.9) .. controls (1.5,2.3) and (2.5,3.4) .. (3.4,3.4)
+          .. controls (4.3,3.4) and (5.0,2.4) .. (5.8,2.2) -- (5.8,0) -- cycle;
+        \draw[terreno] (0,1.9) .. controls (1.5,2.3) and (2.5,3.4) .. (3.4,3.4)
+          .. controls (4.3,3.4) and (5.0,2.4) .. (5.8,2.2);
+        \draw[elip] (0,0) -- (5.8,0);
+        \node[rotulo, text=corIdeal, below] at (4.8,-0.05) {\tr{elipsoide}{ellipsoid}};
+        \draw[mStoneMid, dashed] (3.4,0) -- (3.4,3.9);
+        \fill[mStone] (3.4,3.4) circle (0.08);
+        \node[rotulo, above right] at (3.4,3.42) {$P$: $W_P$};
+        \fill[corIdeal] (3.4,2.55) circle (0.08);
+        \node[rotulo, text=corIdeal, right] at (3.5,2.55) {$Q$: $U_Q = W_P$};
+        \draw[corIdeal, seta2, very thick] (2.9,0) -- (2.9,2.55);
+        \node[rotulo, text=corIdeal, left] at (2.85,1.3) {$H^{*}$};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Duas maneiras de dizer a mesma coisa}{Two ways of saying the same thing}}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{regra}[title={\tr{Jeito 1 · a conta}{Way 1 · the sum}}]
+        \centering $H^{*} = C / \bar\gamma$
+      \end{regra}
+      \medskip
+      \begin{regra}[title={\tr{Jeito 2 · o desenho}{Way 2 · the drawing}}]
+        \centering \tr{$H^{*}$ = altura do sósia $Q$ acima do elipsoide}{$H^{*}$ = height of
+        the twin $Q$ above the ellipsoid}
+      \end{regra}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \tr{Por que é a mesma coisa? Siga os passos:}{Why are they the same? Follow the steps:}
+      \begin{enumerate}
+        \setlength{\itemsep}{3pt}
+        \item \tr{subir do elipsoide até $Q$, na Terra de mentirinha, custa $\bar\gamma \cdot
+              H^{*}$;}{climbing from the ellipsoid to $Q$, on the pretend Earth, costs
+              $\bar\gamma \cdot H^{*}$;}
+        \item \tr{esse custo é $U_0 - U_Q$;}{that cost is $U_0 - U_Q$;}
+        \item \tr{mas $U_0 = W_0$ e $U_Q = W_P$, então o custo é $W_0 - W_P = C$;}{but
+              $U_0 = W_0$ and $U_Q = W_P$, so the cost is $W_0 - W_P = C$;}
+        \item \tr{logo $\bar\gamma \cdot H^{*} = C$.}{therefore $\bar\gamma \cdot H^{*} = C$.}
+      \end{enumerate}
+      \medskip
+      \tr{\bnum{O desenho e a conta dizem o mesmo.}}{\bnum{The drawing and the sum say the same
+      thing.}}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Juntando todos os sósias: o teluróide}{Putting all the twins together: the
+  telluroid}}
+  \begin{columns}[T]
+    \begin{column}{0.44\textwidth}
+      \tr{Ache o sósia de \bnum{cada ponto} do terreno. Juntos, eles formam uma superfície
+      parecidíssima com o terreno, só deslocada alguns metros: o
+      \textcolor{corIdeal}{\textbf{teluróide}}.}{Find the twin of \bnum{every point} of the
+      terrain. Together, they form a surface very much like the terrain, just shifted by a
+      few meters: the \textcolor{corIdeal}{\textbf{telluroid}}.}
+      \medskip
+      \begin{ideia}[title={\tr{De onde vem o nome}{Where the name comes from}}]
+        \small\tr{\emph{Tellus}, em latim, é ``terra'', ``chão''; \emph{-oide} é ``parecido
+        com''. Teluróide: \bnum{parecido com o chão}. Como geoide (parecido com a Terra) e
+        elipsoide (parecido com uma elipse).}{\emph{Tellus} is Latin for ``earth'',
+        ``ground''; \emph{-oid} means ``like''. Telluroid: \bnum{ground-like}. Just like geoid
+        (Earth-like) and ellipsoid (ellipse-like).}
+      \end{ideia}
+    \end{column}
+    \begin{column}{0.52\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.92]
+        \draw[terreno] (0,2.0) .. controls (1.2,2.4) and (2.0,3.5) .. (3.0,3.5)
+          .. controls (4.0,3.5) and (4.8,2.3) .. (6.2,2.4);
+        \draw[telur] (0,1.45) .. controls (1.2,1.85) and (2.0,2.85) .. (3.0,2.85)
+          .. controls (4.0,2.85) and (4.8,1.75) .. (6.2,1.9);
+        \draw[elip] (0,0) -- (6.2,0);
+        \foreach \x/\yt/\yq in {0.8/2.25/1.70, 1.9/3.15/2.53, 3.0/3.50/2.85, 4.1/3.32/2.68,
+                                5.2/2.48/1.94} {
+          \fill[mStone] (\x,\yt) circle (0.06);
+          \fill[corIdeal] (\x,\yq) circle (0.06);
+          \draw[corQuase, -{Stealth[length=1.6mm]}] (\x,\yt-0.06) -- (\x,\yq+0.08);
+        }
+        \node[rotulo, text=corMassa, above] at (5.4,2.55) {\tr{terreno}{terrain}};
+        \node[rotulo, text=corIdeal, below] at (5.3,1.85) {\tr{teluróide}{telluroid}};
+        \node[rotulo, text=corIdeal, below] at (5.3,-0.05) {\tr{elipsoide}{ellipsoid}};
+        \node[rotulo, text=mStoneMid] at (1.6,0.7) {\tr{cada $P$ e o seu $Q$}{each $P$ and its
+          $Q$}};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{A distância entre $P$ e o sósia: $\zeta$}{The distance between $P$ and its
+  twin: $\zeta$}}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \tr{A distância de $Q$ até $P$ tem nome: \textcolor{corQuase}{\textbf{anomalia de
+      altura}}, com a letra grega $\zeta$ (``zeta'').}{The distance from $Q$ to $P$ has a name:
+      \textcolor{corQuase}{\textbf{height anomaly}}, with the Greek letter $\zeta$ (``zeta'').}
+      \medskip
+
+      \tr{Do elipsoide até $P$ está a altura do GNSS. Ela é a soma das duas:}{From the
+      ellipsoid up to $P$ is the GNSS height. It is the sum of the two:}
+      \[ \boxed{\; \hh = \Hn + \zet \;} \]
+      \tr{$\zeta$ tem o tamanho da ondulação do geoide: \bnum{dezenas de metros}, para cima ou
+      para baixo. Negativo quer dizer que $Q$ fica acima de $P$.}{$\zeta$ is about the size of
+      the geoid undulation: \bnum{tens of meters}, up or down. Negative means $Q$ lies above
+      $P$.}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95]
+        \draw[elip] (0,0) -- (5.0,0);
+        \node[rotulo, text=corIdeal, below] at (4.1,-0.05) {\tr{elipsoide}{ellipsoid}};
+        \draw[terreno] (0,3.25) -- (5.0,3.45);
+        \draw[telur] (0,2.25) -- (5.0,2.45);
+        \fill[mStone] (2.5,3.35) circle (0.08);
+        \node[rotulo, above] at (2.5,3.42) {$P$};
+        \fill[corIdeal] (2.5,2.35) circle (0.08);
+        \node[rotulo, text=corIdeal, below right] at (2.5,2.32) {$Q$};
+        \draw[corIdeal, seta2, very thick] (2.2,0) -- (2.2,2.35);
+        \node[rotulo, text=corIdeal, left] at (2.15,1.2) {$H^{*}$};
+        \draw[corQuase, seta2, very thick] (2.2,2.35) -- (2.2,3.35);
+        \node[rotulo, text=corQuase, left] at (2.15,2.85) {$\zeta$};
+        \draw[corMedido, seta2, very thick] (3.4,0) -- (3.4,3.39);
+        \node[rotulo, text=corMedido, right] at (3.45,1.7) {$h$ (GNSS)};
+        \draw[mStoneMid, dotted] (2.5,3.35) -- (3.4,3.39);
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Por que ``anomalia de altura''?}{Why ``height anomaly''?}}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \tr{Em geodésia, \bnum{anomalia} é sempre a mesma ideia: o \fbox{real} menos o
+      \fbox{normal}.}{In geodesy, an \bnum{anomaly} is always the same idea: the \fbox{real}
+      minus the \fbox{normal}.}
+      \par\medskip
+      \centering
+      \renewcommand{\arraystretch}{1.5}
+      \begin{tabular}{ll}
+        \toprule
+        \tr{gravidade}{gravity} & $\anom = \gmed - \gam$ \\
+        \tr{potencial}{potential} & $\textcolor{mRose}{T} = W - U$ \\
+        \tr{altura}{height} & $\zet = \hh - \Hn$ \\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{ideia}[title={\tr{Lendo a última linha}{Reading the last row}}]
+        \tr{$h$ é a altura \bnum{de verdade} de $P$, que o GNSS mede.}{$h$ is the \bnum{real}
+        height of $P$, which GNSS measures.}
+        \medskip
+
+        \tr{$H^{*}$ é a altura que $P$ teria se a Terra fosse a \bnum{normal}, com o mesmo
+        esforço.}{$H^{*}$ is the height $P$ would have if the Earth were the \bnum{normal} one,
+        with the same effort.}
+        \medskip
+
+        \tr{$\zeta$ mede o quanto a Terra de verdade ``engana'' a de mentirinha, ali.}{$\zeta$
+        measures how much the real Earth ``fools'' the pretend one, right there.}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{\tr{O quase-geoide}{The quasigeoid}}
+
+\begin{frame}{\tr{Trocar a ordem das parcelas}{Swapping the order of the terms}}
+  \begin{columns}[T]
+    \begin{column}{0.44\textwidth}
+      \tr{Na escola: $3 + 5 = 5 + 3$. A ordem das parcelas não altera a soma.}{At school:
+      $3 + 5 = 5 + 3$. The order of the terms does not change the sum.}
+      \medskip
+
+      \tr{Então também}{So also}
+      \[ \hh = \Hn + \zet = \zet + \Hn \]
+      \tr{Dá para empilhar ao contrário: \bnum{primeiro $\zeta$}, a partir do elipsoide;
+      \bnum{depois $H^{*}$}, até $P$.}{You can stack them the other way round: \bnum{first
+      $\zeta$}, from the ellipsoid; \bnum{then $H^{*}$}, up to $P$.}
+      \medskip
+
+      \tr{O ponto onde as parcelas se encontram mudou de lugar.}{The point where the terms meet
+      has moved.}
+    \end{column}
+    \begin{column}{0.52\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.88]
+        \draw[elip] (0,0) -- (6.0,0);
+        \node[rotulo, text=corIdeal, below] at (3.0,-0.05) {\tr{elipsoide}{ellipsoid}};
+        % esquerda: H* embaixo, zeta em cima
+        \fill[corIdeal!70] (0.9,0) rectangle (1.6,2.6);
+        \fill[corQuase!70] (0.9,2.6) rectangle (1.6,3.5);
+        \node[rotulo, text=white] at (1.25,1.3) {$H^{*}$};
+        \node[rotulo, text=white] at (1.25,3.05) {$\zeta$};
+        \draw[corIdeal, thick, dashed] (0.6,2.6) -- (1.9,2.6);
+        \node[rotulo, text=corIdeal, left] at (0.6,2.6) {\tr{teluróide}{telluroid}};
+        % direita: zeta embaixo, H* em cima
+        \fill[corQuase!70] (4.4,0) rectangle (5.1,0.9);
+        \fill[corIdeal!70] (4.4,0.9) rectangle (5.1,3.5);
+        \node[rotulo, text=white] at (4.75,0.45) {$\zeta$};
+        \node[rotulo, text=white] at (4.75,2.2) {$H^{*}$};
+        \draw[corQuase, thick, dashed] (4.1,0.9) -- (5.4,0.9);
+        \node[rotulo, text=corQuase, right] at (5.4,0.9) {\tr{quase-geoide}{quasigeoid}};
+        \foreach \x in {1.25,4.75} { \fill[mStone] (\x,3.5) circle (0.08); }
+        \node[rotulo, above] at (1.25,3.55) {$P$};
+        \node[rotulo, above] at (4.75,3.55) {$P$};
+        \draw[corMedido, seta2] (3.0,0) -- (3.0,3.5);
+        \node[rotulo, text=corMedido, fill=white, inner sep=1pt] at (3.0,1.75) {$h$};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{O quase-geoide}{The quasigeoid}}
+  \begin{columns}[T]
+    \begin{column}{0.46\textwidth}
+      \tr{Desenhe $\zeta$ para cima do elipsoide, \bnum{em todo lugar}. A superfície que aparece
+      é o \textcolor{corQuase}{\textbf{quase-geoide}}.}{Draw $\zeta$ upwards from the ellipsoid,
+      \bnum{everywhere}. The surface that appears is the
+      \textcolor{corQuase}{\textbf{quasigeoid}}.}
+      \medskip
+
+      \tr{A altitude normal $H^{*}$ é a distância do quase-geoide até você ---}{The normal
+      height $H^{*}$ is the distance from the quasigeoid up to you ---}
+      \medskip
+
+      \tr{--- do mesmo jeito que a ortométrica $H$ é a distância do \emph{geoide} até
+      você.}{--- just as the orthometric $H$ is the distance from the \emph{geoid} up to you.}
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95]
+        \draw[terreno] (0,2.6) .. controls (1.5,3.0) and (2.6,3.7) .. (3.6,3.6)
+          .. controls (4.6,3.5) and (5.2,2.8) .. (6.2,2.9);
+        \draw[quase] (0,0.9) .. controls (2.0,1.5) and (3.8,0.5) .. (6.2,1.1);
+        \draw[elip] (0,0) -- (6.2,0);
+        \node[rotulo, text=corMassa, above] at (5.6,2.95) {\tr{terreno}{terrain}};
+        \node[rotulo, text=corQuase, above] at (5.3,1.0) {\tr{quase-geoide}{quasigeoid}};
+        \node[rotulo, text=corIdeal, below] at (5.3,-0.05) {\tr{elipsoide}{ellipsoid}};
+        \fill[mStone] (3.0,3.62) circle (0.08);
+        \node[rotulo, above] at (3.0,3.7) {$P$};
+        \draw[corQuase, seta2, very thick] (2.75,0) -- (2.75,1.04);
+        \node[rotulo, text=corQuase, left] at (2.7,0.5) {$\zeta$};
+        \draw[corIdeal, seta2, very thick] (2.75,1.04) -- (2.75,3.6);
+        \node[rotulo, text=corIdeal, left] at (2.7,2.3) {$H^{*}$};
+        \draw[corMedido, seta2, very thick] (3.3,0) -- (3.3,3.61);
+        \node[rotulo, text=corMedido, right] at (3.35,1.8) {$h$};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Duas fórmulas gêmeas}{Twin formulas}}
+  \centering
+  \small
+  \renewcommand{\arraystretch}{1.4}
+  \begin{tabular}{lcc}
+    \toprule
+    & \tr{Stokes (1849)}{Stokes (1849)} & \tr{Molodensky (1945)}{Molodensky (1945)} \\
+    \midrule
+    \tr{a fórmula}{the formula} & $\hh = \Ho + \Nn$ & $\hh = \Hn + \zet$ \\
+    \tr{a altitude}{the height} & \tr{ortométrica $H$}{orthometric $H$} & \tr{normal
+      $H^{*}$}{normal $H^{*}$} \\
+    \tr{a separação}{the separation} & \tr{ondulação $N$}{undulation $N$} & \tr{anomalia de
+      altura $\zeta$}{height anomaly $\zeta$} \\
+    \tr{a superfície de referência}{the reference surface} &
+      \textcolor{corGeoide}{\textbf{\tr{geoide}{geoid}}} &
+      \textcolor{corQuase}{\textbf{\tr{quase-geoide}{quasigeoid}}} \\
+    \tr{é superfície de nível?}{is it a level surface?} & \tr{sim}{yes} & \alert{\tr{não}{no}} \\
+    \tr{precisa de densidade?}{needs density?} & \alert{\tr{sim}{yes}} & \bnum{\tr{não}{no}} \\
+    \bottomrule
+  \end{tabular}
+  \bigskip
+
+  \tr{A mesma forma, $h = $ altitude $+$ separação. Muda \bnum{de onde} se conta.}{The same
+  shape, $h = $ height $+$ separation. What changes is \bnum{where} you count from.}
+\end{frame}
+
+\begin{frame}{\tr{Cuidado: o quase-geoide não é uma superfície de nível}{Careful: the
+  quasigeoid is not a level surface}}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \begin{armadilha}[title={\tr{A água não o enxerga}{Water does not see it}}]
+        \tr{Ao longo do quase-geoide, o nível de energia $W$ \alert{não é constante}. Uma
+        bolinha solta ali pode rolar.}{Along the quasigeoid, the energy level $W$ \alert{is
+        not constant}. A marble placed there may roll.}
+        \medskip
+
+        \tr{Ele é uma \bnum{superfície de cálculo}: existe no papel, como a linha do Equador ou
+        a fronteira de um fuso horário.}{It is a \bnum{computational surface}: it exists on
+        paper, like the Equator line or the border of a time zone.}
+      \end{armadilha}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{ideia}[title={\tr{Mas no mar\ldots}{But at sea\ldots}}]
+        \tr{Na superfície do mar, $C = 0$, então $H = H^{*} = 0$. Lá,}{At the sea surface,
+        $C = 0$, so $H = H^{*} = 0$. There,}
+        \[ N = \zeta \]
+        \tr{O quase-geoide \bnum{coincide com o geoide} nos oceanos. Daí o nome: é
+        \emph{quase} o geoide.}{The quasigeoid \bnum{coincides with the geoid} over the
+        oceans. Hence the name: it is \emph{almost} the geoid.}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Quão longe ficam geoide e quase-geoide? (1)}{How far apart are the geoid and
+  the quasigeoid? (1)}}
+  \begin{columns}[T]
+    \begin{column}{0.54\textwidth}
+      \tr{As duas fórmulas gêmeas dão o mesmo $h$:}{The two twin formulas give the same $h$:}
+      \[ H + N = H^{*} + \zeta \quad\Longrightarrow\quad N - \zeta = H^{*} - H \]
+      \tr{E as duas altitudes saem do mesmo $C$:}{And both heights come from the same $C$:}
+      \[ H^{*} - H = \frac{C}{\bar\gamma} - \frac{C}{\bar g}
+                   = \frac{C}{\bar g}\cdot\frac{\bar g - \bar\gamma}{\bar\gamma}
+                   = H\,\frac{\bar g - \bar\gamma}{\bar\gamma} \]
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{ideia}[title={\tr{Em palavras}{In words}}]
+        \tr{A distância entre geoide e quase-geoide depende de \bnum{quanto a gravidade real
+        média difere da normal média}, vezes a altitude.}{The distance between the geoid and
+        the quasigeoid depends on \bnum{how much the mean real gravity differs from the mean
+        normal gravity}, times the height.}
+        \medskip
+
+        \tr{No mar, $H = 0$: distância zero.}{At sea, $H = 0$: zero distance.}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Quão longe ficam geoide e quase-geoide? (2)}{How far apart are the geoid and
+  the quasigeoid? (2)}}
+  \begin{columns}[T]
+    \begin{column}{0.54\textwidth}
+      \tr{Ponha as duas médias lado a lado:}{Put the two averages side by side:}
+      \begin{align*}
+        \bar g &\approx g + \num{0.0424}\,H \\
+        \bar\gamma &\approx \gamma_0 - \num{0.1543}\,H \\
+        \bar g - \bar\gamma &\approx g - \gamma_0 + \num{0.1967}\,H
+      \end{align*}
+      \tr{E $\num{0.1967} = \num{0.3086} - \num{0.1119}$: ar-livre menos Bouguer. Isso é
+      exatamente a \bnum{anomalia de Bouguer} da aula de gravimetria!}{And $\num{0.1967} =
+      \num{0.3086} - \num{0.1119}$: free-air minus Bouguer. That is exactly the \bnum{Bouguer
+      anomaly} from the gravimetry class!}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{regra}[title={\tr{O resultado}{The result}}]
+        \[ N - \zeta \;=\; H^{*} - H \;\approx\; \frac{\Delta g_B \cdot H}{\bar\gamma} \]
+      \end{regra}
+      \medskip
+      \small
+      \tr{Curitiba: $\Delta g_B = \num{-47.8}$\mGal, $H = 910$ m:}{Curitiba: $\Delta g_B =
+      \num{-47.8}$\mGal, $H = 910$ m:}
+      \[ N - \zeta \approx \frac{\num{-0.000478} \times 910}{\num{9.79}} \approx
+         \bnum{\num{-4.4} cm} \]
+      \tr{O mesmo \num{4.4} cm do exemplo de Curitiba.}{The same \num{4.4} cm as in the
+      Curitiba example.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Os números}{The numbers}}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \centering
+      \small
+      \renewcommand{\arraystretch}{1.3}
+      \begin{tabular}{lrrr}
+        \toprule
+        & $\Delta g_B$ (mGal) & $H$ (m) & $N - \zeta$ \\
+        \midrule
+        \tr{mar}{sea} & --- & 0 & 0 \\
+        Curitiba & $\num{-47.8}$ & 910 & $\num{-4.4}$ cm \\
+        \midrule
+        & $-100$ & \num{1000} & $-10$ cm \\
+        & $-200$ & \num{2000} & $-41$ cm \\
+        & $-300$ & \num{3000} & $-92$ cm \\
+        & $-400$ & \num{5000} & \alert{$\num{-2.0}$ m} \\
+        \bottomrule
+      \end{tabular}
+
+      {\scriptsize\textcolor{mStoneMid}{\tr{As quatro últimas linhas são ilustrativas, com a
+      fórmula simples.}{The last four rows are illustrative, with the simple formula.}}}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \fill[corGeoide!15] (0,0) rectangle (1.6,-0.6);
+        \draw[terreno] (1.6,0) -- (2.8,0.5) .. controls (3.4,0.6) and (4.0,2.8) .. (4.8,2.8)
+          .. controls (5.4,2.8) and (5.8,1.6) .. (6.2,1.5);
+        \draw[geoide] (0,0) -- (6.2,0);
+        \draw[quase] (0,0) -- (2.8,0) .. controls (3.6,0.02) and (4.2,0.55) .. (4.8,0.55)
+          .. controls (5.4,0.55) and (5.8,0.3) .. (6.2,0.28);
+        \node[rotulo, text=corGeoide, below] at (0.8,-0.6) {\tr{mar: iguais}{sea: equal}};
+        \node[rotulo, text=corGeoide, below] at (4.8,-0.05) {\tr{geoide}{geoid}};
+        \node[rotulo, text=corQuase, above] at (4.8,0.6) {\tr{quase-geoide}{quasigeoid}};
+        \node[rotulo, text=mStoneMid, align=center] at (3.0,3.4) {\tr{sob a montanha, o
+          quase-geoide}{under the mountain the quasigeoid}\\\tr{passa acima do geoide
+          (exagerado)}{runs above the geoid (exaggerated)}};
+      \end{tikzpicture}
+      \medskip
+
+      \tr{Na planície: milímetros a centímetros. Nas grandes cordilheiras: \alert{até
+      metros}.}{On the plains: millimeters to centimeters. In the great mountain ranges:
+      \alert{up to meters}.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Pare e pense}{Stop and think}}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \tr{Debaixo das grandes montanhas, a anomalia de Bouguer é \bnum{negativa} --- são as
+      \emph{raízes} da aula de gravimetria.}{Under big mountains the Bouguer anomaly is
+      \bnum{negative} --- those are the \emph{roots} from the gravimetry class.}
+      \medskip
+      \begin{enumerate}
+        \setlength{\itemsep}{4pt}
+        \item[(a)] \tr{$N - \zeta$ é positivo ou negativo?}{Is $N - \zeta$ positive or
+              negative?}
+        \item[(b)] \tr{O quase-geoide passa acima ou abaixo do geoide?}{Does the quasigeoid run
+              above or below the geoid?}
+        \item[(c)] \tr{$H^{*}$ é maior ou menor que $H$?}{Is $H^{*}$ larger or smaller than
+              $H$?}
+      \end{enumerate}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \onslide<2->{
+      \begin{ideia}[title={\tr{Respostas}{Answers}}]
+        (a) \tr{\alert{Negativo}: $\Delta g_B < 0$ e $H > 0$.}{\alert{Negative}: $\Delta g_B <
+        0$ and $H > 0$.}
+        \medskip
+
+        (b) \tr{\bnum{Acima}: $\zeta > N$.}{\bnum{Above}: $\zeta > N$.}
+        \medskip
+
+        (c) \tr{\bnum{Menor}: $H^{*} < H$ --- como em Curitiba, \num{4.4} cm a menos.}{\bnum{Smaller}:
+        $H^{*} < H$ --- as in Curitiba, \num{4.4} cm less.}
+      \end{ideia}
+      }
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Nenhuma das duas é perfeita}{Neither one is perfect}}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \tr{Lembra dos \bnum{Grandes Lagos}, na aula do geoide? Água parada é uma superfície de
+      nível: o mesmo $C$ em toda parte. Mesmo assim:}{Remember the \bnum{Great Lakes}, in the
+      geoid class? Still water is a level surface: the same $C$ everywhere. Even so:}
+      \begin{itemize}
+        \setlength{\itemsep}{4pt}
+        \item \tr{$H$ muda de uma ponta à outra, porque $\bar g$ muda;}{$H$ changes from one end
+              to the other, because $\bar g$ changes;}
+        \item \tr{$H^{*}$ também muda, porque $\bar\gamma$ muda com a latitude;}{$H^{*}$ changes
+              too, because $\bar\gamma$ changes with latitude;}
+        \item \tr{só a altitude \bnum{dinâmica} --- $C$ dividido por uma constante --- fica
+              igual.}{only the \bnum{dynamic} height --- $C$ divided by a constant --- stays
+              the same.}
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{ideia}[title={\tr{Cada altura tem a sua vantagem}{Each height has its advantage}}]
+        \tr{A da altitude normal: sai \bnum{só de medidas e de uma fórmula}, sem hipótese
+        nenhuma sobre o interior da Terra.}{The normal height's: it comes \bnum{only from
+        measurements and a formula}, with no assumption at all about the Earth's interior.}
+        \medskip
+
+        \tr{Foi isso que Molodensky procurava.}{That is what Molodensky was after.}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Para levar para casa --- aula 2}{Take-home --- class 2}}
+  \small
+  \begin{enumerate}
+    \setlength{\itemsep}{2pt}
+    \item \tr{O esforço $C$ se mede com nível, mira e gravímetro. Para virar metros, divide-se
+          por uma gravidade: \bnum{qual} gravidade é a questão.}{The effort $C$ is measured
+          with level, staff and gravimeter. To turn it into meters you divide by a gravity:
+          \bnum{which} gravity is the question.}
+    \item \tr{\textcolor{corIdeal}{\textbf{Altitude normal}} $H^{*} = C/\bar\gamma$: a gravidade
+          da Terra de mentirinha, que se calcula. \bnum{Sem densidade}.}{\textcolor{corIdeal}
+          {\textbf{Normal height}} $H^{*} = C/\bar\gamma$: the pretend Earth's gravity, which
+          can be computed. \bnum{No density}.}
+    \item \tr{O \textcolor{corIdeal}{\textbf{teluróide}} junta os sósias $Q$ dos pontos do
+          terreno: $U_Q = W_P$.}{The \textcolor{corIdeal}{\textbf{telluroid}} gathers the twins
+          $Q$ of the terrain points: $U_Q = W_P$.}
+    \item \tr{A \textcolor{corQuase}{\textbf{anomalia de altura}} $\zeta$ é a distância de $Q$ a
+          $P$, e $h = H^{*} + \zeta$.}{The \textcolor{corQuase}{\textbf{height anomaly}}
+          $\zeta$ is the distance from $Q$ to $P$, and $h = H^{*} + \zeta$.}
+    \item \tr{O \textcolor{corQuase}{\textbf{quase-geoide}} é $\zeta$ desenhado a partir do
+          elipsoide. Coincide com o geoide no mar; nas montanhas, $N - \zeta \approx \Delta g_B
+          H / \bar\gamma$.}{The \textcolor{corQuase}{\textbf{quasigeoid}} is $\zeta$ drawn up
+          from the ellipsoid. It coincides with the geoid at sea; in the mountains, $N - \zeta
+          \approx \Delta g_B H / \bar\gamma$.}
+  \end{enumerate}
+  \begin{ideia}
+    \scriptsize \tr{\textbf{Experimente:} no simulador \textbf{Modelos Terrestres}, aba
+    \textbf{Teluróide}. \textbf{Na próxima aula:} como se calcula $\zeta$ --- o problema de
+    Molodensky.}{\textbf{Try it:} in the \textbf{Earth Models} simulator, \textbf{Telluroid}
+    tab. \textbf{Next class:} how $\zeta$ is computed --- Molodensky's problem.}
+  \end{ideia}
+\end{frame}
+
+% ==================================================================
+\begin{frame}[standout]
+  \tr{Parte 3}{Part 3}\\[6pt]
+  {\normalsize \tr{O problema de Molodensky}{Molodensky's problem}}\\[4pt]
+  {\scriptsize \tr{aula 3 de 4}{class 3 of 4}}
+\end{frame}
+
+\section{\tr{O problema de Molodensky}{Molodensky's problem}}
+
+\begin{frame}{\tr{Onde paramos}{Where we left off}}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \tr{Na aula 2:}{In class 2:}
+      \begin{enumerate}
+        \setlength{\itemsep}{4pt}
+        \item \tr{altitude normal $H^{*} = C/\bar\gamma$: \bnum{sem densidade};}{normal height
+              $H^{*} = C/\bar\gamma$: \bnum{no density};}
+        \item \tr{teluróide: os sósias $Q$, com $U_Q = W_P$;}{telluroid: the twins $Q$, with
+              $U_Q = W_P$;}
+        \item \tr{$h = H^{*} + \zeta$, e o quase-geoide é $\zeta$ desenhado a partir do
+              elipsoide.}{$h = H^{*} + \zeta$, and the quasigeoid is $\zeta$ drawn up from the
+              ellipsoid.}
+      \end{enumerate}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{cuidado}[title={\tr{Falta uma peça}{One piece is missing}}]
+        \tr{Onde há GNSS \emph{e} nivelamento, $\zeta = h - H^{*}$ sai de graça. Mas esses
+        pontos são poucos.}{Where there is GNSS \emph{and} leveling, $\zeta = h - H^{*}$ comes for
+        free. But such points are few.}
+        \medskip
+
+        \tr{Para ter $\zeta$ \bnum{em todo lugar}, é preciso calculá-lo --- com a
+        gravidade.}{To have $\zeta$ \bnum{everywhere}, you have to compute it --- from
+        gravity.}
+      \end{cuidado}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{As perguntas de hoje}{Today's questions}}
+  \begin{columns}[T]
+    \begin{column}{0.58\textwidth}
+      \begin{enumerate}
+        \setlength{\itemsep}{8pt}
+        \item \tr{Qual é, exatamente, o problema que Molodensky resolveu?}{What, exactly, is the
+              problem Molodensky solved?}
+        \item \tr{Que anomalia da gravidade ele usa --- e precisa de densidade?}{Which gravity
+              anomaly does he use --- and does it need the density?}
+        \item \tr{O que sobra da fórmula de Stokes?}{What is left of Stokes' formula?}
+        \item \tr{O que mudou com a chegada do GNSS?}{What changed when GNSS arrived?}
+      \end{enumerate}
+    \end{column}
+    \begin{column}{0.38\textwidth}
+      \begin{ideia}[title={\tr{Hoje tem fórmula}{Formulas today}}]
+        \tr{Algumas vão parecer assustadoras. Não precisa decorar: vamos \bnum{ler cada uma em
+        voz alta}, pedaço por pedaço.}{Some will look scary. No need to memorize them: we will
+        \bnum{read each one aloud}, piece by piece.}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{A mesma pergunta, outro palco}{Same question, different stage}}
+  \centering
+  \begin{tikzpicture}[scale=0.9]
+    \foreach \x/\nome in {0/Stokes, 7.0/Molodensky} {
+      \draw[geoide] (\x,0) -- (\x+5.8,0);
+      \node[rotulo, font=\small\bfseries] at (\x+2.9,3.2) {\nome};
+    }
+    % Stokes: montanha amassada, dados no geoide
+    \draw[corMassa!50, thick, dashed] (0.2,0) .. controls (1.4,0.4) and (2.0,2.3) .. (2.9,2.3)
+      .. controls (3.8,2.3) and (4.4,0.4) .. (5.6,0);
+    \fill[corMassa] (0.2,0) rectangle (5.6,0.08);
+    \foreach \x in {0.6,1.5,2.4,3.3,4.2,5.1} { \fill[corMedido] (\x,0.16) circle (0.08); }
+    % Molodensky: dados na superfície
+    \fill[corMassa!30] (7.2,0) .. controls (8.4,0.4) and (9.0,2.3) .. (9.9,2.3)
+      .. controls (10.8,2.3) and (11.4,0.4) .. (12.6,0) -- cycle;
+    \draw[terreno] (7.2,0) .. controls (8.4,0.4) and (9.0,2.3) .. (9.9,2.3)
+      .. controls (10.8,2.3) and (11.4,0.4) .. (12.6,0);
+    \foreach \x/\y in {7.6/0.2, 8.5/1.09, 9.3/2.03, 10.2/2.23, 11.1/1.35, 12.0/0.35} {
+      \fill[corMedido] (\x,\y+0.1) circle (0.08);
+    }
+  \end{tikzpicture}
+  \bigskip
+
+  \begin{columns}[T]
+    \begin{column}{0.47\textwidth}
+      \begin{regra}[title={Stokes}]
+        \small\tr{Dados \textbf{no geoide} (depois de empurrar as montanhas) $\Rightarrow$ acha
+        o \textbf{geoide}.}{Data \textbf{on the geoid} (after pushing the mountains away)
+        $\Rightarrow$ finds the \textbf{geoid}.}
+      \end{regra}
+    \end{column}
+    \begin{column}{0.47\textwidth}
+      \begin{regra}[title={Molodensky}]
+        \small\tr{Dados \textbf{na superfície}, onde foram medidos $\Rightarrow$ acha a
+        \textbf{própria superfície} da Terra e o campo de gravidade de fora.}{Data \textbf{on
+        the surface}, where they were measured $\Rightarrow$ finds the \textbf{surface itself}
+        and the gravity field outside it.}
+      \end{regra}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Um problema esquisito: a fronteira é a incógnita}{A strange problem: the
+  boundary is the unknown}}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \tr{As medidas estão sobre a superfície da Terra. Mas a forma dessa superfície --- no
+      sentido do campo de gravidade --- é parte do que se quer descobrir.}{The measurements lie
+      on the Earth's surface. But the shape of that surface --- in the gravity-field sense ---
+      is part of what we want to find out.}
+      \medskip
+
+      \tr{É como desenhar o mapa de uma ilha usando medidas feitas \bnum{na própria costa} que
+      você está desenhando.}{It is like drawing the map of an island with measurements made
+      \bnum{on the very coast} you are drawing.}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{ideia}[title={\tr{O nome técnico}{The technical name}}]
+        \small\tr{\textbf{Problema de valor de contorno livre}: a fronteira onde estão os dados
+        também é incógnita.}{\textbf{Free boundary-value problem}: the boundary carrying the
+        data is also unknown.}
+      \end{ideia}
+      \medskip
+      \begin{cuidado}[title={\tr{A saída de Molodensky}{Molodensky's way out}}]
+        \small\tr{Começar com um \bnum{rascunho bom} da superfície e calcular só a
+        \bnum{correção}.}{Start from a \bnum{good draft} of the surface and compute only the
+        \bnum{correction}.}
+      \end{cuidado}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{O truque do ajustamento: aproximado + correção}{The adjustment trick:
+  approximate + correction}}
+  \begin{columns}[T]
+    \begin{column}{0.46\textwidth}
+      \tr{Quem faz ajustamento por mínimos quadrados conhece este truque:}{Anyone who does
+      least-squares adjustment knows this trick:}
+      \[ \boxed{\; X = X_0 + x \;} \]
+      \tr{um \bnum{valor aproximado} $X_0$, que se conhece, mais uma \bnum{correção pequena}
+      $x$, que se calcula.}{an \bnum{approximate value} $X_0$, which is known, plus a
+      \bnum{small correction} $x$, which is computed.}
+      \medskip
+
+      \tr{Como a correção é pequena, as contas ficam \bnum{lineares}. Molodensky fez
+      exatamente isso.}{Because the correction is small, the equations become
+      \bnum{linear}. Molodensky did exactly that.}
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \centering
+      \small
+      \renewcommand{\arraystretch}{1.45}
+      \begin{tabular}{lll}
+        \toprule
+        & \tr{ajustamento}{adjustment} & Molodensky \\
+        \midrule
+        \tr{aproximado}{approximate} & $X_0$ & \textcolor{corIdeal}{\tr{teluróide}{telluroid}},
+          \textcolor{corIdeal}{$U$} \\
+        \tr{correção}{correction} & $x$ & \textcolor{corQuase}{$\zeta$},
+          \textcolor{mRose}{$T$} \\
+        \tr{verdadeiro}{true} & $X$ & \tr{superfície}{surface}, $W$ \\
+        \bottomrule
+      \end{tabular}
+      \bigskip
+
+      \tr{superfície $=$ teluróide $+\ \zeta$}{surface $=$ telluroid $+\ \zeta$}\\[3pt]
+      $W = U + T$
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{O rascunho se calcula}{The draft can be computed}}
+  \begin{columns}[T]
+    \begin{column}{0.44\textwidth}
+      \tr{Para cada ponto $P$:}{For each point $P$:}
+      \begin{enumerate}
+        \setlength{\itemsep}{4pt}
+        \item \tr{$\varphi$ e $\lambda$, do posicionamento: dizem \bnum{qual vertical};}{$\varphi$
+              and $\lambda$, from positioning: they say \bnum{which vertical};}
+        \item \tr{$C_P$, do nivelamento com gravimetria;}{$C_P$, from leveling with gravity;}
+        \item \tr{$W_P = W_0 - C_P$;}{$W_P = W_0 - C_P$;}
+        \item \tr{nessa vertical, procure a altura onde $U = W_P$: é o sósia $Q$.}{on that
+              vertical, look for the height where $U = W_P$: that is the twin $Q$.}
+      \end{enumerate}
+      \medskip
+      \tr{Nada foi chutado: o teluróide é \bnum{conhecido antes de começar}.}{Nothing was
+      guessed: the telluroid is \bnum{known before we start}.}
+    \end{column}
+    \begin{column}{0.52\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=1.0, caixa/.append style={font=\footnotesize, minimum
+        height=0.9cm}]
+        \node[caixa, draw=corMedido, fill=corMedido!10, text width=2.1cm] (A) at (0,2.3)
+          {$\varphi,\ \lambda$\\{\scriptsize\tr{posicionamento}{positioning}}};
+        \node[caixa, draw=corMedido, fill=corMedido!10, text width=2.1cm] (B) at (3.4,2.3)
+          {$C_P$\\{\scriptsize\tr{nivelamento + $g$}{leveling + $g$}}};
+        \node[caixa, draw=corIdeal, fill=corIdeal!8, text width=2.1cm] (U) at (0,0)
+          {$U$\\{\scriptsize\tr{fórmula (GRS80)}{formula (GRS80)}}};
+        \node[caixa, draw=corIdeal, fill=corIdeal!8, text width=2.1cm] (Q) at (3.4,0)
+          {\tr{sósia}{twin} $Q$\\{\scriptsize $U_Q = W_0 - C_P$}};
+        \draw[seta, mStoneMid] (A) -- (Q);
+        \draw[seta, mStoneMid] (B) -- (Q);
+        \draw[seta, mStoneMid] (U) -- (Q);
+        \node[rotulo, text=corIdeal, below] at (3.4,-0.55) {$\Rightarrow$ \tr{teluróide e
+          $H^{*}$}{telluroid and $H^{*}$}};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{O que se mede em cada ponto}{What is measured at each point}}
+  \centering
+  \small
+  \renewcommand{\arraystretch}{1.45}
+  \begin{tabular}{lll}
+    \toprule
+    \tr{o quê}{what} & \tr{com o quê}{with what} & \tr{para quê}{what for} \\
+    \midrule
+    \textcolor{corMedido}{$g_P$} & \tr{gravímetro}{gravimeter} & \tr{a anomalia}{the
+      anomaly} \\
+    \textcolor{corMedido}{$C_P$} & \tr{nível, mira e gravímetro}{level, staff and gravimeter} &
+      \tr{o sósia $Q$ e $H^{*}$}{the twin $Q$ and $H^{*}$} \\
+    \textcolor{corMedido}{$\varphi,\ \lambda$} & \tr{posicionamento}{positioning} & \tr{onde
+      fica a vertical}{where the vertical is} \\
+    \textcolor{corMassa}{\tr{relevo}{relief}} & \tr{satélite e radar}{satellite and radar} &
+      \tr{uma correção (daqui a pouco)}{a correction (coming soon)} \\
+    \midrule
+    \textcolor{corIdeal}{$U$, $\gamma$} & \tr{fórmula do elipsoide}{ellipsoid formula} &
+      \tr{a Terra de mentirinha}{the pretend Earth} \\
+    \bottomrule
+  \end{tabular}
+  \bigskip
+
+  \tr{Procure a palavra ``densidade'' nesta tabela. \alert{Ela não está lá}.}{Look for the
+  word ``density'' in this table. \alert{It is not there}.}
+\end{frame}
+
+\begin{frame}{\tr{A anomalia de Molodensky}{Molodensky's anomaly}}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \[ \boxed{\; \anom = \gmed_P - \gam_Q \;} \]
+      \tr{A gravidade \bnum{medida em $P$} menos a gravidade \bnum{normal no sósia $Q$}.}{The
+      gravity \bnum{measured at $P$} minus the \bnum{normal gravity at the twin $Q$}.}
+      \medskip
+
+      \tr{Como $Q$ está a uma altura $H^{*}$ acima do elipsoide:}{Since $Q$ sits at a height
+      $H^{*}$ above the ellipsoid:}
+      \vspace{-4pt}
+      \[ \gamma_Q \approx \gamma_0 - \num{0.3086}\,H^{*} \]
+      \begin{ideia}
+        \footnotesize\tr{É a \bnum{anomalia ar-livre} da aula de gravimetria. Mas agora ela
+        \bnum{mora na superfície}, onde foi medida. Ninguém desceu, ninguém tirou
+        montanha.}{It is the \bnum{free-air anomaly} from the gravimetry class. But now it
+        \bnum{lives on the surface}, where it was measured. Nobody went down, nobody removed a
+        mountain.}
+      \end{ideia}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95]
+        \draw[elip] (0,0) -- (5.0,0);
+        \node[rotulo, text=corIdeal, below] at (4.1,-0.05) {\tr{elipsoide}{ellipsoid}};
+        \draw[terreno] (0,3.3) -- (5.0,3.5);
+        \draw[telur] (0,2.3) -- (5.0,2.5);
+        \fill[mStone] (2.5,3.4) circle (0.08);
+        \node[rotulo, above left] at (2.45,3.42) {$P$};
+        \draw[corMedido, seta, very thick] (2.6,3.4) -- (2.6,2.85);
+        \node[rotulo, text=corMedido, right] at (2.65,3.05) {$g_P$ \tr{(medido)}{(measured)}};
+        \fill[corIdeal] (2.5,2.4) circle (0.08);
+        \node[rotulo, text=corIdeal, below left] at (2.45,2.38) {$Q$};
+        \draw[corIdeal, seta, very thick] (2.6,2.4) -- (2.6,1.85);
+        \node[rotulo, text=corIdeal, right] at (2.65,2.05) {$\gamma_Q$ \tr{(fórmula)}{(formula)}};
+        \draw[corIdeal, seta2] (1.6,0) -- (1.6,2.38);
+        \node[rotulo, text=corIdeal, left] at (1.55,1.2) {$H^{*}$};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Exemplo: Curitiba, de novo}{Example: Curitiba, again}}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \centering
+      \small
+      \renewcommand{\arraystretch}{1.3}
+      \begin{tabular}{lr}
+        \toprule
+        & mGal \\
+        \midrule
+        \textcolor{corMedido}{$g_P$} \tr{(RENEGA)}{(RENEGA)} & \num{978760.4} \\
+        \textcolor{corIdeal}{$\gamma_0$} \tr{em}{at} $\varphi = -25^{\circ}27'$ &
+          \num{978987.2} \\
+        $-\,\num{0.3086} \times \num{909.96}$ & $\num{-280.8}$ \\
+        \textcolor{corIdeal}{$\gamma_Q$} & \num{978706.4} \\
+        \midrule
+        $\Delta g = g_P - \gamma_Q$ & \textcolor{mRose}{$\mathbf{+\num{54.0}}$} \\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{ideia}[title={\tr{Compare com a aula 1}{Compare with class 1}}]
+        \small\tr{A anomalia de Bouguer de Curitiba mudava \alert{$\pm 12$\mGal} conforme a
+        rocha escolhida.}{Curitiba's Bouguer anomaly changed by \alert{$\pm 12$\mGal} depending
+        on the rock chosen.}
+        \medskip
+
+        \tr{Esta não: \bnum{+54,0 mGal para qualquer rocha}. Não há nada para
+        chutar.}{This one does not: \bnum{+54.0 mGal for any rock}. There is nothing to
+        guess.}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Duas leituras do mesmo número}{Two readings of the same number}}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{cuidado}[title={\tr{Stokes, do jeito clássico}{Stokes, the classic way}}]
+        \small\tr{$+54$\mGal é tratado como se estivesse \alert{no geoide}, 900 m abaixo. Para
+        isso, a montanha tem de ser empurrada para dentro --- com uma densidade
+        suposta.}{$+54$\mGal is treated as if it were \alert{on the geoid}, 900 m below. For
+        that, the mountain has to be pushed inside --- with an assumed density.}
+      \end{cuidado}
+      \medskip
+      \begin{regra}[title={Molodensky}]
+        \small\tr{$+54$\mGal fica \bnum{onde foi medido}, a 910 m. Quem se adapta à superfície é
+        a fórmula.}{$+54$\mGal stays \bnum{where it was measured}, at 910 m. It is the formula
+        that adapts to the surface.}
+      \end{regra}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \fill[corMassa!30] (0,0) -- (0,0.5) .. controls (1.2,0.8) and (2.0,3.0) .. (3.0,3.0)
+          .. controls (4.0,3.0) and (4.8,0.8) .. (6.0,0.5) -- (6.0,0) -- cycle;
+        \draw[terreno] (0,0.5) .. controls (1.2,0.8) and (2.0,3.0) .. (3.0,3.0)
+          .. controls (4.0,3.0) and (4.8,0.8) .. (6.0,0.5);
+        \draw[geoide] (0,0) -- (6.0,0);
+        \node[rotulo, text=corGeoide, below] at (5.2,-0.05) {\tr{geoide}{geoid}};
+        \node[rotulo, text=mRose, font=\scriptsize\bfseries, fill=white, inner sep=1pt] at
+          (3.0,3.35) {$+54$ \tr{(Molodensky)}{(Molodensky)}};
+        \node[rotulo, text=mStoneMid, fill=white, inner sep=1pt] at (3.0,-0.35) {$+54$
+          \tr{(Stokes clássico)}{(classic Stokes)}};
+        \draw[mStoneMid, dashed, seta] (3.0,2.85) -- (3.0,0.15);
+        \node[rotulo, text=mStone, align=left, right] at (3.1,1.4) {\tr{empurrar}{push}\\
+          \tr{a rocha?}{the rock?}};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Sua vez}{Your turn}}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{regra}[title={\tr{Uma estação de montanha}{A mountain station}}]
+        \tr{Latitude $45^{\circ}$, $\gamma_0 = \num{980619.9}$\mGal. Altitude normal
+        $H^{*} = 2\,000$ m. Gravidade medida: $g_P = \num{980052.7}$\mGal.}{Latitude
+        $45^{\circ}$, $\gamma_0 = \num{980619.9}$\mGal. Normal height $H^{*} = 2\,000$ m.
+        Measured gravity: $g_P = \num{980052.7}$\mGal.}
+        \begin{enumerate}
+          \item[(a)] \tr{Quanto vale $\gamma_Q$?}{What is $\gamma_Q$?}
+          \item[(b)] \tr{Quanto vale a anomalia de Molodensky?}{What is Molodensky's
+                anomaly?}
+        \end{enumerate}
+      \end{regra}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \onslide<2->{
+      \begin{ideia}[title={\tr{Respostas}{Answers}}]
+        \small\raggedright
+        (a) $\num{980619.9} - \num{0.3086} \times 2000 = \num{980002.7}$\mGal.
+        \medskip
+
+        (b) $\num{980052.7} - \num{980002.7} = \bnum{+\num{50.0}}$\mGal.
+        \medskip
+
+        {\scriptsize\tr{Com a fórmula completa da gravidade normal (apêndice), dá
+        $+\num{49.6}$: a regra do \num{0.3086} é uma ótima aproximação, não a conta
+        exata.}{With the full normal-gravity formula (appendix) you get $+\num{49.6}$: the
+        \num{0.3086} rule is a very good approximation, not the exact sum.}}
+      \end{ideia}
+      }
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Bruns, na superfície}{Bruns, on the surface}}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \small
+      \tr{Na aula de gravimetria, Bruns ligou energia a metros \bnum{no geoide}:}{In the
+      gravimetry class, Bruns linked energy to meters \bnum{on the geoid}:}
+      \[ N = \frac{T}{\gamma} \]
+      \tr{Molodensky usa a mesma ideia \bnum{no ponto $P$}:}{Molodensky uses the same idea
+      \bnum{at the point $P$}:}
+      \[ \boxed{\; \zet = \frac{T_P}{\gam_Q} \;} \]
+      \tr{Em $P$, a Terra de verdade tem um pouquinho de energia a mais que a de mentirinha:
+      $T_P$. ``Gastar'' esse excesso subindo contra $\gamma$ leva exatamente $\zeta$
+      metros.}{At $P$, the real Earth has a little more energy than the pretend one: $T_P$.
+      ``Spending'' that excess by climbing against $\gamma$ takes exactly $\zeta$ meters.}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95]
+        \draw[elip] (0,0) -- (4.6,0);
+        \draw[terreno] (0,3.0) -- (4.6,3.2);
+        \draw[telur] (0,1.8) -- (4.6,2.0);
+        \fill[mStone] (2.3,3.1) circle (0.08);
+        \node[rotulo, above] at (2.3,3.15) {$P$: $W_P = U_P + T_P$};
+        \fill[corIdeal] (2.3,1.9) circle (0.08);
+        \node[rotulo, text=corIdeal, below] at (2.3,1.85) {$Q$: $U_Q = W_P$};
+        \draw[corQuase, seta2, very thick] (3.3,1.94) -- (3.3,3.14);
+        \node[rotulo, text=corQuase, right] at (3.35,2.55) {$\zeta = T_P/\gamma_Q$};
+        \node[rotulo, text=corIdeal, below] at (3.8,-0.05) {\tr{elipsoide}{ellipsoid}};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{A equação fundamental, na superfície}{The fundamental equation, on the
+  surface}}
+  \tr{A mesma regra da aula de gravimetria, agora valendo em cada ponto da superfície:}{The
+  same rule as in the gravimetry class, now holding at every point of the surface:}
+  \[ \anom = -\frac{\partial \textcolor{mRose}{T}}{\partial h}
+            + \frac{1}{\gamma}\frac{\partial \gamma}{\partial h}\,\textcolor{mRose}{T}
+     \;\approx\; -\frac{\partial \textcolor{mRose}{T}}{\partial r}
+            - \frac{2}{r}\,\textcolor{mRose}{T} \]
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \tr{Em palavras: a anomalia é \bnum{quanto $T$ muda quando se sobe}, mais um pedacinho do
+      próprio $T$. Ferramentas iguais; \bnum{palco diferente}.}{In words: the anomaly is
+      \bnum{how much $T$ changes as you go up}, plus a little piece of $T$ itself. Same tools;
+      \bnum{different stage}.}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{ideia}[title={\tr{E a exigência nº 1?}{And requirement no.~1?}}]
+        \small\tr{Acima da superfície da Terra só há ar. Para Molodensky, ``nenhuma massa fora
+        da fronteira'' é \bnum{verdade de fato} --- porque a fronteira é o próprio
+        chão.}{Above the Earth's surface there is only air. For Molodensky, ``no mass outside
+        the boundary'' is \bnum{simply true} --- because the boundary is the ground itself.}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{\tr{A solução: Stokes e correções}{The solution: Stokes plus corrections}}
+
+\begin{frame}{\tr{Se o chão fosse plano}{If the ground were flat}}
+  \begin{columns}[T]
+    \begin{column}{0.54\textwidth}
+      \tr{Imagine um planalto \bnum{perfeitamente plano}, todo na mesma altitude.}{Imagine a
+      \bnum{perfectly flat} plateau, all at the same height.}
+      \medskip
+
+      \tr{Nesse caso, a solução de Molodensky é exatamente a fórmula de Stokes, aplicada às
+      anomalias \bnum{da superfície}:}{In that case, Molodensky's solution is exactly Stokes'
+      formula, applied to the \bnum{surface} anomalies:}
+      \[ \zet = \frac{R}{4\pi\,\gamma} \iint_{\sigma} \anom \; S(\psi)\; \mathrm{d}\sigma \]
+      \tr{Mesma função $S(\psi)$, mesmo ``cada pedacinho vota''. Só mudaram as anomalias e o
+      resultado: $\zeta$ no lugar de $N$.}{Same function $S(\psi)$, same ``every little piece
+      votes''. Only the anomalies and the result changed: $\zeta$ instead of $N$.}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \fill[corMassa!30] (0,0) -- (0,2.2) -- (5.0,2.2) -- (5.0,0) -- cycle;
+        \draw[terreno] (0,2.2) -- (5.0,2.2);
+        \draw[geoide] (0,0) -- (5.0,0);
+        \foreach \x in {0.5,1.3,2.1,2.9,3.7,4.5} { \fill[corMedido] (\x,2.3) circle (0.08); }
+        \node[rotulo, text=corMedido, above] at (2.5,2.45) {\tr{anomalias na
+          superfície}{anomalies on the surface}};
+        \node[rotulo, text=corMassa] at (2.5,1.1) {\tr{planalto plano}{flat plateau}};
+      \end{tikzpicture}
+      \medskip
+      \begin{ideia}
+        \small\tr{Stokes \bnum{não foi jogado fora}: ele é o primeiro degrau da solução de
+        Molodensky.}{Stokes \bnum{was not thrown away}: he is the first step of Molodensky's
+        solution.}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Mas o chão tem morros: a correção $G_1$}{But the ground has hills: the
+  correction $G_1$}}
+  \[ \boxed{\; \zet \approx \frac{R}{4\pi\,\gamma} \iint_{\sigma} \bigl(\anom +
+     \textcolor{corMassa}{G_1}\bigr) \, S(\psi)\; \mathrm{d}\sigma \;} \qquad
+     \textcolor{corMassa}{G_1} = \frac{R^2}{2\pi} \iint_{\sigma}
+     \frac{h - h_P}{\ell_0^{\,3}}\, \Delta g \;\mathrm{d}\sigma \]
+  \medskip
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \tr{Lendo $G_1$ em voz alta. Para \bnum{cada vizinho}:}{Reading $G_1$ aloud. For
+      \bnum{each neighbor}:}
+      \begin{enumerate}
+        \setlength{\itemsep}{3pt}
+        \item \tr{quanto ele está acima ou abaixo de você: $h - h_P$;}{how far above or below
+              you it is: $h - h_P$;}
+        \item \tr{vezes a anomalia dele: $\Delta g$;}{times its anomaly: $\Delta g$;}
+        \item \tr{dividido pela distância \bnum{ao cubo}: $\ell_0^{\,3}$.}{divided by the
+              distance \bnum{cubed}: $\ell_0^{\,3}$.}
+      \end{enumerate}
+      \tr{Some tudo. Pronto: é uma correção que se \bnum{soma às anomalias} antes de
+      Stokes.}{Add it all up. Done: it is a correction \bnum{added to the anomalies} before
+      Stokes.}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{cuidado}[title={\tr{Não é preciso decorar}{No need to memorize}}]
+        \small\tr{O que importa é a ideia: $G_1$ \bnum{mede o quanto o terreno em volta não é
+        plano}, e corrige as anomalias por isso.}{What matters is the idea: $G_1$
+        \bnum{measures how far the surrounding terrain is from flat}, and corrects the
+        anomalies for it.}
+      \end{cuidado}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Lendo $G_1$ devagar}{Reading $G_1$ slowly}}
+  \begin{columns}[T]
+    \begin{column}{0.46\textwidth}
+      \begin{itemize}
+        \setlength{\itemsep}{6pt}
+        \item \tr{Terreno \bnum{plano} em volta: $h - h_P = 0$ para todos os vizinhos, $G_1 =
+              0$, e volta Stokes puro.}{\bnum{Flat} terrain around: $h - h_P = 0$ for every
+              neighbor, $G_1 = 0$, and pure Stokes comes back.}
+        \item \tr{Vizinhos \bnum{mais altos} entram com $h - h_P$ positivo; \bnum{mais baixos},
+              com $h - h_P$ negativo.}{\bnum{Higher} neighbors enter with a positive $h -
+              h_P$; \bnum{lower} ones, with a negative $h - h_P$.}
+        \item \tr{Quanto mais \alert{íngreme} o terreno, maior a correção.}{The \alert{steeper}
+              the terrain, the larger the correction.}
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.92]
+        \fill[corMassa!25] (0,0) -- (0,0.5) .. controls (1.4,0.6) and (2.2,1.4) .. (3.0,1.7)
+          .. controls (3.8,2.0) and (4.6,3.2) .. (6.0,3.3) -- (6.0,0) -- cycle;
+        \draw[terreno] (0,0.5) .. controls (1.4,0.6) and (2.2,1.4) .. (3.0,1.7)
+          .. controls (3.8,2.0) and (4.6,3.2) .. (6.0,3.3);
+        \fill[mStone] (3.0,1.7) circle (0.09);
+        \node[rotulo, above left] at (2.95,1.75) {$P$};
+        \draw[mStoneMid, dashed] (0,1.7) -- (6.0,1.7);
+        \foreach \x/\y in {0.7/0.61, 1.6/0.96} {
+          \fill[corGeoide] (\x,\y) circle (0.07);
+          \draw[corGeoide, seta2] (\x,\y+0.08) -- (\x,1.66);
+          \node[rotulo, text=corGeoide, font=\scriptsize\bfseries] at (\x+0.22,1.3) {$-$};
+        }
+        \foreach \x/\y in {4.5/2.73, 5.4/3.18} {
+          \fill[mRose] (\x,\y) circle (0.07);
+          \draw[mRose, seta2] (\x,1.74) -- (\x,\y-0.08);
+          \node[rotulo, text=mRose, font=\scriptsize\bfseries] at (\x+0.22,2.3) {$+$};
+        }
+        \node[rotulo, text=mStoneMid, right] at (3.1,1.5) {\tr{altura de $P$}{height of $P$}};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Ao cubo: só a vizinhança manda}{Cubed: only the neighborhood matters}}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \centering
+      \small
+      \renewcommand{\arraystretch}{1.4}
+      \begin{tabular}{rcc}
+        \toprule
+        \tr{distância}{distance} & $1/\ell^{2}$ & $1/\ell^{3}$ \\
+        \midrule
+        1 & 1 & 1 \\
+        2 & 1/4 & 1/8 \\
+        3 & 1/9 & 1/27 \\
+        10 & 1/100 & \alert{1/1\,000} \\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \tr{Lembra do \bnum{spray de tinta}, que caía ``ao quadrado''? Ao cubo cai mais depressa
+      ainda.}{Remember the \bnum{spray paint}, which fell off ``squared''? Cubed falls off
+      even faster.}
+      \medskip
+
+      \tr{Um vizinho 10 vezes mais longe pesa \alert{mil vezes menos}.}{A neighbor 10 times
+      farther away weighs \alert{a thousand times less}.}
+      \medskip
+      \begin{ideia}
+        \small\tr{Por isso $G_1$ se calcula com o relevo e a gravimetria \bnum{de perto} de
+        cada ponto.}{That is why $G_1$ is computed from the relief and the gravity data
+        \bnum{close to} each point.}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{$G_1$ parece um velho conhecido}{$G_1$ looks like an old friend}}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \tr{Na aula de gravimetria, a \bnum{correção do terreno} corrigia a gravidade pelos morros
+      e vales em volta da estação.}{In the gravimetry class, the \bnum{terrain correction}
+      corrected gravity for the hills and valleys around the station.}
+      \medskip
+
+      \tr{Quando o terreno é pouco curvo e a anomalia cresce com a altitude do jeito que o
+      modelo de Bouguer prevê, $G_1$ fica \bnum{quase igual} a essa correção do
+      terreno.}{When the terrain is only gently curved and the anomaly grows with height the
+      way the Bouguer model predicts, $G_1$ becomes \bnum{almost equal} to that terrain
+      correction.}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{cuidado}[title={\tr{Parecido, não igual}{Similar, not the same}}]
+        \tr{A semelhança é de forma. $G_1$ é calculado com as \bnum{anomalias medidas} e o
+        \bnum{relevo} --- não com uma densidade suposta.}{The resemblance is in the shape.
+        $G_1$ is computed from the \bnum{measured anomalies} and the \bnum{relief} --- not
+        from an assumed density.}
+      \end{cuidado}
+      \medskip
+      \tr{É o tipo de coisa que faz um geodesista sorrir: duas teorias diferentes chegando
+      ao mesmo desenho.}{It is the kind of thing that makes a geodesist smile: two
+      different theories arriving at the same picture.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Uma série: cada termo menor que o anterior}{A series: each term smaller than
+  the last}}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \tr{A solução completa de Molodensky é uma \bnum{série}:}{Molodensky's full solution is a
+      \bnum{series}:}
+      \[ \zeta = \frac{R}{4\pi\gamma} \iint \bigl(\Delta g + G_1 + G_2 + G_3 + \cdots\bigr)
+         S(\psi)\,\mathrm{d}\sigma \]
+      \tr{Cada termo é bem menor que o anterior --- como $\num{0.3} + \num{0.03} + \num{0.003}
+      + \cdots$}{Each term is much smaller than the previous one --- like $\num{0.3} +
+      \num{0.03} + \num{0.003} + \cdots$}
+      \medskip
+
+      \tr{Na prática, \bnum{o primeiro termo basta}, às vezes o segundo.}{In practice,
+      \bnum{the first term is enough}, sometimes the second.}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \draw[mStoneMid] (0,0) -- (5.0,0);
+        \foreach \i/\v/\lab/\cor in {0/3.0/{\Delta g}/mRose, 1/1.2/{G_1}/corMassa,
+                                     2/0.45/{G_2}/corMassa, 3/0.17/{G_3}/corMassa,
+                                     4/0.06/{\cdots}/corMassa} {
+          \fill[\cor!70] ({0.3+1.0*\i},0) rectangle ({0.9+1.0*\i},\v);
+          \node[rotulo, below] at ({0.6+1.0*\i},-0.05) {$\lab$};
+        }
+        \node[rotulo, text=mStoneMid] at (2.5,3.4) {\tr{tamanho de cada termo (esquema)}{size
+          of each term (sketch)}};
+      \end{tikzpicture}
+      \medskip
+      \begin{cuidado}
+        \small\tr{Em relevo muito íngreme a série se comporta mal. Saída prática: suavizar o
+        relevo antes (apêndice).}{On very steep relief the series misbehaves. Practical fix:
+        smooth the relief first (appendix).}
+      \end{cuidado}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{O que cada teoria precisa}{What each theory needs}}
+  \centering
+  \small
+  \renewcommand{\arraystretch}{1.4}
+  \begin{tabular}{lcc}
+    \toprule
+    & \textcolor{corGeoide}{\textbf{Stokes}} & \textcolor{corQuase}{\textbf{Molodensky}} \\
+    \midrule
+    \tr{onde ficam as anomalias}{where the anomalies are} & \tr{no geoide}{on the geoid} &
+      \tr{na superfície}{on the surface} \\
+    \tr{o que se faz com o relevo}{what happens to the relief} & \tr{tirar ou amassar}{remove
+      or squash} & \tr{entra em $G_1$}{goes into $G_1$} \\
+    \tr{densidade das rochas}{rock density} & \textcolor{mRose}{\tr{precisa}{needed}} &
+      \textcolor{mTeal}{\textbf{\tr{não precisa}{not needed}}} \\
+    \tr{o que sai}{what comes out} & $N$, \tr{geoide}{geoid} & $\zeta$,
+      \tr{quase-geoide}{quasigeoid} \\
+    \tr{altitude que combina}{matching height} & \tr{ortométrica}{orthometric} &
+      \tr{normal}{normal} \\
+    \tr{quando}{when} & 1849 & 1945 \\
+    \bottomrule
+  \end{tabular}
+  \bigskip
+
+  \tr{A ferramenta central --- somar anomalias pesadas por $S(\psi)$ --- é \bnum{a mesma nas
+  duas}.}{The central tool --- adding up anomalies weighted by $S(\psi)$ --- is \bnum{the same
+  in both}.}
+\end{frame}
+
+\begin{frame}{\tr{E se eu ainda quiser o geoide?}{What if I still want the geoid?}}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \tr{Dá. Calcule $\zeta$ com Molodensky e some a separação da aula 2:}{You can. Compute
+      $\zeta$ with Molodensky and add the separation from class 2:}
+      \[ N = \zeta + (N - \zeta) \approx \zeta + \frac{\Delta g_B\,H}{\bar\gamma} \]
+      \tr{Mas olhe o $\Delta g_B$: é a anomalia de \bnum{Bouguer} --- e ela tem a densidade
+      dentro.}{But look at $\Delta g_B$: it is the \bnum{Bouguer} anomaly --- and it has the
+      density inside.}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{armadilha}[title={\tr{A densidade volta\ldots}{The density comes back\ldots}}]
+        \tr{\ldots\ \alert{só se você insistir no geoide}.}{\ldots\ \alert{only if you insist on
+        the geoid}.}
+      \end{armadilha}
+      \medskip
+      \begin{ideia}
+        \small\tr{Molodensky não proíbe o geoide. Ele só mostra que \bnum{dá para viver sem
+        ele} --- e medir altitudes sem chute nenhum.}{Molodensky does not forbid the geoid. He
+        just shows that \bnum{you can live without it} --- and measure heights with no guess
+        at all.}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{\tr{Com GNSS, a superfície é conhecida}{With GNSS, the surface is known}}
+
+\begin{frame}{\tr{1945 e hoje}{1945 and today}}
+  \begin{columns}[T]
+    \begin{column}{0.47\textwidth}
+      \begin{cuidado}[title={1945}]
+        \tr{A posição vertical de um ponto vinha do \bnum{nivelamento}. A forma da superfície,
+        no sentido do campo, era desconhecida.}{The vertical position of a point came from
+        \bnum{leveling}. The shape of the surface, in the field sense, was unknown.}
+        \medskip
+
+        \tr{Problema de contorno \alert{livre}: por isso o teluróide.}{\alert{Free}
+        boundary-value problem: hence the telluroid.}
+      \end{cuidado}
+    \end{column}
+    \begin{column}{0.47\textwidth}
+      \begin{regra}[title={\tr{Hoje}{Today}}]
+        \tr{O \bnum{GNSS} dá $h$ direto, em minutos, em qualquer ponto. A superfície é
+        conhecida \bnum{geometricamente}.}{\bnum{GNSS} gives $h$ directly, in minutes,
+        anywhere. The surface is known \bnum{geometrically}.}
+        \medskip
+
+        \tr{Problema de contorno \bnum{fixo}: a fronteira já está no lugar.}{\bnum{Fixed}
+        boundary-value problem: the boundary is already in place.}
+      \end{regra}
+    \end{column}
+  \end{columns}
+  \bigskip
+  \centering
+  \tr{A ideia de Molodensky --- resolver na superfície --- ficou \bnum{ainda mais natural}
+  com o GNSS.}{Molodensky's idea --- solve on the surface --- became \bnum{even more natural}
+  with GNSS.}
+\end{frame}
+
+\begin{frame}{\tr{O distúrbio da gravidade}{The gravity disturbance}}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \tr{Se o GNSS diz onde $P$ está, dá para comparar $g$ e $\gamma$ \bnum{no mesmo
+      ponto}:}{If GNSS tells where $P$ is, $g$ and $\gamma$ can be compared \bnum{at the same
+      point}:}
+      \[ \boxed{\; \delta g = g_P - \gamma_P \;} \qquad
+         \text{\tr{(e não}{(and not}}\ \Delta g = g_P - \gamma_Q\text{)} \]
+      \tr{A diferença entre os dois é a diferença entre $\gamma$ em $P$ e em $Q$, que estão a
+      $\zeta$ metros um do outro:}{The difference between them is the difference between
+      $\gamma$ at $P$ and at $Q$, which are $\zeta$ meters apart:}
+      \[ \Delta g - \delta g \approx -\num{0.3086}\,\zeta \]
+      \tr{Com $\zeta = -5$ m: \bnum{$+\num{1.5}$\mGal}.}{With $\zeta = -5$ m:
+      \bnum{$+\num{1.5}$\mGal}.}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{ideia}[title={\tr{Duas versões da mesma ideia}{Two versions of the same idea}}]
+        \small\tr{$\Delta g$ é a natural quando a altura vem do \bnum{nivelamento}: é a de
+        Molodensky.}{$\Delta g$ is the natural choice when height comes from
+        \bnum{leveling}: Molodensky's.}
+        \medskip
+
+        \tr{$\delta g$ é a natural quando a altura vem do \bnum{GNSS}.}{$\delta g$ is the
+        natural choice when height comes from \bnum{GNSS}.}
+        \medskip
+
+        \tr{Nenhuma das duas pede densidade. Os modelos de hoje usam as duas.}{Neither one
+        asks for density. Today's models use both.}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Para levar para casa --- aula 3}{Take-home --- class 3}}
+  \small
+  \begin{enumerate}
+    \setlength{\itemsep}{2pt}
+    \item \tr{Molodensky resolve o problema \bnum{na superfície}: os dados ficam onde foram
+          medidos, e a superfície é parte da resposta.}{Molodensky solves the problem \bnum{on
+          the surface}: the data stay where they were measured, and the surface is part of
+          the answer.}
+    \item \tr{Como no ajustamento: \bnum{aproximado + correção}. Superfície = teluróide +
+          $\zeta$; $W = U + T$.}{As in adjustment: \bnum{approximate + correction}. Surface =
+          telluroid + $\zeta$; $W = U + T$.}
+    \item \tr{Anomalia de Molodensky: $\Delta g = g_P - \gamma_Q$ --- a ar-livre, na superfície.
+          Em Curitiba, $+54$\mGal para \bnum{qualquer} rocha.}{Molodensky's anomaly: $\Delta g
+          = g_P - \gamma_Q$ --- the free-air one, on the surface. In Curitiba, $+54$\mGal for
+          \bnum{any} rock.}
+    \item \tr{Bruns na superfície: $\zeta = T_P/\gamma_Q$. Solução: \bnum{Stokes + $G_1$ +
+          \ldots}; em terreno plano, só Stokes.}{Bruns on the surface: $\zeta =
+          T_P/\gamma_Q$. Solution: \bnum{Stokes + $G_1$ + \ldots}; on flat terrain, just
+          Stokes.}
+    \item \tr{Com GNSS, a superfície é conhecida: o \bnum{distúrbio} $\delta g = g_P -
+          \gamma_P$ entra em cena.}{With GNSS the surface is known: the \bnum{disturbance}
+          $\delta g = g_P - \gamma_P$ enters the scene.}
+  \end{enumerate}
+  \begin{ideia}
+    \scriptsize \tr{\textbf{Na próxima aula:} altitude sem nivelar --- GNSS + quase-geoide, o
+    Brasil, o mundo e o IHRS.}{\textbf{Next class:} heights without leveling --- GNSS +
+    quasigeoid, Brazil, the world and the IHRS.}
+  \end{ideia}
+\end{frame}
+
+% ==================================================================
+\begin{frame}[standout]
+  \tr{Parte 4}{Part 4}\\[6pt]
+  {\normalsize \tr{Na prática: GNSS, quase-geoide e altitudes normais}{In practice: GNSS,
+  quasigeoid and normal heights}}\\[4pt]
+  {\scriptsize \tr{aula 4 de 4}{class 4 of 4}}
+\end{frame}
+
+\section{\tr{Altitude sem nivelar}{Heights without leveling}}
+
+\begin{frame}{\tr{Onde paramos}{Where we left off}}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \tr{Na aula 3:}{In class 3:}
+      \begin{enumerate}
+        \setlength{\itemsep}{4pt}
+        \item \tr{a anomalia de Molodensky, $\Delta g = g_P - \gamma_Q$, mora na superfície e
+              \bnum{não pede densidade};}{Molodensky's anomaly, $\Delta g = g_P - \gamma_Q$,
+              lives on the surface and \bnum{needs no density};}
+        \item \tr{$\zeta$ sai de Stokes \bnum{mais correções} ($G_1$, \ldots);}{$\zeta$ comes
+              from Stokes \bnum{plus corrections} ($G_1$, \ldots);}
+        \item \tr{com GNSS, a superfície é conhecida, e entra o distúrbio $\delta g$.}{with
+              GNSS, the surface is known, and the disturbance $\delta g$ comes in.}
+      \end{enumerate}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{ideia}[title={\tr{Hoje}{Today}}]
+        \tr{Usar $\zeta$ para o que interessa a quem mede: \bnum{altitudes de verdade}, no
+        Brasil, hoje.}{Use $\zeta$ for what surveyors care about: \bnum{real heights}, in
+        Brazil, today.}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{As perguntas de hoje}{Today's questions}}
+  \begin{columns}[T]
+    \begin{column}{0.58\textwidth}
+      \begin{enumerate}
+        \setlength{\itemsep}{8pt}
+        \item \tr{Como obter uma altitude com um receptor GNSS?}{How do you get a height from a
+              GNSS receiver?}
+        \item \tr{Como se sabe se um modelo de $\zeta$ é bom?}{How do you know whether a model
+              of $\zeta$ is good?}
+        \item \tr{Que altitude o Brasil usa --- e desde quando?}{Which height does Brazil use
+              --- and since when?}
+        \item \tr{Como tudo isso se liga ao IHRS, o referencial mundial de altitudes?}{How does
+              all this connect to the IHRS, the world height reference system?}
+      \end{enumerate}
+    \end{column}
+    \begin{column}{0.38\textwidth}
+      \begin{cuidado}[title={\tr{Última aula}{Last class}}]
+        \tr{No fim, um slide junta as quatro aulas numa história só.}{At the end, one slide
+        ties the four classes into a single story.}
+      \end{cuidado}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{O nivelamento é lento}{Leveling is slow}}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{cuidado}[title={\tr{Nivelamento}{Leveling}}]
+        \tr{Nível e mira, lance por lance, ida e volta: \bnum{alguns quilômetros por dia}.}{Level
+        and staff, step by step, there and back: \bnum{a few kilometers a day}.}
+        \medskip
+
+        \tr{O IBGE nivela o Brasil desde \bnum{1945} --- o ano da teoria de Molodensky --- e
+        ainda há regiões, como partes da Amazônia, onde a floresta dificulta o
+        trabalho.}{IBGE has been leveling Brazil since \bnum{1945} --- the year of Molodensky's
+        theory --- and there are still regions, such as parts of the Amazon, where the forest
+        gets in the way.}
+      \end{cuidado}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{regra}[title={GNSS}]
+        \tr{Uma antena num tripé: $h$ em \bnum{minutos ou horas}, em qualquer lugar com céu
+        aberto.}{An antenna on a tripod: $h$ in \bnum{minutes or hours}, anywhere with open
+        sky.}
+        \medskip
+
+        \tr{Mas $h$ é uma altura \alert{geométrica}: a água não obedece a ela.}{But $h$ is a
+        \alert{geometric} height: water does not obey it.}
+      \end{regra}
+      \medskip
+      \centering
+      \tr{A ponte entre os dois é $\zeta$.}{The bridge between the two is $\zeta$.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{A receita: $H^{*} = h - \zeta$}{The recipe: $H^{*} = h - \zeta$}}
+  \begin{columns}[T]
+    \begin{column}{0.44\textwidth}
+      \tr{Três ingredientes:}{Three ingredients:}
+      \begin{enumerate}
+        \setlength{\itemsep}{4pt}
+        \item \tr{o $\hh$ do \bnum{GNSS};}{the $\hh$ from \bnum{GNSS};}
+        \item \tr{o $\zet$ de um \bnum{modelo} (uma grade de valores, lida no lugar do
+              ponto);}{the $\zet$ from a \bnum{model} (a grid of values, read at the point's
+              location);}
+        \item \tr{uma \bnum{subtração}:}{a \bnum{subtraction}:}
+      \end{enumerate}
+      \[ \boxed{\; \Hn = \hh - \zet \;} \]
+      \tr{É o ``nivelamento por GNSS''.}{This is ``GNSS leveling''.}
+    \end{column}
+    \begin{column}{0.52\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95]
+        \draw[terreno] (0,2.7) .. controls (1.5,3.0) and (2.6,3.4) .. (3.6,3.3)
+          .. controls (4.6,3.2) and (5.2,2.8) .. (6.2,2.9);
+        \draw[quase] (0,0.9) .. controls (2.0,1.4) and (3.8,0.6) .. (6.2,1.1);
+        \draw[elip] (0,0) -- (6.2,0);
+        \node[rotulo, text=corQuase, below] at (5.4,1.0) {\tr{quase-geoide}{quasigeoid}};
+        \node[rotulo, text=corIdeal, below] at (5.4,-0.05) {\tr{elipsoide}{ellipsoid}};
+        % antena GNSS
+        \draw[mStone, thick] (3.0,3.36) -- (3.0,3.9);
+        \fill[mStone] (2.8,3.9) rectangle (3.2,4.0);
+        \draw[mStoneMid] (2.75,4.15) arc (180:0:0.25);
+        \fill[mStone] (3.0,3.36) circle (0.07);
+        \node[rotulo, right] at (3.25,3.95) {GNSS};
+        \draw[corQuase, seta2, very thick] (2.75,0) -- (2.75,1.05);
+        \node[rotulo, text=corQuase, left] at (2.7,0.52) {$\zeta$};
+        \draw[corIdeal, seta2, very thick] (2.75,1.05) -- (2.75,3.33);
+        \node[rotulo, text=corIdeal, left] at (2.7,2.2) {$H^{*}$};
+        \draw[corMedido, seta2, very thick] (3.3,0) -- (3.3,3.34);
+        \node[rotulo, text=corMedido, right] at (3.35,1.7) {$h$};
+        % grade do modelo
+        \foreach \i in {0,1,2} { \foreach \j in {0,1} {
+          \draw[corQuase] ({4.35+0.4*\i},{1.55+0.4*\j}) rectangle ++(0.4,0.4);
+        } }
+        \node[rotulo, text=corQuase] at (4.95,2.6) {\tr{modelo de $\zeta$}{model of $\zeta$}};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Exemplo passo a passo}{Step-by-step example}}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \centering
+      \renewcommand{\arraystretch}{1.4}
+      \begin{tabular}{lr}
+        \toprule
+        $\hh$ \tr{(GNSS, SIRGAS2000)}{(GNSS, SIRGAS2000)} & \num{812.47} m \\
+        $\zet$ \tr{(modelo, no ponto)}{(model, at the point)} & $\num{-3.21}$ m \\
+        \midrule
+        $\Hn = \num{812.47} - (\num{-3.21})$ & \textcolor{corIdeal}{$\mathbf{\num{815.68}}$ m} \\
+        \bottomrule
+      \end{tabular}
+      \par\smallskip
+      {\scriptsize\textcolor{mStoneMid}{\tr{Números ilustrativos.}{Illustrative numbers.}}}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{armadilha}[title={\tr{Cuidado com o sinal}{Watch the sign}}]
+        \tr{$\zeta$ negativo: o quase-geoide passa \alert{abaixo} do elipsoide. Então a altitude
+        normal fica \bnum{maior} que $h$.}{Negative $\zeta$: the quasigeoid runs \alert{below}
+        the ellipsoid. So the normal height comes out \bnum{larger} than $h$.}
+        \medskip
+
+        \tr{Menos com menos dá mais --- um erro comum em campo é justamente esse.}{Minus a minus
+        is a plus --- a common field mistake is exactly this one.}
+      \end{armadilha}
+      \medskip
+      {\small\tr{A incerteza de $H^{*}$ junta a de $h$ e a do modelo.}{The uncertainty of
+      $H^{*}$ combines that of $h$ and that of the model.}}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Os três precisam falar a mesma língua}{All three must speak the same language}}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \begin{enumerate}
+        \setlength{\itemsep}{6pt}
+        \item \tr{$h$ no \bnum{mesmo referencial} do modelo --- no Brasil, o SIRGAS2000, com o
+              elipsoide GRS80;}{$h$ in the \bnum{same reference frame} as the model --- in
+              Brazil, SIRGAS2000, with the GRS80 ellipsoid;}
+        \item \tr{$\zeta$ de um modelo feito \bnum{para o seu sistema de altitudes};}{$\zeta$
+              from a model made \bnum{for your height system};}
+        \item \tr{$H^{*}$ no \bnum{mesmo sistema} das referências de nível --- no Brasil, as
+              altitudes normais do REALT-2018.}{$H^{*}$ in the \bnum{same system} as the
+              benchmarks --- in Brazil, the normal heights of REALT-2018.}
+      \end{enumerate}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{armadilha}[title={\tr{Misturar estraga}{Mixing spoils it}}]
+        \tr{Trocar o referencial de $h$, ou usar um modelo feito para outra altitude, estraga
+        \alert{centímetros --- às vezes metros}.}{Switching the frame of $h$, or using a model
+        built for another kind of height, spoils \alert{centimeters --- sometimes meters}.}
+      \end{armadilha}
+      \medskip
+      \tr{É a tese da aula de referenciais: um número precisa dizer \bnum{em qual referencial}
+      está.}{It is the thesis of the reference-frames class: a number must say \bnum{which
+      reference frame} it is in.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Como se sabe se o modelo está certo?}{How do you know the model is right?}}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \tr{Em pontos que têm \bnum{as duas coisas} --- GNSS e nivelamento --- a conta precisa
+      fechar:}{At points that have \bnum{both} --- GNSS and leveling --- the sum must close:}
+      \[ \text{\tr{resíduo}{residual}} = \hh - \Hn_{\text{\tr{nivelado}{leveled}}} -
+         \zet_{\text{\tr{modelo}{model}}} \]
+      \tr{Se o modelo fosse perfeito, \bnum{zero} em todo lugar.}{If the model were perfect,
+      \bnum{zero} everywhere.}
+      \medskip
+
+      \tr{E se os resíduos mostram uma \alert{tendência}? Ajusta-se uma superfície de
+      correção --- por \bnum{mínimos quadrados}, claro.}{And if the residuals show a
+      \alert{trend}? A correction surface is fitted --- by \bnum{least squares}, of course.}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \draw[mStoneMid] (0,0) -- (5.6,0);
+        \foreach \x/\r in {0.4/0.35, 1.0/-0.20, 1.6/0.50, 2.2/0.15, 2.8/-0.40, 3.4/0.25,
+                           4.0/-0.10, 4.6/0.45, 5.2/-0.30} {
+          \fill[mRose!70] (\x-0.13,0) rectangle (\x+0.13,\r);
+        }
+        \node[rotulo, text=mRose, above] at (2.8,0.8) {\tr{resíduos nos pontos
+          GNSS/nivelamento}{residuals at GNSS/leveling points}};
+      \end{tikzpicture}
+      \medskip
+      \begin{ideia}[title={\tr{Você já viu esse número}{You have seen this number}}]
+        \small\tr{MAPGEO2015: $\pm\num{0.17}$ m em 592 pontos GNSS/nivelamento --- da aula de
+        gravimetria.}{MAPGEO2015: $\pm\num{0.17}$ m at 592 GNSS/leveling points --- from the
+        gravimetry class.}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Remover, calcular, restaurar --- versão Molodensky}{Remove, compute, restore
+  --- Molodensky version}}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \tr{O mesmo esquema da aula de gravimetria. Muda o que entra: anomalias \bnum{da
+      superfície}.}{The same scheme as in the gravimetry class. What goes in changes:
+      \bnum{surface} anomalies.}
+      \begin{enumerate}
+        \setlength{\itemsep}{3pt}
+        \item \textbf{\tr{remover}{remove}}: \tr{o modelo global de satélites (formas grandes)
+              e o efeito do relevo próximo;}{the global satellite model (large shapes) and the
+              effect of the nearby relief;}
+        \item \textbf{\tr{calcular}{compute}}: \tr{com o que sobrou, pequeno e local: Stokes +
+              $G_1$ por FFT, ou \bnum{colocação por mínimos quadrados};}{with what is left,
+              small and local: Stokes + $G_1$ by FFT, or \bnum{least-squares collocation};}
+        \item \textbf{\tr{restaurar}{restore}}: \tr{somar de volta o que foi
+              removido.}{add back what was removed.}
+      \end{enumerate}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.85]
+        \draw[corIdeal, thick, domain=0:5.4, samples=80, smooth, variable=\x]
+          plot (\x, {0.4*sin(\x*60)});
+        \node[rotulo, text=corIdeal, right] at (5.45,0) {\tr{satélites}{satellites}};
+        \draw[corMedido, thick, domain=0:5.4, samples=120, smooth, variable=\x]
+          plot (\x, {-1.0 + 0.22*sin(\x*200 + 40)});
+        \node[rotulo, text=corMedido, right, align=left] at (5.45,-1.0) {Stokes\\$+\,G_1$};
+        \draw[corMassa, thick, domain=0:5.4, samples=240, smooth, variable=\x]
+          plot (\x, {-1.9 + 0.08*sin(\x*700) + 0.05*sin(\x*1300 + 20)});
+        \node[rotulo, text=corMassa, right] at (5.45,-1.9) {\tr{relevo}{relief}};
+        \draw[mStoneMid] (-0.1,-2.3) -- (5.5,-2.3);
+        \draw[corQuase, very thick, dashed, domain=0:5.4, samples=240, smooth, variable=\x]
+          plot (\x, {-3.2 + 0.4*sin(\x*60) + 0.22*sin(\x*200 + 40) + 0.08*sin(\x*700)
+                     + 0.05*sin(\x*1300 + 20)});
+        \node[rotulo, text=corQuase, right] at (5.45,-3.2) {$\zeta$};
+        \node[rotulo, text=mStoneMid] at (2.7,-2.55) {\tr{soma}{sum}};
+      \end{tikzpicture}
+      \medskip
+      {\scriptsize\tr{\textbf{Colocação}: a versão do ajustamento para funções contínuas,
+      sistematizada por Moritz. Sim, mínimos quadrados de novo.}{\textbf{Collocation}: the
+      adjustment idea extended to continuous functions, systematized by Moritz. Yes, least
+      squares again.}}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{O estado da arte: o experimento do Colorado}{The state of the art: the
+  Colorado experiment}}
+  \begin{columns}[T]
+    \begin{column}{0.54\textwidth}
+      \tr{\bnum{14 grupos de 14 países} receberam os mesmos dados de uma região montanhosa do
+      Colorado (EUA), de 730 $\times$ 560 km, e calcularam geoide e quase-geoide, cada um com
+      o seu método.}{\bnum{14 groups from 14 countries} received the same data for a
+      mountainous region of Colorado (USA), 730 $\times$ 560 km, and computed the geoid and
+      the quasigeoid, each with their own method.}
+      \medskip
+
+      \tr{O juiz: os \bnum{223 marcos} do GSVS17, uma linha de GNSS e nivelamento de altíssima
+      qualidade.}{The referee: the \bnum{223 marks} of GSVS17, a line of top-quality GNSS and
+      leveling.}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{ideia}[title={\tr{O que saiu}{What came out}}]
+        \begin{itemize}
+          \item \tr{os modelos concordam em \bnum{$\sim$2 cm};}{the models agree to
+                \bnum{$\sim$2 cm};}
+          \item \tr{exatidão ao longo da linha: \bnum{\num{1.2} a \num{3.4} cm};}{accuracy along
+                the line: \bnum{\num{1.2} to \num{3.4} cm};}
+          \item \tr{a meta de \alert{1 cm} ainda não foi alcançada --- nas montanhas.}{the
+                \alert{1 cm} goal has not been reached yet --- in the mountains.}
+        \end{itemize}
+      \end{ideia}
+      {\scriptsize\textcolor{mStoneMid}{Wang et al. (2021), J.~Geod.~95:127.}}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{\tr{O Brasil e o mundo}{Brazil and the world}}
+
+\begin{frame}{\tr{O Brasil adotou altitudes normais}{Brazil adopted normal heights}}
+  \centering
+  \begin{tikzpicture}[scale=0.9]
+    \draw[mStoneMid, seta] (0,0) -- (13.2,0);
+    \draw[mStoneMid, decorate, decoration={zigzag, amplitude=1mm, segment length=2mm}]
+      (2.0,0) -- (3.0,0);
+    \foreach \ano/\x in {1945/0.8, 2015/4.6, 2018/7.6, 2019/9.2, 2021/11.6} {
+      \draw[mStoneMid] (\x,-0.1) -- (\x,0.1);
+      \fill[corMedido] (\x,0) circle (0.085);
+      \node[rotulo, below] at (\x,-0.18) {\ano};
+    }
+    \node[rotulo, above, align=center] at (0.8,0.2) {\tr{IBGE começa}{IBGE starts}\\
+      \tr{o nivelamento}{leveling}};
+    \node[rotulo, above, align=center] at (4.6,0.2) {MAPGEO2015\\\tr{(geoide)}{(geoid)}};
+    \node[rotulo, above, align=center, text=corIdeal] at (7.6,0.2) {\textbf{30/07}:
+      \tr{altitudes}{normal}\\\tr{\textbf{normais} oficiais}{heights \textbf{official}}};
+    \node[rotulo, below, align=center] at (9.2,-0.55) {\tr{REALT-2018,}{REALT-2018,}\\\tr{2ª
+      edição}{2nd edition}};
+    \node[rotulo, above, align=center] at (11.6,0.2) {\tr{agosto:}{August:}\\hgeoHNOR2020};
+  \end{tikzpicture}
+  \bigskip
+
+  \begin{columns}[T]
+    \begin{column}{0.54\textwidth}
+      \tr{Desde \bnum{30 de julho de 2018}, as altitudes oficiais do Sistema Geodésico
+      Brasileiro são \bnum{normais}, referidas ao quase-geoide.}{Since \bnum{30 July 2018},
+      the official heights of the Brazilian Geodetic System are \bnum{normal} heights,
+      referred to the quasigeoid.}
+      \medskip
+
+      \tr{Elas vêm do \textbf{REALT-2018}: o reajustamento da rede altimétrica com
+      \bnum{números geopotenciais}.}{They come from \textbf{REALT-2018}: the readjustment of
+      the leveling network with \bnum{geopotential numbers}.}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{ideia}
+        \small\tr{Ou seja: o Brasil faz exatamente o que as aulas 2 e 3 descreveram ---
+        $C$ medido, $H^{*} = C/\bar\gamma$.}{In other words: Brazil does exactly what classes 2
+        and 3 described --- measured $C$, $H^{*} = C/\bar\gamma$.}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{O que mudou nas referências de nível}{What changed at the benchmarks}}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \small
+      \tr{Antes de 2018, as altitudes oficiais eram \textbf{normais-ortométricas}: o
+      nivelamento corrigido com a gravidade \emph{normal}, sem gravidade medida em toda
+      referência de nível.}{Before 2018, the official heights were \textbf{normal-orthometric}:
+      leveling corrected with \emph{normal} gravity, without measured gravity at every
+      benchmark.}
+      \medskip
+
+      \tr{O REALT-2018 refez tudo com números geopotenciais e \bnum{gravidade real em todas as
+      referências de nível}.}{REALT-2018 redid everything with geopotential numbers and
+      \bnum{real gravity at every benchmark}.}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{regra}[title={\tr{Só trocar o tipo de altitude}{Only changing the type of
+        height}}]
+        \footnotesize\tr{Com os mesmos dados: \bnum{94\,\%} das referências mudaram entre $-15$ mm e
+        $+5$ mm.}{With the same data: \bnum{94\,\%} of the benchmarks changed between $-15$ mm
+        and $+5$ mm.}
+      \end{regra}
+      \medskip
+      \begin{cuidado}[title={\tr{O reajustamento inteiro}{The whole readjustment}}]
+        \footnotesize\tr{Cerca de \alert{\num{50000}} referências (76\,\%) mudaram de \alert{$+20$ a
+        $+30$ cm}, em boa parte do N, NE, Centro-Oeste e SE.}{About \alert{\num{50000}}
+        benchmarks (76\,\%) changed by \alert{$+20$ to $+30$ cm}, in much of the North,
+        Northeast, Center-West and Southeast.}
+      \end{cuidado}
+    \end{column}
+  \end{columns}
+  \smallskip
+  \centering
+  \small
+  \tr{A lição: o \emph{tipo} de altitude muda milímetros; \bnum{dados, gravidade e ajustamento}
+  mudam decímetros.}{The lesson: the \emph{type} of height changes millimeters; \bnum{data,
+  gravity and adjustment} change decimeters.}
+\end{frame}
+
+\begin{frame}{\tr{hgeoHNOR2020: o tradutor oficial}{hgeoHNOR2020: the official translator}}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \tr{O IBGE publica, para cada lugar do Brasil, um \bnum{fator de conversão} $\eta$ e a
+      sua incerteza:}{IBGE publishes, for every place in Brazil, a \bnum{conversion factor}
+      $\eta$ and its uncertainty:}
+      \[ \boxed{\; H^{*} = h - \eta \;} \]
+      \tr{com $h$ em SIRGAS2000 e $H^{*}$ nas altitudes normais do REALT-2018 --- referidas
+      aos dois data verticais do país, \bnum{Imbituba} e \bnum{Santana}.}{with $h$ in
+      SIRGAS2000 and $H^{*}$ in the normal heights of REALT-2018 --- referred to the country's
+      two vertical datums, \bnum{Imbituba} and \bnum{Santana}.}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{cuidado}[title={\tr{Um tradutor, não um quase-geoide puro}{A translator, not a pure
+        quasigeoid}}]
+        \footnotesize\tr{O modelo foi feito para \bnum{concordar com as referências oficiais}. O
+        próprio IBGE avisa: não é um modelo gravimétrico do quase-geoide.}{The model was built
+        to \bnum{agree with the official benchmarks}. IBGE itself warns: it is not a
+        gravimetric model of the quasigeoid.}
+      \end{cuidado}
+      \smallskip
+      \begin{ideia}[title={\tr{Em relação ao MAPGEO2015}{Compared with MAPGEO2015}}]
+        \footnotesize\tr{Diferença menor que 50 cm na maior parte do país; até $-95$ cm na Amazônia.
+        Incerteza da conversão: \bnum{menos da metade}.}{Difference below 50 cm over most of
+        the country; up to $-95$ cm in the Amazon. Conversion uncertainty: \bnum{less than
+        half}.}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{E o mundo?}{And the world?}}
+  \begin{columns}[T]
+    \begin{column}{0.58\textwidth}
+      \centering
+      \small
+      \renewcommand{\arraystretch}{1.4}
+      \begin{tabular}{l>{\raggedright\arraybackslash}p{5.0cm}}
+        \toprule
+        \tr{altitude}{height} & \tr{onde}{where} \\
+        \midrule
+        \textcolor{corIdeal}{\textbf{normal}} & \tr{Europa (EVRS), Alemanha, Rússia, China,
+          \textbf{Brasil}}{Europe (EVRS), Germany, Russia, China, \textbf{Brazil}} \\
+        \textcolor{corGeoide}{\textbf{\tr{ortométrica}{orthometric}}} & \tr{EUA (NAVD 88),
+          Canadá (CGVD2013)}{USA (NAVD 88), Canada (CGVD2013)} \\
+        \textbf{\tr{dinâmica}{dynamic}} & \tr{Grandes Lagos (IGLD)}{Great Lakes (IGLD)} \\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+    \begin{column}{0.38\textwidth}
+      \begin{ideia}[title={\tr{Europa}{Europe}}]
+        \small\tr{O referencial vertical europeu (EVRS) usa \bnum{altitudes normais} a partir de
+        números geopotenciais, em três realizações: EVRF2000, EVRF2007 e EVRF2019. A maioria
+        dos países europeus segue Molodensky.}{The European vertical reference system (EVRS)
+        uses \bnum{normal heights} from geopotential numbers, in three realizations: EVRF2000,
+        EVRF2007 and EVRF2019. Most European countries follow Molodensky.}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+  \bigskip
+  \centering
+  \tr{Não há um vencedor. Há \bnum{escolhas}, e cada país precisa dizer qual fez.}{There is no
+  winner. There are \bnum{choices}, and each country must say which one it made.}
+\end{frame}
+
+% ==================================================================
+\section{\tr{Do quase-geoide ao IHRS}{From the quasigeoid to the IHRS}}
+
+\begin{frame}{\tr{Do $\zeta$ ao potencial}{From $\zeta$ to the potential}}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \tr{O IHRS mede altura em \bnum{número geopotencial}: $C_P = W_0 - W_P$. Com GNSS e
+      $\zeta$, $W_P$ sai sem nivelar:}{The IHRS measures height as a \bnum{geopotential
+      number}: $C_P = W_0 - W_P$. With GNSS and $\zeta$, $W_P$ comes out without leveling:}
+      \[ W_P = \underbrace{U_P}_{\text{\tr{fórmula, com $h$}{formula, with $h$}}} +
+               \underbrace{T_P}_{\gamma\,\zeta\ \text{(Bruns)}} \]
+      \tr{E daí $C_P = W_0 - W_P$. Com $U_0 = W_0$, isso é o mesmo que}{And then $C_P = W_0 -
+      W_P$. With $U_0 = W_0$, this is the same as}
+      \[ C_P \approx \bar\gamma\,(h - \zeta) = \bar\gamma\,H^{*} \]
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{ideia}[title={\tr{O que isso quer dizer}{What this means}}]
+        \tr{GNSS + quase-geoide $\Rightarrow$ \bnum{a coordenada vertical do IHRS}, em qualquer
+        ponto, sem nivelar.}{GNSS + quasigeoid $\Rightarrow$ \bnum{the IHRS vertical
+        coordinate}, at any point, without leveling.}
+        \medskip
+
+        \tr{É assim que se dá potencial às estações do IHRF: posição no ITRF + campo de
+        gravidade.}{This is how IHRF stations get their potential: position in the ITRF +
+        gravity field.}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Exemplo: do GNSS ao número geopotencial}{Example: from GNSS to the
+  geopotential number}}
+  \begin{columns}[T]
+    \begin{column}{0.58\textwidth}
+      \centering
+      \small
+      \renewcommand{\arraystretch}{1.35}
+      \begin{tabular}{lr}
+        \toprule
+        $H^{*} = h - \zeta$ \tr{(exemplo anterior)}{(earlier example)} & \num{815.68} m \\
+        $\bar\gamma$ \tr{em $45^{\circ}$}{at $45^{\circ}$} &
+          \num{980494.1}\mGal \\
+        $C = \bar\gamma\,H^{*}$ & \bnum{\num{7997.69}}\mmss \\
+        $W_P = W_0 - C$ & \num{62628855.71}\mmss \\
+        \bottomrule
+      \end{tabular}
+      \par\smallskip
+      {\scriptsize\textcolor{mStoneMid}{\tr{Ilustrativo; latitude de $45^{\circ}$ para
+      números redondos. $W_0 = \num{62636853.4}$\mmss{} (IHRS).}{Illustrative; latitude
+      $45^{\circ}$ for round numbers. $W_0 = \num{62636853.4}$\mmss{} (IHRS).}}}
+    \end{column}
+    \begin{column}{0.38\textwidth}
+      \begin{cuidado}[title={\tr{Repare nas unidades}{Watch the units}}]
+        \footnotesize\tr{$\bar\gamma$ em m/s$^2$ (\num{9.804941}) vezes $H^{*}$ em metros dá
+        m$^2$/s$^2$: energia por quilo.}{$\bar\gamma$ in m/s$^2$ (\num{9.804941}) times $H^{*}$
+        in meters gives m$^2$/s$^2$: energy per kilogram.}
+        \medskip
+
+        \tr{É o mesmo esforço $C$ da aula 2 --- agora vindo do GNSS.}{It is the same effort
+        $C$ as in class 2 --- now coming from GNSS.}
+      \end{cuidado}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{O cano, outra vez}{The pipe, once more}}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \small
+      \tr{Na aula do geoide: $A$ e $B$, a 30 km um do outro, na mesma latitude, com o
+      \bnum{mesmo $h = \num{812.00}$ m}. Com o geoide ($N_A = \num{-8.40}$, $N_B =
+      \num{-8.12}$), a água descia 28 cm de $A$ para $B$.}{In the geoid class: $A$ and $B$, 30
+      km apart, at the same latitude, with the \bnum{same $h = \num{812.00}$ m}. With the
+      geoid ($N_A = \num{-8.40}$, $N_B = \num{-8.12}$), water ran 28 cm downhill from $A$ to
+      $B$.}
+      \medskip
+
+      \tr{Agora, com o quase-geoide: $\zeta_A = \num{-8.36}$ m e $\zeta_B = \num{-8.08}$
+      m.}{Now, with the quasigeoid: $\zeta_A = \num{-8.36}$ m and $\zeta_B = \num{-8.08}$ m.}
+      \begin{enumerate}
+        \item[(a)] \tr{Quanto valem $H^{*}_A$ e $H^{*}_B$?}{What are $H^{*}_A$ and $H^{*}_B$?}
+        \item[(b)] \tr{Para onde corre a água, e quanto desce?}{Which way does the water run,
+              and how far down?}
+      \end{enumerate}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \onslide<2->{
+      \begin{ideia}[title={\tr{Respostas}{Answers}}]
+        \small
+        (a) $H^{*}_A = \num{812.00} + \num{8.36} = \bnum{\num{820.36}}$ m;\\
+        \phantom{(a)} $H^{*}_B = \num{812.00} + \num{8.08} = \bnum{\num{820.08}}$ m.
+        \medskip
+
+        (b) \tr{De $A$ para $B$, descendo \bnum{28 cm} --- o mesmo de antes.}{From $A$ to $B$,
+        dropping \bnum{28 cm} --- the same as before.}
+        \medskip
+
+        \tr{Trocar o geoide pelo quase-geoide \alert{não muda a física}: muda só a régua. (Cada
+        $H^{*}$ ficou 4 cm abaixo do $H$, como em Curitiba.)}{Swapping the geoid for the
+        quasigeoid \alert{does not change the physics}: only the ruler changes. (Each $H^{*}$
+        ended up 4 cm below $H$, as in Curitiba.)}
+      \end{ideia}
+      }
+      {\scriptsize\textcolor{mStoneMid}{\tr{Números ilustrativos, com $\Delta g_B \approx -48$\mGal
+      e $H \approx 820$ m.}{Illustrative numbers, with $\Delta g_B \approx -48$\mGal and $H
+      \approx 820$ m.}}}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{O laço se fecha, versão Molodensky}{The loop closes, Molodensky version}}
+  \begin{columns}[T]
+    \begin{column}{0.56\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=1.0, caixa/.append style={font=\footnotesize}]
+        \node[caixa, draw=corIdeal, fill=corIdeal!8, text width=2.3cm] (A) at (0,2.2)
+          {\textbf{IGRS / IGRF}\\\tr{$g$ confiável}{reliable $g$}};
+        \node[caixa, draw=mRose, fill=mRose!8, text width=2.3cm] (B) at (4.0,2.2)
+          {$\Delta g = g_P - \gamma_Q$\\\tr{na superfície}{on the surface}};
+        \node[caixa, draw=corQuase, fill=corQuase!6, text width=2.3cm] (C) at (4.0,0)
+          {$\zeta$\\\tr{Stokes + $G_1$}{Stokes + $G_1$}};
+        \node[caixa, draw=corMedido, fill=corMedido!10, text width=2.3cm] (D) at (0,0)
+          {\tr{GNSS:}{GNSS:} $C = \bar\gamma\,(h - \zeta)$\\\textbf{IHRS}};
+        \draw[seta, mStoneMid] (A) -- (B);
+        \draw[seta, mStoneMid] (B) -- (C);
+        \draw[seta, mStoneMid] (C) -- (D);
+        \draw[seta, mStoneMid] (D) -- (A);
+        \node[rotulo, align=center] at (2.0,1.1) {\tr{e o nivelamento}{and leveling}\\
+          \tr{confere tudo}{checks it all}};
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.40\textwidth}
+      \begin{ideia}[title={\tr{Nenhuma densidade no caminho}{No density along the way}}]
+        \small\tr{Da gravidade medida até a altitude, \bnum{tudo é medida ou fórmula}. Era isso
+        que Molodensky queria em 1945 --- e o GNSS tornou prático.}{From measured gravity to
+        the height, \bnum{everything is measurement or formula}. That is what Molodensky wanted
+        in 1945 --- and GNSS made it practical.}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{\tr{Fechamento}{Wrap-up}}
+
+\begin{frame}{\tr{Stokes e Molodensky: não é uma briga}{Stokes and Molodensky: not a fight}}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \centering
+      \small
+      \renewcommand{\arraystretch}{1.4}
+      \begin{tabular}{>{\raggedright\arraybackslash}p{2.6cm}>{\raggedright\arraybackslash}p{2.7cm}}
+        \toprule
+        \tr{onde}{where} & $N - \zeta$ \\
+        \midrule
+        \tr{no mar}{at sea} & \tr{zero}{zero} \\
+        \tr{na planície}{on the plains} & \tr{milímetros a centímetros}{millimeters to
+          centimeters} \\
+        \tr{nas grandes cordilheiras}{in the great ranges} & \alert{\tr{decímetros a
+          metros}{decimeters to meters}} \\
+        \bottomrule
+      \end{tabular}
+      \par\medskip
+      \raggedright
+      \tr{E essa diferença \bnum{se calcula} --- se você aceitar uma densidade.}{And that
+      difference \bnum{can be computed} --- if you accept a density.}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{regra}[title={\tr{Geoide}{Geoid}}]
+        \small\tr{A superfície de nível de verdade: onde a física da água precisa
+        dela.}{The true level surface: wherever the physics of water needs it.}
+      \end{regra}
+      \medskip
+      \begin{regra}[title={\tr{Quase-geoide}{Quasigeoid}}]
+        \small\tr{Altitudes a partir \bnum{só de medidas}, sem hipótese sobre o interior da
+        Terra.}{Heights from \bnum{measurements only}, with no assumption about the Earth's
+        interior.}
+      \end{regra}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{As quatro aulas em um slide}{The four classes on one slide}}
+  \begin{columns}[T]
+    \begin{column}{0.47\textwidth}
+      \begin{regra}[title={\tr{Aula 1 · O problema}{Class 1 · The problem}}]
+        \small\tr{O geoide passa dentro da rocha. Stokes e a altitude ortométrica precisam da
+        densidade --- um chute.}{The geoid runs inside the rock. Stokes and the orthometric
+        height need the density --- a guess.}
+      \end{regra}
+      \vspace{2pt}
+      \begin{regra}[title={\tr{Aula 3 · A conta}{Class 3 · The computation}}]
+        \small\tr{Anomalia na superfície, Bruns no ponto, Stokes + $G_1$: sai $\zeta$.}{Anomaly
+        on the surface, Bruns at the point, Stokes + $G_1$: out comes $\zeta$.}
+      \end{regra}
+    \end{column}
+    \begin{column}{0.47\textwidth}
+      \begin{regra}[title={\tr{Aula 2 · As palavras}{Class 2 · The words}}]
+        \small\tr{$H^{*} = C/\bar\gamma$, teluróide, $\zeta$, quase-geoide: $h = H^{*} +
+        \zeta$.}{$H^{*} = C/\bar\gamma$, telluroid, $\zeta$, quasigeoid: $h = H^{*} + \zeta$.}
+      \end{regra}
+      \vspace{2pt}
+      \begin{regra}[title={\tr{Aula 4 · A prática}{Class 4 · The practice}}]
+        \small\tr{GNSS $-\ \zeta$ = altitude normal. O Brasil desde 2018. O IHRS em qualquer
+        ponto.}{GNSS $-\ \zeta$ = normal height. Brazil since 2018. The IHRS at any point.}
+      \end{regra}
+    \end{column}
+  \end{columns}
+  \medskip
+  \centering
+  \tr{Uma ideia atravessa as quatro: \bnum{não entrar na montanha}.}{One idea runs through all
+  four: \bnum{do not go into the mountain}.}
+\end{frame}
+
+\begin{frame}{\tr{Para levar para casa --- aula 4}{Take-home --- class 4}}
+  \small
+  \begin{enumerate}
+    \setlength{\itemsep}{2pt}
+    \item \tr{\bnum{$H^{*} = h - \zeta$}: GNSS mais um modelo de $\zeta$ dá altitude normal sem
+          nivelar --- se os três estiverem no mesmo referencial.}{\bnum{$H^{*} = h - \zeta$}:
+          GNSS plus a model of $\zeta$ gives normal height without leveling --- if all three
+          are in the same reference frame.}
+    \item \tr{Modelos se testam em pontos com GNSS \emph{e} nivelamento; tendências se corrigem
+          por mínimos quadrados.}{Models are tested at points with GNSS \emph{and} leveling;
+          trends are corrected by least squares.}
+    \item \tr{Nas montanhas, o melhor hoje é \bnum{$\sim$2 cm} (Colorado). A meta é 1
+          cm.}{In mountains, today's best is \bnum{$\sim$2 cm} (Colorado). The goal is 1 cm.}
+    \item \tr{Brasil: altitudes \bnum{normais} desde 30/07/2018 (REALT-2018);
+          \textbf{hgeoHNOR2020} converte $h$ em $H^{*}$.}{Brazil: \bnum{normal} heights since
+          30 July 2018 (REALT-2018); \textbf{hgeoHNOR2020} converts $h$ into $H^{*}$.}
+    \item \tr{GNSS + $\zeta$ dá $W_P$ e $C_P$: a coordenada do \bnum{IHRS}, em qualquer
+          ponto.}{GNSS + $\zeta$ gives $W_P$ and $C_P$: the \bnum{IHRS} coordinate, at any
+          point.}
+  \end{enumerate}
+  \begin{ideia}
+    \scriptsize \tr{\textbf{Experimente:} no simulador \textbf{Modelos Terrestres}, aba
+    \textbf{Teluróide}; no \textbf{Rede Gravimétrica}, ajuste a rede do Paraná --- os $g$ dela
+    são os que entram em $\Delta g$.}{\textbf{Try it:} in the \textbf{Earth Models}
+    simulator, \textbf{Telluroid} tab; in the \textbf{Gravimetric Network} simulator, adjust
+    the Paraná network --- its $g$ values are the ones that go into $\Delta g$.}
+  \end{ideia}
+\end{frame}
+
+% ==================================================================
+\appendix
+
+\begin{frame}[standout]
+  \tr{Apêndice}{Appendix}\\[6pt]
+  {\normalsize \tr{Para quem quer ir além}{For those who want to go further}}
+\end{frame}
+
+\begin{frame}{\tr{A1 · Gravidade normal em altitude e $\bar\gamma$}{A1 · Normal gravity at
+  height and $\bar\gamma$}}
+  \small
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \tr{Gravidade normal na altura $h$ (2ª ordem):}{Normal gravity at height $h$ (second
+      order):}
+      \[ \gamma(h) = \gamma_0\Bigl[1 - \frac{2}{a}\bigl(1 + f + m - 2f\sin^2\varphi\bigr)h +
+         \frac{3h^2}{a^2}\Bigr] \]
+      \tr{com $m = \omega^2 a^2 b / GM$. A média de $0$ a $H^{*}$:}{with $m = \omega^2 a^2 b /
+      GM$. The mean from $0$ to $H^{*}$:}
+      \[ \bar\gamma = \gamma_0\Bigl[1 - \bigl(1 + f + m - 2f\sin^2\varphi\bigr)\frac{H^{*}}{a}
+         + \frac{H^{*2}}{a^2}\Bigr] \]
+      \tr{e $H^{*} = C/\bar\gamma$ se resolve por iteração (duas voltas bastam).}{and $H^{*} =
+      C/\bar\gamma$ is solved by iteration (two passes are enough).}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \tr{Poincaré--Prey, com densidade $\rho$:}{Poincaré--Prey, with density $\rho$:}
+      \[ \bar g \approx g + \Bigl(\tfrac{1}{2}\,\num{0.3086} - 2\pi G\rho\Bigr) H \]
+      \tr{Com $\rho = 2\,670$: $\bar g \approx g + \num{0.0424}\,H$ (Helmert).}{With $\rho =
+      2\,670$: $\bar g \approx g + \num{0.0424}\,H$ (Helmert).}
+      \medskip
+
+      \tr{Sensibilidade a um erro $\delta\rho$:}{Sensitivity to an error $\delta\rho$:}
+      \[ \delta H \approx \frac{2\pi G\,\delta\rho\,H^2}{g} \]
+      {\scriptsize\tr{GRS80 e $\gamma_0$ (Somigliana): apêndice A2 da aula de
+      gravimetria.}{GRS80 and $\gamma_0$ (Somigliana): appendix A2 of the gravimetry class.}}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{A2 · Teluróide, quase-geoide e a correção normal}{A2 · Telluroid, quasigeoid
+  and the normal correction}}
+  \small
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \tr{\textbf{Teluróide}: $Q$ na normal ao elipsoide por $P$, com $U_Q = W_P$. Então $H^{*}
+      = h_Q$ e $\zeta = h_P - h_Q$.}{\textbf{Telluroid}: $Q$ on the ellipsoidal normal through
+      $P$, with $U_Q = W_P$. Then $H^{*} = h_Q$ and $\zeta = h_P - h_Q$.}
+      \medskip
+
+      \tr{\textbf{Quase-geoide}: os pontos a $\zeta$ acima do elipsoide. Não é
+      equipotencial.}{\textbf{Quasigeoid}: the points $\zeta$ above the ellipsoid. It is not an
+      equipotential surface.}
+      \medskip
+
+      \tr{\textbf{Separação}:}{\textbf{Separation}:}
+      \[ N - \zeta = H^{*} - H = \frac{\bar g - \bar\gamma}{\bar\gamma}\,H \approx
+         \frac{\Delta g_B}{\bar\gamma}\,H \]
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \tr{\textbf{Correção normal} do nivelamento entre $A$ e $B$, com $\gamma_0^{45}$ uma
+      constante:}{\textbf{Normal correction} of leveling between $A$ and $B$, with
+      $\gamma_0^{45}$ a constant:}
+      \[ H^{*}_B - H^{*}_A = \sum \delta n + NC_{AB} \]
+      \begin{align*}
+        NC_{AB} = {}& \sum \frac{g - \gamma_0^{45}}{\gamma_0^{45}}\,\delta n \\
+        & + \frac{\bar\gamma_A - \gamma_0^{45}}{\gamma_0^{45}}\,H^{*}_A
+          - \frac{\bar\gamma_B - \gamma_0^{45}}{\gamma_0^{45}}\,H^{*}_B
+      \end{align*}
+      \tr{A ortométrica tem a mesma forma, com $\bar g$ no lugar de $\bar\gamma$ --- e aí
+      entra a densidade.}{The orthometric one has the same form, with $\bar g$ instead of
+      $\bar\gamma$ --- and that is where density comes in.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{A3 · O problema de Molodensky linearizado}{A3 · The linearized Molodensky
+  problem}}
+  \small
+  \tr{Incógnitas: a superfície $S$ e o potencial $W$ fora dela. Dados em $S$: $W$ (via $C$ e
+  $W_0$) e $g$. Com $W = U + T$ e o teluróide como superfície aproximada:}{Unknowns: the
+  surface $S$ and the potential $W$ outside it. Data on $S$: $W$ (via $C$ and $W_0$) and $g$.
+  With $W = U + T$ and the telluroid as approximate surface:}
+  \[ \Delta g = g_P - \gamma_Q = -\frac{\partial T}{\partial h} + \frac{1}{\gamma}
+     \frac{\partial\gamma}{\partial h}\,T, \qquad \zeta = \frac{T_P}{\gamma_Q},
+     \qquad \nabla^2 T = 0 \ \text{\tr{fora de $S$}{outside $S$}} \]
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \tr{Série de Molodensky:}{Molodensky's series:}
+      \[ \zeta = \frac{R}{4\pi\gamma}\iint_\sigma \bigl(\Delta g + G_1 + G_2 + \cdots\bigr)
+         S(\psi)\,\mathrm{d}\sigma \]
+      \[ G_1 = \frac{R^2}{2\pi}\iint_\sigma \frac{h - h_P}{\ell_0^{\,3}}\,\Delta g\,
+         \mathrm{d}\sigma, \qquad \ell_0 = 2R\sin\frac{\psi}{2} \]
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \footnotesize
+      \begin{itemize}
+        \setlength{\itemsep}{1pt}
+        \item \tr{em $G_1$, $h - h_P$ é a diferença de altitude até o vizinho: normal ou
+              elipsoidal dá na mesma;}{in $G_1$, $h - h_P$ is the height difference to the
+              neighbor: normal or ellipsoidal makes no difference;}
+        \item \tr{aproximação plana e $\Delta g$ linear em $h$: $G_1 \approx$ correção do
+              terreno;}{planar approximation and $\Delta g$ linear in $h$: $G_1 \approx$
+              terrain correction;}
+        \item \tr{a série converge para inclinações abaixo de $45^{\circ}$ (Moritz); na
+              prática, suaviza-se o relevo ou usa-se a continuação analítica.}{the series
+              converges for slopes below $45^{\circ}$ (Moritz); in practice the relief is
+              smoothed or analytical continuation is used.}
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{A4 · Contorno fixo: GNSS, distúrbio e Hotine}{A4 · Fixed boundary: GNSS,
+  disturbance and Hotine}}
+  \small
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \tr{Com $h$ do GNSS, a superfície é dada. A condição de contorno usa o
+      \textbf{distúrbio}:}{With $h$ from GNSS, the surface is given. The boundary condition
+      uses the \textbf{disturbance}:}
+      \[ \delta g = g_P - \gamma_P = -\frac{\partial T}{\partial h} \approx
+         -\frac{\partial T}{\partial r} \]
+      \tr{Na esfera, a solução é a integral de \textbf{Hotine}:}{On the sphere, the solution
+      is \textbf{Hotine}'s integral:}
+      \[ T = \frac{R}{4\pi}\iint_\sigma \delta g\, \mathcal{H}(\psi)\,\mathrm{d}\sigma \]
+      \[ \mathcal{H}(\psi) = \frac{1}{\sin(\psi/2)} - \ln\Bigl(1 + \frac{1}{\sin(\psi/2)}
+         \Bigr) \]
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \tr{Relação entre as duas anomalias:}{Relation between the two anomalies:}
+      \begin{gather*}
+        \Delta g = \delta g + \frac{1}{\gamma}\frac{\partial\gamma}{\partial h}\,T \\
+        \Delta g - \delta g \approx \frac{\partial\gamma}{\partial h}\,\zeta
+        \approx -\num{0.3086}\,\zeta
+      \end{gather*}
+      \tr{($\Delta g$ em mGal, $\zeta$ em metros).}{($\Delta g$ in mGal, $\zeta$ in meters).}
+      \medskip
+      \begin{ideia}
+        \scriptsize\tr{Stokes usa $\Delta g$ e o núcleo $S(\psi)$; Hotine usa $\delta g$ e
+        $\mathcal{H}(\psi)$. Em ambos, $\zeta = T/\gamma$ no fim.}{Stokes uses $\Delta g$ and
+        the kernel $S(\psi)$; Hotine uses $\delta g$ and $\mathcal{H}(\psi)$. In both, $\zeta
+        = T/\gamma$ at the end.}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{A5 · O potencial numa estação (IHRS)}{A5 · The potential at a station (IHRS)}}
+  \small
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \[ W_P = U(\varphi_P, h_P) + T_P, \qquad T_P = \gamma_Q\,\zeta_P \]
+      \[ C_P = W_0 - W_P, \qquad W_0 = \num{62636853.4}\mmss \]
+      \tr{$U$ sai em forma fechada do GRS80 a partir de $(\varphi, h)$; $T_P$ vem de um modelo
+      global somado à gravimetria local (remover-calcular-restaurar).}{$U$ comes in closed
+      form from GRS80 given $(\varphi, h)$; $T_P$ comes from a global model plus local
+      gravimetry (remove-compute-restore).}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{cuidado}[title={$U_0 \neq W_0$}]
+        \raggedright\tr{Nas aulas usamos $U_0 = W_0$. Mas o GRS80 tem $U_0 = \num{62636860.850}$\mmss, e o
+        IHRS adotou $W_0 = \num{62636853.4}$\mmss.}{In class we used $U_0 = W_0$. But GRS80
+        has $U_0 = \num{62636860.850}$\mmss, and the IHRS adopted $W_0 =
+        \num{62636853.4}$\mmss.}
+        \medskip
+
+        \tr{A diferença, $\approx \num{7.45}$\mmss{} ($\approx \num{0.76}$ m), entra como
+        \textbf{termo de grau zero} em $\zeta$ --- ou se usa direto $W_P = U_P + T_P$, como
+        acima.}{The difference, $\approx \num{7.45}$\mmss{} ($\approx \num{0.76}$ m), enters
+        as a \textbf{zero-degree term} in $\zeta$ --- or one uses $W_P = U_P + T_P$ directly,
+        as above.}
+      \end{cuidado}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{A6 · Fontes}{A6 · Sources}}
+  \scriptsize
+  \begin{itemize}
+    \setlength{\itemsep}{0pt}
+    \item \textbf{Molodensky} --- \tr{16/06/1909 a 12/11/1991; Universidade de Moscou (1932),
+          TsNIIGAiK, primeiro gravímetro soviético; \emph{Questões básicas da gravimetria
+          geodésica} (1945).}{16 June 1909 -- 12 November 1991; Moscow University (1932),
+          TsNIIGAiK, first Soviet gravimeter; \emph{Basic problems of geodetic gravimetry}
+          (1945).} Molodensky, Eremeev \& Yurkina, \emph{Methods for Study of the External
+          Gravitational Field and Figure of the Earth} (1960; \tr{trad.}{transl.} 1962).
+    \item \tr{\textbf{Teoria}}{\textbf{Theory}} --- Heiskanen \& Moritz (1967) \tr{e}{and}
+          Hofmann-Wellenhof \& Moritz (2006), \emph{Physical Geodesy}, \tr{cap.}{ch.}~4
+          \tr{(altitudes)}{(heights)} \tr{e}{and} 8 (Molodensky). Moritz (1980), \emph{Advanced
+          Physical Geodesy}. Moritz (1980), \emph{Geodetic Reference System 1980}.
+    \item \tr{\textbf{Densidades}}{\textbf{Densities}} --- Telford, Geldart \& Sheriff (1990),
+          \emph{Applied Geophysics}, \tr{tab.}{table}~6.1 \tr{(médias)}{(averages)}.
+    \item \textbf{\tr{Brasil}{Brazil}} --- IBGE: REALT-2018 (\tr{2ª ed.}{2nd ed.} 2019);
+          \tr{altitudes normais desde 30/07/2018}{normal heights since 30 July 2018};
+          \emph{\tr{Modelo hgeoHNOR2020 para conversão de altitudes geométricas em altitudes
+          normais}{hgeoHNOR2020 model for converting geometric into normal heights}},
+          \tr{Relatórios Metodológicos}{Methodological Reports} v.~47 (2021).
+    \item \textbf{EVRS} --- BKG, \emph{Definition of the EVRS}; Sacher \& Liebsch,
+          \emph{EVRF2019 as new realization of EVRS}. NAVD 88 \tr{e}{and} IGLD: NOAA/NGS.
+    \item \textbf{Colorado} --- Wang et al. (2021), \emph{Colorado geoid computation
+          experiment: overview and summary}, J.~Geod.~95:127.
+    \item \tr{\textbf{Curitiba}}{\textbf{Curitiba}} --- RENEGA, \tr{como na aula de
+          gravimetria}{as in the gravimetry class}. \tr{\textbf{Números derivados}: script
+          \texttt{quase\_geoide\_numeros.py}, nesta pasta.}{\textbf{Derived numbers}: script
+          \texttt{quase\_geoide\_numeros.py}, in this folder.}
+  \end{itemize}
+  \smallskip
+  \centering
+  \footnotesize \tr{Os fatos e números desta aula foram conferidos em 05/10/2026.}{The facts
+  and numbers in this class were checked on 5 October 2026.}
+\end{frame}
+
+\end{document}
