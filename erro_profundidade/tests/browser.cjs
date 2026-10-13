@@ -1,0 +1,12 @@
+const {chromium}=require('playwright');const {spawn}=require('node:child_process');const assert=require('node:assert/strict');const path=require('node:path');
+(async()=>{const server=spawn('python3',['-m','http.server','8766'],{cwd:path.resolve(__dirname,'../..'),stdio:'ignore'});let browser;
+try{browser=await chromium.launch({headless:true});const page=await browser.newPage({viewport:{width:1360,height:1000}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+for(let n=0;n<30;n++){try{await page.goto('http://localhost:8766/erro_profundidade/?lang=pt');break;}catch{await new Promise(r=>setTimeout(r,100));}}
+await page.waitForSelector('#result');assert.match(await page.locator('#result').textContent(),/8,93/);
+for(const key of ['distance','base','focal','sensor','width','sigma']){await page.locator('#'+key).evaluate(el=>{el.value=el.max;el.dispatchEvent(new Event('input',{bubbles:true}));});assert.equal(await page.locator('#'+key+'-number').inputValue(),await page.locator('#'+key).inputValue());await page.locator('#reset').click();}
+await page.locator('#base-number').fill('20');await page.locator('#base-number').dispatchEvent('input');await page.locator('#mode').selectOption('parallel');assert.equal(await page.locator('#result').textContent(),'—');assert.match(await page.locator('#warning').textContent(),/fora do sensor/);
+await page.locator('#reset').click();await page.locator('#en').click();assert.equal(await page.title(),'Depth Error Simulator');assert.match(await page.locator('#portal').getAttribute('href'),/lang=en/);
+const dl=page.waitForEvent('download');await page.locator('#csv').click();const download=await dl;assert.equal(download.suggestedFilename(),'depth_error.csv');
+await page.locator('#pt').click();await page.screenshot({path:'/tmp/depth-desktop.png',fullPage:true});await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:'/tmp/depth-mobile.png',fullPage:true});
+await page.goto('http://localhost:8766/?lang=en');await page.locator('[data-card-id="erro_profundidade"] .btn-launch').click();await page.waitForSelector('#result');assert.equal(await page.title(),'Depth Error Simulator');assert.deepEqual(errors,[]);console.log('Browser checks passed: sliders, reset, visibility, language, CSV, mobile, portal.');
+}finally{if(browser)await browser.close();server.kill();}})().catch(e=>{console.error(e);process.exitCode=1});
