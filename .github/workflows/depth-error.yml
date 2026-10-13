@@ -1,0 +1,22 @@
+name: Depth error simulator tests
+on:
+  push:
+    paths: ['erro_profundidade/**', '.github/workflows/depth-error.yml']
+  pull_request:
+    paths: ['erro_profundidade/**', '.github/workflows/depth-error.yml']
+permissions:
+  contents: read
+jobs:
+  model:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node --test erro_profundidade/tests/model.test.mjs
+      - run: npm ci --prefix camera_proj
+      - run: npx --prefix camera_proj playwright install --with-deps chromium
+      - run: node erro_profundidade/tests/browser.cjs
+        env:
+          NODE_PATH: ./camera_proj/node_modules
