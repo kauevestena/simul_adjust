@@ -1,0 +1,3161 @@
+% O Sistema Geodésico Brasileiro — Parte 1: SIRGAS2000. Herança, idealização, campanha e adoção.
+% Quatro aulas de 50 minutos (este arquivo, por enquanto, contém a AULA 1; as demais entram nas
+% próximas etapas). Mesmo formato, mesma paleta e mesmas convenções de quase_geoide.tex.
+% A Parte 2 da série (a rede altimétrica) será outra aula.
+%
+% Bilíngue (AGENTS.md): o mesmo arquivo gera as duas versões.
+%   Português:  latexmk -pdf sgb_sirgas2000.tex      -> sgb_sirgas2000.pdf
+%   English:    latexmk -pdf sgb_sirgas2000_en.tex   -> sgb_sirgas2000_en.pdf
+%   Limpar auxiliares:  latexmk -c sgb_sirgas2000.tex sgb_sirgas2000_en.tex
+% Todo texto visível passa por \tr{português}{english}. Números decimais passam por \num{}, que
+% troca vírgula por ponto na versão em inglês. Números derivados: sgb_sirgas2000_numeros.py.
+%
+% Acompanha o simulador sistemas_coordenadas/ (ECEF, ENU, geodésicas) e continua a aula
+% sgr_terrestres.tex (sistema x frame). Não repete o que ela já ensinou.
+%
+% Fontes dos fatos e números citados (todas lidas na íntegra em 2026-10-13):
+%   [A] SIRGAS Final Report, Working Groups I and II (IBGE, jun/2000):
+%       geoftp.ibge.gov.br/informacoes_sobre_posicionamento_geodesico/sirgas/report.pdf
+%   [B] IBGE, Ajustamento da Rede Planimétrica Brasileira em SIRGAS2000 (jun/2006):
+%       .../rede_planialtimetrica/relatorio/rel_sirgas2000.pdf
+%   [C] IBGE, Ajustamento da Rede Planimétrica do SGB (SAD 69, 1996/2002):
+%       .../rede_planialtimetrica/relatorio/rel_sad69.pdf
+%   [D] SIRGAS (sirgas.ipgh.org), páginas "About us", "SIRGAS2000", "WG I", "WG III",
+%       "SIRGAS-CON".
+%   [E] Decreto n.o 5.334, de 06/01/2005 (Planalto): nova redação do art. 21 do Decreto
+%       n.o 89.817/1984.
+%   Aula 1 — Córrego Alegre: Hayford 1924, a = 6 378 388 m, 1/f = 297, \xi=\eta=0, N=0, escolhido
+%     pelos desvios da vertical medidos em Santa Catarina [C]. PSAD56 (La Canoa, Venezuela, rede
+%     HIRAN); 2 113 estações gravimétricas em torno do ponto-datum; Chuá Astro Datum; SAD69:
+%     UGGI67, a = 6 378 160 m, 1/f = 298,25, datum Chuá, \xi=0,31", \eta=-3,52", N=0; primeiro
+%     ajuste em computador por IAGS/DMA (HAVOC), rede em 10 áreas; anos 80, IBGE com USHER [C].
+%     Ajuste global de 1996: 4 760 estações clássicas, 187 GPS, 179 Doppler; BDG em set/1996;
+%     variância a posteriori 1,493; deslocamento até 13 m nos extremos [B][C]. Pesos clássicos:
+%     direção 3 ppm, distância 1 ppm, azimute astronômico 1 ppm [B]. Rede de 2006: 4 774 clássicas,
+%     1 600 GPS, 6 265 estações ajustadas, 16 913 direções, 1 534 distâncias, 389 azimutes [B].
+%     Conexões GPS: até 9 m, raio de influência ≈ 500 km; 12 campanhas em 2004-2005 [B]. Marco
+%     PREAOCA (1957/1986/1994, 0,796 m) [B]. Levantamentos clássicos cessam no fim dos anos 80;
+%     4 receptores GPS no início de 1991 [B]. PMRG criado em 2000 [B].
+%   Transformação SAD69 -> SIRGAS2000 (3 translações, 63 estações): ΔX = -67,35 m,
+%     ΔY = +3,88 m, ΔZ = -38,22 m [B, tab. 9]. O relatório imprime a latitude astronômica de
+%     Chuá como 19°45'14,34"; é erro de digitação (41,34") — o ξ publicado (0,31") confirma.
+%   Números derivados (vetor de 78 m, deslocamento por cidade, ppm): sgb_sirgas2000_numeros.py.
+
+\newif\ifEN
+\ifdefined\aulaEN \ENtrue \fi
+
+\documentclass[aspectratio=169,11pt]{beamer}
+
+\usetheme[progressbar=frametitle, sectionpage=progressbar, numbering=fraction]{metropolis}
+\metroset{block=fill}
+
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\ifEN
+  \usepackage[brazilian,english]{babel}
+\else
+  \usepackage[english,brazilian]{babel}
+\fi
+\usepackage{amsmath, amssymb, mathtools}
+\usepackage{booktabs}
+\usepackage{icomma}
+\usepackage{expl3}
+\usepackage[most]{tcolorbox}
+\usepackage{xspace}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, calc, positioning, decorations.pathreplacing,
+                decorations.pathmorphing, patterns, babel}
+
+% ------------------------------------------------------------------ idioma / language
+\newcommand{\tr}[2]{\ifEN#2\else#1\fi}
+\ExplSyntaxOn
+\cs_new_protected:Npn \sgb_format_num:n #1
+{
+  \tl_set:Nn \l_tmpa_tl {#1}
+  \ifEN
+    \regex_replace_all:nnN { , } { . } \l_tmpa_tl
+  \else
+    \regex_replace_all:nnN { \. } { {,} } \l_tmpa_tl
+  \fi
+  \ensuremath{\l_tmpa_tl}
+}
+\NewDocumentCommand{\num}{m}{ \sgb_format_num:n {#1} }
+\ExplSyntaxOff
+
+% ------------------------------------------------------------------ paleta (a mesma das outras aulas)
+\definecolor{mStone}{HTML}{1C1917}
+\definecolor{mStoneMid}{HTML}{78716C}
+\definecolor{mStoneLight}{HTML}{F5F5F4}
+\definecolor{mTeal}{HTML}{0D9488}
+\definecolor{mRose}{HTML}{E11D48}
+\definecolor{mAmber}{HTML}{D97706}
+\definecolor{mIndigo}{HTML}{4F46E5}
+\definecolor{mSky}{HTML}{0284C7}
+
+% As ideias que se repetem em toda figura desta aula
+\colorlet{corSist}{mIndigo}    % o SISTEMA / idealizado — elipsoide, datum, regra escrita
+\colorlet{corFrame}{mTeal}     % o FRAME / medido — marcos, estações, rede
+\colorlet{corTempo}{mAmber}    % o TEMPO — época, velocidade (a partir da aula 3)
+\colorlet{corErro}{mRose}      % a DIFERENÇA — erro, distorção, deslocamento
+\colorlet{corMar}{mSky}        % o GEOIDE — o mar imaginado sob os continentes
+
+\setbeamercolor{normal text}{fg=mStone, bg=white}
+\setbeamercolor{palette primary}{fg=white, bg=mStone}
+\setbeamercolor{frametitle}{fg=white, bg=mStone}
+\setbeamercolor{alerted text}{fg=mRose}
+\setbeamercolor{example text}{fg=mTeal}
+\setbeamercolor{progress bar}{fg=mTeal, bg=mTeal!20}
+\setbeamercolor{progress bar in head/foot}{fg=mTeal, bg=mTeal!20}
+\setbeamercolor{progress bar in section page}{fg=mTeal, bg=mTeal!20}
+\setbeamercolor{title separator}{fg=mTeal}
+\setbeamercolor{block title}{fg=white, bg=mTeal}
+\setbeamercolor{block body}{fg=mStone, bg=mTeal!8}
+
+% ------------------------------------------------------------------ caixas
+\newtcolorbox{ideia}[1][]{enhanced, colback=mTeal!7, colframe=mTeal, boxrule=0.6pt, arc=2pt,
+  left=6pt, right=6pt, top=4pt, bottom=4pt, fonttitle=\bfseries\small, coltitle=white, #1}
+\newtcolorbox{cuidado}[1][]{enhanced, colback=mAmber!8, colframe=mAmber, boxrule=0.6pt, arc=2pt,
+  left=6pt, right=6pt, top=4pt, bottom=4pt, fonttitle=\bfseries\small, coltitle=white, #1}
+\newtcolorbox{armadilha}[1][]{enhanced, colback=mRose!6, colframe=mRose, boxrule=0.6pt, arc=2pt,
+  left=6pt, right=6pt, top=4pt, bottom=4pt, fonttitle=\bfseries\small, coltitle=white, #1}
+\newtcolorbox{regra}[1][]{enhanced, colback=mIndigo!7, colframe=mIndigo, boxrule=0.6pt, arc=2pt,
+  left=6pt, right=6pt, top=4pt, bottom=4pt, fonttitle=\bfseries\small, coltitle=white, #1}
+
+% ------------------------------------------------------------------ estilos TikZ
+\tikzset{
+  seta/.style={-{Stealth[length=2.4mm]}, thick},
+  seta2/.style={{Stealth[length=2mm]}-{Stealth[length=2mm]}},
+  rotulo/.style={font=\scriptsize, text=mStone},
+  caixa/.style={draw, rounded corners=3pt, thick, align=center, font=\scriptsize},
+  elip/.style={corSist, very thick},
+  geoide/.style={corMar, very thick},
+  rede/.style={corFrame!70, thick},
+  marco/.pic={
+    \draw[thick, draw=corFrame, fill=corFrame!25] (-0.1,0) -- (0.1,0) -- (0,0.18) -- cycle;
+  },
+  antena/.pic={
+    \draw[thick, draw=corFrame] (0,0) -- (0,0.16);
+    \draw[thick, draw=corFrame, fill=corFrame!25] (-0.11,0.16) arc (180:0:0.11) -- cycle;
+  },
+}
+
+\newcommand{\bnum}[1]{\ifmmode\textcolor{mTeal}{\mathbf{#1}}\else\textbf{\textcolor{mTeal}{#1}}\fi}
+\newcommand{\ppm}{\ensuremath{\,\mathrm{ppm}}\xspace}
+
+\title{\tr{O Sistema Geodésico Brasileiro --- Parte 1: SIRGAS2000}{The Brazilian Geodetic
+System --- Part 1: SIRGAS2000}}
+\subtitle{\tr{Como o Brasil trocou de referencial: a herança, o projeto, a campanha e a adoção
+--- quatro aulas}{How Brazil changed its reference system: the inheritance, the design, the
+campaign and the adoption --- four classes}}
+\author{}
+\institute{\tr{Simulador de Sistemas de Coordenadas}{Coordinate Systems Simulator}}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+% ==================================================================
+\begin{frame}{\tr{O que vamos ver}{What we will see}}
+  \setbeamertemplate{section in toc}[sections numbered]
+  \small
+  \begin{columns}[T]
+    \begin{column}{0.56\textwidth}
+      \tableofcontents
+    \end{column}
+    \begin{column}{0.40\textwidth}
+      \begin{ideia}[title={\tr{Esta é a Parte 1}{This is Part 1}}]
+        \small\tr{A \bnum{posição}: como o Brasil sabe \emph{onde} fica cada ponto, e como mudou
+        a forma de saber. A \bnum{altitude} (a rede altimétrica) fica para a Parte
+        2.}{\bnum{Position}: how Brazil knows \emph{where} each point is, and how that changed.
+        \bnum{Height} (the leveling network) is left for Part 2.}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Quatro aulas}{Four classes}}
+  \begin{columns}[T]
+    \begin{column}{0.47\textwidth}
+      \begin{regra}[title={\tr{Aula 1 · O problema herdado}{Class 1 · The inherited problem}}]
+        \small\tr{Como se media um país inteiro antes do satélite --- e por que o resultado
+        envelhecia mal.}{How a whole country was measured before satellites --- and why the
+        result aged badly.}
+      \end{regra}
+      \vspace{2pt}
+      \begin{regra}[title={\tr{Aula 3 · A realização}{Class 3 · The realization}}]
+        \small\tr{Maio de 2000: 184 estações medidas ao mesmo tempo, e o cálculo que as
+        transforma em coordenadas.}{May 2000: 184 stations measured at the same time, and the
+        computation that turns them into coordinates.}
+      \end{regra}
+    \end{column}
+    \begin{column}{0.47\textwidth}
+      \begin{regra}[title={\tr{Aula 2 · A idealização}{Class 2 · The design}}]
+        \small\tr{1993--1995: como se planeja um referencial para um continente, e o ensaio
+        geral chamado SIRGAS95.}{1993--1995: how a reference system is planned for a
+        continent, and the dress rehearsal called SIRGAS95.}
+      \end{regra}
+      \vspace{2pt}
+      \begin{regra}[title={\tr{Aula 4 · Adoção e vida útil}{Class 4 · Adoption and lifetime}}]
+        \small\tr{A lei, a conta de conversão, a rede contínua --- e por que a coordenada
+        oficial já não bate com o receptor.}{The law, the conversion formula, the continuous
+        network --- and why the official coordinate no longer matches the receiver.}
+      \end{regra}
+    \end{column}
+  \end{columns}
+  \medskip
+  \centering
+  \tr{Cada aula tem 50 minutos, começa relembrando a anterior e termina com um resumo. Vamos
+  \bnum{devagar}: uma ideia por slide.}{Each class is 50 minutes long, starts by recalling the
+  previous one and ends with a summary. We will go \bnum{slowly}: one idea per slide.}
+\end{frame}
+
+% ==================================================================
+\begin{frame}[standout]
+  \tr{Aula 1}{Class 1}\\[6pt]
+  {\normalsize \tr{O problema herdado}{The inherited problem}}\\[4pt]
+  {\scriptsize \tr{aula 1 de 4}{class 1 of 4}}
+\end{frame}
+
+\section{\tr{Onde paramos}{Where we left off}}
+
+\begin{frame}{\tr{As perguntas de hoje}{Today's questions}}
+  \begin{columns}[T]
+    \begin{column}{0.58\textwidth}
+      \begin{enumerate}
+        \setlength{\itemsep}{8pt}
+        \item \tr{O que é o Sistema Geodésico Brasileiro, e do que ele é feito?}{What is the
+              Brazilian Geodetic System, and what is it made of?}
+        \item \tr{Como se media um país inteiro antes do GPS?}{How was a whole country measured
+              before GPS?}
+        \item \tr{O que é um datum ``topocêntrico'', e por que ele envelhece mal?}{What is a
+              ``topocentric'' datum, and why does it age badly?}
+        \item \tr{Que erro a rede herdada carregava --- e como se descobriu?}{What error did the
+              inherited network carry --- and how was it found?}
+      \end{enumerate}
+    \end{column}
+    \begin{column}{0.38\textwidth}
+      \begin{ideia}[title={\tr{Combinado}{Deal}}]
+        \tr{No fim da aula, você vai saber responder às quatro --- com as suas
+        palavras.}{By the end of the class you will be able to answer all four --- in your own
+        words.}
+        \medskip
+
+        \tr{Elas voltam no último slide.}{They come back on the last slide.}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{O que a aula anterior deixou}{What the previous class left us}}
+  \begin{columns}[T]
+    \begin{column}{0.46\textwidth}
+      \small
+      \tr{Na aula de referenciais terrestres, três ideias:}{In the terrestrial reference
+      systems class, three ideas:}
+      \begin{enumerate}
+        \setlength{\itemsep}{2pt}
+        \item \tr{\textcolor{corSist}{\textbf{sistema}} é a regra escrita; não dá para medir
+              nada com ele;}{the \textcolor{corSist}{\textbf{system}} is the written rule; you
+              cannot measure anything with it;}
+        \item \tr{\textcolor{corFrame}{\textbf{frame}} são estações de verdade que obedecem à
+              regra com algum errinho;}{the \textcolor{corFrame}{\textbf{frame}} is a set of real
+              stations that obey the rule with some small error;}
+        \item \tr{uma coordenada precisa dizer \bnum{em qual frame e em qual época}.}{a
+              coordinate must say \bnum{in which frame and at which epoch}.}
+      \end{enumerate}
+      \smallskip
+      \tr{Lá vimos o poste que ``anda'' dezenas de metros entre a planta antiga e o mapa de
+      hoje. Aqui vamos abrir essa caixa: \alert{de onde vinha aquele deslocamento?}}{There we
+      saw the lamp post that ``moves'' tens of meters between the old plan and today's map.
+      Here we open that box: \alert{where did that shift come from?}}
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=1.0, caixa/.append style={font=\footnotesize}]
+        \node[caixa, draw=corSist, fill=corSist!10, text width=2.2cm] (S) at (0,2.2)
+          {\tr{sistema}{system}\\[1pt]{\scriptsize\tr{a regra}{the rule}}};
+        \node[caixa, draw=corFrame, fill=corFrame!10, text width=2.2cm] (F) at (3.2,2.2)
+          {frame\\[1pt]{\scriptsize\tr{as estações}{the stations}}};
+        \node[caixa, draw=mStoneMid, fill=white, text width=2.2cm] (C) at (1.6,0.2)
+          {\tr{coordenada}{coordinate}\\[1pt]{\scriptsize\tr{frame + época}{frame + epoch}}};
+        \draw[seta, mStoneMid] (S) -- node[rotulo, above] {\tr{materializa}{realized by}} (F);
+        \draw[seta, mStoneMid] (F) -- (C);
+        \node[rotulo, text=corErro, align=center] at (1.6,1.15) {\tr{hoje: o que existia
+          \emph{antes} de existir um frame global}{today: what existed \emph{before} there
+          was a global frame}};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{O fio da aula}{The thread of the class}}
+  \centering
+  \begin{tikzpicture}[scale=0.93, caixa/.append style={font=\scriptsize, text width=1.9cm,
+      minimum height=1.05cm}]
+    \node[caixa, draw=corErro, fill=corErro!14, very thick] (a) at (0,0)
+      {\tr{o problema}{the problem}};
+    \node[caixa, draw=corSist, fill=corSist!8] (b) at (2.55,0) {\tr{a idealização}{the design}};
+    \node[caixa, draw=corSist, fill=corSist!8] (c) at (5.1,0) {\tr{o planejamento}{the plan}};
+    \node[caixa, draw=corFrame, fill=corFrame!8] (d) at (7.65,0)
+      {\tr{a realização}{the realization}};
+    \node[caixa, draw=corFrame, fill=corFrame!8] (e) at (10.2,0) {\tr{a adoção}{the adoption}};
+    \node[caixa, draw=corTempo, fill=corTempo!8] (f) at (12.75,0) {\tr{a vida útil}{the
+      lifetime}};
+    \foreach \x/\y in {a/b, b/c, c/d, d/e, e/f} \draw[seta, mStoneMid] (\x) -- (\y);
+    \draw[decorate, decoration={brace, mirror, amplitude=4pt}, mStoneMid]
+      (-0.95,-0.75) -- (0.95,-0.75) node[midway, below=4pt, rotulo] {\tr{aula 1}{class 1}};
+    \draw[decorate, decoration={brace, mirror, amplitude=4pt}, mStoneMid]
+      (1.6,-0.75) -- (6.05,-0.75) node[midway, below=4pt, rotulo] {\tr{aula 2}{class 2}};
+    \draw[decorate, decoration={brace, mirror, amplitude=4pt}, mStoneMid]
+      (6.7,-0.75) -- (8.6,-0.75) node[midway, below=4pt, rotulo] {\tr{aula 3}{class 3}};
+    \draw[decorate, decoration={brace, mirror, amplitude=4pt}, mStoneMid]
+      (9.25,-0.75) -- (13.7,-0.75) node[midway, below=4pt, rotulo] {\tr{aula 4}{class 4}};
+  \end{tikzpicture}
+  \bigskip
+
+  \small
+  \tr{Hoje é só o primeiro quadrinho --- mas é o que dá sentido a todos os outros: se o
+  problema não ficar claro, o SIRGAS2000 parece um capricho.}{Today is only the first box ---
+  but it gives meaning to all the others: if the problem is not clear, SIRGAS2000 looks like a
+  whim.}
+\end{frame}
+
+% ==================================================================
+\section{\tr{O que é o SGB}{What the SGB is}}
+
+\begin{frame}{\tr{O Sistema Geodésico Brasileiro, em uma frase}{The Brazilian Geodetic System,
+    in one sentence}}
+  \begin{columns}[T]
+    \begin{column}{0.46\textwidth}
+      \begin{regra}[title={\tr{SGB}{SGB}}]
+        \tr{O conjunto de \bnum{estações e redes} que dá ao país suas \bnum{coordenadas},
+        \bnum{altitudes} e \bnum{gravidade} oficiais --- estabelecido e mantido pelo
+        IBGE.}{The set of \bnum{stations and networks} that gives the country its official
+        \bnum{coordinates}, \bnum{heights} and \bnum{gravity} --- established and maintained by
+        IBGE.}
+      \end{regra}
+      \medskip
+      \small
+      \tr{Não é só uma lista de números: é a \emph{base} sobre a qual se apoiam o mapa, o
+      cadastro, a obra e o seu GPS.}{It is not just a list of numbers: it is the \emph{base}
+      on which the map, the land register, the construction and your GPS stand.}
+      \medskip
+
+      \tr{Em lei: o Decreto 5.334/2005 diz que os referenciais planimétrico e altimétrico da
+      cartografia são os do SGB, \emph{conforme estabelecido pelo IBGE}.}{By law: Decree
+      5.334/2005 says that the planimetric and altimetric references of the cartography are
+      those of the SGB, \emph{as established by IBGE}.}
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95, caixa/.append style={font=\scriptsize, text width=2.3cm}]
+        \node[caixa, draw=mStone, fill=mStoneLight, minimum width=7.2cm] (top) at (3.4,3.0)
+          {\textbf{SGB}};
+        \node[caixa, draw=corSist, fill=corSist!10] (p) at (0.6,1.1)
+          {\tr{\textbf{planimétrica}}{\textbf{planimetric}}\\ {\tr{onde fica}{where it is}}
+           ($\varphi,\lambda$)};
+        \node[caixa, draw=corMar, fill=corMar!10] (a) at (3.4,1.1)
+          {\tr{\textbf{altimétrica}}{\textbf{altimetric}}\\ \tr{quão alto está}{how high it is}
+           ($H$)};
+        \node[caixa, draw=mAmber, fill=mAmber!10] (g) at (6.2,1.1)
+          {\tr{\textbf{gravimétrica}}{\textbf{gravimetric}}\\ \tr{quanto pesa}{how much it
+           weighs} ($g$)};
+        \foreach \n in {p,a,g} \draw[thick, mStoneMid] (top.south -| \n) -- (\n.north);
+        \node[rotulo, text=corSist, align=center] at (0.6,-0.1)
+          {\tr{\textbf{Parte 1}\\ SIRGAS2000}{\textbf{Part 1}\\ SIRGAS2000}};
+        \node[rotulo, text=corMar, align=center] at (3.4,-0.1)
+          {\tr{\textbf{Parte 2}}{\textbf{Part 2}}};
+        \node[rotulo, text=mAmber, align=center] at (6.2,-0.1)
+          {\tr{aula de\\ gravimetria}{gravimetry\\ class}};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Duas famílias de estações: passivas e ativas}{Two families of stations:
+    passive and active}}
+  \begin{columns}[T]
+    \begin{column}{0.47\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=1.0]
+        \foreach \x/\y in {0.2/0.2, 1.3/0.8, 2.3/0.3, 3.2/1.0, 0.7/1.7, 1.9/2.1, 3.0/1.9}
+          \pic at (\x,\y) {marco};
+        \draw[rede] (0.2,0.3) -- (1.3,0.9) -- (2.3,0.4) -- (3.2,1.1) (0.7,1.8) -- (1.9,2.2)
+          -- (3.0,2.0) (0.2,0.3) -- (0.7,1.8) (1.3,0.9) -- (1.9,2.2) (2.3,0.4) -- (3.0,2.0);
+        \node[rotulo, text=corFrame, align=center] at (1.7,-0.4)
+          {\tr{\textbf{passiva}: marcos no chão\\ que alguém precisa ir ocupar}{\textbf{passive}:
+           marks in the ground\\ that someone must go and occupy}};
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.47\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=1.0]
+        \foreach \x/\y in {0.4/0.4, 1.8/1.2, 3.0/0.3, 1.0/2.0, 2.8/1.9} {
+          \pic at (\x,\y) {antena};
+          \draw[corFrame, thick] (\x+0.16,\y+0.3) arc (-40:40:0.22);
+          \draw[corFrame, thick] (\x+0.26,\y+0.34) arc (-40:40:0.32);
+        }
+        \node[rotulo, text=corFrame, align=center] at (1.7,-0.4)
+          {\tr{\textbf{ativa}: receptores ligados\\ 24 horas por dia, todo dia}{\textbf{active}:
+           receivers running\\ 24 hours a day, every day}};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+  \medskip
+  \small
+  \tr{A rede \textbf{passiva} é a herança deste capítulo: vértices de triangulação (VT) e
+  estações de poligonal (EP). As \textbf{ativas} são a RBMC (receptores GNSS contínuos) e a RMPG
+  (marégrafos), que entram na Aula 4 e na Parte 2.}{The \textbf{passive} network is the
+  inheritance of this chapter: triangulation vertices (VT) and traverse stations (EP). The
+  \textbf{active} ones are the RBMC (continuous GNSS receivers) and the RMPG (tide gauges),
+  which come back in Class 4 and in Part 2.}
+\end{frame}
+
+\begin{frame}{\tr{Um marco, três placas}{One mark, three plates}}
+  \begin{columns}[T]
+    \begin{column}{0.46\textwidth}
+      \small
+      \tr{O vértice \textbf{PREAOCA} foi implantado em \textbf{1957}: uma chapa de metal
+      cravada direto na rocha, com a inscrição \texttt{PREAOCA-1957}.}{The vertex
+      \textbf{PREAOCA} was set in \textbf{1957}: a metal plate fixed straight into the rock,
+      engraved \texttt{PREAOCA-1957}.}
+      \medskip
+
+      \tr{Em \textbf{1986} uma nova ocupação encontrou a chapa gravada
+      \texttt{PREAOCA-1986}: tinha sido implantada \alert{outra estação}, com o mesmo
+      nome.}{In \textbf{1986} a new occupation found the plate engraved
+      \texttt{PREAOCA-1986}: \alert{another station} had been set, with the same name.}
+      \medskip
+
+      \tr{Em \textbf{1994} o GPS reocupou a placa de 1986 --- e a coordenada obtida diferiu da
+      antiga em \bnum{\num{0.796}\,m}.}{In \textbf{1994} GPS reoccupied the 1986 plate --- and
+      the coordinate obtained differed from the old one by \bnum{\num{0.796}\,m}.}
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95]
+        \foreach \x/\y/\t/\c in {0/2.2/{1957}/mStoneMid, 2.6/2.2/{1986}/mAmber,
+                                 5.2/2.2/{1994}/corFrame} {
+          \draw[thick, fill=mStoneLight, draw=\c, rounded corners=3pt]
+            (\x-0.55,\y-0.5) rectangle (\x+0.55,\y+0.5);
+          \node[font=\footnotesize\bfseries, text=\c] at (\x,\y+0.15) {\t};
+        }
+        \node[rotulo] at (0,1.95) {PREAOCA-1957};
+        \node[rotulo] at (2.6,1.95) {PREAOCA-1986};
+        \node[rotulo] at (5.2,1.95) {PREAOCA-1986};
+        \draw[seta, mStoneMid] (0.65,2.2) -- (1.95,2.2);
+        \draw[seta, mStoneMid] (3.25,2.2) -- (4.55,2.2);
+        \node[rotulo, align=center] at (1.3,2.95) {\tr{estação nova}{new station}};
+        \node[rotulo, align=center] at (3.9,2.95) {GPS};
+        \draw[corErro, very thick] (0,1.2) -- (5.2,1.2);
+        \draw[corErro, very thick] (0,1.1) -- (0,1.3) (5.2,1.1) -- (5.2,1.3);
+        \node[rotulo, text=corErro, fill=white, align=center] at (2.6,1.2)
+          {\tr{vetor de \num{0.796}\,m}{\num{0.796}\,m vector}};
+        \node[rotulo, align=center] at (2.6,0.3)
+          {\tr{o IBGE descartou essa conexão do ajuste}{IBGE dropped this connection from the
+           adjustment}};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+  \medskip
+  \begin{ideia}[title={\tr{Lição}{Lesson}}]
+    \small\tr{O \textbf{frame} é feito de \bnum{coisas de verdade}: elas são trocadas,
+    destruídas e confundidas. (Duas estações brasileiras do SIRGAS foram destruídas antes de
+    serem religadas à rede.)}{The \textbf{frame} is made of \bnum{real things}: they get
+    replaced, destroyed and mixed up. (Two Brazilian SIRGAS stations were destroyed before being
+    tied back to the network.)}
+  \end{ideia}
+\end{frame}
+
+% ==================================================================
+\section{\tr{Medir um país marco a marco}{Measuring a country mark by mark}}
+
+\begin{frame}{\tr{Triangulação: uma régua e muitos ângulos}{Triangulation: one ruler and many
+    angles}}
+  \begin{columns}[T]
+    \begin{column}{0.44\textwidth}
+      \small
+      \tr{Medir uma distância longa no chão é caro e demorado. Medir \emph{ângulos} é bem
+      mais fácil.}{Measuring a long distance on the ground is expensive and slow. Measuring
+      \emph{angles} is much easier.}
+      \medskip
+
+      \tr{Então: mede-se \bnum{uma só base} com cuidado e, daí em diante, só ângulos. Com a lei
+      dos senos, cada triângulo entrega o lado seguinte --- e a cadeia avança.}{So: measure
+      \bnum{one base} carefully and from then on only angles. With the law of sines each
+      triangle gives the next side --- and the chain moves on.}
+      \medskip
+
+      \tr{Para a cadeia não girar, ancora-se a orientação em \textbf{azimutes astronômicos}
+      (pelas estrelas).}{To keep the chain from rotating, its orientation is anchored with
+      \textbf{astronomical azimuths} (by the stars).}
+    \end{column}
+    \begin{column}{0.52\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95]
+        \coordinate (P0) at (0,0); \coordinate (P1) at (1.15,1.25); \coordinate (P2) at (2.4,0);
+        \coordinate (P3) at (3.55,1.25); \coordinate (P4) at (4.8,0);
+        \coordinate (P5) at (5.95,1.25);
+        \draw[rede] (P0) -- (P1) -- (P2) -- (P3) -- (P4) -- (P5) (P1) -- (P3) -- (P5)
+          (P0) -- (P2) -- (P4);
+        \draw[corFrame, line width=2pt] (P0) -- (P2);
+        \foreach \p in {P0,P1,P2,P3,P4,P5} \pic at (\p) {marco};
+        \node[rotulo, below, text=corFrame] at (1.2,-0.1) {\tr{base medida}{measured base}};
+        \draw[corFrame] (P1) ++(-0.28,-0.22) arc (225:325:0.38);
+        \node[rotulo, above] at (P1) {\tr{ângulos}{angles}};
+        \draw[seta, mAmber] (P5) ++(0.25,0.25) -- ++(0,0.8);
+        \node[rotulo, text=mAmber, right] at ($(P5)+(0.1,1.0)$) {\tr{azimute pelas
+          estrelas}{azimuth by stars}};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{O que entrava no cálculo}{What went into the computation}}
+  \begin{columns}[T]
+    \begin{column}{0.54\textwidth}
+      \small
+      \renewcommand{\arraystretch}{1.35}
+      \begin{tabular}{lcr}
+        \toprule
+        \tr{observação}{observation} & \tr{peso ($\sigma$)}{weight ($\sigma$)} &
+          \tr{no ajuste de 2006}{in the 2006 adjustment} \\
+        \midrule
+        \tr{direção horizontal}{horizontal direction} & \num{3}\ppm & \num{16913} \\
+        \tr{distância}{distance} & \num{1}\ppm & \num{1534} \\
+        \tr{azimute astronômico}{astronomical azimuth} & \num{1}\ppm & \num{389} \\
+        \bottomrule
+      \end{tabular}
+      \medskip
+
+      \tr{Quase tudo eram \bnum{direções}: ângulos entre alvos. Distâncias eram poucas e
+      a orientação vinha de uma lista curta de azimutes.}{Almost everything was
+      \bnum{directions}: angles between targets. Distances were few and orientation came from a
+      short list of azimuths.}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{ideia}[title={\tr{Estações da rede clássica}{Stations of the classical
+          network}}]
+        \centering
+        {\Large\bnum{\num{4774}}}\\[2pt]
+        \scriptsize\tr{vértices de triangulação e estações de poligonal, em 2006}{triangulation
+        vertices and traverse stations, in 2006}
+      \end{ideia}
+      \medskip
+      \small
+      \tr{``\num{3}\ppm'' lê-se \emph{3 partes por milhão}: \num{3}\,mm de erro a cada
+      \num{1}\,km.}{``\num{3}\ppm'' reads \emph{3 parts per million}: \num{3}\,mm of error per
+      \num{1}\,km.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Onde a triangulação não chega}{Where triangulation does not reach}}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \small
+      \tr{Na Amazônia a floresta tapa as linhas de visada: não dá para ver o marco
+      seguinte.}{In the Amazon the forest blocks the lines of sight: you cannot see the next
+      mark.}
+      \medskip
+
+      \tr{A saída, antes do GPS, foram os \bnum{satélites Doppler}. Dois receptores no chão
+      escutam o \emph{mesmo} satélite ao mesmo tempo; o que os dois têm em comum se cancela, e
+      sobra o \bnum{vetor entre eles}. É a \textbf{translocação}.}{Before GPS the way out was
+      the \bnum{Doppler satellites}. Two receivers on the ground listen to the \emph{same}
+      satellite at the same time; what they share cancels, and the \bnum{vector between them}
+      is left. This is \textbf{translocation}.}
+      \medskip
+
+      \tr{A rede de 1996 já trazia \num{179} estações Doppler e \num{15} da rede de
+      translocação da Amazônia.}{The 1996 network already had \num{179} Doppler stations and
+      \num{15} from the Amazon translocation network.}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95]
+        \fill[corFrame!8] (-0.2,-0.3) rectangle (5.4,0.1);
+        \node[fill=mAmber!25, draw=mAmber, circle, inner sep=2pt] at (2.7,2.6) {};
+        \node[rotulo, above] at (2.7,2.8) {\tr{satélite}{satellite}};
+        \pic at (0.9,0.1) {antena};
+        \pic at (4.5,0.1) {antena};
+        \draw[mStoneMid, dashed] (2.7,2.55) -- (0.9,0.45);
+        \draw[mStoneMid, dashed] (2.7,2.55) -- (4.5,0.45);
+        \draw[seta, corFrame, line width=1.4pt] (1.15,0.0) -- (4.25,0.0);
+        \node[rotulo, text=corFrame, below] at (2.7,-0.05) {\tr{vetor entre as estações}{vector
+          between the stations}};
+        \draw[pattern=north east lines, pattern color=mTeal!35] (1.5,0.45) rectangle (3.9,0.9);
+        \node[rotulo, fill=white] at (2.7,0.67) {\tr{floresta}{forest}};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{O erro se acumula}{The error piles up}}
+  \begin{columns}[T]
+    \begin{column}{0.44\textwidth}
+      \small
+      \tr{Cada triângulo herda a posição do anterior. Um errinho de ângulo no começo vira um
+      erro maior \emph{depois}, porque o triângulo seguinte parte de um ponto já
+      deslocado.}{Each triangle inherits the position of the previous one. A small angle error
+      at the start becomes a larger error \emph{later}, because the next triangle starts from an
+      already shifted point.}
+      \medskip
+
+      \tr{Resultado: o erro \bnum{cresce com a distância} ao ponto de partida.}{Result: the
+      error \bnum{grows with the distance} from the starting point.}
+      \medskip
+
+      \tr{Num país de \num{4000} km, o ponto de partida fica \emph{muito} longe das
+      fronteiras.}{In a country 4\,000\,km across, the starting point is \emph{very} far from
+      the borders.}
+    \end{column}
+    \begin{column}{0.52\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95]
+        \coordinate (Q0) at (0,0.2); \coordinate (Q1) at (1.1,0.7); \coordinate (Q2) at (2.2,0.35);
+        \coordinate (Q3) at (3.3,0.9); \coordinate (Q4) at (4.4,0.5); \coordinate (Q5) at (5.5,1.1);
+        \draw[rede] (Q0) -- (Q1) -- (Q2) -- (Q3) -- (Q4) -- (Q5);
+        \fill[mStone] (-0.09,0.11) rectangle (0.09,0.29);
+        \foreach \q/\r in {Q1/0.12, Q2/0.2, Q3/0.3, Q4/0.42, Q5/0.56} {
+          \draw[corErro, dashed, thick] (\q) circle (\r);
+          \fill[corFrame] (\q) circle (0.045);
+        }
+        \node[rotulo, align=center] at (0,-0.45) {\tr{ponto de partida}{starting
+          point}\\ \tr{(fixo)}{(fixed)}};
+        \node[rotulo, text=corErro, align=center] at (5.0,-0.45) {\tr{incerteza
+          cresce}{uncertainty grows}};
+        \draw[seta, corErro] (3.6,-0.4) -- (4.5,-0.4);
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{\tr{O datum topocêntrico}{The topocentric datum}}
+
+\begin{frame}{\tr{Pregar o elipsoide na Terra}{Pinning the ellipsoid to the Earth}}
+  \begin{columns}[T]
+    \begin{column}{0.44\textwidth}
+      \small
+      \tr{Para calcular na rede é preciso uma superfície lisa e simples: o
+      \textcolor{corSist}{\textbf{elipsoide}}. A Terra de verdade, com seus calombos, é
+      parecida com o \textcolor{corMar}{\textbf{geoide}}.}{To compute on the network we need a
+      smooth, simple surface: the \textcolor{corSist}{\textbf{ellipsoid}}. The real Earth, with
+      its lumps, resembles the \textcolor{corMar}{\textbf{geoid}}.}
+      \medskip
+
+      \tr{Os dois não coincidem. Então é preciso escolher \alert{onde encostar} um no
+      outro.}{The two do not coincide. So one has to choose \alert{where to touch} one against
+      the other.}
+      \medskip
+
+      \tr{No \bnum{ponto-datum} se impõe: o elipsoide tangencia o geoide ($N=0$, e a vertical
+      coincide com a normal: $\xi=\eta=0$). \alert{Longe dali, os dois se afastam.}}{At the
+      \bnum{datum point} we impose: the ellipsoid touches the geoid ($N=0$, and the vertical
+      coincides with the normal: $\xi=\eta=0$). \alert{Far from it, the two drift apart.}}
+    \end{column}
+    \begin{column}{0.52\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95]
+        \draw[elip, domain=0:8, samples=60, smooth]
+          plot (\x, {2.2 - 0.07*(\x-4)^2});
+        \draw[geoide, domain=0:8, samples=80, smooth]
+          plot (\x, {2.2 - 0.07*(\x-4)^2 + (\x-4)^2*(0.045 + 0.02*sin(3*\x r))});
+        \fill[mStone] (4,2.2) circle (0.07);
+        \node[rotulo, below=3pt, align=center] at (4,2.15) {\tr{ponto-datum}{datum point}\\
+          $N=0$, $\xi=\eta=0$};
+        \node[rotulo, text=corSist, above] at (1.0,1.55) {\tr{elipsoide}{ellipsoid}};
+        \node[rotulo, text=corMar, above] at (6.8,2.05) {\tr{geoide}{geoid}};
+        \draw[seta2, mStone] (7.0,1.35) -- node[rotulo, right] {$N$} (7.0,1.65);
+        \node[rotulo, text=mStoneMid] at (4,0.5) {\tr{esquemático, fora de escala}{schematic,
+          not to scale}};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Córrego Alegre: escolhido pelos desvios da vertical}{Córrego Alegre: chosen
+    by the deflections of the vertical}}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \small
+      \tr{Ao implantar a cadeia de triangulação em Santa Catarina, mediram-se
+      \textbf{astronomicamente} os desvios da vertical. Eles tendiam para o leste: mais massa a
+      oeste, menos a leste. Conclusão: o ponto-datum ficaria melhor no \bnum{planalto}.}{While
+      setting the triangulation chain in Santa Catarina, deflections of the vertical were
+      measured \textbf{astronomically}. They leaned east: more mass to the west, less to the
+      east. Conclusion: the datum point would sit better on the \bnum{plateau}.}
+      \medskip
+
+      \tr{Escolheu-se o vértice \textbf{Córrego Alegre} e o elipsoide internacional de Hayford.
+      Posição e orientação no ponto foram determinadas \textbf{pelas estrelas}. Os cálculos eram
+      feitos com calculadoras mecânicas e tábuas de logaritmos.}{The \textbf{Córrego Alegre}
+      vertex and Hayford's international ellipsoid were chosen. Position and orientation at the
+      point were determined \textbf{by the stars}. The computations were done with mechanical
+      calculators and logarithm tables.}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{regra}[title={\tr{Datum Córrego Alegre}{Córrego Alegre datum}}]
+        \small
+        \tr{elipsoide: \textbf{Hayford 1924}}{ellipsoid: \textbf{Hayford 1924}}\\
+        $a=\num{6378388}$\,m\quad $1/f=\num{297}$\\[3pt]
+        \tr{ponto-datum: vértice Córrego Alegre}{datum point: Córrego Alegre vertex}\\
+        $\varphi=-19^\circ 50' 14{,}91''$\\
+        $\xi=\eta=0$,\quad $N=0$\,m
+      \end{regra}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{De Córrego Alegre ao SAD69}{From Córrego Alegre to SAD69}}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \small
+      \begin{enumerate}
+        \setlength{\itemsep}{4pt}
+        \item \tr{Para ter \emph{um} referencial para a América do Sul, com apoio da agência
+              cartográfica americana, medem-se astronomicamente vértices de vários países: nasce
+              o \textbf{PSAD56}, com origem em La Canoa, na Venezuela. Uma rede de trilateração
+              (HIRAN) liga as cadeias do Brasil e da Venezuela.}{To have \emph{one} reference
+              for South America, with support from the American mapping agency, vertices in
+              several countries are measured astronomically: the \textbf{PSAD56} is born, with
+              origin at La Canoa, Venezuela. A trilateration network (HIRAN) links the Brazilian
+              and Venezuelan chains.}
+        \item \tr{A adaptação ao geoide ali era fraca. Mediram-se \num{2113} estações
+              gravimétricas em volta de um novo candidato: o vértice \textbf{Chuá}.}{The fit to
+              the geoid there was poor. \num{2113} gravimetric stations were measured around a
+              new candidate: the \textbf{Chuá} vertex.}
+        \item \tr{Com ele, o \textbf{SAD69} (\emph{South American Datum 1969}).}{With it, the
+              \textbf{SAD69} (\emph{South American Datum 1969}).}
+      \end{enumerate}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{regra}[title={\tr{Datum SAD69}{SAD69 datum}}]
+        \small
+        \tr{elipsoide: \textbf{UGGI67}}{ellipsoid: \textbf{UGGI67}}\\
+        $a=\num{6378160}$\,m\quad $1/f=\num{298.25}$\\[3pt]
+        \tr{ponto-datum: vértice Chuá}{datum point: Chuá vertex}\\
+        $\xi=\num{0.31}''$,\quad $\eta=-\num{3.52}''$,\quad $N=0$\,m
+      \end{regra}
+      \medskip
+      \begin{ideia}[title={\tr{Repare}{Notice}}]
+        \small\tr{Para escolher onde pregar o elipsoide, usou-se \bnum{gravimetria} --- a aula
+        de gravimetria volta a aparecer.}{To choose where to pin the ellipsoid,
+        \bnum{gravimetry} was used --- the gravimetry class shows up again.}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Três referenciais lado a lado}{Three references side by side}}
+  \centering
+  \small
+  \renewcommand{\arraystretch}{1.5}
+  \begin{tabular}{llll}
+    \toprule
+     & \textbf{\tr{Córrego Alegre}{Córrego Alegre}} & \textbf{SAD69} & \textbf{SIRGAS2000} \\
+    \midrule
+    \tr{elipsoide}{ellipsoid} & Hayford 1924 & UGGI67 & GRS80 \\
+    $a$ (m) & \num{6378388} & \num{6378160} & \num{6378137} \\
+    $1/f$ & \num{297} & \num{298.25} & \num{298.257222101} \\
+    \tr{origem}{origin} & \tr{ponto-datum no chão}{datum point on the ground} &
+      \tr{ponto-datum no chão}{datum point on the ground} &
+      \tr{centro de massa da Terra}{Earth's center of mass} \\
+    \tr{como se fixa}{how it is fixed} & \tr{estrelas}{stars} & \tr{estrelas + gravimetria}{stars
+      + gravimetry} & \tr{satélites}{satellites} \\
+    \bottomrule
+  \end{tabular}
+  \bigskip
+
+  \tr{As duas primeiras colunas são \alert{topocêntricas}: o ``centro'' é um ponto no chão de
+  Minas Gerais. A terceira é \bnum{geocêntrica}.}{The first two columns are
+  \alert{topocentric}: the ``center'' is a point on the ground in Minas Gerais. The third is
+  \bnum{geocentric}.}
+\end{frame}
+
+\begin{frame}{\tr{Topocêntrico = centro fora do lugar}{Topocentric = center out of place}}
+  \begin{columns}[T]
+    \begin{column}{0.46\textwidth}
+      \small
+      \tr{Como o SAD69 foi pregado num ponto do chão, o centro do seu elipsoide não coincide
+      com o centro de massa da Terra.}{Because the SAD69 was pinned at a point on the ground,
+      the center of its ellipsoid does not coincide with the Earth's center of mass.}
+      \medskip
+
+      \tr{Pelos parâmetros oficiais (3 translações), a distância entre os dois centros é:}{By
+      the official parameters (3 translations), the distance between the two centers is:}
+      \[
+        \sqrt{67{,}35^2 + 3{,}88^2 + 38{,}22^2} \approx \bnum{\num{77.5}\,m}
+      \]
+      \tr{Cerca de oitenta metros. E tudo o que se mede \emph{a partir} desse centro herda
+      o desvio.}{About eighty meters. And everything measured \emph{from} that center inherits
+      the offset.}
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=1.0]
+        \draw[corFrame, very thick] (0,0) circle (1.65);
+        \draw[corSist, very thick, dashed] (-0.45,0.28) circle (1.65);
+        \draw[thick, corFrame] (-0.08,-0.08) -- (0.08,0.08) (-0.08,0.08) -- (0.08,-0.08);
+        \draw[thick, corSist] (-0.53,0.2) -- (-0.37,0.36) (-0.53,0.36) -- (-0.37,0.2);
+        \draw[seta, corErro, line width=1.3pt] (0,0) -- (-0.45,0.28);
+        \node[rotulo, text=corFrame, right] at (1.7,0.2) {\tr{SIRGAS2000: geocentro}{SIRGAS2000:
+          geocenter}};
+        \node[rotulo, text=corSist, left] at (-1.8,1.35) {\tr{SAD69: centro
+          deslocado}{SAD69: shifted center}};
+        \node[rotulo, text=corErro, below] at (-0.2,-0.12) {$\approx 78$\,m};
+        \node[rotulo, text=mStoneMid] at (0,-2.1) {\tr{fora de escala}{not to scale}};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Pare e pense}{Stop and think}}
+  \begin{columns}[T]
+    \begin{column}{0.46\textwidth}
+      \begin{regra}[title={\tr{Uma pergunta}{A question}}]
+        \small
+        \tr{Os dois centros estão a \num{77.5}\,m. Mas o poste só ``anda'' entre \num{57} e
+        \num{76}\,m no chão do Brasil.}{The two centers are \num{77.5}\,m apart. But the post
+        only ``moves'' between \num{57} and \num{76}\,m on the Brazilian ground.}
+        \medskip
+
+        \tr{\textbf{Por que o deslocamento horizontal não é sempre \num{77.5}\,m?}}{\textbf{Why
+        isn't the horizontal shift always \num{77.5}\,m?}}
+      \end{regra}
+      \smallskip
+      \onslide<2->{
+      \begin{ideia}[title={\tr{Resposta}{Answer}}]
+        \small
+        \tr{O vetor de \num{77.5}\,m tem direção fixa no espaço. Em cada lugar, uma parte dele
+        aponta ao longo da \alert{vertical} (vira \emph{altura}) e só o resto fica
+        \emph{horizontal}. Como a vertical muda de lugar para lugar, a divisão muda
+        também.}{The \num{77.5}\,m vector has a fixed direction in space. At each place, a part of
+        it points along the \alert{vertical} (it becomes \emph{height}) and only the rest is
+        \emph{horizontal}. Because the vertical changes from place to place, the split changes
+        too.}
+      \end{ideia}
+      }
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \small
+      \centering
+      \renewcommand{\arraystretch}{1.3}
+      \begin{tabular}{lrrr}
+        \toprule
+        \tr{lugar}{place} & $\Delta N$ & $\Delta E$ & $\Delta h$ \\
+        \midrule
+        Fortaleza & $-\num{41.7}$ & $-\num{38.9}$ & $-\num{29.5}$ \\
+        Curitiba & $-\num{54.2}$ & $-\num{48.5}$ & $-\num{3.0}$ \\
+        \tr{Chuí}{Chuí} & $-\num{55.2}$ & $-\num{51.8}$ & $+\num{8.1}$ \\
+        \bottomrule
+      \end{tabular}
+      \smallskip
+
+      {\scriptsize\tr{metros, SAD69 $\to$ SIRGAS2000, calculado com os 3 parâmetros oficiais.
+      \emph{Sempre} para sudoeste.}{meters, SAD69 $\to$ SIRGAS2000, computed with the 3 official
+      parameters. \emph{Always} to the southwest.}}
+      \smallskip
+
+      \onslide<2->{\tr{Em Fortaleza, boa parte do vetor vira altura; no Sul, quase
+      nada.}{In Fortaleza a good part of the vector becomes height; in the south, almost
+      none.}}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ==================================================================
+\section{\tr{O custo da herança}{The cost of the inheritance}}
+
+\begin{frame}{\tr{A rede, costurada em pedaços}{The network, stitched in pieces}}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \small
+      \tr{O primeiro ajuste em computador do SAD69 (agência cartográfica americana, programa
+      HAVOC) dividiu a rede brasileira em \bnum{10 áreas}, calculadas em separado: o computador
+      da época não aguentava mais.}{The first computer adjustment of the SAD69 (American mapping
+      agency, program HAVOC) split the Brazilian network into \bnum{10 areas}, computed
+      separately: the computer of the time could not take more.}
+      \medskip
+
+      \tr{Nos anos 1980 o IBGE seguiu assim: cada nova área era calculada \emph{prendendo} as
+      estações de junção às coordenadas do cálculo anterior.}{In the 1980s IBGE went on like
+      this: each new area was computed \emph{holding} the junction stations at the coordinates
+      of the previous computation.}
+      \medskip
+
+      \tr{Cada emenda guarda o erro da vizinha. O próprio IBGE registra que isso
+      \alert{inseriu distorções}.}{Each seam keeps its neighbor's error. IBGE itself records
+      that this \alert{introduced distortions}.}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \foreach \c in {0,1,2,3,4} \foreach \r in {0,1} {
+          \pgfmathsetmacro{\k}{ifthenelse(mod(\c+\r,2)==0, 12, 4)}
+          \fill[corFrame!\k] (\c*1.25,\r*1.1) rectangle (\c*1.25+1.25,\r*1.1+1.1);
+          \draw[corFrame, thick] (\c*1.25,\r*1.1) rectangle (\c*1.25+1.25,\r*1.1+1.1);
+        }
+        \foreach \x/\y in {1.25/0.35, 1.25/1.45, 2.5/0.7, 2.5/1.8, 3.75/0.4, 3.75/1.55,
+                           5.0/0.8, 5.0/1.7, 0.6/1.1, 1.9/1.1, 3.1/1.1, 4.4/1.1, 5.6/1.1}
+          \fill[corErro] (\x,\y) circle (0.06);
+        \node[rotulo, align=center] at (3.1,2.55) {\tr{10 áreas calculadas uma de cada vez}{10
+          areas computed one at a time}};
+        \node[rotulo, text=corErro, align=center] at (3.1,-0.4)
+          {\tr{$\bullet$ estações de junção: o erro passa de uma área à seguinte}{$\bullet$
+           junction stations: the error passes from one area to the next}};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{1996: o primeiro ajuste global}{1996: the first global adjustment}}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \small
+      \tr{Em 1996 o IBGE ajustou \emph{tudo de uma vez}, pela primeira vez. Antes, só havia
+      ajustes parciais.}{In 1996 IBGE adjusted \emph{everything at once}, for the first time.
+      Before, there were only partial adjustments.}
+      \medskip
+
+      \renewcommand{\arraystretch}{1.3}
+      \begin{tabular}{lr}
+        \toprule
+        \tr{estações da rede clássica}{classical network stations} & \num{4760} \\
+        \tr{estações GPS}{GPS stations} & \num{187} \\
+        \tr{estações Doppler}{Doppler stations} & \num{179} \\
+        \bottomrule
+      \end{tabular}
+      \medskip
+
+      \tr{Resultado publicado em setembro de 1996 no Banco de Dados Geodésicos (BDG), o
+      catálogo oficial do SGB.}{Result published in September 1996 in the Geodetic Database
+      (BDG), the official catalog of the SGB.}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{ideia}[title={\tr{O que o IBGE concluiu}{What IBGE concluded}}]
+        \small\tr{Pela primeira vez se obteve ``um retrato consistente da qualidade da
+        rede''.}{For the first time a ``consistent picture of the quality of the network'' was
+        obtained.}
+      \end{ideia}
+      \medskip
+      \begin{cuidado}[title={\tr{E o que ele viu}{And what it saw}}]
+        \small\tr{Comparado ao que estava no BDG, o deslocamento horizontal \bnum{aumenta com
+        a distância ao ponto-datum}, chegando a \bnum{\num{13}\,m} nos extremos norte, sul e
+        oeste.}{Compared with what was in the BDG, the horizontal shift \bnum{increases with the
+        distance from the datum point}, reaching \bnum{\num{13}\,m} at the northern, southern
+        and western extremes.}
+      \end{cuidado}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{A distorção cresce com a distância}{The distortion grows with distance}}
+  \begin{columns}[T]
+    \begin{column}{0.46\textwidth}
+      \small
+      \tr{É a mesma figura do ``erro que se acumula'', agora em escala de país.}{It is the same
+      picture as ``the error piles up'', now at country scale.}
+      \medskip
+
+      \tr{Perto de Chuá, a rede é boa: ali o elipsoide foi pregado. Longe dali, geoide e
+      elipsoide se separam, e o ajuste em pedaços acumulou o resto.}{Near Chuá the network is
+      good: that is where the ellipsoid was pinned. Far from it, geoid and ellipsoid separate,
+      and the piecewise adjustment piled up the rest.}
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95]
+        \draw[seta, mStone] (0,0) -- (5.3,0) node[rotulo, below left] {\tr{distância ao ponto-datum}
+          {distance from the datum point}};
+        \draw[seta, mStone] (0,0) -- (0,3.1) node[rotulo, above right]
+          {\tr{deslocamento}{shift}};
+        \draw[corErro, very thick, domain=0:4.9, samples=40, smooth]
+          plot (\x, {0.1 + 0.115*\x^1.55});
+        \fill[corErro] (4.9,{0.1 + 0.115*4.9^1.55}) circle (0.07);
+        \node[rotulo, text=corErro, above left, align=center] at (4.9,{0.1 + 0.115*4.9^1.55})
+          {\tr{até \num{13}\,m}{up to \num{13}\,m}};
+        \fill[mStone] (0,0) circle (0.06);
+        \node[rotulo, below] at (0.05,-0.05) {Chuá};
+        \node[rotulo, text=mStoneMid] at (3.0,2.8) {\tr{esquemático: só o valor máximo é um dado}
+          {schematic: only the maximum is a datum}};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Sua vez}{Your turn}}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \begin{regra}[title={\tr{Quantas partes por milhão?}{How many parts per million?}}]
+        \small
+        \begin{enumerate}
+          \item[(a)] \tr{Um extremo do país fica a cerca de \num{2000}\,km de Chuá e acumulou
+                \num{13}\,m. Quantos mm por km é isso (em \ppm)?}{One extreme of the country is
+                about \num{2000}\,km from Chuá and piled up \num{13}\,m. How many mm per km is
+                that (in \ppm)?}
+          \item[(b)] \tr{A rede clássica ``prometia'' \num{3}\ppm nas direções. Em
+                \num{2000}\,km, quanto seria isso?}{The classical network ``promised''
+                \num{3}\ppm on directions. Over \num{2000}\,km, how much would that be?}
+        \end{enumerate}
+      \end{regra}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \onslide<2->{
+      \begin{ideia}[title={\tr{Respostas}{Answers}}]
+        \small\raggedright
+        (a) $\dfrac{13\,\mathrm{m}}{2\,000\,000\,\mathrm{m}} = \bnum{\num{6.5}\ppm}$.
+        \medskip
+
+        (b) $\num{3}\times10^{-6}\times\num{2000}\,\mathrm{km} = \bnum{\num{6}\,m}$.
+        \medskip
+
+        \tr{O erro observado é da \alert{mesma ordem} do prometido: a rede não era ``ruim'',
+        estava no limite do que a técnica permitia numa distância dessas.}{The observed error is
+        of the \alert{same order} as the promised one: the network was not ``bad'', it was at the
+        limit of what the technique allowed over such a distance.}
+      \end{ideia}
+      }
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{O GPS mostra o que a rede escondia}{GPS shows what the network was hiding}}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \small
+      \tr{Os levantamentos clássicos pararam no fim dos anos 1980. No começo de 1991, o IBGE
+      comprou \bnum{quatro receptores GPS}. Em 2006, já eram \bnum{\num{1600}} estações GPS.}{The
+      classical surveys stopped in the late 1980s. In early 1991 IBGE bought \bnum{four GPS
+      receivers}. By 2006 there were \bnum{\num{1600}} GPS stations.}
+      \medskip
+
+      \tr{Em 2004 e 2005 foram feitas \num{12} campanhas GPS \emph{em cima} de marcos da rede
+      clássica. Descobriu-se que \bnum{uma só conexão GPS muda as coordenadas dos vizinhos em
+      até \num{9}\,m}, num raio de cerca de \bnum{\num{500}\,km}.}{In 2004 and 2005, \num{12} GPS
+      campaigns were made \emph{on top of} marks of the classical network. It was found that
+      \bnum{a single GPS connection changes the coordinates of its neighbors by up to
+      \num{9}\,m}, within a radius of about \bnum{\num{500}\,km}.}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95]
+        \draw[corFrame, thick, dashed] (2.4,1.6) circle (1.55);
+        \pic at (2.4,1.45) {antena};
+        \node[rotulo, text=corFrame, align=center] at (2.4,0.95) {GPS};
+        \foreach \a/\d in {20/1.3, 80/1.1, 140/1.35, 200/1.0, 260/1.2, 320/1.4} {
+          \fill[mStoneMid] ($(2.4,1.6)+(\a:\d)$) circle (0.05);
+          \draw[seta, corErro] ($(2.4,1.6)+(\a:\d)$) -- ++({\a+180}:{0.35});
+        }
+        \node[rotulo, text=corFrame] at (2.4,3.45) {$\approx 500$\,km};
+        \node[rotulo, text=corErro, align=center] at (2.4,-0.25) {\tr{as marcas da rede clássica
+          se deslocam}{classical network marks shift}};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+  \medskip
+  \begin{ideia}[title={\tr{E agora?}{And now?}}]
+    \small\tr{Em 2000, o IBGE cria o \textbf{PMRG} (Projeto Mudança do Referencial Geodésico),
+    por resolução do Congresso Brasileiro de Cartografia de 1999. A mudança é inevitável. A
+    pergunta é: \bnum{para qual referencial?}}{In 2000 IBGE creates the \textbf{PMRG}
+    (Geodetic Reference Change Project), by resolution of the 1999 Brazilian Cartography
+    Congress. The change is unavoidable. The question is: \bnum{to which
+    reference?}}
+  \end{ideia}
+\end{frame}
+
+% ==================================================================
+\section{\tr{Fechamento}{Wrap-up}}
+
+\begin{frame}{\tr{A pergunta que vira projeto}{The question that becomes a project}}
+  \begin{columns}[T]
+    \begin{column}{0.46\textwidth}
+      \Large\alert{\tr{``E se o centro fosse o centro da Terra, medido de uma só vez por
+      satélites?''}{``What if the center were the Earth's center, measured all at once by
+      satellites?''}}
+      \normalsize
+      \par\bigskip
+      \raggedright
+      \tr{Se a distorção vem de pregar o elipsoide num ponto do chão e de emendar pedaços,
+      a cura é \bnum{pregá-lo no centro de massa} e \bnum{medir tudo ao mesmo tempo}.}{If the
+      distortion comes from pinning the ellipsoid to a point on the ground and splicing pieces,
+      the cure is to \bnum{pin it at the center of mass} and \bnum{measure everything at the
+      same time}.}
+    \end{column}
+    \begin{column}{0.50\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.95, caixa/.append style={font=\footnotesize, text width=2.4cm}]
+        \node[caixa, draw=corErro, fill=corErro!8] (a) at (0,2.0)
+          {\tr{antes}{before}\\[1pt]{\scriptsize\tr{centro no chão\\ pedaços emendados}{center
+          on the ground\\ spliced pieces}}};
+        \node[caixa, draw=corFrame, fill=corFrame!8] (b) at (3.6,2.0)
+          {\tr{depois}{after}\\[1pt]{\scriptsize\tr{centro no geocentro\\ medido de uma
+          vez}{center at the geocenter\\ measured at once}}};
+        \draw[seta, mStoneMid] (a) -- (b);
+        \node[rotulo, text=mStoneMid, align=center] at (1.8,0.55)
+          {\tr{Aula 2: quem decidiu isso, e como se planeja}{Class 2: who decided this, and how it
+          is planned}};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Para levar para casa --- aula 1}{Take-home --- class 1}}
+  \small
+  \begin{enumerate}
+    \setlength{\itemsep}{2pt}
+    \item \tr{O \bnum{SGB} é o conjunto de estações e redes que dá ao país posição, altitude e
+          gravidade oficiais. A rede \textbf{passiva} (marcos no chão) é a herança; as
+          \textbf{ativas} (RBMC, RMPG) são o presente.}{The \bnum{SGB} is the set of stations
+          and networks that gives the country official position, height and gravity. The
+          \textbf{passive} network (marks in the ground) is the inheritance; the \textbf{active}
+          ones (RBMC, RMPG) are the present.}
+    \item \tr{Media-se o país por \bnum{triangulação}: uma base, muitos ângulos, azimutes pelas
+          estrelas --- e satélites Doppler onde a mata impedia. O erro \alert{cresce com a
+          distância} ao ponto de partida.}{The country was measured by \bnum{triangulation}: one
+          base, many angles, azimuths by the stars --- and Doppler satellites where the forest
+          got in the way. The error \alert{grows with distance} from the starting point.}
+    \item \tr{Um \bnum{datum topocêntrico} pregava o elipsoide num ponto do chão (Córrego
+          Alegre, depois Chuá). Por isso o centro do SAD69 está a cerca de \bnum{\num{78}\,m}
+          do centro da Terra.}{A \bnum{topocentric datum} pinned the ellipsoid to a point on the
+          ground (Córrego Alegre, later Chuá). So the center of the SAD69 is about
+          \bnum{\num{78}\,m} from the Earth's center.}
+    \item \tr{A rede foi \bnum{emendada em pedaços} por limitação de computador. O ajuste global de
+          1996 mostrou deslocamentos de até \num{13}\,m longe do ponto-datum.}{The network was
+          \bnum{spliced from pieces} because of computer limits. The 1996 global adjustment showed
+          shifts of up to \num{13}\,m far from the datum point.}
+    \item \tr{Conexões GPS em marcos clássicos movem os vizinhos em até \num{9}\,m, num raio de
+          \num{500}\,km: \bnum{o GPS não só mede, ele audita}.}{GPS connections on classical
+          marks move their neighbors by up to \num{9}\,m, within a \num{500}\,km radius:
+          \bnum{GPS does not just measure, it audits}.}
+  \end{enumerate}
+  \begin{ideia}
+    \scriptsize \tr{\textbf{Na próxima aula:} em 1993, em Assunção, um grupo decide pregar o
+    referencial no centro da Terra --- e começa a planejar como.}{\textbf{Next class:} in 1993,
+    in Asunción, a group decides to pin the reference system at the Earth's center --- and
+    begins planning how.}
+  \end{ideia}
+\end{frame}
+
+% ==================================================================
+% AULA 2 — A IDEALIZAÇÃO: O PROJETO SIRGAS, 1993–1995
+% ==================================================================
+\section{\tr{Aula 2: A idealização (1993--1995)}{Class 2: The Design (1993--1995)}}
+
+\begin{frame}{\tr{O gancho da Aula 2: o continente sem centro comum}{Class 2 Hook: The Continent Without a Common Center}}
+  \begin{ideia}
+    \tr{\textbf{A pergunta desta aula:} como se planeja um sistema geodésico único para um
+    continente inteiro, quando cada país usava um elipsoide diferente e nenhum deles tinha centro
+    no centro da Terra?}{\textbf{The question for this class:} how do you plan a single geodetic
+    reference system for an entire continent, when each country used a different ellipsoid and none
+    of them was centered at the Earth's center?}
+  \end{ideia}
+  \vspace{0.2cm}
+  \begin{itemize}
+    \setlength{\itemsep}{6pt}
+    \item \tr{Na Aula 1 vimos que o Brasil usava \textbf{Córrego Alegre} e depois \textbf{SAD69},
+          amarrados ao planalto mineiro com erros acumulados de até \bnum{\num{13}\,m}.}{In Class 1
+          we saw that Brazil used \textbf{Córrego Alegre} and later \textbf{SAD69}, pinned to Minas
+          Gerais with accumulated errors reaching \bnum{\num{13}\,m}.}
+    \item \tr{Mas a Argentina usava \emph{Campo Inchauspe}; a Venezuela e a Colômbia usavam
+          \emph{La Canoa} (PSAD56); o Chile usava \emph{SAD56}.}{Meanwhile Argentina used
+          \emph{Campo Inchauspe}; Venezuela and Colombia used \emph{La Canoa} (PSAD56); Chile used
+          \emph{SAD56}.}
+    \item \tr{Na fronteira entre dois países, uma mesma ponte ou usina hidrelétrica tinha duas
+          coordenadas oficiais que divergiam por dezenas ou centenas de metros!}{At the border
+          between two nations, the exact same bridge or dam had two official sets of coordinates
+          differing by dozens or hundreds of meters!}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{\tr{A colcha de retalhos sul-americana em 1993}{The South American Patchwork in 1993}}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{tcolorbox}[colback=mRose!8, colframe=mRose, title={\tr{Problemas na fronteira}{Border issues}}]
+        \scriptsize
+        \begin{itemize}
+          \setlength{\itemsep}{3pt}
+          \item \tr{Marcos de fronteira medidos por dois países vizinhos não fechavam.}{Border
+                monuments surveyed by neighbouring countries disagreed.}
+          \item \tr{Cada nação tinha seu próprio elipsoide de referência (Hayford 1924, UGGI67,
+                Clark 1866).}{Each nation had its own reference ellipsoid (Hayford 1924, UGGI67,
+                Clarke 1866).}
+          \item \tr{Sistemas de navegação por satélite (GPS) forneciam coordenadas geocêntricas,
+                incompatíveis com todas as cartas nacionais.}{Satellite navigation systems (GPS)
+                provided geocentric coordinates, conflicting with all national map sheets.}
+        \end{itemize}
+      \end{tcolorbox}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.85]
+        % Desenho esquemático de dois elipsoides tangentes a superfícies diferentes
+        \draw[thick, corMar] (0,0) arc[start angle=150, end angle=30, radius=3.5] node[right] {\tiny \tr{Geoide}{Geoid}};
+        \draw[thick, dashed, corSist] (-0.3,-0.4) arc[start angle=155, end angle=45, radius=3.6]
+              node[above, font=\tiny, text=corSist] {\tr{Elipsoide País A}{Ellipsoid Country A}};
+        \draw[thick, dotted, mAmber] (0.3,-0.6) arc[start angle=145, end angle=35, radius=3.4]
+              node[below, font=\tiny, text=mAmber] {\tr{Elipsoide País B}{Ellipsoid Country B}};
+        \fill[corErro] (1.5, 0.82) circle (2.5pt) node[above, font=\scriptsize] {\tr{Marco de fronteira}{Border mark}};
+        \draw[seta, corErro] (1.5,0.82) -- (1.1,0.4) node[left, font=\tiny] {\tr{$h_A$}{$h_A$}};
+        \draw[seta, corErro] (1.5,0.82) -- (1.9,0.2) node[right, font=\tiny] {\tr{$h_B$}{$h_B$}};
+      \end{tikzpicture}\\[4pt]
+      \tiny \tr{A mesma feição física projetada em superfícies diferentes com origens distintas.}{The
+      same physical feature projected onto different surfaces with separate origins.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Assunção, outubro de 1993: a virada histórica}{Asunción, October 1993: The Historic Turning Point}}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.54\textwidth}
+      \begin{itemize}
+        \setlength{\itemsep}{4pt}
+        \scriptsize
+        \item \tr{Em outubro de 1993, realizou-se em \textbf{Assunção (Paraguai)} a \emph{Conferência
+              Internacional para a Definição de um Referencial Geocêntrico Sul-Americano}.}{In October
+              1993, the \emph{International Conference for the Definition of a South American Geocentric
+              Datum} took place in \textbf{Asunción (Paraguay)}.}
+        \item \tr{Organizada em conjunto por:}{Jointly organized by:}
+              \begin{itemize}
+                \tiny
+                \item \textbf{IAG} (\tr{Associação Internacional de Geodésia}{International Association of Geodesy});
+                \item \textbf{IPGH} (\tr{Instituto Pan-Americano de Geografia e História}{Pan-American Institute of Geography and History});
+                \item \textbf{DMA} (\emph{Defense Mapping Agency}, \tr{hoje NGA, EUA}{now NGA, USA}).
+              \end{itemize}
+        \item \tr{Nasce ali o \textbf{SIRGAS}: originalmente \emph{Sistema de Referência Geocêntrico
+              para a América do Sul}.}{There \textbf{SIRGAS} was born: originally \emph{South American
+              Geocentric Reference System}.}
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{regra}
+        \scriptsize
+        \tr{\textbf{A meta definida em Assunção:}\\[3pt]
+        Adotar um referencial \bnum{geocêntrico único}, compatível com o ITRS e as técnicas espaciais
+        (GPS), servindo de base para todos os países do continente.}{\textbf{The goal set in Asunción:}\\[3pt]
+        Adopt a \bnum{single geocentric} reference frame, compatible with ITRS and space techniques
+        (GPS), serving as the foundation for all nations on the continent.}
+      \end{regra}
+      \vspace{0.2cm}
+      \begin{cuidado}
+        \tiny \tr{\textbf{Evolução do nome:} em 2001, a ONU recomendou estender o sistema às
+        Américas. Em nov/2020, mudou para \emph{Sistema de Referência Geodésico para as Américas}.}{
+        \textbf{Name evolution:} in 2001, the UN recommended extending the system to the Americas.
+        In Nov/2020, it became \emph{Geodetic Reference System for the Americas}.}
+      \end{cuidado}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{A estrutura inicial de trabalho (1993)}{The Initial Working Structure (1993)}}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{tcolorbox}[colback=mTeal!8, colframe=mTeal, title={\tr{Grupo de Trabalho I (GT I)}{Working Group I (WG I)}}]
+        \scriptsize
+        \textbf{\tr{Sistema de Referência}{Reference System}}\\[3pt]
+        \begin{itemize}
+          \setlength{\itemsep}{2pt}
+          \item \tr{Definir o sistema de referência continental geocêntrico.}{Define the continental geocentric reference system.}
+          \item \tr{Planejar, executar e processar a rede continental de alta precisão via GPS.}{Plan, execute and process the high-precision continental GPS network.}
+          \item \tr{Materializar o primeiro ``esqueleto'' continental.}{Materialize the initial continental ``backbone''.}
+        \end{itemize}
+      \end{tcolorbox}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{tcolorbox}[colback=mIndigo!8, colframe=mIndigo, title={\tr{Grupo de Trabalho II (GT II)}{Working Group II (WG II)}}]
+        \scriptsize
+        \textbf{\tr{Datum Geocêntrico}{Geocentric Datum}}\\[3pt]
+        \begin{itemize}
+          \setlength{\itemsep}{2pt}
+          \item \tr{Orientar a integração das redes geodésicas nacionais ao novo sistema.}{Guide the integration of national geodetic networks into the new system.}
+          \item \tr{Densificar as estações dentro das fronteiras de cada país membro.}{Densify stations within the borders of each member country.}
+          \item \tr{Definir parâmetros de transformação entre os data clássicos e o SIRGAS.}{Define transformation parameters between classical datums and SIRGAS.}
+        \end{itemize}
+      \end{tcolorbox}
+    \end{column}
+  \end{columns}
+  \vspace{0.25cm}
+  \begin{ideia}
+    \scriptsize \tr{\textbf{E a altitude?} Em 1993, os GTs cuidavam apenas da geometria tridimensional
+    ($X, Y, Z$). A unificação da rede altimétrica física só nasceria em 1997 com o \textbf{GT III}
+    (tema central da nossa Parte 2!).}{\textbf{What about height?} In 1993, the WGs handled only
+    3D geometry ($X,Y,Z$). The unification of physical heights was created in 1997 with \textbf{WG III}
+    (the core focus of our Part 2!).}
+  \end{ideia}
+\end{frame}
+
+\begin{frame}{\tr{As quatro grandes decisões de projeto}{The Four Great Design Decisions}}
+  \centering
+  \small \tr{Em vez de improvisar, os geodestas em Assunção tomaram 4 decisões fundamentais:}{Instead
+  of improvising, geodesists in Asunción made 4 fundamental decisions:}\\[0.3cm]
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.23\textwidth}
+      \begin{tcolorbox}[colback=mStoneLight, colframe=mTeal, title=\centering \scriptsize \tr{1. O Sistema}{1. The System}]
+        \centering \tiny \textbf{ITRS / IERS}\\[2pt]
+        \tr{Padrão científico global aberto}{Global open scientific standard}
+      \end{tcolorbox}
+    \end{column}
+    \begin{column}{0.23\textwidth}
+      \begin{tcolorbox}[colback=mStoneLight, colframe=mIndigo, title=\centering \scriptsize \tr{2. O Elipsoide}{2. The Ellipsoid}]
+        \centering \tiny \textbf{GRS80}\\[2pt]
+        \tr{Parâmetros geocêntricos IUGG 1979}{IUGG 1979 geocentric parameters}
+      \end{tcolorbox}
+    \end{column}
+    \begin{column}{0.23\textwidth}
+      \begin{tcolorbox}[colback=mStoneLight, colframe=mAmber, title=\centering \scriptsize \tr{3. A Técnica}{3. The Technique}]
+        \centering \tiny \textbf{GPS espacial}\\[2pt]
+        \tr{Rastreio contínuo e simultâneo}{Continuous simultaneous tracking}
+      \end{tcolorbox}
+    \end{column}
+    \begin{column}{0.23\textwidth}
+      \begin{tcolorbox}[colback=mStoneLight, colframe=mRose, title=\centering \scriptsize \tr{4. A Estrutura}{4. The Structure}]
+        \centering \tiny \textbf{Em camadas}\\[2pt]
+        \tr{Global $\to$ Continental $\to$ Nacional}{Global $\to$ Continental $\to$ National}
+      \end{tcolorbox}
+    \end{column}
+  \end{columns}
+  \vspace{0.3cm}
+  \tr{Vamos examinar a lógica por trás de cada uma dessas quatro escolhas.}{Let us inspect the logic
+  behind each of these four choices.}
+\end{frame}
+
+\begin{frame}{\tr{Decisão 1: Por que o ITRS do IERS?}{Decision 1: Why ITRS from IERS?}}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.52\textwidth}
+      \begin{itemize}
+        \setlength{\itemsep}{4pt}
+        \scriptsize
+        \item \textbf{\tr{O que se escolheu:}{What was chosen:}} o \emph{International Terrestrial
+              Reference System} (ITRS), mantido pelo IERS.
+        \item \textbf{\tr{Alternativas:}{Alternatives:}}
+              \begin{itemize}
+                \tiny
+                \item Criar um sistema sul-americano próprio;
+                \item Adotar diretamente o WGS 84 militar.
+              \end{itemize}
+        \item \textbf{\tr{Por que o ITRS?}{Why ITRS?}}
+              \begin{itemize}
+                \tiny
+                \item É o padrão científico mundial mais rigoroso da astronomia e geodésia.
+                \item Não depende de um único país nem de uma única agência militar.
+                \item Combina quatro técnicas espaciais independentes: VLBI, SLR, GNSS e DORIS.
+              \end{itemize}
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{ideia}
+        \scriptsize
+        \tr{\textbf{A definição do ITRS:}\\[2pt]
+        -- Origem no centro de massa da Terra (incluindo oceanos e atmosfera);\\[2pt]
+        -- Escala métrica no sistema próprio relativístico terrestre;\\[2pt]
+        -- Orientação alinhada ao polo e meridiano de Greenwich (BIH 1984.0);\\[2pt]
+        -- Evolução temporal sem rotação líquida da crosta (condição \emph{NNR}).}{\textbf{ITRS definition:}\\[2pt]
+        -- Origin at Earth's center of mass (including oceans and atmosphere);\\[2pt]
+        -- Metric scale in local relativistic terrestrial frame;\\[2pt]
+        -- Orientation aligned with BIH 1984.0 pole and meridian;\\[2pt]
+        -- Time evolution with no-net-rotation of the crust (\emph{NNR} condition).}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Pare e pense: por que não usar o WGS 84 diretamente?}{Stop and Think: Why Not Use WGS 84 Directly?}}
+  \begin{armadilha}
+    \tr{\textbf{Pergunta comum:} ``Os receptores GPS dão coordenadas no WGS 84. Por que a América
+    do Sul precisou criar o SIRGAS em vez de simplesmente decretar o WGS 84?''}{\textbf{Common question:}
+    ``GPS receivers output WGS 84 coordinates. Why did South America need SIRGAS instead of just
+    decreeing WGS 84?''}
+  \end{armadilha}
+  \vspace{0.2cm}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \onslide<2->{
+      \begin{tcolorbox}[colback=mRose!8, colframe=mRose, title={\tr{WGS 84 (Militar)}{WGS 84 (Military)}}]
+        \scriptsize
+        \begin{itemize}
+          \setlength{\itemsep}{2pt}
+          \item \tr{Controlado pelo Departamento de Defesa dos EUA.}{Controlled by the US Department of Defense.}
+          \item \tr{Não possui marcos físicos perenes acessíveis a civis na América do Sul.}{Lacks permanent physical monuments accessible to civilians in South America.}
+          \item \tr{Suas atualizações são feitas sem consulta prévia às agências civis dos outros países.}{Updates occur without prior consultation with other nations' civil agencies.}
+        \end{itemize}
+      \end{tcolorbox}
+      }
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \onslide<2->{
+      \begin{tcolorbox}[colback=mTeal!8, colframe=mTeal, title={\tr{SIRGAS (Científico / Soberano)}{SIRGAS (Scientific / Sovereign)}}]
+        \scriptsize
+        \begin{itemize}
+          \setlength{\itemsep}{2pt}
+          \item \tr{É a realização \textbf{regional civil e aberta} do ITRS nas Américas.}{The \textbf{regional civil and open} realization of ITRS in the Americas.}
+          \item \tr{Materializado em marcos e estações contínuas mantidas pelos próprios países (IBGE, etc.).}{Materialized on marks and continuous stations run by national agencies (IBGE, etc.).}
+          \item \tr{Dados públicos, auditáveis e consistentes com o IGS.}{Public, auditable data fully consistent with IGS.}
+        \end{itemize}
+      \end{tcolorbox}
+      }
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Decisão 2: O Elipsoide de Referência GRS80}{Decision 2: The GRS80 Reference Ellipsoid}}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.54\textwidth}
+      \begin{itemize}
+        \setlength{\itemsep}{4pt}
+        \scriptsize
+        \item \tr{O ITRS é um sistema cartesiano ortogonal tridimensional $(X, Y, Z)$.}{ITRS is a 3D
+              orthogonal Cartesian coordinate system $(X, Y, Z)$.}
+        \item \tr{Para uso cartográfico e prático (latitude $\varphi$, longitude $\lambda$, altura $h$),
+              associa-se ao sistema um \textbf{elipsoide de revolução bi-axial}.}{For mapping and
+              engineering ($\varphi, \lambda, h$), a \textbf{biaxial ellipsoid of revolution} is associated.}
+        \item \tr{O elipsoide adotado pelo SIRGAS é o \textbf{GRS80} (\emph{Geodetic Reference System 1980}):}{The
+              ellipsoid adopted by SIRGAS is \textbf{GRS80} (\emph{Geodetic Reference System 1980}):}
+              \begin{itemize}
+                \tiny
+                \item Semi-eixo maior: $a = \bnum{\num{6378137}}\,\mathrm{m}$;
+                \item Achatamento: $1/f = \bnum{\num{298.257222101}}$;
+                \item Constante gravitacional geocêntrica: $GM = \num{3986005}\times10^{8}\,\mathrm{m^3/s^2}$;
+                \item Velocidade angular: $\omega = \num{7292115}\times10^{-11}\,\mathrm{rad/s}$.
+              \end{itemize}
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{cuidado}
+        \scriptsize
+        \tr{\textbf{GRS80 versus WGS 84:}\\[3pt]
+        Ambos têm exatamente o mesmo semi-eixo maior ($a = \num{6378137}$\,m).\\[3pt]
+        Diferem apenas no achatamento por \bnum{\num{0.00000016}}, decorrente da definição do harmônico
+        $J_2$.\\[3pt]
+        Na superfície da Terra, essa diferença produz no máximo \bnum{\num{0.1}\,mm} na altura elipsoidal
+        --- \emph{praticamente desprezível para mapeamento!}}{\textbf{GRS80 versus WGS 84:}\\[3pt]
+        Both share the exact same semi-major axis ($a = \num{6378137}$\,m).\\[3pt]
+        They differ only in flattening by \bnum{\num{0.00000016}} due to the $J_2$ harmonic definition.\\[3pt]
+        On Earth's surface, this shift produces at most \bnum{\num{0.1}\,mm} in ellipsoidal height
+        --- \emph{negligible for practical surveying!}}
+      \end{cuidado}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Decisão 3: A Técnica de Medição por Satélite}{Decision 3: The Satellite Surveying Technique}}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.50\textwidth}
+      \scriptsize
+      \tr{Por que o \textbf{GPS} e não VLBI, SLR ou Doppler?}{Why \textbf{GPS} instead of VLBI, SLR, or Doppler?}
+      \begin{itemize}
+        \setlength{\itemsep}{3pt}
+        \item \textbf{VLBI e SLR} \tr{eram as mais precisas do mundo, mas exigiam radiotelescópios de
+              dezenas de toneladas e lasers astronômicos gigantescos; inviável em 50 marcos na floresta.}{were
+              the most accurate globally, but required multi-ton radiotelescopes and giant lasers;
+              unfeasible at 50 remote marks in the rainforest.}
+        \item \textbf{Doppler (TRANSIT)} \tr{já estava defasado nos anos 90, com precisão de metros.}{was
+              outdated by the 1990s, offering meter-level precision.}
+        \item \textbf{GPS} \tr{oferecia a combinação perfeita:}{offered the ideal combination:}
+              \begin{itemize}
+                \tiny
+                \item Antenas e receptores leves, transportáveis por equipe de campo;
+                \item Rastreio simultâneo da fase da onda portadora (L1 e L2);
+                \item Precisão relativa milimétrica em linhas de base de milhares de quilômetros.
+              \end{itemize}
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        % Desenho esquemático de satélites transmitindo para antenas
+        \node (sat1) at (-1.5,2.2) [caixa, fill=mAmber!15] {\tiny GPS SV1};
+        \node (sat2) at (1.5,2.2) [caixa, fill=mAmber!15] {\tiny GPS SV2};
+        \pic (m1) at (-1.5,0) {antena};
+        \pic (m2) at (1.5,0) {antena};
+        \draw[thick] (-2,0) -- (2,0);
+        \node at (-1.5,-0.3) [font=\tiny] {\tr{Estação A}{Station A}};
+        \node at (1.5,-0.3) [font=\tiny] {\tr{Estação B}{Station B}};
+        \draw[dashed, seta, mTeal] (sat1) -- (-1.5,0.25);
+        \draw[dashed, seta, mTeal] (sat1) -- (1.5,0.25);
+        \draw[dashed, seta, mIndigo] (sat2) -- (-1.5,0.25);
+        \draw[dashed, seta, mIndigo] (sat2) -- (1.5,0.25);
+        \draw[seta2, corErro, thick] (-1.3,0) -- (1.3,0) node[midway, below, font=\tiny] {\tr{Vetor de base $\Delta \vec{X}$}{Baseline vector $\Delta \vec{X}$}};
+      \end{tikzpicture}\\[3pt]
+      \tiny \tr{Fase da portadora + rastreio simultâneo = eliminação de erros comuns.}{Carrier phase
+      + simultaneous tracking = cancellation of common errors.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Decisão 4: Estrutura em Camadas (A analogia do metrô)}{Decision 4: Layered Hierarchy (The Subway Analogy)}}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.54\textwidth}
+      \begin{itemize}
+        \setlength{\itemsep}{4pt}
+        \scriptsize
+        \item \tr{Como conectar um marco de esquina no interior do Paraná ao centro da Terra?}{How
+              do you link a street corner monument in rural Brazil to the Earth's center?}
+        \item \tr{Não se mede a esquina direto do polo norte! Usa-se uma \textbf{hierarquia em camadas}:}{You
+              don't measure the corner mark from the North Pole! You use a \textbf{layered hierarchy}:}
+              \begin{enumerate}
+                \tiny
+                \item \textbf{\tr{Camada 1 (Global):}{Layer 1 (Global):}} Rede IGS mundial (dezenas de
+                      estações com VLBI/SLR e órbitas ultra-precisas).
+                \item \textbf{\tr{Camada 2 (Continental):}{Layer 2 (Continental):}} Rede SIRGAS
+                      (esqueleto de estações de alta estabilidade amarradas ao IGS).
+                \item \textbf{\tr{Camada 3 (Nacional):}{Layer 3 (National):}} Redes do SGB / IBGE
+                      (RBMC contínua e marcos passivos espalhados pelo território).
+                \item \textbf{\tr{Camada 4 (Local):}{Layer 4 (Local):}} O topógrafo no campo amarrado
+                      ao marco ou à estação RBMC mais próxima.
+              \end{enumerate}
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.8]
+        \draw[thick, fill=corSist!15] (-2.2,2.4) rectangle (2.2,3.1) node[midway, font=\scriptsize, align=center] {\textbf{IGS Global}\\\tiny ITRF / Órbitas precisas};
+        \draw[thick, fill=corFrame!20] (-2.0,1.4) rectangle (2.0,2.1) node[midway, font=\scriptsize, align=center] {\textbf{SIRGAS Continental}\\\tiny Esqueleto continental};
+        \draw[thick, fill=mAmber!20] (-1.8,0.4) rectangle (1.8,1.1) node[midway, font=\scriptsize, align=center] {\textbf{SGB Nacional (IBGE)}\\\tiny RBMC / Rede Passiva};
+        \draw[thick, fill=mRose!15] (-1.6,-0.6) rectangle (1.6,0.1) node[midway, font=\scriptsize, align=center] {\textbf{Topografia Local}\\\tiny Obras, estradas, cadastro};
+        \draw[seta] (0,2.4) -- (0,2.1);
+        \draw[seta] (0,1.4) -- (0,1.1);
+        \draw[seta] (0,0.4) -- (0,0.1);
+      \end{tikzpicture}\\[2pt]
+      \tiny \tr{Cada camada transfere a exatidão da anterior para uma escala mais densa.}{Each layer
+      transfers the accuracy of the higher tier to a denser scale.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{SIRGAS95: O Primeiro Teste do Continente}{SIRGAS95: The Continent's First Test}}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.50\textwidth}
+      \begin{tcolorbox}[colback=mTeal!8, colframe=mTeal, title={\tr{A campanha de maio/junho de 1995}{The May/June 1995 Campaign}}]
+        \scriptsize
+        \begin{itemize}
+          \setlength{\itemsep}{3pt}
+          \item \textbf{\tr{Período:}{Period:}} 26 de maio a 4 de junho de 1995 (10 dias consecutivos de 24 horas).
+          \item \textbf{\tr{Países:}{Countries:}} 11 países da América do Sul mobilizados.
+          \item \textbf{\tr{Estações:}{Stations:}} \bnum{\num{58}} estações principais + \num{9} excêntricas.
+          \item \textbf{\tr{Brasil:}{Brazil:}} \bnum{\num{11}} estações fundamentais ocupadas pelo IBGE e parceiros.
+        \end{itemize}
+      \end{tcolorbox}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{itemize}
+        \setlength{\itemsep}{4pt}
+        \scriptsize
+        \item \tr{\textbf{Critérios de escolha das estações:}}{\textbf{Station selection criteria:}}
+              \begin{itemize}
+                \tiny
+                \item Todos os observatórios espaciais existentes na América do Sul (SLR, VLBI, DORIS).
+                \item Distribuição geográfica homogênea pelo continente.
+                \item Estabilidade geológica comprovada (pilares de concreto sobre rocha sã).
+                \item Coincidência com marcos das redes clássicas existentes para calcular parâmetros de conversão.
+              \end{itemize}
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{As 11 estações brasileiras no SIRGAS95}{The 11 Brazilian Stations in SIRGAS95}}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.54\textwidth}
+      \scriptsize
+      \tr{Distribuídas estrategicamente para cobrir todo o território:}{Strategically distributed
+      to cover the entire national territory:}
+      \begin{itemize}
+        \setlength{\itemsep}{2pt}
+        \tiny
+        \item \textbf{Fortaleza (CE):} sítio espacial global (VLBI / SLR / GPS).
+        \item \textbf{Brasília (DF):} coração do planalto central.
+        \item \textbf{Curitiba (PR):} Universidade Federal do Paraná (UFPR).
+        \item \textbf{Presidente Prudente (SP):} UNESP.
+        \item \textbf{Viçosa (MG):} Universidade Federal de Viçosa (UFV).
+        \item \textbf{Belém (PA) e Manaus (AM):} nós amazônicos.
+        \item \textbf{Bom Jesus da Lapa (BA):} interior nordestino.
+        \item \textbf{Cuiabá (MT):} centro-oeste.
+        \item \textbf{Santa Maria (RS):} extremo sul.
+        \item \textbf{Cruzeiro do Sul (AC):} extremo oeste.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{ideia}
+        \scriptsize
+        \tr{\textbf{Um salto na história:}\\[3pt]
+        Pela primeira vez, pontos separados por mais de \num{3500}\,km na floresta amazônica e no
+        pampa gaúcho foram conectados com incerteza \bnum{abaixo de 1 cm} no mesmo sistema!}{\textbf{A
+        historic leap:}\\[3pt]
+        For the first time, points over \num{3500}\,km apart in the Amazon and the southern plains
+        were linked with uncertainty \bnum{under 1 cm} in the same frame!}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Desafio pioneiro: a calibração das antenas}{Pioneering Challenge: Antenna Calibration}}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.52\textwidth}
+      \begin{itemize}
+        \setlength{\itemsep}{4pt}
+        \scriptsize
+        \item \tr{Em 1995, cada país usava marcas diferentes de receptores e antenas: Ashtech,
+              Leica, Trimble e TurboRogue.}{In 1995, each nation used different brands of receivers
+              and antennas: Ashtech, Leica, Trimble, and TurboRogue.}
+        \item \tr{O sinal do satélite não é captado no topo mecânico da antena, mas no seu
+              \textbf{centro de fase eletrônico}.}{The satellite signal is captured not at the antenna's
+              physical tip, but at its \textbf{electronic phase center}.}
+        \item \tr{O centro de fase varia conforme a elevação e o azimute do satélite (\emph{Phase
+              Center Variation --- PCV}). Se misturarmos antenas sem calibrar, o erro pode chegar a
+              \bnum{\num{5} a \num{10}\,cm} na vertical!}{The phase center varies with satellite
+              elevation and azimuth (\emph{PCV}). Mixing uncalibrated antennas creates errors up to
+              \bnum{\num{5} to \num{10}\,cm} vertically!}
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{regra}
+        \scriptsize
+        \tr{\textbf{A solução adotada em 1995:}\\[3pt]
+        Foram instaladas \bnum{9 estações excêntricas} colocalizadas a poucos metros das antenas
+        principais com antenas de tipos diferentes.\\[3pt]
+        A medição direta das linhas de base curtas permitiu calibrar os centros de fase relativos
+        entre todas as marcas usadas no continente.}{\textbf{The solution adopted in 1995:}\\[3pt]
+        \bnum{9 eccentric stations} were set up meters away from main marks using differing antenna
+        models.\\[3pt]
+        Direct short-baseline surveying calibrated relative phase center offsets across all brands
+        used in the campaign.}
+      \end{regra}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{O cálculo do SIRGAS95: três centros independentes}{SIRGAS95 Processing: Three Independent Centers}}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.52\textwidth}
+      \scriptsize
+      \tr{Para assegurar total rigor científico e afastar qualquer suspeita de viés, os dados brutos
+      foram processados de forma cega por três centros independentes:}{To ensure full scientific rigor
+      and avoid bias, raw data were processed independently by three centers:}
+      \begin{enumerate}
+        \setlength{\itemsep}{2pt}
+        \tiny
+        \item \textbf{DGFI} (\emph{Deutsches Geodätisches Forschungsinstitut}, \tr{Alemanha}{Germany}) ---
+              \tr{software científico Bernese}{Bernese scientific software};
+        \item \textbf{NIMA / DMA} (\emph{National Imagery and Mapping Agency}, EUA) ---
+              \tr{software científico GIPSY/OASIS}{GIPSY/OASIS scientific software};
+        \item \textbf{IBGE} (\tr{Brasil}{Brazil}) --- \tr{software científico Bernese}{Bernese scientific software}.
+      \end{enumerate}
+      \vspace{0.1cm}
+      \tr{As soluções de rede livre foram combinadas por mínimos quadrados e amarradas ao \textbf{ITRF94}
+      na época \bnum{1995,4} através de \bnum{7 estações globais do IGS} com transformação de Helmert.}{
+      Free-network solutions were combined by least squares and tied to \textbf{ITRF94} at epoch \bnum{1995.4}
+      via \bnum{7 global IGS stations} using a Helmert transformation.}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{tcolorbox}[colback=mTeal!8, colframe=mTeal, title={\tr{As 7 âncoras IGS de 1995}{The 7 1995 IGS Anchors}}]
+        \tiny
+        \begin{itemize}
+          \setlength{\itemsep}{2pt}
+          \item \textbf{Fortaleza} (\tr{Brasil}{Brazil})
+          \item \textbf{Kourou} (\tr{Guiana Francesa}{French Guiana})
+          \item \textbf{Arequipa} (\tr{Peru}{Peru})
+          \item \textbf{Santiago} (\tr{Chile}{Chile})
+          \item \textbf{Easter Island} (\tr{Ilha de Páscoa, Chile}{Easter Island, Chile})
+          \item \textbf{Galápagos} (\tr{Equador}{Ecuador})
+          \item \textbf{Pamatai} (\tr{Polinésia Francesa}{French Polynesia})
+        \end{itemize}
+      \end{tcolorbox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{A surpresa da crosta: a Terra é dinâmica!}{Crustal Surprise: The Dynamic Earth!}}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.50\textwidth}
+      \begin{itemize}
+        \setlength{\itemsep}{4pt}
+        \scriptsize
+        \item \tr{A campanha SIRGAS95 terminou em 4 de junho de 1995 com sucesso absoluto: precisão
+              milimétrica em todo o continente.}{The SIRGAS95 campaign concluded on June 4, 1995 with
+              sub-centimeter accuracy across the continent.}
+        \item \tr{Menos de dois meses depois, em \bnum{30 de julho de 1995}, ocorreu o violento
+              \textbf{terremoto de Antofagasta} ($M_w = 8{,}0$), no norte do Chile!}{Less than two
+              months later, on \bnum{July 30, 1995}, the massive \textbf{Antofagasta earthquake}
+              ($M_w = 8.0$) struck northern Chile!}
+        \item \tr{Marcos geodésicos foram subitamente deslocados em até \bnum{\num{70}\,cm}! As
+              coordenadas calculadas em maio já não batiam mais com a rocha em agosto!}{Geodetic
+              monuments suddenly shifted by up to \bnum{\num{70}\,cm}! The coordinates calculated in
+              May no longer matched the rock in August!}
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{armadilha}
+        \scriptsize
+        \tr{\textbf{A grande lição aprendida:}\\[3pt]
+        Um sistema geodésico moderno não pode ser uma lista de coordenadas estáticas fixadas para
+        sempre.\\[3pt]
+        A placa sul-americana desliza a \bnum{\num{1} a \num{2}\,cm/ano} para noroeste, e as bordas
+        andinas deformam continuamente.\\[3pt]
+        \textbf{Sem modelo de velocidades, um referencial de alta precisão envelhece rapidamente!}}{
+        \textbf{The great lesson learned:}\\[3pt]
+        A modern geodetic frame cannot just be a list of static coordinates fixed forever.\\[3pt]
+        The South American plate drifts at \bnum{\num{1} to \num{2}\,cm/yr} northwestward, and the
+        Andean margin deforms continuously.\\[3pt]
+        \textbf{Without velocity models, a high-precision frame ages quickly!}}
+      \end{armadilha}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{O que faltava após 1995?}{What Was Missing After 1995?}}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{tcolorbox}[colback=mTeal!8, colframe=mTeal, title={\tr{O que deu certo em 1995}{What worked in 1995}}]
+        \scriptsize
+        \begin{itemize}
+          \setlength{\itemsep}{2pt}
+          \item \tr{Provou a cooperação técnica entre 11 países e agências militares e civis.}{Proved technical cooperation among 11 countries, military and civil agencies.}
+          \item \tr{Demonstrou repetibilidade e consistência milimétrica com o ITRF94.}{Demonstrated sub-centimeter consistency with ITRF94.}
+          \item \tr{Mostrou que o GPS era a ferramenta definitiva para a geodésia continental.}{Proved GPS was the definitive tool for continental geodesy.}
+        \end{itemize}
+      \end{tcolorbox}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{tcolorbox}[colback=mAmber!8, colframe=mAmber, title={\tr{O que ainda faltava}{What was still missing}}]
+        \scriptsize
+        \begin{itemize}
+          \setlength{\itemsep}{2pt}
+          \item \tr{\textbf{Densidade:} \num{58} estações era pouco para um continente de \num{18} milhões de $\mathrm{km}^2$.}{\textbf{Density:} \num{58} stations were too few for an \num{18}M $\mathrm{km}^2$ continent.}
+          \item \tr{\textbf{América Central e Caribe:} estavam fora do projeto original.}{\textbf{Central America and Caribbean:} were outside the original scope.}
+          \item \tr{\textbf{Altimetria física:} nenhuma ligação formal entre os marégrafos das redes de nivelamento e o SIRGAS.}{\textbf{Physical heights:} no formal tie between tide gauges and SIRGAS.}
+        \end{itemize}
+      \end{tcolorbox}
+    \end{column}
+  \end{columns}
+  \vspace{0.25cm}
+  \begin{ideia}
+    \scriptsize \tr{Nasce assim a decisão de realizar uma nova e grandiosa campanha no ano \textbf{2000},
+    reocupando as estações antigas e conectando todos os marégrafos e redes da América Latina.}{Thus
+    arose the decision to conduct a new, massive campaign in the year \textbf{2000}, reoccupying old
+    sites and connecting all tide gauges and networks across Latin America.}
+  \end{ideia}
+\end{frame}
+
+\begin{frame}{\tr{Sua vez: a conta da deriva tectônica}{Your Turn: Calculating Tectonic Drift}}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \begin{ideia}[title={\tr{Problema}{Problem}}]
+        \scriptsize
+        \tr{Uma estação geodésica em Curitiba tem velocidade de placa estimada em
+        \bnum{\num{1.2}\,cm/ano} para noroeste.}{A geodetic station in Curitiba has an estimated plate motion
+        of \bnum{\num{1.2}\,cm/yr} northwestward.}
+        \begin{enumerate}
+          \setlength{\itemsep}{2pt}
+          \item[(a)] \tr{Se medirmos essa estação hoje, quantos centímetros ela se moveu em relação à sua
+                coordenada da época 1995,4 após \num{10} anos?}{If we measure this mark today, how many centimeters has it shifted relative to its epoch
+                1995.4 coordinate after \num{10} years?}
+          \item[(b)] \tr{Se ignorarmos esse movimento num levantamento de precisão em 2005, o erro é
+                significativo?}{If we ignore this shift in a high-precision survey in 2005, is the error
+                noticeable?}
+        \end{enumerate}
+      \end{ideia}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \onslide<2->{
+      \begin{regra}[title={\tr{Solução passo a passo}{Step-by-step Solution}}]
+        \scriptsize\raggedright
+        (a) $\Delta s = v \times \Delta t$\\[2pt]
+        $\phantom{(a)} = \num{1.2}\,\mathrm{cm/ano} \times \num{10}\,\mathrm{anos} = \bnum{\num{12}\,cm}$.
+        \medskip
+
+        (b) \tr{\textbf{Sim, é enorme!} Para topografia comum de decímetro talvez passe, mas para
+        controle geodésico e engenharia (\num{1} a \num{2}\,cm), \bnum{\num{12}\,cm} destrói a
+        consistência do ajustamento!}{\textbf{Yes, it is huge!} For coarse decimeter mapping it
+        might pass, but for geodetic control and engineering (\num{1} to \num{2}\,cm),
+        \bnum{\num{12}\,cm} ruins the adjustment!}
+      \end{regra}
+      }
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Para levar para casa (Aula 2)}{Takeaways (Class 2)}}
+  \begin{enumerate}
+    \setlength{\itemsep}{4pt}
+    \scriptsize
+    \item \tr{\textbf{Assunção 1993} foi o ponto de virada: abandonou-se a ilusão dos datums
+          topocêntricos nacionais isolados em favor de um referencial geocêntrico continental.}{
+          \textbf{Asunción 1993} was the turning point: isolated national topocentric datums were
+          abandoned in favor of a continental geocentric reference frame.}
+    \item \tr{O SIRGAS adotou o \textbf{ITRS} como sistema, o elipsoide \textbf{GRS80} e a tecnologia
+          \textbf{GPS} em estrutura hierárquica por camadas.}{SIRGAS adopted \textbf{ITRS} as system,
+          the \textbf{GRS80} ellipsoid, and \textbf{GPS} technology in a layered hierarchy.}
+    \item \tr{\textbf{SIRGAS95} materializou o primeiro esqueleto com \bnum{\num{58}} estações
+          (11 no Brasil) e precisão sub-centimétrica, amarradas ao ITRF94 na época \bnum{1995,4}.}{
+          \textbf{SIRGAS95} materialized the first backbone with \bnum{\num{58}} stations (11 in Brazil)
+          and sub-centimeter accuracy, tied to ITRF94 at epoch \bnum{1995.4}.}
+    \item \tr{A grande lição foi que a \bnum{Terra é viva}: a crosta se deforma por tectônica de placas
+          e sismos, exigindo modelos de velocidade e campanhas periódicas.}{The major lesson was that
+          the \bnum{Earth is alive}: the crust deforms via plate tectonics and earthquakes, requiring
+          velocity models and periodic campaigns.}
+  \end{enumerate}
+  \begin{ideia}
+    \scriptsize \tr{\textbf{Na próxima aula:} a grandiosa campanha de maio de 2000, com 184 estações,
+    e a matemática do ajustamento que gerou o SIRGAS2000 na época 2000,4.}{\textbf{Next class:} the
+    massive May 2000 campaign with 184 stations, and the adjustment mathematics that generated
+    SIRGAS2000 at epoch 2000.4.}
+  \end{ideia}
+\end{frame}
+
+% ==================================================================
+% AULA 3 — A REALIZAÇÃO: MAIO DE 2000 E O CÁLCULO
+% ==================================================================
+\section{\tr{Aula 3: A realização (maio de 2000)}{Class 3: The Realization (May 2000)}}
+
+\begin{frame}{\tr{O gancho da Aula 3: da floresta ao cálculo}{Class 3 Hook: From the Rainforest to Computation}}
+  \begin{ideia}
+    \tr{\textbf{A pergunta desta aula:} como \num{184} receptores GPS espalhados por selvas, desertos,
+    ilhas e capitais de dois continentes são transformados num \bnum{único conjunto de coordenadas
+    milimétricas}?}{\textbf{The question for this class:} how do \num{184} GPS receivers scattered
+    across rainforests, deserts, islands, and capitals in two continents get turned into a
+    \bnum{single set of millimeter-accurate coordinates}?}
+  \end{ideia}
+  \vspace{0.2cm}
+  \begin{itemize}
+    \setlength{\itemsep}{5pt}
+    \item \tr{Na Aula 2 vimos o projeto e a campanha piloto SIRGAS95 com \num{58} estações.}{In
+          Class 2 we examined the design and the pilot SIRGAS95 campaign with \num{58} stations.}
+    \item \tr{Em maio de 2000, o continente realizou uma mobilização científica sem precedentes:
+          \bnum{\num{184} estações rastreando simultaneamente dia e noite}.}{In May 2000, the
+          continent mounted an unprecedented scientific mobilization: \bnum{\num{184} stations
+          tracking simultaneously day and night}.}
+    \item \tr{Vamos entender a logística, a física das duplas diferenças e a matemática do
+          \textbf{ajustamento por mínimos quadrados com injunções}.}{We will discover the logistics,
+          the double-difference physics, and the mathematics of \textbf{least squares adjustment
+          with constraints}.}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{\tr{A Campanha de Maio de 2000: o salto de escala}{The May 2000 Campaign: The Leap in Scale}}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.50\textwidth}
+      \begin{tcolorbox}[colback=mTeal!8, colframe=mTeal, title={\tr{A Operação Continental}{The Continental Operation}}]
+        \scriptsize
+        \begin{itemize}
+          \setlength{\itemsep}{3pt}
+          \item \textbf{\tr{Datas:}{Dates:}} \bnum{10 a 19 de maio de 2000} (\num{10} dias consecutivos).
+          \item \textbf{\tr{Sessões:}{Sessions:}} \num{24} horas contínuas de rastreio diário com taxa de \num{30} segundos.
+          \item \textbf{\tr{Cobertura:}{Coverage:}} América do Sul, América Central e Caribe.
+          \item \textbf{\tr{Total de estações:}{Total stations:}} \bnum{\num{184}} vértices geodésicos ocupados.
+          \item \textbf{\tr{Estações no Brasil:}{Stations in Brazil:}} \bnum{\num{21}} estações continentais e insulares.
+        \end{itemize}
+      \end{tcolorbox}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{itemize}
+        \setlength{\itemsep}{4pt}
+        \scriptsize
+        \item \tr{\textbf{Três metas principais em 2000:}}{\textbf{Three primary goals in 2000:}}
+              \begin{enumerate}
+                \tiny
+                \item \tr{\textbf{Reocupar estações de 1995:} medir o vetor de velocidade e deformação da crosta.}{\textbf{Reoccupy 1995 stations:} measure crustal velocity and deformation vectors.}
+                \item \tr{\textbf{Conectar os marégrafos:} amarrar os pontos de origem altimétrica das redes de nivelamento ao elipsoide geocêntrico.}{\textbf{Tie tide gauges:} connect vertical datum origins to the geocentric ellipsoid.}
+                \item \tr{\textbf{Densificar a rede:} fornecer vértices de controle a menos de \num{500}\,km de qualquer região desenvolvida.}{\textbf{Densify the network:} supply control marks within \num{500}\,km of any developed region.}
+              \end{enumerate}
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{A ``Foto de Formatura'': por que medir ao mesmo tempo?}{The ``Graduation Photo'': Why Measure Simultaneously?}}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.54\textwidth}
+      \begin{itemize}
+        \setlength{\itemsep}{4pt}
+        \scriptsize
+        \item \tr{\textbf{A analogia escolar:} se cada formando tirar uma foto sozinho em dias e
+              estúdios diferentes, como comparar a altura exata entre eles?}{\textbf{The school analogy:}
+              if every graduate takes a photo alone on different days, how can you verify their exact relative height?}
+        \item \tr{Na foto de formatura, \bnum{todos sobem no tablado juntos}: a mesma lente, a mesma
+              iluminação e o mesmo instante de tempo!}{In a class photo, \bnum{everyone steps on the
+              risers together}: the same lens, the same lighting, the exact same moment!}
+        \item \tr{Na geodésia por satélite, os satélites GPS orbitam a $\approx \num{20200}$\,km de
+              altitude a \bnum{\num{3.9}\,km/s}.}{In satellite geodesy, GPS satellites orbit at
+              $\approx \num{20200}$\,km altitude traveling at \bnum{\num{3.9}\,km/s}.}
+        \item \tr{Eles funcionam como uma \textbf{régua espacial em movimento rápido}: só servem de ponte
+              se duas estações no chão olharem para eles \alert{no exato mesmo microsegundo}!}{\textbf{They
+              act as a fast-moving space ruler}: they bridge two ground stations only when both track
+              them at the \alert{exact same microsecond}!}
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{regra}
+        \scriptsize
+        \tr{\textbf{O princípio do rastreio comum:}\\[3pt]
+        A atmosfera e o relógio atômico do satélite variam continuamente.\\[3pt]
+        Se a estação em Manaus e a estação em Curitiba registram a fase do mesmo satélite no mesmo
+        instante, o erro do relógio do satélite \bnum{é idêntico} para as duas e desaparece na
+        subtração!}{\textbf{Principle of common tracking:}\\[3pt]
+        The atmosphere and the satellite's atomic clock drift continuously.\\[3pt]
+        If Manaus and Curitiba record carrier phase from the same satellite at the exact same instant,
+        the satellite clock error \bnum{is identical} for both and cancels out in subtraction!}
+      \end{regra}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{O milagre das duplas diferenças de fase}{The Double-Difference Phase Miracle}}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.50\textwidth}
+      \scriptsize
+      \tr{A equação da fase observada ($\Phi$) entre a estação $i$ e o satélite $k$:}{The carrier phase
+      equation ($\Phi$) between receiver $i$ and satellite $k$:}
+      \begin{equation*}
+        \Phi_i^k = \rho_i^k + c(\delta t_i - \delta t^k) - I_i^k + T_i^k + \lambda N_i^k + \varepsilon
+      \end{equation*}
+      \begin{enumerate}
+        \setlength{\itemsep}{2pt}
+        \tiny
+        \item \textbf{\tr{Primeira diferença (entre estações):}{First difference (between receivers):}}
+              $\Delta \Phi_{ij}^k = \Phi_j^k - \Phi_i^k$\\[1pt]
+              $\implies$ \bnum{\tr{elimina o erro do relógio do satélite}{cancels satellite clock error}} $\delta t^k$!
+        \item \textbf{\tr{Segunda diferença (entre satélites):}{Second difference (between satellites):}}
+              $\nabla\Delta \Phi_{ij}^{kl} = \Delta \Phi_{ij}^l - \Delta \Phi_{ij}^k$\\[1pt]
+              $\implies$ \bnum{\tr{elimina o erro do relógio do receptor}{cancels receiver clock error}} $\delta t_i, \delta t_j$!
+      \end{enumerate}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.85]
+        \node (satA) at (-1.3,2.4) [caixa, fill=mAmber!20] {\tiny Satélite $k$};
+        \node (satB) at (1.3,2.4) [caixa, fill=mAmber!20] {\tiny Satélite $l$};
+        \pic at (-1.5,0) {antena};
+        \pic at (1.5,0) {antena};
+        \draw[thick] (-2,0) -- (2,0);
+        \node at (-1.5,-0.3) [font=\tiny] {\tr{Estação $i$}{Station $i$}};
+        \node at (1.5,-0.3) [font=\tiny] {\tr{Estação $j$}{Station $j$}};
+        \draw[seta, dashed, mTeal] (satA) -- (-1.5,0.22);
+        \draw[seta, dashed, mTeal] (satA) -- (1.5,0.22);
+        \draw[seta, dashed, mIndigo] (satB) -- (-1.5,0.22);
+        \draw[seta, dashed, mIndigo] (satB) -- (1.5,0.22);
+        \draw[seta2, thick, mRose] (-1.3,0) -- (1.3,0) node[midway, below, font=\tiny] {$\vec{X}_j - \vec{X}_i$};
+      \end{tikzpicture}\\[3pt]
+      \tiny \tr{Restam apenas a geometria pura do vetor e a ambiguidade inteira $N$.}{Only pure
+      geometry of the baseline vector and integer ambiguity $N$ remain.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{O que cancela e o que NÃO cancela?}{What Cancels and What Does NOT?}}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{tcolorbox}[colback=mTeal!8, colframe=mTeal, title={\tr{O que se cancela / modela}{What cancels / is modeled}}]
+        \scriptsize
+        \begin{itemize}
+          \setlength{\itemsep}{2pt}
+          \item \textbf{\tr{Relógios:}{Clocks:}} erro de relógio do satélite e do receptor (eliminados pelas diferenças).
+          \item \textbf{\tr{Órbitas:}{Orbits:}} produtos orbitais precisos finais do IGS (\num{1} a \num{2}\,cm no espaço).
+          \item \textbf{\tr{Ionosfera:}{Ionosphere:}} combinação livre da ionosfera L3 / L4 (combinação linear das frequências L1 e L2).
+        \end{itemize}
+      \end{tcolorbox}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{tcolorbox}[colback=mRose!8, colframe=mRose, title={\tr{O que não se cancela}{What does not cancel}}]
+        \scriptsize
+        \begin{itemize}
+          \setlength{\itemsep}{2pt}
+          \item \textbf{\tr{Troposfera local:}{Local troposphere:}} vapor d'água na baixa atmosfera (exige estimar parâmetros de zênite a cada hora).
+          \item \textbf{\tr{Multicaminho:}{Multipath:}} reflexão do sinal em construções, solo ou veículos vizinhos.
+          \item \textbf{\tr{Centro de fase da antena:}{Antenna phase center:}} variações mecânicas dependentes do ângulo zenital.
+        \end{itemize}
+      \end{tcolorbox}
+    \end{column}
+  \end{columns}
+  \vspace{0.25cm}
+  \begin{cuidado}
+    \scriptsize \tr{\textbf{Atenção:} Para linhas de base de \num{2000}\,km, a atmosfera sobre Manaus
+    é completamente diferente da atmosfera sobre Curitiba. O atraso troposférico precisa ser
+    estimado estação por estação!}{\textbf{Notice:} Over \num{2000}\,km baselines, the atmosphere
+    over Manaus is completely different from Curitiba. Tropospheric delay must be solved per station!}
+  \end{cuidado}
+\end{frame}
+
+\begin{frame}{\tr{Três Centros de Análise: ciência sem viés}{Three Analysis Centers: Unbiased Science}}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.54\textwidth}
+      \begin{itemize}
+        \setlength{\itemsep}{4pt}
+        \scriptsize
+        \item \tr{Assim como em 1995, os dados brutos de maio de 2000 foram processados por
+              \bnum{três centros de processamento independentes}:}{As in 1995, raw tracking data
+              from May 2000 were processed by \bnum{three independent analysis centers}:}
+              \begin{enumerate}
+                \tiny
+                \item \textbf{DGFI} (\emph{Deutsches Geodätisches Forschungsinstitut}, Munique) ---
+                      Bernese GPS Software 4.2;
+                \item \textbf{IBGE} (Rio de Janeiro, Brasil) --- Bernese GPS Software 4.0;
+                \item \textbf{BEK} (\emph{Bayerische Kommission für die Internationale Erdmessung}) ---
+                      GIPSY/OASIS II.
+              \end{enumerate}
+        \item \tr{Repare: \textbf{duas famílias matemáticas} inteiramente distintas (Bernese por duplas
+              diferenças; GIPSY por posicionamento por ponto preciso com filtro de Kalman).}{Notice:
+              \textbf{two entirely different mathematical methodologies} (Bernese via double differences;
+              GIPSY via PPP with Kalman filters).}
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{ideia}
+        \scriptsize
+        \tr{\textbf{Por que múltiplos centros?}\\[3pt]
+        Se um único centro calcula, um erro sutil no algoritmo ou na modelagem da maré terrestre pode
+        contaminar toda a cartografia de um continente.\\[3pt]
+        A comparação cega entre soluções independentes garante que o resultado é \bnum{física pura e
+        reprodutível}, e não artefato computacional.}{\textbf{Why multiple centers?}\\[3pt]
+        If a single center computes, a subtle code bug or solid Earth tide model error could taint
+        a continent's mapping.\\[3pt]
+        Blind comparison across independent solutions guarantees the output is \bnum{pure,
+        reproducible physics}, not an algorithmic artifact.}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{O formato SINEX: combinando equações sem deformação}{The SINEX Format: Combining Equations Without Distortion}}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.52\textwidth}
+      \begin{itemize}
+        \setlength{\itemsep}{4pt}
+        \scriptsize
+        \item \tr{Cada centro de análise não publicou coordenadas finais prontas, mas sim arquivos
+              no formato neutro \textbf{SINEX} (\emph{Solution INdependent EXchange}).}{Each center
+              published not final rigid coordinates, but neutral \textbf{SINEX} files (\emph{Solution
+              INdependent EXchange}).}
+        \item \tr{O arquivo SINEX contém:}{The SINEX file contains:}
+              \begin{itemize}
+                \tiny
+                \item A matriz de equações normais reduzida ($N = A^T P A$);
+                \item O vetor de termos independentes ($u = A^T P l$);
+                \item A matriz de variância-covariância completa entre todas as estações.
+              \end{itemize}
+        \item \tr{Isso permitiu combinar as soluções como se fossem um único mega-ajustamento, sem
+              arredondamentos nem perda de correlação entre os marcos.}{This enabled combining solutions
+              as a unified mega-adjustment without rounding or covariance loss.}
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{regra}
+        \scriptsize
+        \tr{\textbf{A combinação por Mínimos Quadrados:}\\[3pt]
+        Dadas as normais $N_1, N_2, N_3$ dos três centros com fatores de escala de variância
+        $\sigma_1^2, \sigma_2^2, \sigma_3^2$:\\[4pt]
+        \centering
+        $N_{\text{comb}} = \sum_{k=1}^3 \dfrac{1}{\sigma_k^2} N_k$\\[4pt]
+        $u_{\text{comb}} = \sum_{k=1}^3 \dfrac{1}{\sigma_k^2} u_k$\\[4pt]
+        \raggedright
+        A combinação é rigorosamente ótima no sentido dos mínimos quadrados!}{
+        \textbf{Least Squares Combination:}\\[3pt]
+        Given normal systems $N_1, N_2, N_3$ from the three centers with variance factors
+        $\sigma_1^2, \sigma_2^2, \sigma_3^2$:\\[4pt]
+        \centering
+        $N_{\text{comb}} = \sum_{k=1}^3 \dfrac{1}{\sigma_k^2} N_k$\\[4pt]
+        $u_{\text{comb}} = \sum_{k=1}^3 \dfrac{1}{\sigma_k^2} u_k$\\[4pt]
+        \raggedright
+        The combination is strictly optimal in the least-squares sense!}
+      \end{regra}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{A Rede Livre e o Defeito de Posto}{The Free Network and Rank Defect}}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.52\textwidth}
+      \begin{itemize}
+        \setlength{\itemsep}{4pt}
+        \scriptsize
+        \item \tr{A rede GPS combinada determina os comprimentos relativos e os ângulos entre as
+              \num{184} estações com precisão de \bnum{\num{2} a \num{4}\,mm}.}{The combined GPS
+              network determines relative baseline lengths and angles among \num{184} stations with
+              \bnum{\num{2} to \num{4}\,mm} precision.}
+        \item \tr{No entanto, essa geometria perfeita está \textbf{solta no espaço}:}{However, this
+              perfect geometry is \textbf{unattached in space}:}
+              \begin{itemize}
+                \tiny
+                \item Ela não sabe onde fica a origem $(0, 0, 0)$ do geocentro (defeito de translação de rank = 3);
+                \item A matriz de equações normais $N$ é \alert{singular} ($\det N = 0$) e não tem inversa direta!
+              \end{itemize}
+        \item \tr{Para transformar essa forma geométrica solta num referencial oficial, precisamos
+              \bnum{ancorar a rede no ITRS}.}{To convert this floating geometry into an official frame,
+              we must \bnum{anchor the network to ITRS}.}
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.85]
+        \draw[thick, corFrame, fill=corFrame!10] (-1.5,-0.5) -- (1.5,-0.8) -- (1.8,1.2) -- (-0.8,1.5) -- cycle;
+        \fill[corFrame] (-1.5,-0.5) circle (2pt) node[below, font=\tiny] {$A$};
+        \fill[corFrame] (1.5,-0.8) circle (2pt) node[below, font=\tiny] {$B$};
+        \fill[corFrame] (1.8,1.2) circle (2pt) node[above, font=\tiny] {$C$};
+        \fill[corFrame] (-0.8,1.5) circle (2pt) node[above, font=\tiny] {$D$};
+        \node at (0.2,0.3) [font=\tiny, text=corFrame] {\tr{Forma interna rígida}{Rigid internal shape}};
+        \draw[seta2, corErro, thick] (0.2,0.6) -- (1.6,2.0) node[midway, above right, font=\tiny] {\tr{Flutua no espaço $(\Delta X, \Delta Y, \Delta Z)$}{Floats in space}};
+      \end{tikzpicture}\\[2pt]
+      \tiny \tr{Sem âncoras, a rede pode transladar em bloco sem alterar nenhuma observação.}{Without
+      anchors, the entire network can shift without altering any internal observation.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Ajustamento com Injunções: o modelo matemático}{Adjustment with Constraints: The Mathematical Model}}
+  \begin{regra}
+    \scriptsize
+    \tr{\textbf{Como pregar a rede no referencial global (ITRF2000):}\\[2pt]
+    Adicionam-se equações de observação para as coordenadas conhecidas de estações de referência
+    (estações do IGS):\\[3pt]
+    \centering
+    $C \hat{x} = w + v_C, \quad \text{com matriz de pesos } P_C = \Sigma_C^{-1}$\\[3pt]
+    \raggedright
+    O sistema de equações normais com injunções ponderadas torna-se:\\[3pt]
+    \centering
+    $\bnum{(N + C^T P_C C) \hat{x} = u + C^T P_C w}$}{\textbf{How to anchor the network to the
+    global frame (ITRF2000):}\\[2pt]
+    We append observation equations for known coordinates of reference stations (IGS stations):\\[3pt]
+    \centering
+    $C \hat{x} = w + v_C, \quad \text{with weight matrix } P_C = \Sigma_C^{-1}$\\[3pt]
+    \raggedright
+    The normal equation system with weighted constraints becomes:\\[3pt]
+    \centering
+    $\bnum{(N + C^T P_C C) \hat{x} = u + C^T P_C w}$}
+  \end{regra}
+  \vspace{0.15cm}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{tcolorbox}[colback=mStoneLight, colframe=mStone, title={\tr{Injunção Mínima}{Minimal Constraint}}]
+        \tiny \tr{Fixa apenas 3 parâmetros de translação (condição de Helmert). A rede interna não
+        sofre nenhuma tensão artificial.}{Fixes only 3 translation parameters (Helmert condition).
+        The internal network experiences zero artificial stress.}
+      \end{tcolorbox}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{tcolorbox}[colback=mTeal!8, colframe=mTeal, title={\tr{Injunção Ponderada no ITRF}{Weighted Constraint to ITRF}}]
+        \tiny \tr{As coordenadas IGS entram com suas incertezas oficiais ($\Sigma_C$). A rede é
+        amarrada ao geocentro com máxima fidelidade física.}{IGS coordinates enter with official
+        uncertainties ($\Sigma_C$). The network ties to the geocenter with optimal fidelity.}
+      \end{tcolorbox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Por que a época é 2000,4?}{Why is the Epoch 2000.4?}}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.54\textwidth}
+      \begin{itemize}
+        \setlength{\itemsep}{4pt}
+        \scriptsize
+        \item \tr{A campanha ocorreu entre os dias \textbf{10 e 19 de maio de 2000}.}{The campaign
+              took place between \textbf{May 10 and 19, 2000}.}
+        \item \tr{No calendário geodésico, o dia médio da campanha é o dia do ano \bnum{\num{145}}
+              (\num{24} de maio):}{In the geodetic calendar, the campaign mean day is day of year
+              \bnum{\num{145}} (May 24):}
+              \begin{equation*}
+                t = 2000 + \frac{145}{365{,}25} = \bnum{\num{2000.4}}
+              \end{equation*}
+        \item \tr{O sistema de referência adotado foi o \textbf{ITRF2000}, propagado para a época
+              \bnum{2000,4}.}{The global reference frame adopted was \textbf{ITRF2000}, propagated
+              to epoch \bnum{2000.4}.}
+        \item \tr{As coordenadas resultantes são exatamente as posições das estações \textbf{naquele dia
+              de maio de 2000}!}{The resulting coordinates represent the exact positions of stations
+              \textbf{on that day of May 2000}!}
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{cuidado}
+        \scriptsize
+        \tr{\textbf{O conceito de Frame Congelado:}\\[3pt]
+        O SIRGAS2000 nasce como um \emph{frame estático}.\\[3pt]
+        Ao contrário do ITRF contínuo (cujas coordenadas mudam todos os dias pela tectônica de
+        placas), o SIRGAS2000 foi \bnum{congelado na época 2000,4}.\\[3pt]
+        Isso era indispensável para que as cartas e cadastros de propriedades rurais e urbanas não
+        precisassem ser redesenhados a cada semana!}{\textbf{The Frozen Frame Concept:}\\[3pt]
+        SIRGAS2000 was born as a \emph{static frame}.\\[3pt]
+        Unlike continuous ITRF (whose coordinates drift daily due to plate tectonics), SIRGAS2000 was
+        \bnum{frozen at epoch 2000.4}.\\[3pt]
+        This was essential so cadastral boundaries and national map sheets would not have to be
+        redrawn every week!}
+      \end{cuidado}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{As 21 estações brasileiras na Campanha de 2000}{The 21 Brazilian Stations in the 2000 Campaign}}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.54\textwidth}
+      \scriptsize
+      \tr{Os \num{21} vértices fundamentais que ancoraram o novo SGB no território:}{The \num{21}
+      fundamental stations anchoring the new SGB across Brazil:}
+      \begin{itemize}
+        \setlength{\itemsep}{1.5pt}
+        \tiny
+        \item \textbf{Norte:} Belém (PA), Macapá (AP), Manaus (AM), Oiapoque (AP), Porto Velho (RO), Rio Branco (AC).
+        \item \textbf{Nordeste:} Fortaleza (CE), Imperatriz (MA), Natal (RN), Petrolina (PE), Salvador (BA), São Luís (MA).
+        \item \textbf{Centro-Oeste:} Brasília (DF), Campo Grande (MS), Cuiabá (MT).
+        \item \textbf{Sudeste:} Cananéia (SP), Presidente Prudente (SP), Rio de Janeiro (RJ), Viçosa (MG).
+        \item \textbf{Sul:} Curitiba (PR), Santa Maria (RS).
+      \end{itemize}
+      \vspace{0.1cm}
+      \tr{No ajuste da rede planimétrica de 2006, \bnum{20 dessas estações continentais mais SMAR
+      (Santa Maria)} serviram como as \num{21} equações de injunção que fixaram todo o país! [B]}{
+      In the 2006 network adjustment, \bnum{20 continental sites plus SMAR (Santa Maria)} served
+      as the \num{21} constraint equations locking the entire country! [B]}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{ideia}
+        \scriptsize
+        \tr{\textbf{A curiosidade de Cananéia:}\\[3pt]
+        A estação CANA (Cananéia/SP) foi uma das 21 ocupadas na campanha de maio de 2000.\\[3pt]
+        No entanto, o marco foi destruído posteriormente por obras de engenharia local.\\[3pt]
+        Por isso, no cálculo de 2006, o IBGE substituiu Cananéia por \textbf{SMAR} (Santa Maria),
+        mantendo exatamente \bnum{21 estações de injunção} na rede nacional! [B]}{\textbf{The Cananéia
+        curiosity:}\\[3pt]
+        Station CANA was one of 21 occupied in May 2000.\\[3pt]
+        However, the mark was subsequently destroyed by local construction.\\[3pt]
+        Therefore, in the 2006 calculation, IBGE replaced Cananéia with \textbf{SMAR} (Santa Maria),
+        retaining exactly \bnum{21 constraint stations} across the nation! [B]}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{A integração dos marégrafos: a promessa cumprida do GT III}{Tide Gauge Integration: Fulfilling the WG III Promise}}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.50\textwidth}
+      \begin{itemize}
+        \setlength{\itemsep}{4pt}
+        \scriptsize
+        \item \tr{Lembre-se: em 1997, na Assembleia da IAG no Rio, o SIRGAS criou o \textbf{GT III
+              (Datum Vertical)}.}{Recall: in 1997 at the IAG Assembly in Rio, SIRGAS formed
+              \textbf{WG III (Vertical Datum)}.}
+        \item \tr{Em maio de 2000, pela primeira vez na América Latina, antenas GPS ocuparam marcos
+              vizinhos aos principais marégrafos do continente:}{In May 2000, for the first time in
+              Latin America, GPS antennas occupied marks adjacent to primary continental tide gauges:}
+              \begin{itemize}
+                \tiny
+                \item Marégrafo de \textbf{Imbituba (SC)} --- a origem altimétrica do SGB;
+                \item Marégrafo de \textbf{Santana (AP)} --- a origem do datum vertical amapaense;
+                \item Marégrafos na Argentina, Chile, Colômbia, Venezuela e Uruguai.
+              \end{itemize}
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{regra}
+        \scriptsize
+        \tr{\textbf{O significado revolucionário:}\\[3pt]
+        A altimetria clássica dá altitude sobre o mar ($H$). O GPS dá altura sobre o elipsoide ($h$).\\[3pt]
+        Ao medir o marégrafo com GPS, descobriu-se com precisão milimétrica a \bnum{ondulação geoidal
+        $N = h - H$} no ponto de partida das redes de nivelamento!\\[3pt]
+        Essa ponte foi o primeiro passo para o modelo de quase-geoide e a unificação altimétrica (tema
+        da nossa Parte 2!).}{\textbf{Revolutionary significance:}\\[3pt]
+        Leveling yields height above sea level ($H$). GPS yields ellipsoidal height ($h$).\\[3pt]
+        Surveying the tide gauge with GPS revealed with millimeter accuracy the \bnum{geoidal
+        undulation $N = h - H$} at the leveling datum origin!\\[3pt]
+        This bridge enabled modern geoid modeling and vertical unification (the topic of our Part 2!).}
+      \end{regra}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Pare e pense: por que o Brasil não adotou o SIRGAS logo em 2000?}{Stop and Think: Why Did Brazil Wait After 2000?}}
+  \begin{armadilha}
+    \tr{\textbf{A dúvida comum:} ``Se a campanha continental terminou em maio de 2000 e o cálculo
+    ficou pronto pouco depois, por que o Brasil só oficializou o SIRGAS2000 em 2005 e só publicou o
+    reajuste da rede em 2006?''}{\textbf{Common doubt:} ``If the continental campaign finished in
+    May 2000, why did Brazil wait until 2005 to decree SIRGAS2000 and 2006 to publish the national
+    network adjustment?''}
+  \end{armadilha}
+  \vspace{0.15cm}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{tcolorbox}[colback=mStoneLight, colframe=mStone, title={\tr{O abismo entre o esqueleto e a rede}{Gap between backbone and network}}]
+        \scriptsize
+        \begin{itemize}
+          \setlength{\itemsep}{2pt}
+          \item \tr{Ter \num{21} estações milimétricas é apenas o ``esqueleto''.}{Having \num{21} millimeter stations is merely the ``backbone''.}
+          \item \tr{O Brasil real tinha mais de \bnum{\num{4700} marcos clássicos} de concreto em morros e fazendas amarrados ao SAD69.}{Brazil had over \bnum{\num{4700} classical marks} on hilltops tied to SAD69.}
+        \end{itemize}
+      \end{tcolorbox}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{tcolorbox}[colback=mTeal!8, colframe=mTeal, title={\tr{O trabalho hercúleo (2000--2005)}{The Herculean task (2000--2005)}}]
+        \scriptsize
+        \begin{itemize}
+          \setlength{\itemsep}{2pt}
+          \item \tr{Criou-se o PMRG (2000) e realizaram-se \bnum{\num{12} campanhas GPS adicionais} em 2004--2005 ligando a rede clássica.}{PMRG was created (2000) and \bnum{\num{12} GPS campaigns} ran in 2004--2005 tying classical marks.}
+          \item \tr{Era preciso reajustar simultaneamente \num{6265} marcos sem quebrar as fronteiras estaduais! [B]}{All \num{6265} marks had to be re-adjusted simultaneously without border seams! [B]}
+        \end{itemize}
+      \end{tcolorbox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Sua vez: a lógica do peso da injunção}{Your Turn: The Logic of Constraint Weights}}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \begin{ideia}[title={\tr{Problema}{Problem}}]
+        \scriptsize
+        \tr{No ajuste de 2006 da rede planimétrica, o IBGE introduziu as \num{21} estações SIRGAS com
+        injunção ponderada, usando desvio-padrão dividido por \num{10}: $\sigma_{\text{inj}} = \sigma / 10$.}{
+        In the 2006 network adjustment, IBGE constrained the \num{21} SIRGAS stations
+        using a standard deviation divided by \num{10}: $\sigma_{\text{inj}} = \sigma / 10$.}
+        \begin{enumerate}
+          \setlength{\itemsep}{2pt}
+          \item[(a)] \tr{Como o peso é proporcional a $1/\sigma^2$, por quanto o peso da estação foi
+                multiplicado?}{Since weight is proportional to $1/\sigma^2$, by what factor was the station weight
+                multiplied?}
+          \item[(b)] \tr{Qual a consequência prática disso sobre as estações da rede clássica?}{What was the
+                practical consequence on the classical network stations?}
+        \end{enumerate}
+      \end{ideia}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{regra}[title={\tr{Respostas}{Answers}}]
+        \scriptsize\raggedright
+        (a) $P = \dfrac{1}{(\sigma/10)^2} = \bnum{\num{100}} \times P_0$.\\[2pt]
+        \tr{O peso aumentou \bnum{\num{100} vezes}! [B]}{Weight increased by \bnum{\num{100} times}! [B]}
+        \medskip
+
+        (b) \tr{\textbf{Rigidez quase absoluta:} as \num{21} estações SIRGAS comportam-se como
+        colunas de concreto inabaláveis. A rede clássica é forçada a se ajustar a elas, sem que os
+        erros antigos desloquem o referencial geocêntrico!}{\textbf{Near-absolute stiffness:} the
+        \num{21} SIRGAS stations act as unyielding pillars. The classical network is forced to fit
+        them, preventing old distortions from pulling the geocentric frame!}
+      \end{regra}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Para levar para casa (Aula 3)}{Takeaways (Class 3)}}
+  \begin{enumerate}
+    \setlength{\itemsep}{4pt}
+    \scriptsize
+    \item \tr{A campanha de \textbf{maio de 2000} ocupou simultaneamente \bnum{\num{184} estações}
+          em dois continentes por \num{10} dias de \num{24} horas, incluindo \bnum{\num{21}} no Brasil.}{
+          The \textbf{May 2000} campaign simultaneously occupied \bnum{\num{184} stations} across
+          two continents for \num{10} days of \num{24} hours, including \bnum{\num{21}} in Brazil.}
+    \item \tr{O rastreio simultâneo e as \textbf{duplas diferenças de fase} eliminaram os erros de
+          relógio dos satélites e receptores, fornecendo precisão de milímetros.}{Simultaneous tracking
+          and \textbf{carrier double differences} eliminated satellite and receiver clock errors,
+          yielding millimeter precision.}
+    \item \tr{Três centros independentes (DGFI, IBGE e BEK) processaram os dados; as equações normais
+          em formato \textbf{SINEX} foram combinadas e ajustadas com \bnum{injunções ponderadas no ITRF2000}.}{
+          Three independent centers (DGFI, IBGE, BEK) processed data; normal equations in \textbf{SINEX}
+          format were combined and adjusted with \bnum{weighted constraints to ITRF2000}.}
+    \item \tr{O frame nasceu congelado na época \bnum{2000,4}, amarrando também pela primeira vez os
+          marégrafos das redes de nivelamento físico (Imbituba, Santana).}{The frame was frozen at epoch
+          \bnum{2000.4}, also tying for the first time the physical leveling tide gauges (Imbituba, Santana).}
+  \end{enumerate}
+  \begin{ideia}
+    \scriptsize \tr{\textbf{Na próxima aula:} a adoção legal no Brasil (Decreto 5.334/2005 e R.PR 1/2005),
+    o reajuste da rede em 2006 com 6265 estações, os parâmetros de conversão e a vida útil do referencial.}{
+    \textbf{Next class:} legal adoption in Brazil (Decree 5,334/2005 and R.PR 1/2005), the 2006 network
+    adjustment with 6,265 stations, conversion parameters, and frame lifetime.}
+  \end{ideia}
+\end{frame}
+
+
+% ==================================================================
+% AULA 4 — ADOÇÃO, DENSIFICAÇÃO E VIDA ÚTIL
+% ==================================================================
+\section{\tr{Aula 4: Adoção, densificação e vida útil}{Class 4: Adoption, Densification and Lifetime}}
+
+\begin{frame}{\tr{O gancho da Aula 4: o referencial congelado e o chão que anda}{Class 4 Hook: The Frozen Frame and the Moving Ground}}
+  \begin{ideia}
+    \tr{\textbf{A pergunta desta aula:} uma vez calculadas as \num{21} estações fundamentais em maio
+    de 2000, como isso chega ao mapa do município, ao título de terra e ao receptor no campo? E se o
+    referencial está congelado na época \bnum{2000,4}, por que a coordenada do receptor hoje não bate
+    mais com a monografia oficial?}{\textbf{The question for this class:} once the \num{21}
+    fundamental stations were computed in May 2000, how does that reach municipal maps, land titles,
+    and field receivers? And if the frame was frozen at epoch \bnum{2000.4}, why does a modern
+    receiver coordinate drift from the official monument datasheet?}
+  \end{ideia}
+  \vspace{0.2cm}
+  \begin{itemize}
+    \setlength{\itemsep}{5pt}
+    \item \tr{Na Aula 3 vimos a campanha de maio de 2000 e o cálculo do esqueleto continental.}{In
+          Class 3 we saw the May 2000 campaign and the computation of the continental backbone.}
+    \item \tr{Nesta aula final da Parte 1, veremos como o IBGE transferiu essa exatidão para todo o
+          território nacional, o marco legal da adoção e a convivência com o movimento das placas.}{In
+          this concluding class of Part 1, we will see how IBGE densified this accuracy across Brazil,
+          the legal adoption framework, and living with tectonic plate motion.}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{\tr{O desafio da densificação: um país continental}{The Densification Challenge: A Continental Nation}}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.52\textwidth}
+      \begin{itemize}
+        \setlength{\itemsep}{4pt}
+        \scriptsize
+        \item \tr{O Brasil tem mais de \bnum{\num{8.5} milhões de $\mathrm{km}^2$}. Vinte e uma
+              estações espaçadas por milhares de quilômetros não bastam para o dia a dia da agrimensura.}{
+              Brazil covers over \bnum{\num{8.5} million $\mathrm{km}^2$}. Twenty-one stations
+              separated by thousands of kilometers cannot directly support daily land surveying.}
+        \item \tr{Em 2000, o IBGE formalizou o \textbf{PMRG} (\emph{Programa de Modernização da Rede
+              Geodésica}), com duas frentes de ação:}{In 2000, IBGE formalized the \textbf{PMRG}
+              (\emph{Geodetic Network Modernization Program}), with two action fronts:}
+              \begin{enumerate}
+                \tiny
+                \item \tr{\textbf{Rede Ativa (RBMC):} estações GNSS contínuas conectadas à internet transmitindo dados 24h por dia.}{\textbf{Active Network (RBMC):} continuous GNSS stations connected to the internet streaming data 24/7.}
+                \item \tr{\textbf{Reajuste da Rede Passiva:} conectar os milhares de pilares clássicos de concreto ao novo referencial SIRGAS2000.}{\textbf{Passive Network Re-adjustment:} tie the thousands of classical concrete monuments to SIRGAS2000.}
+              \end{enumerate}
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{tcolorbox}[colback=mIndigo!8, colframe=mIndigo, title={\tr{O nascimento do PMRG}{Birth of PMRG}}]
+        \scriptsize \tr{Instituído no 1.º Seminário sobre o Sistema Geodésico Brasileiro (Curitiba,
+        2000), atendendo à recomendação do Congresso Brasileiro de Cartografia de 1999. [B]}{Established
+        at the 1st Seminar on the Brazilian Geodetic System (Curitiba, 2000), fulfilling the
+        recommendation of the 1999 Brazilian Cartography Congress. [B]}
+      \end{tcolorbox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{A Rede Ativa: a RBMC}{The Active Network: RBMC}}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.54\textwidth}
+      \begin{itemize}
+        \setlength{\itemsep}{4pt}
+        \scriptsize
+        \item \tr{A \textbf{RBMC} (\emph{Rede Brasileira de Monitoramento Contínuo dos Sistemas GNSS})
+              é a espinha dorsal ativa do país.}{The \textbf{RBMC} (\emph{Brazilian Continuous
+              Monitoring Network of GNSS Systems}) is the active backbone of Brazil.}
+        \item \tr{\textbf{Histórico pioneiro:} inaugurada em \bnum{dezembro de 1996} com duas
+              estações pioneiras:}{
+              \textbf{Pioneering history:} inaugurated in \bnum{December 1996} with two pioneering
+              stations:}
+              \begin{itemize}
+                \tiny
+                \item Curitiba (UFPR, Paraná);
+                \item Presidente Prudente (UNESP, São Paulo).
+              \end{itemize}
+        \item \tr{Hoje conta com mais de uma centena de estações com dados horários e diários em
+              formato RINEX disponibilizados gratuitamente pelo IBGE.}{Today it comprises over one
+              hundred stations providing hourly and daily RINEX files free of charge via IBGE.}
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{ideia}
+        \scriptsize
+        \tr{\textbf{A revolução da rede ativa:}\\[3pt]
+        Em vez de procurar um marco de concreto escondido na vegetação, o usuário rastreia com seu
+        receptor e calcula o vetor de base relativo à estação RBMC mais próxima, cuja coordenada
+        oficial é conhecida no milímetro!}{\textbf{The active network revolution:}\\[3pt]
+        Instead of hunting for a concrete monument hidden in brush, surveyors track with their own
+        receiver and compute a baseline relative to the nearest RBMC station, whose official
+        coordinate is known to the millimeter!}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{O Serviço IBGE-PPP: democratizando a alta precisão}{The IBGE-PPP Service: Democratizing High Precision}}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.50\textwidth}
+      \begin{itemize}
+        \setlength{\itemsep}{4pt}
+        \scriptsize
+        \item \tr{O \textbf{IBGE-PPP} é um serviço online público e gratuito para processamento de
+              dados GNSS pelo método de Posicionamento por Ponto Preciso.}{The \textbf{IBGE-PPP} is
+              a free public online service for processing GNSS data using Precise Point Positioning.}
+        \item \tr{Desenvolvido pelo IBGE em parceria com o \emph{Natural Resources Canada} (NRCan).}{
+              Developed by IBGE in partnership with Natural Resources Canada (NRCan).}
+        \item \tr{\textbf{Como funciona:}}{ \textbf{How it works:}}
+              \begin{enumerate}
+                \tiny
+                \item O usuário envia um arquivo RINEX de rastreio estático pelo navegador;
+                \item O servidor aplica órbitas e relógios precisos do IGS;
+                \item O relatório PDF sai em minutos com coordenadas oficiais no \bnum{SIRGAS2000 na
+                      época 2000,4}.
+              \end{enumerate}
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{regra}
+        \scriptsize
+        \tr{\textbf{Impacto no país:}\\[3pt]
+        Qualquer cidadão, prefeitura ou pequeno proprietário com um receptor geodésico tem acesso
+        direto à mesma qualidade geodésica do IBGE, sem softwares comerciais de dezenas de milhares
+        de reais.}{\textbf{Impact across Brazil:}\\[3pt]
+        Any citizen, municipality, or surveyor with a geodetic receiver gains direct access to
+        IBGE's geodetic accuracy, without needing expensive commercial software packages.}
+      \end{regra}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{O Ajustamento da Rede Planimétrica de 2006}{The 2006 Planimetric Network Adjustment}}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.52\textwidth}
+      \begin{itemize}
+        \setlength{\itemsep}{4pt}
+        \scriptsize
+        \item \tr{Em junho de \bnum{2006}, o IBGE concluiu o maior ajustamento por mínimos quadrados
+              da história da América do Sul. [B]}{In June \bnum{2006}, IBGE concluded the largest
+              least-squares adjustment in South American history. [B]}
+        \item \tr{\textbf{Dimensão do ajustamento:}}{\textbf{Adjustment scale:}}
+              \begin{itemize}
+                \tiny
+                \item \bnum{\num{6265}} estações ajustadas simultaneamente;
+                \item \num{4774} marcos da rede clássica de triangulação/poligonação;
+                \item \num{1600} estações ocupadas por GPS moderno.
+              \end{itemize}
+        \item \tr{\textbf{Total de observações (22.232 equações):}}{\textbf{Total observations (22,232 equations):}}
+              \begin{itemize}
+                \tiny
+                \item \num{16913} direções horizontais;
+                \item \num{1534} distâncias medidas;
+                \item \num{389} azimutes de Laplace;
+                \item \num{179} posições Doppler;
+                \item \num{3196} diferenças de coordenadas GPS;
+                \item \bnum{\num{21}} equações de injunção (estações SIRGAS com peso $\sigma/10$).
+              \end{itemize}
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{regra}
+        \scriptsize
+        \tr{\textbf{Estatística final do ajuste:}\\[3pt]
+        -- Graus de liberdade: $\mathrm{GL} = \bnum{\num{9702}}$;\\[2pt]
+        -- Fator de variância a posteriori: $\hat{\sigma}_0^2 = \bnum{\num{1.509}}$;\\[2pt]
+        -- A rede foi particionada em \bnum{8 blocos de Helmert} resolvidos sem nenhuma costura
+        residual nas fronteiras regionais. [B]}{\textbf{Final adjustment statistics:}\\[3pt]
+        -- Degrees of freedom: $\mathrm{DF} = \bnum{\num{9702}}$;\\[2pt]
+        -- A posteriori variance factor: $\hat{\sigma}_0^2 = \bnum{\num{1.509}}$;\\[2pt]
+        -- Partitioned into \bnum{8 Helmert blocks} solved without residual boundary seams across
+        regions. [B]}
+      \end{regra}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Conexões GPS: o choque entre o antigo e o novo}{GPS Connections: Clashing Old and New}}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.52\textwidth}
+      \begin{itemize}
+        \setlength{\itemsep}{4pt}
+        \scriptsize
+        \item \tr{Entre 2004 e 2005, o IBGE realizou \bnum{\num{12} campanhas GPS de campo} para
+              ocupar marcos antigos da rede de triangulação. [B]}{Between 2004 and 2005, IBGE carried
+              out \bnum{\num{12} field GPS campaigns} reoccupying classical triangulation marks. [B]}
+        \item \tr{O resultado causou espanto: quando um marco clássico recebia uma coordenada GPS
+              precisa, o ajustamento puxava os vizinhos em até \bnum{\num{9}\,m}, com um raio de
+              influência de cerca de \bnum{\num{500}\,km}! [B]}{The result was startling: when an old
+              mark received precise GPS coordinates, the adjustment shifted neighbors by up to
+              \bnum{\num{9}\,m}, with an influence radius of \bnum{\num{500}\,km}! [B]}
+        \item \tr{Isso comprovou que a rede clássica SAD69 estava cheia de deformações elásticas
+              locais causadas pelo acúmulo de visadas angulares antigas.}{This proved the classical
+              SAD69 network harbored local elastic distortions from accumulated optical angle errors.}
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.8]
+        \draw[thick, corFrame!40] (0,0) circle (2.2);
+        \draw[dashed, seta2, corFrame!70] (0,0) -- (1.5,1.6) node[midway, above left, font=\tiny] {$R \approx \num{500}$\,km};
+        \fill[mTeal] (0,0) circle (3pt) node[below, font=\scriptsize] {\tr{Vértice GPS}{GPS Vertex}};
+        \fill[mRose] (1.1,0.5) circle (2pt) node[right, font=\tiny] {\tr{Marco clássico}{Classical mark}};
+        \draw[seta, mRose, thick] (1.1,0.5) -- (0.5,0.7) node[midway, above, font=\tiny] {\tr{até \num{9}\,m}{up to \num{9}\,m}};
+      \end{tikzpicture}\\[2pt]
+      \tiny \tr{O GPS funcionou não apenas como régua, mas como auditor rigoroso da rede clássica.}{GPS
+      acted not merely as a ruler, but as a rigorous auditor of the classical network.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{O Marco Legal Brasileiro: Decreto 5.334 e R.PR 1/2005}{Brazilian Legal Framework: Decree 5,334 and R.PR 1/2005}}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{tcolorbox}[colback=mIndigo!8, colframe=mIndigo, title={\tr{Decreto Federal nº 5.334}{Federal Decree no. 5,334}}]
+        \scriptsize
+        \textbf{\tr{06 de janeiro de 2005 (Presidência da República)}{January 6, 2005 (Presidency of the Republic)}}\\[3pt]
+        \tr{Alterou o artigo 21 do Decreto nº 89.817/1984 (Normas Técnicas da Cartografia Nacional):\\[3pt]
+        ``Os referenciais planimétrico e altimétrico da cartografia nacional são os que constituem o
+        \bnum{Sistema Geodésico Brasileiro}, \emph{definidos pelo IBGE}''. [E]}{Amended Article 21
+        of Decree 89,817/1984 (National Cartographic Standards):\\[3pt]
+        ``The planimetric and altimetric reference systems of national cartography are those of the
+        \bnum{Brazilian Geodetic System}, \emph{as defined by IBGE}''. [E]}
+      \end{tcolorbox}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{tcolorbox}[colback=mTeal!8, colframe=mTeal, title={\tr{Resolução PR nº 01/2005}{Resolution PR no. 01/2005}}]
+        \scriptsize
+        \textbf{\tr{25 de fevereiro de 2005 (Presidência do IBGE)}{February 25, 2005 (IBGE Presidency)}}\\[3pt]
+        \tr{-- Oficializou o \bnum{SIRGAS2000} como novo referencial oficial do Brasil (GRS80,
+        geocêntrico).\\[2pt]
+        -- Revogou a R.PR 22/1983 (que fixava o SAD69).\\[2pt]
+        -- Estabeleceu um \bnum{período de transição de 10 anos} de convivência com os referenciais
+        antigos.}{-- Decreed \bnum{SIRGAS2000} as Brazil's official reference frame (GRS80,
+        geocentric).\\[2pt]
+        -- Repealed R.PR 22/1983 (which established SAD69).\\[2pt]
+        -- Established a \bnum{10-year transition period} allowing dual usage with older datums.}
+      \end{tcolorbox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{25 de fevereiro de 2015: o fim da transição}{February 25, 2015: End of the Transition}}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.54\textwidth}
+      \begin{itemize}
+        \setlength{\itemsep}{4pt}
+        \scriptsize
+        \item \tr{Em \bnum{25 de fevereiro de 2015}, encerrou-se rigorosamente o período de transição
+              de 10 anos estabelecido pela Resolução PR 01/2005.}{On \bnum{February 25, 2015}, the
+              10-year transition period established by Resolution PR 01/2005 officially expired.}
+        \item \tr{A partir dessa data:}{From that date forward:}
+              \begin{itemize}
+                \tiny
+                \item \textbf{Córrego Alegre e SAD69} foram definitivamente extintos como referenciais legais;
+                \item Todo trabalho cartográfico, cadastral e de engenharia no Brasil deve ser compulsoriamente em \bnum{SIRGAS2000};
+                \item O INCRA não aceita mais nenhuma planta de georreferenciamento de imóveis rurais (Lei 10.267) fora do SIRGAS2000.
+              \end{itemize}
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{cuidado}
+        \scriptsize
+        \tr{\textbf{Atenção jurídica:}\\[3pt]
+        Entregar uma planta topográfica, projeto de loteamento ou estudo de desapropriação em SAD69
+        hoje é vício técnico grave e causa nulidade documental perante cartórios de registro de imóveis
+        e órgãos ambientais!}{\textbf{Legal warning:}\\[3pt]
+        Delivering a boundary survey, subdivision plan, or engineering project in SAD69 today is a
+        serious technical defect causing legal invalidity in land registries and environmental licensing!}
+      \end{cuidado}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{A conta da conversão: os 3 Parâmetros Oficiais}{The Conversion Formula: The 3 Official Parameters}}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.52\textwidth}
+      \scriptsize
+      \tr{Para converter coordenadas cartesianas de SAD69 para SIRGAS2000, o IBGE determinou em 2005
+      e ratificou em 2006 [B, tab. 9] três parâmetros de translação pura geocêntrica:}{To convert
+      Cartesian coordinates from SAD69 to SIRGAS2000, IBGE determined in 2005 and reaffirmed in 2006
+      [B, tab. 9] three pure geocentric translation parameters:}
+      \begin{equation*}
+        \begin{pmatrix} X \\ Y \\ Z \end{pmatrix}_{\text{SIRGAS}} =
+        \begin{pmatrix} X \\ Y \\ Z \end{pmatrix}_{\text{SAD69}} +
+        \begin{pmatrix} \Delta X \\ \Delta Y \\ \Delta Z \end{pmatrix}
+      \end{equation*}
+      \begin{itemize}
+        \setlength{\itemsep}{2pt}
+        \tiny
+        \item $\Delta X = \bnum{-\num{67.35}}\,\mathrm{m}$;
+        \item $\Delta Y = \bnum{+\num{3.88}}\,\mathrm{m}$;
+        \item $\Delta Z = \bnum{-\num{38.22}}\,\mathrm{m}$.
+      \end{itemize}
+      \vspace{0.1cm}
+      \tr{Módulo do vetor de deslocamento 3D:}{Magnitude of the 3D shift vector:}
+      \begin{equation*}
+        |\Delta \vec{X}| = \sqrt{(-67{,}35)^2 + 3{,}88^2 + (-38{,}22)^2} \approx \bnum{\num{77.54}}\,\mathrm{m}
+      \end{equation*}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{regra}
+        \scriptsize
+        \tr{\textbf{Por que apenas 3 parâmetros?}\\[3pt]
+        O IBGE testou modelos de Helmert de 7 parâmetros (com 3 rotações e escala) em 21, 63 e 113
+        estações comuns.\\[3pt]
+        Constatou-se que as rotações e a escala eram estatisticamente desprezíveis para o conjunto
+        nacional, e um modelo de 7 parâmetros causava instabilidade nos extremos do país. [B]}{
+        \textbf{Why only 3 parameters?}\\[3pt]
+        IBGE tested 7-parameter Helmert models (3 rotations and scale) across 21, 63, and 113 common
+        stations.\\[3pt]
+        Rotations and scale were found statistically negligible nationally, while 7 parameters
+        induced edge instabilities at border extremes. [B]}
+      \end{regra}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{O mito dos ``65 metros'': o deslocamento varia no chão!}{The ``65-Meter'' Myth: Real Shifts Vary by Region!}}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.54\textwidth}
+      \scriptsize
+      \tr{O vetor 3D de \bnum{\num{77.54}\,m} tem direção fixa no espaço. Ao ser projetado na
+      superfície curva da Terra, o deslocamento horizontal varia de \bnum{\num{57}} a \bnum{\num{76}\,m}!
+      (calculado por \texttt{sgb\_sirgas2000\_numeros.py}):}{The 3D vector of \bnum{\num{77.54}\,m}
+      has a fixed spatial orientation. Projected onto Earth's curved surface, the horizontal shift
+      varies from \bnum{\num{57}} to \bnum{\num{76}\,m}! (computed via \texttt{sgb\_sirgas2000\_numeros.py}):}
+      \vspace{0.1cm}
+      \tiny
+      \begin{tabular}{lcccc}
+        \toprule
+        \textbf{\tr{Local}{City}} & \textbf{$dN$ (m)} & \textbf{$dE$ (m)} & \textbf{$dh$ (m)} & \textbf{\tr{Horiz.}{Horiz.}} \\
+        \midrule
+        Fortaleza & $-\num{41.65}$ & $-\num{38.92}$ & $-\num{29.50}$ & \bnum{\num{57.00}\,m} \\
+        Brasília  & $-\num{49.54}$ & $-\num{47.36}$ & $-\num{12.87}$ & \bnum{\num{68.54}\,m} \\
+        Manaus    & $-\num{40.11}$ & $-\num{56.40}$ & $-\num{11.88}$ & \bnum{\num{69.21}\,m} \\
+        Curitiba  & $-\num{54.20}$ & $-\num{48.50}$ & $-\num{3.02}$  & \bnum{\num{72.73}\,m} \\
+        Chuí      & $-\num{55.22}$ & $-\num{51.80}$ & $+\num{8.06}$  & \bnum{\num{75.72}\,m} \\
+        Cruzeiro do Sul & $-\num{40.88}$ & $-\num{63.14}$ & $+\num{4.51}$ & \bnum{\num{75.22}\,m} \\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{cuidado}
+        \scriptsize
+        \tr{\textbf{Atenção prática:}\\[3pt]
+        Nunca use uma regra fixa de ``subtrair 65 metros''!\\[3pt]
+        Em Fortaleza o deslocamento horizontal é de apenas \bnum{\num{57.0}\,m}, enquanto no Chuí e no
+        Acre ultrapassa \bnum{\num{75}\,m}.\\[3pt]
+        Além disso, a altura elipsoidal ($h$) varia de \bnum{-\num{29.5}\,m} no Nordeste a
+        \bnum{+\num{8.1}\,m} no Sul!}{\textbf{Field warning:}\\[3pt]
+        Never apply a crude rule like ``subtract 65 meters''!\\[3pt]
+        In Fortaleza the horizontal shift is only \bnum{\num{57.0}\,m}, whereas in Chuí and Acre it
+        exceeds \bnum{\num{75}\,m}.\\[3pt]
+        Furthermore, ellipsoidal height ($h$) shifts from \bnum{-\num{29.5}\,m} in the Northeast to
+        \bnum{+\num{8.1}\,m} in the South!}
+      \end{cuidado}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{O Método de Grade: ProGriD e o formato NTv2}{Grid Shift Method: ProGriD and NTv2}}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.52\textwidth}
+      \begin{itemize}
+        \setlength{\itemsep}{4pt}
+        \scriptsize
+        \item \tr{Os 3 parâmetros tratam apenas da mudança do centro do elipsoide. Mas e as
+              \bnum{distorções locais de até \num{13}\,m} da rede clássica?}{The 3 parameters model
+              only the shift between ellipsoid centers. But what about the \bnum{local distortions
+              up to \num{13}\,m} in the old network?}
+        \item \tr{Para compatibilizar cartas topográficas antigas (escalas 1:25.000 e 1:50.000), o
+              IBGE desenvolveu o \textbf{ProGriD}.}{To transform legacy map sheets (1:25,000 and
+              1:50,000), IBGE developed \textbf{ProGriD}.}
+        \item \tr{Baseado no padrão internacional canadense \textbf{NTv2} (\emph{National
+              Transformation version 2}):}{Based on Canada's standard \textbf{NTv2} (\emph{National
+              Transformation version 2}):}
+              \begin{itemize}
+                \tiny
+                \item Uma grade regular modela os deslocamentos locais $\delta \varphi, \delta \lambda$;
+                \item Interpolação bilinear suave na célula da grade;
+                \item Modela distorções locais que 3 parâmetros não conseguem absorver.
+              \end{itemize}
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{ideia}
+        \scriptsize
+        \tr{\textbf{Quando usar cada método?}\\[3pt]
+        -- \textbf{3 Parâmetros:} para levantamentos modernos amarrados à rede GPS ou conversões
+        globais.\\[3pt]
+        -- \textbf{ProGriD (NTv2):} para converter dados históricos digitalizados de cartas antigas
+        impressas em papel, onde as distorções da triangulação clássica estão congeladas no desenho.}{
+        \textbf{When to use which?}\\[3pt]
+        -- \textbf{3 Parameters:} for modern GNSS surveys or general geographic conversions.\\[3pt]
+        -- \textbf{ProGriD (NTv2):} for converting digitized legacy maps surveyed from classical
+        triangulation, where optical distortions are frozen in the original paper drafting.}
+      \end{ideia}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{A crosta não para: a vida útil do SIRGAS2000}{The Crust Never Stops: Lifetime of SIRGAS2000}}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.52\textwidth}
+      \begin{itemize}
+        \setlength{\itemsep}{4pt}
+        \scriptsize
+        \item \tr{Lembre-se: o SIRGAS2000 está \textbf{congelado na época 2000,4}.}{Recall: SIRGAS2000
+              is \textbf{frozen at epoch 2000.4}.}
+        \item \tr{Mas a Placa Sul-Americana desliza a cerca de \bnum{\num{1.2}\,cm/ano} para Noroeste
+              em relação ao manto profundo da Terra.}{However, the South American Plate glides at
+              about \bnum{\num{1.2}\,cm/yr} northwestward relative to Earth's deep mantle.}
+        \item \tr{Hoje (\bnum{2026}), passaram-se \bnum{\num{25.6} anos} desde a campanha de maio de
+              2000:}{Today (\bnum{2026}), \bnum{\num{25.6} years} have elapsed since the May 2000
+              campaign:}
+              \begin{equation*}
+                \Delta s \approx \num{1.2}\,\mathrm{cm/ano} \times \num{25.6}\,\mathrm{anos} \approx \bnum{\num{31}\,cm}!
+              \end{equation*}
+        \item \tr{Se você ligar um receptor GNSS geodésico no campo hoje e medir no ITRF atual, sua
+              posição física dista cerca de \bnum{\num{31}\,cm} da coordenada na monografia! [D]}{If
+              you turn on a geodetic GNSS receiver in the field today measuring in current ITRF, your
+              physical mark sits about \bnum{\num{31}\,cm} away from the datasheet coordinate! [D]}
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \draw[thick, corSist] (0,0) circle (2pt) node[below, font=\tiny] {\tr{Coordenada 2000,4 (no papel)}{Epoch 2000.4 (datasheet)}};
+        \draw[seta, corTempo, very thick] (0,0) -- (-1.8,1.2) node[midway, above left, font=\tiny] {$\vec{v} \Delta t \approx \num{31}$\,cm};
+        \draw[thick, corFrame] (-1.8,1.2) circle (2pt) node[above, font=\tiny] {\tr{Posição física real em 2026}{Physical position in 2026}};
+      \end{tikzpicture}\\[2pt]
+      \tiny \tr{O marco viajou \num{31}\,cm sobre a placa tectônica nos últimos 26 anos.}{The physical
+      pillar traveled \num{31}\,cm riding the tectonic plate over the past 26 years.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Modelos de Velocidade: VEMOS e SIRGAS-CON}{Velocity Models: VEMOS and SIRGAS-CON}}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.54\textwidth}
+      \begin{itemize}
+        \setlength{\itemsep}{4pt}
+        \scriptsize
+        \item \tr{Para conciliar a posição medida no GNSS hoje com o referencial oficial congelado em
+              2000,4, o SIRGAS calcula e atualiza os modelos de velocidade \textbf{VEMOS} (\emph{Velocity
+              Model for SIRGAS}).}{To reconcile modern GNSS observations with the official frame
+              frozen at 2000.4, SIRGAS maintains \textbf{VEMOS} (\emph{Velocity Model for SIRGAS}).}
+        \item \tr{Gerações de modelos: VEMOS2003, VEMOS2009, VEMOS2015 e \bnum{VEMOS2022}, baseadas em
+              mais de \num{400} estações contínuas da rede \textbf{SIRGAS-CON}.}{Model generations:
+              VEMOS2003, VEMOS2009, VEMOS2015, and \bnum{VEMOS2022}, derived from over \num{400}
+              continuous \textbf{SIRGAS-CON} stations.}
+        \item \tr{\textbf{A equação de redução de época:}}{\textbf{Epoch reduction equation:}}
+              \begin{equation*}
+                \vec{X}(2000{,}4) = \vec{X}(t) - \vec{v} \cdot (t - 2000{,}4)
+              \end{equation*}
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{regra}
+        \scriptsize
+        \tr{\textbf{Como o IBGE-PPP resolve isso:}\\[3pt]
+        Quando você sobe um arquivo RINEX medido ontem no IBGE-PPP, o software calcula primeiro sua
+        coordenada na época do rastreio e, em seguida, aplica o modelo de velocidades da placa para
+        entregar a coordenada oficial reduzida para \bnum{2000,4}!}{\textbf{How IBGE-PPP handles this:}\\[3pt]
+        When you submit a RINEX file recorded yesterday to IBGE-PPP, the server solves your coordinate
+        at the survey epoch and then applies crustal velocity models to output coordinates reduced to
+        \bnum{2000.4}!}
+      \end{regra}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Debate moderno: manter congelado ou adotar datum dinâmico?}{Modern Debate: Keep Frozen or Adopt Dynamic Datums?}}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{tcolorbox}[colback=mTeal!8, colframe=mTeal, title={\tr{Modelo Estático (Brasil / SIRGAS)}{Static Frame (Brazil / SIRGAS)}}]
+        \scriptsize
+        \begin{itemize}
+          \setlength{\itemsep}{2pt}
+          \item \textbf{\tr{Vantagem:}{Advantage:}} coordenadas de imóveis e mapas permanecem fixas por décadas. Ninguém precisa refazer escrituras a cada ano.
+          \item \textbf{\tr{Desafio:}{Challenge:}} com o passar dos anos, a defasagem entre o GNSS de campo e o papel cresce (\num{31}\,cm em 2026, \num{50}\,cm em 2040), exigindo modelos de velocidade.
+        \end{itemize}
+      \end{tcolorbox}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{tcolorbox}[colback=mAmber!8, colframe=mAmber, title={\tr{Modelo Semi-Dinâmico (Austrália)}{Semi-Dynamic Frame (Australia)}}]
+        \scriptsize
+        \begin{itemize}
+          \setlength{\itemsep}{2pt}
+          \item \textbf{\tr{Exemplo:}{Example:}} a Austrália desloca-se a $\approx \num{7}$\,cm/ano para Nordeste. Em 2020 abandonou o GDA94 e lançou o \textbf{GDA2020} (\num{1.8}\,m de salto!).
+          \item \textbf{\tr{Desafio:}{Challenge:}} exige remapear todo o cadastro territorial nacional e mudar bases GIS a cada atualização de época.
+        \end{itemize}
+      \end{tcolorbox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Sua vez: reduzindo uma coordenada para a época oficial}{Your Turn: Reducing a Coordinate to Official Epoch}}
+  \begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+      \begin{ideia}[title={\tr{Problema}{Problem}}]
+        \scriptsize
+        \tr{Um receptor geodésico mediu em \bnum{2025,4} a coordenada $X$ de um marco no ITRF como:
+        $X(\num{2025.4}) = \num{2754120.350}$\,m.
+        \begin{enumerate}
+          \setlength{\itemsep}{2pt}
+          \item[(a)] Se a velocidade da placa nessa componente for $v_X = -\num{0.010}$\,m/ano, qual é
+                o deslocamento acumulado em \num{25} anos?
+          \item[(b)] Qual é a coordenada oficial $X$ que deve ser impressa na monografia do SIRGAS2000
+                (época 2000,4)?
+        \end{enumerate}}{A geodetic receiver surveyed in \bnum{2025.4} the $X$ coordinate of a mark in
+        ITRF as: $X(\num{2025.4}) = \num{2754120.350}$\,m.
+        \begin{enumerate}
+          \setlength{\itemsep}{2pt}
+          \item[(a)] If plate velocity is $v_X = -\num{0.010}$\,m/yr, what is the shift over \num{25} years?
+          \item[(b)] What is the official $X$ coordinate for the SIRGAS2000 datasheet (epoch 2000.4)?
+        \end{enumerate}}
+      \end{ideia}
+    \end{column}
+    \begin{column}{0.46\textwidth}
+      \begin{regra}[title={\tr{Resolução passo a passo}{Step-by-step Solution}}]
+        \scriptsize\raggedright
+        (a) $\Delta X = v_X \cdot (t - t_0)$\\[2pt]
+        $\phantom{(a)} = (-\num{0.010}\,\mathrm{m/ano}) \times (\num{25}\,\mathrm{anos}) = \bnum{-\num{0.250}\,\mathrm{m}}$.
+        \medskip
+
+        (b) $X(2000{,}4) = X(t) - \Delta X$\\[2pt]
+        $\phantom{(b)} = \num{2754120.350} - (-\num{0.250})$\\[2pt]
+        $\phantom{(b)} = \bnum{\num{2754120.600}}\,\mathrm{m}$.
+        \medskip
+
+        \tr{\textbf{Conclusão:} Uma diferença de \bnum{\num{25}\,cm} entre a época do rastreio e a
+        coordenada legal oficial!}{\textbf{Conclusion:} A difference of \bnum{\num{25}\,cm} between
+        survey epoch and official legal coordinate!}
+      \end{regra}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{A grande ponte para a Parte 2: a água não corre pelo elipsoide!}{The Grand Bridge to Part 2: Water Doesn't Flow on the Ellipsoid!}}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.52\textwidth}
+      \begin{itemize}
+        \setlength{\itemsep}{4pt}
+        \scriptsize
+        \item \tr{O SIRGAS2000 resolveu com perfeição a geometria tridimensional do país:
+              \bnum{latitude $\varphi$, longitude $\lambda$ e altura elipsoidal $h$}.}{SIRGAS2000
+              flawlessly solved Brazil's 3D geometry: \bnum{latitude $\varphi$, longitude $\lambda$,
+              and ellipsoidal height $h$}.}
+        \item \tr{Mas na engenharia, saneamento, canais e barragens, \alert{a água não se importa com o
+              elipsoide matemático}!}{However, in civil engineering, sanitation, canals, and dams,
+              \alert{water does not follow the mathematical ellipsoid}!}
+        \item \tr{A água escorre pelas superfícies equipotenciais da \textbf{gravidade terrestre}:}{
+              Water flows along equipotential surfaces of \textbf{Earth's gravity field}:}
+              \begin{itemize}
+                \tiny
+                \item Dois pontos com a mesma altura elipsoidal ($h_A = h_B$) podem ter altitudes físicas diferentes e a água escorrer de um para o outro!
+              \end{itemize}
+        \item \tr{A altitude da vida real ($H$) vem da \textbf{Rede Altimétrica Fundamental} amarrada
+              ao Marégrafo de Imbituba (SC).}{Physical height ($H$) comes from the \textbf{Vertical
+              Leveling Network} tied to Imbituba Tide Gauge (SC).}
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \draw[thick, corSist] (-2,0) arc[start angle=140, end angle=40, radius=3.0] node[right, font=\tiny] {\tr{Elipsoide GRS80}{GRS80 Ellipsoid}};
+        \draw[thick, corMar] (-2,0.6) arc[start angle=145, end angle=35, radius=2.7] node[right, font=\tiny] {\tr{Geoide / Mar Médio}{Geoid / Mean Sea Level}};
+        \draw[seta2, corErro, thick] (0,0.52) -- (0,1.25) node[midway, right, font=\tiny] {$N$ \tr{(ondulação)}{undulation}};
+        \draw[seta, thick, mTeal] (-0.8,1.6) -- (0.8,1.4) node[midway, above, font=\tiny] {\tr{Fluxo d'água}{Water flow}};
+      \end{tikzpicture}\\[2pt]
+      \tiny \tr{A ponte entre $h$ (SIRGAS) e $H$ (Imbituba) é o modelo de geoide.}{The bridge between
+      $h$ (SIRGAS) and $H$ (Imbituba) is the geoid model.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{Resumo da Parte 1: As Quatro Aulas num Olhar}{Part 1 Summary: The Four Classes at a Glance}}
+  \centering
+  \scriptsize
+  \begin{tabular}{cp{10.5cm}}
+    \toprule
+    \textbf{\tr{Aula}{Class}} & \textbf{\tr{A Ideia Central da Aula}{Core Idea of the Class}} \\
+    \midrule
+    \textbf{1} & \tr{\textbf{A Herança:} Os datums clássicos (Córrego Alegre, SAD69) amarravam o elipsoide ao relevo mineiro (Chuá). Sem geocentro, a rede clássica acumulou até \bnum{\num{13}\,m} de distorção nos extremos.}{\textbf{The Heritage:} Classical datums (Córrego Alegre, SAD69) pinned ellipsoids to Minas Gerais (Chuá). Without geocenter, classical triangulation piled up \bnum{\num{13}\,m} distortion at border extremes.} \\[3pt]
+    \textbf{2} & \tr{\textbf{A Idealização:} Em Assunção (1993), decidiu-se pregar o referencial no centro de massa da Terra (ITRS, GRS80, GPS). O SIRGAS95 provou a precisão milimétrica em 58 estações continentais.}{\textbf{The Design:} In Asunción (1993), geodesists chose to anchor the frame to Earth's center of mass (ITRS, GRS80, GPS). SIRGAS95 demonstrated millimeter accuracy across 58 continental sites.} \\[3pt]
+    \textbf{3} & \tr{\textbf{A Realização:} Em maio de 2000, 184 estações (21 no Brasil) rastrearam simultaneamente. O processamento independente em três centros e o ajustamento com injunções geraram o SIRGAS2000 na época congelada \bnum{2000,4}.}{\textbf{The Realization:} In May 2000, 184 stations (21 in Brazil) tracked simultaneously. Processing in three independent centers and constrained adjustment yielded SIRGAS2000 frozen at epoch \bnum{2000.4}.} \\[3pt]
+    \textbf{4} & \tr{\textbf{A Adoção e Vida Útil:} Decreto 5.334 e R.PR 1/2005 (transição até 2015). O reajuste de 2006 (6265 estações). A placa deriva \bnum{\num{1.2}\,cm/ano} (\num{31}\,cm em 2026), corrigida por modelos VEMOS.}{\textbf{Adoption and Lifetime:} Decree 5,334 and R.PR 1/2005 (transition ending 2015). The 2006 re-adjustment (6,265 stations). Plate drifts \bnum{\num{1.2}\,cm/yr} (\num{31}\,cm in 2026), modeled by VEMOS.} \\
+    \bottomrule
+  \end{tabular}
+  \vspace{0.25cm}
+  \begin{ideia}
+    \centering \footnotesize
+    \tr{\textbf{Continua na Parte 2:} O Sistema Geodésico Brasileiro --- A Rede Altimétrica, o Nivelamento e o Geoide!}{\textbf{Continues in Part 2:} The Brazilian Geodetic System --- The Leveling Network, Heights, and the Geoid!}
+  \end{ideia}
+\end{frame}
+
+% ==================================================================
+\appendix
+
+\begin{frame}[standout]
+  \tr{Apêndice Técnico}{Technical Appendix}\\[6pt]
+  {\normalsize \tr{Formulações matemáticas, linha do tempo e fontes primárias}{Mathematical formulations, timeline and primary sources}}
+\end{frame}
+
+\begin{frame}{\tr{A1 · Definição do ITRS e do SIRGAS}{A1 · ITRS and SIRGAS Definition}}
+  \scriptsize
+  \begin{itemize}
+    \setlength{\itemsep}{3pt}
+    \item \textbf{\tr{Origem:}{Origin:}} Centro de massa da Terra total (incluindo oceanos e atmosfera).
+    \item \textbf{\tr{Escala:}{Scale:}} Determinada no sistema próprio de coordenadas relativísticas terrestres (TT / TCG).
+    \item \textbf{\tr{Orientação:}{Orientation:}} Polo convencional terrestre (CIP) e meridiano de referência internacional (IRM), alinhados às convenções do IERS / BIH 1984.0.
+    \item \textbf{\tr{Evolução temporal (Condição NNR):}{Time evolution (NNR Condition):}}
+          A rotação líquida residual da crosta terrestre em relação ao manto profundo deve ser nula:
+          \begin{equation*}
+            \int_{\text{Terra}} (\vec{r} \times \vec{v}) \, dm = \vec{0}
+          \end{equation*}
+    \item \textbf{\tr{Elipsoide associado:}{Associated Ellipsoid:}} GRS80 (\emph{Geodetic Reference System 1980}):
+          \begin{equation*}
+            a = \bnum{\num{6378137}}\,\mathrm{m}, \quad 1/f = \bnum{\num{298.257222101}}, \quad GM = \num{3986005}\times10^8\,\mathrm{m^3/s^2}
+          \end{equation*}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{\tr{A2 · Ajustamento por Mínimos Quadrados com Injunções}{A2 · Least Squares Adjustment with Constraints}}
+  \scriptsize
+  \tr{Seja o modelo de observações linearizado $v = A \hat{x} - l$ com pesos $P = \sigma_0^2 \Sigma^{-1}$, e as equações de injunção nas coordenadas conhecidas $v_C = C \hat{x} - w$ com pesos $P_C = \sigma_0^2 \Sigma_C^{-1}$.}{
+  Given the linearized observation model $v = A \hat{x} - l$ with weights $P = \sigma_0^2 \Sigma^{-1}$, and constraint equations on known coordinates $v_C = C \hat{x} - w$ with weights $P_C = \sigma_0^2 \Sigma_C^{-1}$.}
+  \vspace{0.15cm}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{tcolorbox}[colback=mStoneLight, colframe=mStone, title={\tr{Sistema Normal Combinado}{Combined Normal System}}]
+        \scriptsize
+        \begin{equation*}
+          (A^T P A + C^T P_C C) \hat{x} = A^T P l + C^T P_C w
+        \end{equation*}
+        \tr{Definindo $N = A^T P A$ e $u = A^T P l$:}{Defining $N = A^T P A$ and $u = A^T P l$:}
+        \begin{equation*}
+          \hat{x} = (N + C^T P_C C)^{-1} (u + C^T P_C w)
+        \end{equation*}
+      \end{tcolorbox}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{tcolorbox}[colback=mTeal!8, colframe=mTeal, title={\tr{Variância a Posteriori}{A Posteriori Variance}}]
+        \scriptsize
+        \begin{equation*}
+          \hat{\sigma}_0^2 = \frac{v^T P v + v_C^T P_C v_C}{(n + n_C) - u}
+        \end{equation*}
+        \tr{Onde:}{Where:}
+        \begin{itemize}
+          \tiny
+          \item $n$: número de observações de campo;
+          \item $n_C$: número de equações de injunção;
+          \item $u$: número de parâmetros incógnitos estimados.
+        \end{itemize}
+      \end{tcolorbox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{A3 · Fórmulas de Transformação SAD69 $\to$ SIRGAS2000}{A3 · Transformation Formulas SAD69 $\to$ SIRGAS2000}}
+  \scriptsize
+  \tr{A transformação oficial brasileira recomendada pelo IBGE opera no espaço geocêntrico 3D:}{The
+  official Brazilian transformation recommended by IBGE operates in 3D geocentric space:}
+  \begin{equation*}
+    \begin{pmatrix} X \\ Y \\ Z \end{pmatrix}_{\text{SIRGAS2000}} =
+    \begin{pmatrix} X \\ Y \\ Z \end{pmatrix}_{\text{SAD69}} +
+    \begin{pmatrix} \Delta X \\ \Delta Y \\ \Delta Z \end{pmatrix}, \quad
+    \begin{cases}
+      \Delta X = -\num{67.35}\,\mathrm{m} \\
+      \Delta Y = +\num{3.88}\,\mathrm{m} \\
+      \Delta Z = -\num{38.22}\,\mathrm{m}
+    \end{cases}
+  \end{equation*}
+  \vspace{0.1cm}
+  \tr{\textbf{Relação com os parâmetros elipsoidais:}}{ \textbf{Relationship with ellipsoidal parameters:}}
+  \begin{itemize}
+    \tiny
+    \item SAD69 (UGGI67): $a_1 = \num{6378160}$\,m, $1/f_1 = \num{298.25}$;
+    \item SIRGAS2000 (GRS80): $a_2 = \num{6378137}$\,m ($\Delta a = a_2 - a_1 = -\num{23}$\,m), $1/f_2 = \num{298.257222101}$ ($\Delta f = -\num{0.000000081}$).
+    \item Para conversão analítica direta em latitude e longitude geodésicas sem passar por ECEF, usa-se a fórmula de \textbf{Molodensky Abreviada} (implementada no simulador \texttt{sistemas\_coordenadas/}).
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{\tr{A4 · Propagação Temporal com Velocidades de Placa}{A4 · Epoch Propagation with Plate Velocities}}
+  \scriptsize
+  \tr{A posição tridimensional de uma estação no instante $t$ é modelada por cinemática linear:}{The
+  3D position of a station at epoch $t$ is modeled via linear kinematics:}
+  \begin{equation*}
+    \vec{X}(t) = \vec{X}(t_0) + \vec{v} \cdot (t - t_0) + \sum_{k} \Delta \vec{X}_k \, H(t - t_k) + \vec{\varepsilon}(t)
+  \end{equation*}
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{itemize}
+        \tiny
+        \item $\vec{X}(t_0)$: posição de referência na época oficial ($t_0 = 2000{,}4$);
+        \item $\vec{v} = (v_X, v_Y, v_Z)^T$: velocidade linear constante da placa (fornecida pelos modelos VEMOS);
+        \item $\Delta \vec{X}_k$: saltos co-sísmicos ou mudanças de antena no tempo $t_k$ ($H$: função degrau Heaviside);
+        \item $\vec{\varepsilon}(t)$: variações sazonais periódicas (carga hidrológica, marés oceânicas).
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{tcolorbox}[colback=mIndigo!8, colframe=mIndigo, title={\tr{Para o usuário prático}{For practical users}}]
+        \scriptsize \tr{Para levar uma medição GNSS de hoje ($t$) para a época oficial $t_0 = 2000{,}4$:\\[3pt]
+        \centering
+        $\vec{X}(2000{,}4) = \vec{X}(t) - \vec{v} \cdot (t - 2000{,}4)$}{To reduce today's survey ($t$)
+        to official epoch $t_0 = 2000.4$:\\[3pt]
+        \centering
+        $\vec{X}(2000.4) = \vec{X}(t) - \vec{v} \cdot (t - 2000.4)$}
+      \end{tcolorbox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{A5 · Linha do Tempo da Geodésia Brasileira (1924--2026)}{A5 · Brazilian Geodesy Timeline (1924--2026)}}
+  \tiny
+  \begin{tabular}{llp{9.5cm}}
+    \toprule
+    \textbf{\tr{Ano}{Year}} & \textbf{\tr{Marco}{Milestone}} & \textbf{\tr{Significado Técnico}{Technical Significance}} \\
+    \midrule
+    \textbf{1924} & Hayford 1924 & Adotado no datum Córrego Alegre ($a=\num{6378388}$\,m, $1/f=\num{297}$, $\xi=\eta=0$). \\
+    \textbf{1969} & SAD69 & UGGI67 ($a=\num{6378160}$\,m, $1/f=\num{298.25}$), datum no Vértice Chuá (MG). \\
+    \textbf{1991} & Chegada do GPS & IBGE adquire os primeiros \num{4} receptores geodésicos GPS de dupla frequência. \\
+    \textbf{1993} & Assunção & Conferência cria o SIRGAS (IAG, IPGH, DMA) com os Grupos de Trabalho I e II. \\
+    \textbf{1995} & SIRGAS95 & Campanha com \num{58} estações continentais (\num{11} no Brasil). ITRF94 época 1995,4. \\
+    \textbf{1996} & Ajuste SAD69 / RBMC & Ajuste global clássico (4760 estações); inauguração da RBMC (Curitiba e Pres. Prudente). \\
+    \textbf{1997} & GT III (Rio de Janeiro) & IAG cria o Grupo de Trabalho III (Datum Vertical e Altimetria). \\
+    \textbf{2000} & SIRGAS2000 / PMRG & Campanha de maio com \num{184} estações; época \bnum{2000,4}; criação formal do PMRG. \\
+    \textbf{2005} & Decreto 5.334 / R.PR 1 & Oficialização legal do SIRGAS2000 no Brasil com período de transição de 10 anos. \\
+    \textbf{2006} & Ajuste da Rede Planimétrica & 6.265 estações ajustadas simultaneamente com \num{21} injunções SIRGAS ($\sigma/10$). \\
+    \textbf{2015} & Fim da Transição & 25/02/2015: encerramento definitivo do SAD69. Uso exclusivo de SIRGAS2000. \\
+    \textbf{2026} & Hoje & Crosta acumulou \num{31}\,cm de deriva; uso rotineiro de IBGE-PPP e modelos VEMOS2022. \\
+    \bottomrule
+  \end{tabular}
+\end{frame}
+
+\begin{frame}{\tr{A6 · Glossário Conceitual Bilíngue}{A6 · Bilingual Conceptual Glossary}}
+  \tiny
+  \begin{columns}[onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{itemize}
+        \setlength{\itemsep}{2pt}
+        \item \textbf{Datum Topocêntrico / Topocentric Datum:} referencial cujo elipsoide tangencia o geoide num ponto da superfície (Córrego Alegre, Chuá); centro não coincide com o geocentro.
+        \item \textbf{Datum Geocêntrico / Geocentric Datum:} referencial com origem no centro de massa da Terra (ITRS, SIRGAS2000, WGS 84).
+        \item \textbf{Sistema de Referência / Reference System:} definição teórica e física do espaço (regras, constantes $a, f, GM$, condição NNR).
+        \item \textbf{Estrutura de Referência (Frame) / Reference Frame:} materialização física e numérica do sistema (lista de coordenadas e velocidades dos marcos em determinada época).
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{itemize}
+        \setlength{\itemsep}{2pt}
+        \item \textbf{Rede Passiva / Passive Network:} marcos físicos cravados no solo (pilares, chapas de bronze) sem rastreamento contínuo.
+        \item \textbf{Rede Ativa / Active Network:} estações com receptores GNSS permanentes transmitindo dados ininterruptos (RBMC).
+        \item \textbf{Injunção / Constraint:} equação que fixa ou restringe com determinado peso as coordenadas de estações conhecidas no ajustamento.
+        \item \textbf{Época de Referência / Reference Epoch:} data específica para a qual as coordenadas de um frame estático são calculadas e congeladas (ex.: 2000,4).
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{\tr{A7 · Siglas e Instituições Fundamentais}{A7 · Key Acronyms and Institutions}}
+  \tiny
+  \begin{tabular}{lp{11cm}}
+    \toprule
+    \textbf{\tr{Sigla}{Acronym}} & \textbf{\tr{Nome e Significado}{Name and Meaning}} \\
+    \midrule
+    \textbf{SGB} & \tr{Sistema Geodésico Brasileiro (mantido e regulamentado pelo IBGE).}{Brazilian Geodetic System (maintained and regulated by IBGE).} \\
+    \textbf{SIRGAS} & \tr{Sistema de Referência Geodésico para as Américas (órgão intergovernamental científico da IAG e IPGH).}{Geodetic Reference System for the Americas.} \\
+    \textbf{ITRS / ITRF} & \emph{International Terrestrial Reference System / Frame} (IERS, padrão científico mundial). \\
+    \textbf{IERS} & \emph{International Earth Rotation and Reference Systems Service} (Frankfurt / Paris). \\
+    \textbf{IAG} & \emph{International Association of Geodesy} (\tr{Associação Internacional de Geodésia}{International Association of Geodesy}). \\
+    \textbf{IPGH} & \tr{Instituto Pan-Americano de Geografia e História (órgão especializado da OEA).}{Pan-American Institute of Geography and History (OAS specialized agency).} \\
+    \textbf{IGS} & \emph{International GNSS Service} (\tr{serviço global de órbitas e relógios de satélites}{global satellite orbit and clock service}). \\
+    \textbf{DGFI-TUM} & \emph{Deutsches Geodätisches Forschungsinstitut} (\tr{Universidade Técnica de Munique, Alemanha}{Technical University of Munich, Germany}). \\
+    \textbf{DMA / NGA} & \emph{Defense Mapping Agency} (\tr{EUA, posteriormente NIMA e atual NGA}{USA, later NIMA and now NGA}). \\
+    \textbf{IBGE} & \tr{Instituto Brasileiro de Geografia e Estatística (autoridade geodésica e cartográfica do Brasil).}{Brazilian Institute of Geography and Statistics.} \\
+    \textbf{RBMC} & \tr{Rede Brasileira de Monitoramento Contínuo dos Sistemas GNSS (rede ativa oficial do IBGE).}{Brazilian Continuous Monitoring Network of GNSS Systems.} \\
+    \textbf{SINEX} & \emph{Solution INdependent EXchange} (\tr{formato neutro internacional para intercâmbio de equações normais geodésicas}{neutral international format for exchanging geodetic normal equations}). \\
+    \bottomrule
+  \end{tabular}
+\end{frame}
+
+\begin{frame}{\tr{A8 · Fontes Primárias e Conferência de Fatos}{A8 · Primary Sources and Fact Verification}}
+  \tiny
+  \begin{itemize}
+    \setlength{\itemsep}{2pt}
+    \item \textbf{[A]} IBGE (\num{2000}), \emph{SIRGAS Final Report, Working Groups I and II}. Rio de Janeiro: IBGE / DGFI / NIMA. (Campanhas de 1995 e 2000, 58 e 184 estações, ITRF94 e ITRF2000).
+    \item \textbf{[B]} IBGE (\num{2006}), \emph{\tr{Ajustamento da Rede Planimétrica Brasileira em SIRGAS2000}{Adjustment of the Brazilian Planimetric Network in SIRGAS2000}}. Rio de Janeiro: Diretoria de Geociências, Coordenação de Geodésia. (6.265 estações, 22.232 equações, parâmetros de translação da tab.\ 9, peso $\sigma/10$).
+    \item \textbf{[C]} IBGE (\num{1996}/\num{2002}), \emph{\tr{Ajustamento da Rede Planimétrica do SGB}{Adjustment of the SGB Planimetric Network}}. Rio de Janeiro: IBGE. (Córrego Alegre, SAD69, histórico de triangulação, distorção de até \num{13}\,m no BDG).
+    \item \textbf{[D]} SIRGAS (\num{2026}), \texttt{sirgas.ipgh.org}: Seções \emph{About us}, \emph{SIRGAS2000}, \emph{Working Groups I, II, III}, \emph{SIRGAS-CON}, \emph{VEMOS Models}.
+    \item \textbf{[E]} \tr{Presidência da República (\num{2005}), \emph{Decreto nº 5.334, de 6 de janeiro de 2005}. Altera o art.\ 21 do Decreto nº 89.817/1984.}{Presidency of the Republic of Brazil (\num{2005}), \emph{Decree no.\ 5,334 of January 6, 2005}.}
+    \item \textbf{[F]} \tr{IBGE (\num{2005}), \emph{Resolução do Presidente do IBGE nº 1/2005, de 25 de fevereiro de 2005}. Oficialização do SIRGAS2000 no Brasil e transição de 10 anos.}{IBGE (\num{2005}), \emph{Resolution PR no.\ 1/2005 of February 25, 2005}.}
+    \item \tr{Valores numéricos e parâmetros recalculados neste repositório: \texttt{sgb\_sirgas2000\_numeros.py}.}{Derived numbers and parameters recomputed in this repository: \texttt{sgb\_sirgas2000\_numeros.py}.}
+  \end{itemize}
+  \medskip
+  \normalsize
+  \centering
+  \tr{Os fatos, números e legislações desta aula foram conferidos na íntegra em 13/10/2026.}{All facts, numbers, and legislation in this lecture were verified in full on 13/10/2026.}
+\end{frame}
+
+\end{document}
