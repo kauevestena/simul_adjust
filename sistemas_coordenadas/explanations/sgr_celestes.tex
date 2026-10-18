@@ -15,7 +15,18 @@
 % Acompanham a aula os simuladores astrometria/ (estrelas, AR e Dec, tempo de Greenwich),
 % GNSS_simul/ (órbitas: ECI -> ECEF com o ângulo sideral) e sistemas_coordenadas/.
 %
-% (fontes: a preencher)
+% Fontes principais (valores e datas conferidos em 18/10/2026; ver os slides "Fontes e leituras"):
+%   IERS Conventions (2010), IERS Technical Note 36; resoluções da IAU (1997 B2; 2000 B1.3 e
+%   B1.6-B1.9; 2006 B1; 2009 B3; 2018 B2; 2021 B3); Ma et al. 1998, AJ 116, 516 (ICRF); Fey et al.
+%   2015, AJ 150, 58 (ICRF2); Charlot et al. 2020, A&A 644, A159 (ICRF3); Gaia Collaboration,
+%   Klioner et al. 2022, A&A 667, A148 (Gaia-CRF3); ESA 1997, SP-1200 (Hipparcos); Capitaine &
+%   Wallace 2006, A&A 450, 855; Meeus 1998 (Astronomical Algorithms); Stephenson et al. 2016, Proc.
+%   R. Soc. A 472, 20160404; Agnew 2024, Nature 628, 333; Ashby 2003, Living Rev. Relativ. 6, 1;
+%   Takamoto et al. 2020, Nat. Photon. 14, 411; Vallado et al. 2006, AIAA 2006-6753 (SGP4, TEME);
+%   Navipedia (tempo no GNSS); BIPM (Brochura do SI, 9a ed.; CGPM 2022 Res. 4; CGPM 2026 Res. 5,
+%   cujo texto oficial NAO foi conferido: dados da declaracao do presidente do CCTF e da imprensa);
+%   IVS Biennial Report 2017+2018 (estacao de Fortaleza); Observatorio Nacional (Hora Legal,
+%   Decreto 4.264/2002); IBGE (RBMC, 153 estacoes ativas em dez/2025).
 
 \newif\ifEN
 \ifdefined\aulaEN \ENtrue \fi
@@ -244,8 +255,9 @@ Coordinate Systems Simulators}}
       \end{regra}
       \vspace{2pt}
       \begin{regra}[title={\tr{Aula 4 · O tempo e a prática}{Class 4 · Time and practice}}]
-        \small\tr{UT1, UTC, TAI e o tempo do GNSS; da órbita ao receptor; o Brasil.}{UT1, UTC, TAI and
-        GNSS time; from the orbit to the receiver; Brazil.}
+        \small\tr{UT1, UTC, TAI, o segundo intercalar e o tempo do GNSS; da órbita ao receptor; o
+        Brasil.}{UT1, UTC, TAI, the leap second and GNSS time; from the orbit to the receiver;
+        Brazil.}
       \end{regra}
     \end{column}
   \end{columns}
@@ -337,7 +349,6 @@ Coordinate Systems Simulators}}
   \tr{Um satélite GPS dá uma volta em torno da Terra em cerca de \bnum{12 horas}. O mesmo
   satélite, durante um dia, em dois desenhos:}{A GPS satellite goes once around the Earth in
   about \bnum{12 hours}. The same satellite, over one day, in two drawings:}
-  \smallskip
   \begin{columns}[T]
     \begin{column}{0.34\textwidth}
       \centering
@@ -358,7 +369,7 @@ Coordinate Systems Simulators}}
     \end{column}
     \begin{column}{0.62\textwidth}
       \centering
-      \begin{tikzpicture}[x=0.0168cm, y=0.0168cm]
+      \begin{tikzpicture}[x=0.0158cm, y=0.0158cm]
         \draw[mStoneMid!60] (-180,-90) rectangle (180,90);
         \foreach \xx in {-120,-60,0,60,120} { \draw[mStoneMid!25] (\xx,-90) -- (\xx,90); }
         \foreach \yy in {-60,-30,0,30,60} { \draw[mStoneMid!25] (-180,\yy) -- (180,\yy); }
@@ -374,7 +385,7 @@ Coordinate Systems Simulators}}
         \node[rotulo, text=corFrame, align=left, right] at (-172,80) {\tr{1ª volta (0 a 12 h)}{1st orbit (0 to 12 h)}};
         \node[rotulo, text=corFrame!70, align=left, right] at (-172,66) {\tr{2ª volta (12 a 24 h)}{2nd orbit (12 to 24 h)}};
       \end{tikzpicture}
-      \par\smallskip
+      \par
       {\scriptsize\textcolor{corFrame}{\textbf{\tr{visto de um mapa preso à Terra: um laço retorcido}{seen from a map fixed to the Earth: a twisted loop}}}}
     \end{column}
   \end{columns}
@@ -390,6 +401,7 @@ Coordinate Systems Simulators}}
 \begin{frame}{\tr{O norte do céu muda de endereço}{The north of the sky changes address}}
   \begin{columns}[T]
     \begin{column}{0.52\textwidth}
+      \small
       \tr{Hoje o polo norte celeste aponta quase para \bnum{Polaris}, a Estrela Polar: fica a
       menos de $1\gr$ dela.}{Today the north celestial pole points almost at \bnum{Polaris}, the
       North Star: it lies less than $1\gr$ away.}
@@ -477,6 +489,7 @@ Coordinate Systems Simulators}}
 \begin{frame}{\tr{O carrossel, de novo}{The carousel, again}}
   \begin{columns}[T]
     \begin{column}{0.44\textwidth}
+      \small
       \tr{Você está num carrossel e joga uma bola para um amigo do outro lado.}{You are on a
       carousel and throw a ball to a friend on the other side.}
       \medskip
@@ -621,9 +634,9 @@ Coordinate Systems Simulators}}
       \small
       \tr{Na Terra, damos a latitude e a longitude. No céu, é a mesma ideia:}{On the Earth, we
       give latitude and longitude. In the sky, it is the same idea:}
-      \medskip
+      \smallskip
       \begin{itemize}
-        \setlength{\itemsep}{4pt}
+        \setlength{\itemsep}{2pt}
         \item \tr{o \bnum{equador celeste} é o equador da Terra ``esticado'' até a esfera; os
               \bnum{polos celestes} são o eixo da Terra esticado;}{the \bnum{celestial equator}
               is the Earth's equator ``stretched'' out to the sphere; the \bnum{celestial
@@ -691,10 +704,10 @@ Coordinate Systems Simulators}}
         \toprule
         & \textcolor{corTempo}{$\alpha$} & \textcolor{corErro}{$\delta$} \\
         \midrule
-        \textbf{Sirius} & 6 h 45 min 8,9 s & $-16\gr42\amin58\asec$ \\
+        \textbf{Sirius} & 6 h 45 min \num{8.9} s & $-16\gr42\amin58\asec$ \\
         & $=\num{101.287}\gr$ & $=\num{-16.716}\gr$ \\
         \midrule
-        \textbf{Acrux} & 12 h 26 min 35,9 s & $-63\gr05\amin57\asec$ \\
+        \textbf{Acrux} & 12 h 26 min \num{35.9} s & $-63\gr05\amin57\asec$ \\
         & $=\num{186.650}\gr$ & $=\num{-63.099}\gr$ \\
         \bottomrule
       \end{tabular}
@@ -711,6 +724,7 @@ Coordinate Systems Simulators}}
 \begin{frame}{\tr{O ponto de partida: eclíptica e ponto vernal}{The starting point: ecliptic and vernal point}}
   \begin{columns}[T]
     \begin{column}{0.52\textwidth}
+      \small
       \tr{Para a longitude da Terra, o mundo combinou o meridiano de Greenwich. E para a
       ascensão reta?}{For longitude on the Earth, the world agreed on the Greenwich meridian.
       And for right ascension?}
@@ -776,7 +790,7 @@ Coordinate Systems Simulators}}
       \onslide<2->{
       \begin{ideia}[title={\tr{Respostas}{Answers}}]
         \small\raggedright
-        (a) $18{,}6158\ \text{h} \times 15 = \bnum{\num{279.24}\gr}$.
+        (a) $\num{18.6158}\ \text{h} \times 15 = \bnum{\num{279.24}\gr}$.
         \medskip
 
         (b) $150 / 15 = \bnum{10}$ h, \tr{céu \bnum{sul} (declinação negativa).}{\bnum{southern}
@@ -877,7 +891,7 @@ Coordinate Systems Simulators}}
         \node[rotulo, text=corSist, align=left, left] at (-0.75,2.15) {\tr{o eixo desenha}{the axis draws}\\\tr{um cone}{a cone}};
         \node[rotulo, text=mStone, above right] at (0.72,1.86) {\tr{eixo da Terra}{Earth's axis}};
         \draw[mStone] (0,0.85) arc (90:66.6:0.85);
-        \node[rotulo, above right] at (0.10,0.80) {$23{,}4\gr$};
+        \node[rotulo, above right] at (0.10,0.80) {$\num{23.4}\gr$};
       \end{tikzpicture}
     \end{column}
   \end{columns}
@@ -1099,7 +1113,7 @@ Coordinate Systems Simulators}}
         \node[rotulo, text=corTempo, above, align=center] at (390,12) {\tr{só precessão (reta)}{precession only (straight)}};
         \node[rotulo, text=corSist, below, align=center] at (390,-12) {\tr{precessão + nutação (ondulado)}{precession + nutation (wavy)}};
         \draw[mStoneMid, seta2] (780,-9.2) -- (780,9.2);
-        \node[rotulo, text=mStoneMid, right] at (785,0) {$\pm 9{,}2\asec$};
+        \node[rotulo, text=mStoneMid, right] at (785,0) {$\pm \num{9.2}\asec$};
         \draw[mStoneMid, seta2] (0,-22) -- (744,-22);
         \node[rotulo, below] at (372,-22) {\tr{37 anos (2 ciclos)}{37 years (2 cycles)}};
       \end{tikzpicture}
@@ -1135,7 +1149,7 @@ Coordinate Systems Simulators}}
       \begin{tikzpicture}[scale=0.95]
         \fill[mStoneLight] (0,0) circle (1.4);
         \draw[mStoneMid] (0,0) circle (1.4);
-        \node[rotulo, align=center] at (0,0) {\tr{Lua cheia}{full Moon}\\$0{,}5\gr$};
+        \node[rotulo, align=center] at (0,0) {\tr{Lua cheia}{full Moon}\\$\num{0.5}\gr$};
         \draw[corErro, seta, very thick] (-1.4,-2.0) -- (1.4,-2.0);
         \node[rotulo, text=corErro, align=center, below] at (0,-2.05) {\tr{Barnard em 174 anos}{Barnard in 174 years}};
         \draw[corSist, seta, very thick] (-1.4,-3.0) -- (-1.4+0.36,-3.0);
@@ -1153,11 +1167,11 @@ Coordinate Systems Simulators}}
     \toprule
     \tr{o que se mexe}{what moves} & \tr{quanto}{how much} & \tr{o que muda nas coordenadas}{what changes in the coordinates} \\
     \midrule
-    \tr{o equinócio (precessão)}{the equinox (precession)} & $50{,}29\asec$/\tr{ano}{yr} &
+    \tr{o equinócio (precessão)}{the equinox (precession)} & $\num{50.29}\asec$/\tr{ano}{yr} &
       \tr{a ascensão reta de todas as estrelas}{the right ascension of all stars} \\
     \tr{o polo (precessão)}{the pole (precession)} & $20\asec$/\tr{ano}{yr} &
       \tr{a declinação de todas as estrelas}{the declination of all stars} \\
-    \tr{o equador (nutação)}{the equator (nutation)} & $\pm 17\asec$ \tr{em}{in} 18,6 \tr{anos}{yr} &
+    \tr{o equador (nutação)}{the equator (nutation)} & $\pm 17\asec$ \tr{em}{in} \num{18.6} \tr{anos}{yr} &
       \tr{uma ondulação nas duas}{a ripple in both} \\
     \tr{as estrelas (mov.~próprio)}{the stars (proper motion)} & \tr{até}{up to} $10\asec$/\tr{ano}{yr} &
       \tr{cada estrela, a seu modo}{each star, in its own way} \\
@@ -1172,6 +1186,7 @@ Coordinate Systems Simulators}}
 \begin{frame}{\tr{Experimente: o Simulador de Astrometria}{Try it: the Astrometry Simulator}}
   \begin{columns}[T]
     \begin{column}{0.50\textwidth}
+      \small
       \tr{Na pasta \texttt{astrometria} você é um agrimensor sem GNSS: aponta o teodolito para
       três estrelas, anota a \emph{distância zenital} e o \emph{ângulo horizontal}, e o
       programa ajusta, por \bnum{mínimos quadrados}, a latitude, a longitude e a constante do
@@ -1493,7 +1508,7 @@ Coordinate Systems Simulators}}
 
       \tr{Orelhas a $d = 0{,}20$ m, som a $343$ m/s: o atraso máximo é}{Ears $d = 0.20$ m apart,
       sound at $343$ m/s: the maximum delay is}
-      \[ \frac{d}{v} = \frac{0{,}20}{343} \approx \bnum{0{,}6}\ \text{ms} \]
+      \[ \frac{d}{v} = \frac{\num{0.20}}{343} \approx \bnum{\num{0.6}}\ \text{ms} \]
       \tr{E o atraso depende do ângulo $\theta$:}{And the delay depends on the angle $\theta$:}
       \[ \boxed{\; \text{\tr{atraso}{delay}} = \frac{d\,\cos\theta}{v} \;} \]
     \end{column}
@@ -1658,14 +1673,14 @@ Coordinate Systems Simulators}}
       \onslide<2->{
       \begin{ideia}[title={\tr{Respostas}{Answers}}]
         \small\raggedright
-        (a) $\tau = \dfrac{6\times10^{6}\,\cos 60\gr}{\num{299792458}} \approx \bnum{10{,}0}$ ms.
+        (a) $\tau = \dfrac{6\times10^{6}\,\cos 60\gr}{\num{299792458}} \approx \bnum{\num{10.0}}$ ms.
         \medskip
 
         (b) $\delta\tau = \dfrac{B\sin\theta\,\delta\theta}{c} \approx \bnum{84}$ ps
         ($1\mas = \num{4.85e-9}$ rad).
         \medskip
 
-        (c) $c \times 84$ ps $\approx \bnum{2{,}5}$ cm.
+        (c) $c \times 84$ ps $\approx \bnum{\num{2.5}}$ cm.
       \end{ideia}
       }
     \end{column}
@@ -1824,9 +1839,9 @@ Coordinate Systems Simulators}}
         \fill[mStone] (1.07,0) circle (0.05);
         \node[rotulo, text=mStone, right] at (1.12,0.1) {\tr{baricentro}{barycenter}};
         \fill[mStone] (0,0) circle (0.03);
-        \node[rotulo, text=corTempo, below] at (0,-1.1) {\tr{Sol}{Sun}};
+        \node[rotulo, text=corTempo!60!black] at (-0.4,0.45) {\tr{Sol}{Sun}};
         \draw[corSist, seta] (0.22,0.98) arc (80:35:1.07 and 1.07);
-        \node[rotulo, text=mStoneMid, align=center] at (1.1,-1.55) {\tr{o centro do Sol dá a volta}{the Sun's center circles}\\\tr{em torno do baricentro}{around the barycenter}};
+        \node[rotulo, text=mStoneMid, align=center] at (1.1,-1.75) {\tr{o centro do Sol dá a volta}{the Sun's center circles}\\\tr{em torno do baricentro}{around the barycenter}};
       \end{tikzpicture}
     \end{column}
   \end{columns}
@@ -1967,9 +1982,9 @@ Coordinate Systems Simulators}}
         \small
         \renewcommand{\arraystretch}{1.15}
         \begin{tabular}{@{}rl@{}}
-          $1\asec$ & $= 30{,}9$ m \\
-          $1\mas$ & $= 3{,}1$ cm \\
-          $30\uas$ & $= \bnum{0{,}9}$ mm \\
+          $1\asec$ & $= \num{30.9}$ m \\
+          $1\mas$ & $= \num{3.1}$ cm \\
+          $30\uas$ & $= \bnum{\num{0.9}}$ mm \\
         \end{tabular}
       \end{ideia}
       \smallskip
@@ -2012,14 +2027,14 @@ Coordinate Systems Simulators}}
       \onslide<2->{
       \begin{ideia}[title={\tr{Respostas}{Answers}}]
         \small\raggedright
-        (a) $0{,}001\asec \times 30{,}9$ m $\approx \bnum{3{,}1}$ cm.
+        (a) $\num{0.001}\asec \times \num{30.9}$ m $\approx \bnum{\num{3.1}}$ cm.
         \medskip
 
-        (b) $0{,}3 \times 3{,}1$ cm $\approx \bnum{0{,}9}$ cm \tr{(quase 1 cm!)}{(almost 1 cm!)}.
+        (b) $\num{0.3} \times \num{3.1}$ cm $\approx \bnum{\num{0.9}}$ cm \tr{(quase 1 cm!)}{(almost 1 cm!)}.
         \medskip
 
-        (c) $v/d = \dfrac{10^{6}}{10^{10}\times 9{,}46\times10^{15}} \times 3{,}16\times10^{7}$
-        $\approx 3{,}3\times10^{-13}$ rad/\tr{ano}{yr} $\approx \bnum{0{,}07}\uas$/\tr{ano}{yr}.
+        (c) $v/d = \dfrac{10^{6}}{10^{10}\times \num{9.46}\times10^{15}} \times \num{3.16}\times10^{7}$
+        $\approx \num{3.3}\times10^{-13}$ rad/\tr{ano}{yr} $\approx \bnum{\num{0.07}}\uas$/\tr{ano}{yr}.
       \end{ideia}
       }
     \end{column}
@@ -2310,13 +2325,13 @@ Coordinate Systems Simulators}}
       \onslide<2->{
       \begin{ideia}[title={\tr{Respostas}{Answers}}]
         \small\raggedright
-        (a) $(\cos90\gr,\,-\sin90\gr) = \bnum{(0,\,-1)}$.
+        (a) $(\cos90\gr,\,-\sin90\gr) = \bnum{$(0,\,-1)$}$.
         \medskip
 
-        (b) $(\cos180\gr,\,-\sin180\gr) = \bnum{(-1,\,0)}$.
+        (b) $(\cos180\gr,\,-\sin180\gr) = \bnum{$(-1,\,0)$}$.
         \medskip
 
-        (c) $\bnum{(0,\,-26\,560)}$ km: \tr{o satélite ``parado'' no céu aparece \emph{andando para o oeste} no chão.}{the satellite ``still'' in the sky appears \emph{moving west} on the ground.}
+        (c) $\bnum{$(0,\,-26\,560)$}$ km: \tr{o satélite ``parado'' no céu aparece \emph{andando para o oeste} no chão.}{the satellite ``still'' in the sky appears \emph{moving west} on the ground.}
       \end{ideia}
       }
     \end{column}
@@ -2379,14 +2394,14 @@ Coordinate Systems Simulators}}
       \tr{O \bnum{dia solar}: o Sol volta ao mesmo lugar no céu. Dura \bnum{24 h}.}{The \bnum{solar day}: the Sun returns to the same place in the sky. It lasts \bnum{24 h}.}
       \medskip
 
-      \tr{O \bnum{dia sideral}: uma estrela --- ou um quasar --- volta ao mesmo lugar. Dura \bnum{23 h 56 min 4,09 s}.}{The \bnum{sidereal day}: a star --- or a quasar --- returns to the same place. It lasts \bnum{23 h 56 min 4.09 s}.}
+      \tr{O \bnum{dia sideral}: uma estrela --- ou um quasar --- volta ao mesmo lugar. Dura \bnum{\mbox{23 h 56 min 4,09 s}}.}{The \bnum{sidereal day}: a star --- or a quasar --- returns to the same place. It lasts \bnum{\mbox{23 h 56 min 4.09 s}}.}
       \medskip
 
       \tr{Por quê? Enquanto gira, a Terra também \emph{anda} em volta do Sol, cerca de $1\gr$ por dia. Depois de uma volta completa, o Sol ainda está um pouco de lado: é preciso girar mais $\approx 1\gr$ para ele voltar ao mesmo lugar.}{Why? While it spins, the Earth also \emph{travels} around the Sun, about $1\gr$ per day. After one full turn, the Sun is still a bit to the side: it takes about $1\gr$ more to bring it back to the same place.}
     \end{column}
     \begin{column}{0.52\textwidth}
       \centering
-      \begin{tikzpicture}[scale=0.88]
+      \begin{tikzpicture}[scale=0.8]
         \fill[corTempo!60] (0,0) circle (0.6);
         \draw[corTempo] (0,0) circle (0.6);
         \node[font=\footnotesize, text=corTempo] at (0,-0.95) {\tr{Sol}{Sun}};
@@ -2424,7 +2439,7 @@ Coordinate Systems Simulators}}
         \midrule
         \tmpo{\tr{dia solar}{solar day}} & \tr{o Sol}{the Sun} & $24$ h $= \num{86400}$ s \\
         \tmpo{\tr{dia sideral}{sidereal day}} & \tr{uma estrela, um quasar}{a star, a quasar} & $\num{86164.09}$ s \\
-        \tr{diferença}{difference} & & \bnum{3 min 55,9 s} \\
+        \tr{diferença}{difference} & & \bnum{3 min \num{55.9} s} \\
         \bottomrule
       \end{tabular}
       \medskip
@@ -2490,7 +2505,7 @@ Coordinate Systems Simulators}}
       \onslide<2->{
       \begin{ideia}[title={\tr{Respostas}{Answers}}]
         \small\raggedright
-        (a) \tr{$\approx$ 20:56 amanhã ($\bnum{-3{,}9}$ min por dia); em 30 dias, $30\times3{,}93\approx118$ min mais cedo: $\approx$ \bnum{19:02}.}{$\approx$ 20:56 tomorrow ($\bnum{-3.9}$ min per day); in 30 days, $30\times3.93\approx118$ min earlier: $\approx$ \bnum{19:02}.}
+        (a) \tr{$\approx$ 20:56 amanhã ($-3{,}9$ min por dia); em 30 dias, $30\times3{,}93\approx118$ min mais cedo: $\approx$ \bnum{19:02}.}{$\approx$ 20:56 tomorrow ($-3.9$ min per day); in 30 days, $30\times3.93\approx118$ min earlier: $\approx$ \bnum{19:02}.}
         \medskip
 
         (b) $6\times\num{15.041}\gr \approx \bnum{\num{90.2}\gr}$.
@@ -2763,7 +2778,7 @@ Coordinate Systems Simulators}}
       \medskip
 
       \begin{ideia}[title={\tr{Quanto é isso?}{How much is that?}}]
-        \footnotesize\tr{$100\mas \approx 3{,}1$ m no chão. Os pontos mais afastados do círculo tracejado estão a $\approx 7$ m do IRP.}{$100\mas \approx 3.1$ m on the ground. The points farthest from the dashed circle are $\approx 7$ m from the IRP.}
+        \footnotesize\tr{$100\mas \approx 3{,}1$ m no chão. Os pontos mais afastados estão a $\approx 7$ m do IRP.}{$100\mas \approx 3.1$ m on the ground. The farthest points are $\approx 7$ m from the IRP.}
       \end{ideia}
     \end{column}
     \begin{column}{0.52\textwidth}
@@ -2781,7 +2796,7 @@ Coordinate Systems Simulators}}
         \node[rotulo, text=corErro, anchor=south west] at (248,8) {\tr{início}{start}};
         \fill[mStone] (0,0) circle (5);
         \node[rotulo, anchor=north east] at (-8,-8) {IRP};
-        \node[rotulo, text=mStoneMid, anchor=south west, fill=white, inner sep=1pt] at (-262,-232) {$100\mas$, $200\mas$: \tr{círculos tracejados}{dotted circles}};
+        \node[rotulo, text=mStoneMid, anchor=north west] at (-262,-266) {$100\mas$, $200\mas$: \tr{círculos pontilhados}{dotted circles}};
       \end{tikzpicture}
       \par\smallskip
       {\scriptsize\textcolor{mStoneMid}{\tr{12,8 anos (duas aberturas). Curva ilustrativa, gerada por um modelo simples --- não são dados reais.}{12.8 years (two openings). Illustrative curve from a simple model --- not real data.}}}
@@ -2804,7 +2819,7 @@ Coordinate Systems Simulators}}
     \end{column}
     \begin{column}{0.46\textwidth}
       \centering
-      \begin{tikzpicture}[x=0.44cm, y=0.06cm]
+      \begin{tikzpicture}[x=0.40cm, y=0.06cm]
         \draw[mStoneMid] (0,0) -- (14.3,0);
         \foreach \t in {0,2,...,14} {
           \draw[mStoneMid] (\t,-0.9) -- (\t,0.9);
@@ -2982,7 +2997,7 @@ Coordinate Systems Simulators}}
   \begin{enumerate}
     \setlength{\itemsep}{2pt}
     \item \tr{Céu parado e chão girando: converter de um para o outro é \bnum{girar eixos}. A ordem dos giros importa: $\vec r_{\text{ICRF}} = Q\,R\,W\,\vec r_{\text{ITRF}}$.}{Still sky, turning ground: converting between them is \bnum{turning axes}. The order of the turns matters: $\vec r_{\text{ICRF}} = Q\,R\,W\,\vec r_{\text{ITRF}}$.}
-    \item \tr{\bnum{$R$, a rotação:} o ângulo ERA, $360{,}9856\gr$ por dia solar (o dia sideral dura $23$ h $56$ min $4{,}09$ s). 1 ms de erro em UT1 $=$ $0{,}47$ m no Equador e $1{,}9$ m na órbita do GPS.}{\bnum{$R$, the rotation:} the ERA angle, $360.9856\gr$ per solar day (the sidereal day lasts $23$ h $56$ min $4.09$ s). 1 ms of error in UT1 $=$ $0.47$ m at the Equator and $1.9$ m at the GPS orbit.}
+    \item \tr{\bnum{$R$, a rotação:} o ângulo ERA, $360{,}9856\gr$ por dia solar (o dia sideral dura \mbox{$23$ h $56$ min $4{,}09$ s}). 1 ms de erro em UT1 $=$ $0{,}47$ m no Equador e $1{,}9$ m na órbita do GPS.}{\bnum{$R$, the rotation:} the ERA angle, $360.9856\gr$ per solar day (the sidereal day lasts \mbox{$23$ h $56$ min $4.09$ s}). 1 ms of error in UT1 $=$ $0.47$ m at the Equator and $1.9$ m at the GPS orbit.}
     \item \tr{\bnum{$Q$, precessão e nutação:} o CIP anda no céu ($20\asec$/ano, tremor de $9{,}2\asec$); o modelo da IAU tem 1\,365 termos e o VLBI mede o resto ($dX$, $dY$ $\approx 0{,}2\mas$).}{\bnum{$Q$, precession and nutation:} the CIP moves in the sky ($20\asec$/yr, a $9.2\asec$ wobble); the IAU model has 1,365 terms and VLBI measures the rest ($dX$, $dY$ $\approx 0.2\mas$).}
     \item \tr{\bnum{$W$, movimento polar:} o polo anda até $0{,}3\asec$ ($\approx$ 9 m) na crosta: onda de Chandler (433 d) mais onda anual (365 d), com batimento de $\approx 6{,}4$ anos.}{\bnum{$W$, polar motion:} the pole moves up to $0.3\asec$ ($\approx$ 9 m) in the crust: Chandler wave (433 d) plus annual wave (365 d), beating every $\approx 6.4$ years.}
     \item \tr{Os \bnum{EOP} ($x_p$, $y_p$, UT1$-$UTC, $dX$, $dY$) são medidos por VLBI, GNSS, SLR e DORIS --- só o VLBI dá UT1 e $dX$, $dY$ absolutos --- e publicados pelo \bnum{IERS}.}{The \bnum{EOP} ($x_p$, $y_p$, UT1$-$UTC, $dX$, $dY$) are measured by VLBI, GNSS, SLR and DORIS --- only VLBI gives absolute UT1 and $dX$, $dY$ --- and published by the \bnum{IERS}.}
@@ -3047,7 +3062,7 @@ Coordinate Systems Simulators}}
   \begin{tikzpicture}[caixa/.append style={font=\small, minimum height=1.5cm}]
     \node[caixa, draw=corTempo, fill=corTempo!10, text width=3.7cm] (a) at (0,0) {\textbf{\tr{até 1960}{until 1960}}\\\tr{$1/\num{86400}$ do dia solar médio}{$1/\num{86400}$ of the mean solar day}\\{\footnotesize\tmpo{\tr{a Terra é o relógio}{the Earth is the clock}}}};
     \node[caixa, draw=corSist, fill=corSist!8, text width=3.7cm] (b) at (4.7,0) {\textbf{1960--1967}\\\tr{$1/\num{31556925.9747}$ do ano tropical de 1900}{$1/\num{31556925.9747}$ of the tropical year 1900}};
-    \node[caixa, draw=corFrame, fill=corFrame!10, text width=4.0cm] (c) at (9.5,0) {\textbf{\tr{desde 1967}{since 1967}}\\\tr{$\num{9192631770}$ períodos do césio-133}{$\num{9192631770}$ periods of caesium-133}\\{\footnotesize\fram{\tr{o átomo é o relógio}{the atom is the clock}}}};
+    \node[caixa, draw=corFrame, fill=corFrame!10, text width=4.0cm] (c) at (9.5,0) {\textbf{\tr{desde 1967}{since 1967}}\\\tr{$\num{9192631770}$ períodos do césio-133}{$\num{9192631770}$ periods of cesium-133}\\{\footnotesize\fram{\tr{o átomo é o relógio}{the atom is the clock}}}};
     \draw[seta] (a) -- (b);
     \draw[seta] (b) -- (c);
   \end{tikzpicture}
@@ -3060,7 +3075,7 @@ Coordinate Systems Simulators}}
     \end{column}
     \begin{column}{0.48\textwidth}
       \begin{ideia}[title={\tr{Quão bom é um relógio atômico?}{How good is an atomic clock?}}]
-        \footnotesize\tr{Césio: $\approx$ 1 s em \bnum{300 milhões de anos}. Relógios ópticos: $\approx$ 1 s em \bnum{30 bilhões de anos} --- mais que a idade do Universo (13,8 bilhões).}{Caesium: $\approx$ 1 s in \bnum{300 million years}. Optical clocks: $\approx$ 1 s in \bnum{30 billion years} --- longer than the age of the Universe (13.8 billion).}
+        \footnotesize\tr{Césio: $\approx$ 1 s em \bnum{300 milhões de anos}. Relógios ópticos: $\approx$ 1 s em \bnum{30 bilhões de anos} --- mais que a idade do Universo (13,8 bilhões).}{Cesium: $\approx$ 1 s in \bnum{300 million years}. Optical clocks: $\approx$ 1 s in \bnum{30 billion years} --- longer than the age of the Universe (13.8 billion).}
       \end{ideia}
     \end{column}
   \end{columns}
@@ -3193,9 +3208,9 @@ Coordinate Systems Simulators}}
       \tr{Hoje $|\text{UT1}-\text{UTC}| < 0{,}9$ s: ignorar a diferença custa até \bnum{419 m} no chão (Equador) e $\approx$ \bnum{1,7 km} na órbita do GPS.}{Today $|\text{UT1}-\text{UTC}| < 0.9$ s: ignoring the difference costs up to \bnum{419 m} on the ground (Equator) and $\approx$ \bnum{1.7 km} at the GPS orbit.}
       \medskip
 
-      \tr{Amanhã o limite é de \bnum{1 hora}. Uma hora de rotação são $15\gr$:}{Tomorrow the limit is \bnum{1 hour}. One hour of rotation is $15\gr$:}
-      \[ 1\ \text{h} \times 465\ \text{m/s} \approx \bnum{1\,674}\ \text{km}\quad \tr{(no Equador)}{(at the Equator)} \]
-      \tr{O UTC continua sendo $\text{TAI} - 37$ s, sem saltos --- e $\text{UT1}-\text{UTC}$ deixa de ser ``pequeno'': vira um EOP que \bnum{todo programa} precisa ler do IERS.}{UTC stays $\text{TAI} - 37$ s, with no jumps --- and $\text{UT1}-\text{UTC}$ stops being ``small'': it becomes an EOP that \bnum{every program} must read from the IERS.}
+      \tr{Sem os saltos, $\text{UT1}-\text{UTC}$ cresce livremente: de segundos para \bnum{minutos} e, só no futuro distante, até \bnum{1 hora}. Cada minuto são $15'$ de giro:}{Without the jumps, $\text{UT1}-\text{UTC}$ grows freely: from seconds to \bnum{minutes} and, only in the distant future, up to \bnum{1 hour}. Each minute is $15'$ of rotation:}
+      \[ 60\ \text{s} \times 465\ \text{m/s} \approx \bnum{28}\ \text{km}\quad \text{\tr{(no Equador)}{(at the Equator)}} \]
+      \tr{No limite de 1 hora seriam $\approx$ \bnum{1\,674 km}. O UTC continua sendo $\text{TAI} - 37$ s, sem saltos --- e $\text{UT1}-\text{UTC}$ vira um EOP que \bnum{todo programa} precisa ler do IERS.}{At the 1-hour limit it would be $\approx$ \bnum{1,674 km}. UTC stays $\text{TAI} - 37$ s, with no jumps --- and $\text{UT1}-\text{UTC}$ becomes an EOP that \bnum{every program} must read from the IERS.}
     \end{column}
     \begin{column}{0.42\textwidth}
       \begin{cuidado}[title={\tr{Quem se importa?}{Who cares?}}]
@@ -3320,7 +3335,7 @@ Coordinate Systems Simulators}}
     \begin{column}{0.54\textwidth}
       \small
       \tr{A mesma física vale na escada de um prédio: um relógio \emph{mais alto} anda mais depressa. A diferença é pequena:}{The same physics holds on the stairs of a building: a \emph{higher} clock runs faster. The difference is tiny:}
-      \[ \frac{\Delta f}{f} = \frac{g\,h}{c^{2}} \approx \num{1.09e-16}\ \tr{por metro}{per meter} \]
+      \[ \frac{\Delta f}{f} = \frac{g\,h}{c^{2}} \approx \num{1.09e-16}\ \text{\tr{por metro}{per meter}} \]
       \tr{Relógios ópticos de $10^{-18}$ \bnum{sentem 1 cm} de diferença de altura. Em 2020, dois deles, no pé e no alto da torre Tokyo Skytree (\bnum{450 m}), mediram o efeito esperado ($\approx \num{4.9e-14}$).}{Optical clocks of $10^{-18}$ \bnum{feel 1 cm} of height difference. In 2020, two of them, at the foot and at the top of the Tokyo Skytree tower (\bnum{450 m}), measured the expected effect ($\approx \num{4.9e-14}$).}
     \end{column}
     \begin{column}{0.42\textwidth}
@@ -3340,7 +3355,7 @@ Coordinate Systems Simulators}}
       \small
       \tr{Em órbita circular a gravidade faz o papel da força centrípeta: $v^{2} = GM/r$, e o período é}{In a circular orbit gravity plays the role of the centripetal force: $v^{2} = GM/r$, and the period is}
       \[ T = 2\pi\sqrt{\frac{r^{3}}{GM}} \]
-      \tr{O GPS dá \bnum{2 voltas por dia sideral}: $T = 11$ h $58$ min $2$ s. Resultado: $r \approx \num{26562}$ km (altitude $\approx \num{20184}$ km), $v \approx 3{,}87$ km/s.}{GPS makes \bnum{2 turns per sidereal day}: $T = 11$ h $58$ min $2$ s. Result: $r \approx \num{26562}$ km (altitude $\approx \num{20184}$ km), $v \approx 3.87$ km/s.}
+      \tr{O GPS dá \bnum{2 voltas por dia sideral}: \mbox{$T = 11$ h $58$ min $2$ s}. Resultado: $r \approx \num{26562}$ km (altitude $\approx \num{20184}$ km), $v \approx 3{,}87$ km/s.}{GPS makes \bnum{2 turns per sidereal day}: \mbox{$T = 11$ h $58$ min $2$ s}. Result: $r \approx \num{26562}$ km (altitude $\approx \num{20184}$ km), $v \approx 3.87$ km/s.}
       \medskip
 
       \tr{Por isso o traço do satélite no chão \bnum{se repete} a cada dia sideral.}{That is why the satellite's track on the ground \bnum{repeats} every sidereal day.}
@@ -3445,17 +3460,17 @@ Coordinate Systems Simulators}}
   \begin{columns}[T]
     \begin{column}{0.31\textwidth}
       \begin{cuidado}[title={\tr{A hora}{The time}}]
-        \footnotesize\tr{O \bnum{Observatório Nacional} (Rio de Janeiro) gera a \bnum{Hora Legal Brasileira} com um conjunto de relógios atômicos, ligada ao UTC do BIPM (Decreto 4.264/2002).}{The \bnum{National Observatory} (Rio de Janeiro) generates the \bnum{Brazilian Legal Time} with a set of atomic clocks, linked to the BIPM's UTC (Decree 4,264/2002).}
+        \footnotesize\raggedright\tr{O \bnum{Observatório Nacional} (Rio de Janeiro) gera a \bnum{Hora Legal Brasileira} com um conjunto de relógios atômicos, ligada ao UTC do BIPM (Decreto 4.264/2002).}{The \bnum{National Observatory} (Rio de Janeiro) generates the \bnum{Brazilian Legal Time} with a set of atomic clocks, linked to the BIPM's UTC (Decree 4,264/2002).}
       \end{cuidado}
     \end{column}
     \begin{column}{0.31\textwidth}
       \begin{regra}[title={\tr{O céu}{The sky}}]
-        \footnotesize\tr{\bnum{Fortaleza} (CE): estação de VLBI do IVS desde 1993 (Rádio Observatório Espacial do Nordeste). Em nov./2025, nova antena com terminal VGOS. O Hemisfério Sul tem poucas: ajuda os EOP.}{\bnum{Fortaleza} (CE): IVS VLBI station since 1993 (Northeast Space Radio Observatory). In Nov 2025, a new antenna with a VGOS terminal. The Southern Hemisphere has few: it helps the EOP.}
+        \footnotesize\raggedright\tr{\bnum{Fortaleza} (CE): estação de VLBI do IVS desde 1993 (Rádio Observatório Espacial do Nordeste). Em nov./2025, nova antena com terminal VGOS. O Hemisfério Sul tem poucas: ajuda os EOP.}{\bnum{Fortaleza} (CE): IVS VLBI station since 1993 (Northeast Space Radio Observatory). In Nov 2025, a new antenna with a VGOS terminal. The Southern Hemisphere has few: it helps the EOP.}
       \end{regra}
     \end{column}
     \begin{column}{0.31\textwidth}
       \begin{ideia}[title={\tr{O chão}{The ground}}]
-        \footnotesize\tr{A \bnum{RBMC} (IBGE) tem mais de 150 estações GNSS contínuas: a base do \bnum{SIRGAS2000} ($\approx$ ITRF2000, época 2000,4) e parte da rede SIRGAS-CON.}{The \bnum{RBMC} (IBGE) has more than 150 continuous GNSS stations: the basis of \bnum{SIRGAS2000} ($\approx$ ITRF2000, epoch 2000.4) and part of the SIRGAS-CON network.}
+        \footnotesize\raggedright\tr{A \bnum{RBMC} (IBGE) tem mais de 150 estações GNSS contínuas: a base do \bnum{SIRGAS2000} ($\approx$ ITRF2000, época 2000,4) e parte da rede SIRGAS-CON.}{The \bnum{RBMC} (IBGE) has more than 150 continuous GNSS stations: the basis of \bnum{SIRGAS2000} ($\approx$ ITRF2000, epoch 2000.4) and part of the SIRGAS-CON network.}
       \end{ideia}
     \end{column}
   \end{columns}
@@ -3475,7 +3490,7 @@ Coordinate Systems Simulators}}
       \bnum{\tr{Desafios}{Challenges}}
       \begin{enumerate}
         \setlength{\itemsep}{2pt}
-        \item \tr{Leve Sirius de J2000 a 2026,8 com as fórmulas do apêndice A4: ele anda $17{,}3\amin$ ($\approx$ 32 km num ponto astronômico).}{Take Sirius from J2000 to 2026.8 with the formulas of appendix A4: it moves $17.3\amin$ ($\approx$ 32 km in an astronomical fix).}
+        \item \tr{Leve Sirius de J2000 a 2026,8 com as fórmulas do apêndice A4: as coordenadas dele mudam $17{,}3\amin$ ($\approx$ 32 km num ponto astronômico).}{Take Sirius from J2000 to 2026.8 with the formulas of appendix A4: its coordinates change by $17.3\amin$ ($\approx$ 32 km in an astronomical fix).}
         \item \tr{Troque UTC por UT1 usando um $\text{UT1}-\text{UTC}$ do IERS e veja a diferença.}{Replace UTC with UT1 using a $\text{UT1}-\text{UTC}$ from the IERS and see the difference.}
       \end{enumerate}
     \end{column}
@@ -3517,20 +3532,20 @@ Coordinate Systems Simulators}}
 
 \begin{frame}{\tr{O mapa das duas partes}{The map of the two parts}}
   \centering
-  \begin{tikzpicture}[caixa/.append style={font=\small, text width=3.6cm, minimum height=2.1cm}]
+  \begin{tikzpicture}[caixa/.append style={font=\small, text width=3.4cm, minimum height=2.0cm}]
     \node[caixa, draw=corSist, fill=corSist!8] (ceu) at (0,2.4) {\sist{\tr{O CÉU}{THE SKY}}\\ICRS $\to$ ICRF\\{\footnotesize\tr{quasares, VLBI, Gaia}{quasars, VLBI, Gaia}}\\{\footnotesize\tr{não gira}{does not spin}}};
-    \node[caixa, draw=corTempo, fill=corTempo!10, text width=3.3cm] (ponte) at (5.2,2.4) {\tmpo{\tr{A PONTE}{THE BRIDGE}}\\$Q\,R\,W$\\{\footnotesize EOP (IERS)}\\{\footnotesize UT1, UTC, TAI}};
-    \node[caixa, draw=corFrame, fill=corFrame!10] (chao) at (10.4,2.4) {\fram{\tr{O CHÃO}{THE GROUND}}\\ITRS $\to$ ITRF\\{\footnotesize SIRGAS2000, WGS 84}\\{\footnotesize\tr{gira com a Terra}{turns with the Earth}}};
+    \node[caixa, draw=corTempo, fill=corTempo!10, text width=3.2cm] (ponte) at (4.9,2.4) {\tmpo{\tr{A PONTE}{THE BRIDGE}}\\$Q\,R\,W$\\{\footnotesize EOP (IERS)}\\{\footnotesize UT1, UTC, TAI}};
+    \node[caixa, draw=corFrame, fill=corFrame!10] (chao) at (9.8,2.4) {\fram{\tr{O CHÃO}{THE GROUND}}\\ITRS $\to$ ITRF\\{\footnotesize SIRGAS2000, WGS 84}\\{\footnotesize\tr{gira com a Terra}{turns with the Earth}}};
     \draw[seta2] (ceu) -- (ponte);
     \draw[seta2] (ponte) -- (chao);
-    \node[rotulo, text=mStoneMid] at (0,4.0) {\tr{aulas 1 e 2}{classes 1 and 2}};
-    \node[rotulo, text=mStoneMid] at (5.2,4.0) {\tr{aulas 3 e 4}{classes 3 and 4}};
-    \node[rotulo, text=mStoneMid] at (10.4,4.0) {\tr{Parte 1}{Part 1}};
-    \node[caixa, draw=mStoneMid, fill=mStoneLight, text width=9.0cm, minimum height=0.9cm] (gnss) at (5.2,-0.4) {\tr{\textbf{GNSS}: satélite no céu $\to$ receptor no chão (órbita $\to$ TEME $\to$ ECEF)}{\textbf{GNSS}: satellite in the sky $\to$ receiver on the ground (orbit $\to$ TEME $\to$ ECEF)}};
+    \node[rotulo, text=mStoneMid] at (0,3.9) {\tr{aulas 1 e 2}{classes 1 and 2}};
+    \node[rotulo, text=mStoneMid] at (4.9,3.9) {\tr{aulas 3 e 4}{classes 3 and 4}};
+    \node[rotulo, text=mStoneMid] at (9.8,3.9) {\tr{Parte 1}{Part 1}};
+    \node[caixa, draw=mStoneMid, fill=mStoneLight, text width=9.0cm, minimum height=0.9cm] (gnss) at (4.9,-0.3) {\tr{\textbf{GNSS}: satélite no céu $\to$ receptor no chão (órbita $\to$ TEME $\to$ ECEF)}{\textbf{GNSS}: satellite in the sky $\to$ receiver on the ground (orbit $\to$ TEME $\to$ ECEF)}};
     \draw[mStoneMid, dashed] (ceu.south) -- ($(ceu.south)+(0,-1.2)$) -- (gnss.west);
     \draw[mStoneMid, dashed] (chao.south) -- ($(chao.south)+(0,-1.2)$) -- (gnss.east);
   \end{tikzpicture}
-  \bigskip
+  \medskip
 
   \small
   \tr{\bnum{VLBI} liga as duas pontas: antenas no chão $\times$ quasares no céu. Os \bnum{EOP} dizem como a ponte está virada em cada dia.}{\bnum{VLBI} links the two ends: antennas on the ground $\times$ quasars in the sky. The \bnum{EOP} say how the bridge is turned on each day.}
@@ -3655,7 +3670,7 @@ Coordinate Systems Simulators}}
   \begin{columns}[T]
     \begin{column}{0.48\textwidth}
       \renewcommand{\arraystretch}{1.3}
-      \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.0cm}>{\raggedright\arraybackslash}p{2.6cm}r@{}}
+      \begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.6cm}>{\raggedright\arraybackslash}p{2.1cm}r@{}}
         \toprule
         \tr{ano}{year} & \tr{data}{date} & \tr{quantos}{how many} \\
         \midrule
@@ -3670,7 +3685,7 @@ Coordinate Systems Simulators}}
     \end{column}
     \begin{column}{0.48\textwidth}
       \renewcommand{\arraystretch}{1.3}
-      \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.0cm}>{\raggedright\arraybackslash}p{2.6cm}r@{}}
+      \begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.6cm}>{\raggedright\arraybackslash}p{2.1cm}r@{}}
         \toprule
         \tr{ano}{year} & \tr{data}{date} & \tr{quantos}{how many} \\
         \midrule
@@ -3692,7 +3707,7 @@ Coordinate Systems Simulators}}
 
 \begin{frame}{\tr{A7 · Glossário (1/3): sistemas e referenciais}{A7 · Glossary (1/3): systems and frames}}
   \centering
-  \footnotesize
+  \scriptsize
   \renewcommand{\arraystretch}{1.3}
   \setlength{\tabcolsep}{4pt}
   \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.8cm}>{\raggedright\arraybackslash}p{5.4cm}>{\raggedright\arraybackslash}p{5.4cm}@{}}
@@ -3713,7 +3728,7 @@ Coordinate Systems Simulators}}
 
 \begin{frame}{\tr{A8 · Glossário (2/3): movimentos e parâmetros}{A8 · Glossary (2/3): motions and parameters}}
   \centering
-  \footnotesize
+  \scriptsize
   \renewcommand{\arraystretch}{1.3}
   \setlength{\tabcolsep}{4pt}
   \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.8cm}>{\raggedright\arraybackslash}p{5.4cm}>{\raggedright\arraybackslash}p{5.4cm}@{}}
@@ -3721,7 +3736,7 @@ Coordinate Systems Simulators}}
     & \tr{português}{Portuguese} & English \\
     \midrule
     EOP & Parâmetros de Orientação da Terra & Earth Orientation Parameters \\
-    LOD & excesso da duração do dia sobre 86\,400 s & length of day (excess over 86,400 s) \\
+    LOD & excesso da duração do dia sobre 86\,400 s & length of day (excess over 86\,400 s) \\
     \tr{mov.\ polar}{polar motion} & movimento polar ($x_p$, $y_p$) & polar motion ($x_p$, $y_p$) \\
     \tr{precessão, nutação}{precession, nutation} & precessão, nutação & precession, nutation \\
     \tr{baricentro}{barycenter} & centro de massa do Sistema Solar & center of mass of the Solar System \\
@@ -3734,7 +3749,7 @@ Coordinate Systems Simulators}}
 
 \begin{frame}{\tr{A9 · Glossário (3/3): tempo e serviços}{A9 · Glossary (3/3): time and services}}
   \centering
-  \footnotesize
+  \scriptsize
   \renewcommand{\arraystretch}{1.3}
   \setlength{\tabcolsep}{4pt}
   \begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.8cm}>{\raggedright\arraybackslash}p{5.4cm}>{\raggedright\arraybackslash}p{5.4cm}@{}}
@@ -3746,9 +3761,9 @@ Coordinate Systems Simulators}}
     GPST, GST, BDT & escalas de tempo do GPS, Galileo e BeiDou & GPS, Galileo and BeiDou system times \\
     \tr{seg.\ intercalar}{leap second} & segundo inserido no UTC & second inserted into UTC \\
     VLBI & Interferometria de Linha de Base Muito Longa & Very Long Baseline Interferometry \\
-    SLR, DORIS & telemetria laser a satélites; Doppler de balizas em terra & Satellite Laser Ranging; Doppler Orbitography and Radiopositioning Integrated by Satellite \\
+    SLR, DORIS & telemetria laser a satélites; Doppler de balizas em terra & Satellite Laser Ranging; Doppler beacons (DORIS) \\
     IERS, IVS, IGS & serviços: rotação da Terra; VLBI; GNSS & services: Earth rotation; VLBI; GNSS \\
-    BIPM, CGPM & Bureau Internacional de Pesos e Medidas; Conferência Geral & International Bureau of Weights and Measures; General Conference \\
+    BIPM, CGPM & Bureau Internacional de Pesos e Medidas; Conferência Geral & Intl.\ Bureau of Weights and Measures; General Conference \\
     \bottomrule
   \end{tabular}
 \end{frame}

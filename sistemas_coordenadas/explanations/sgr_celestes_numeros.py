@@ -345,7 +345,10 @@ def aula3():
     linha("  na órbita do GPS, r = 26 560 km (m)", 1e-3 * OMEGA * 26_559_700, "{:.3f}", "m")
     linha("0,1 ms (cm no Equador)", 1e-4 * OMEGA * A_GRS80 * 100, "{:.1f}", "cm")
     linha("1 cm no Equador corresponde a (µs)", 0.01 / (OMEGA * A_GRS80) * 1e6, "{:.1f}", "µs")
-    linha("terremoto: 6,8 µs → mas", 6.8e-6 * OMEGA / MAS, "{:.3f}", "mas")
+    linha("terremoto de 2011 no Japão (≈ 1,8 µs, estimativa da NASA) → mas", 1.8e-6 * OMEGA / MAS, "{:.3f}", "mas")
+    linha("  no Equador (mm)", 1.8e-6 * OMEGA * A_GRS80 * 1000, "{:.2f}", "mm")
+    linha("1 minuto de UT1−UTC no Equador (km)", 60 * OMEGA * A_GRS80 / 1000, "{:.1f}", "km")
+    linha("1 hora de UT1−UTC no Equador (km), o novo limite de 2027", 3600 * OMEGA * A_GRS80 / 1000, "{:.0f}", "km")
 
     print("\n-- Movimento polar / polar motion")
     linha("1″ no polo (m)", ARCSEC * R_MEAN, "{:.2f}", "m")
@@ -355,6 +358,11 @@ def aula3():
     linha("batimento Chandler × anual (dias)", abs(1 / (1 / p_ch - 1 / p_an)), "{:.0f}", "dias")
     linha("  em anos", abs(1 / (1 / p_ch - 1 / p_an)) / 365.25, "{:.2f}", "anos")
     linha("razão Chandler / Euler = 433 / 305", 433 / 305, "{:.2f}")
+    # espiral ilustrativa dos slides: onda de Chandler (150 mas) + onda anual (90 mas), ambas circulares
+    linha("espiral ilustrativa: raio mínimo (mas) = 150 − 90", 150 - 90, "{:.0f}", "mas")
+    linha("espiral ilustrativa: raio máximo (mas) = 150 + 90", 150 + 90, "{:.0f}", "mas")
+    linha("  100 mas no chão (m)", 100 * MAS * R_MEAN, "{:.2f}", "m")
+    linha("  240 mas no chão (m)", 240 * MAS * R_MEAN, "{:.1f}", "m")
 
     print("\n-- Tamanho de cada passo da cadeia / size of each step")
     jd = jd_gregoriano(2026, 10, 18, 12)
