@@ -1,14 +1,16 @@
 // --- Interseção a ré 3D: rede de estações livres, modelos Combinado e Paramétrico (GEMAEL) ---
 // Combinado (Gauss-Helmert): cada visada (estação i -> ponto j) contribui com três equações
 // de condição implícitas F(La, Xa) = 0, uma por componente do vetor irradiado:
-//     F1 = Xj - Xi - S sinZ cos(Hz + ωi)
-//     F2 = Yj - Yi - S sinZ sin(Hz + ωi)
+//     F1 = Xj - Xi - S sinZ sin(Hz + ωi)
+//     F2 = Yj - Yi - S sinZ cos(Hz + ωi)
 //     F3 = Zj - Zi - S cosZ
+// O referencial é dextrogiro: X para Hz + ω = 90°, Y para Hz + ω = 0 (o azimute α = Hz + ω
+// cresce no sentido horário, de Y para X) e Z para cima — as fórmulas de shared/total_station.mjs.
 // com as observações La = (Hz, Z, S) e as incógnitas Xa = coordenadas das estações e dos
 // pontos mais a orientação ω de cada estação. B = ∂F/∂La é a jacobiana da irradiação (a mesma
 // do ajusta_planos), então M = B P⁻¹ Bᵀ é a MVC cartesiana de cada vetor irradiado. Em
 // Ghilani (cap. 22, "general least squares") a mesma solução aparece com J = A, K = -W, We = M⁻¹.
-// Paramétrico (Gauss-Markov): La = f(Xa), com Hz = atan2(ΔY, ΔX) - ω, Z = atan2(h, ΔZ) e
+// Paramétrico (Gauss-Markov): La = f(Xa), com Hz = atan2(ΔX, ΔY) - ω, Z = atan2(h, ΔZ) e
 // S = |Δ|. É o combinado com F = f(Xa) - La, isto é, B = -I e M = P⁻¹: os dois usam o mesmo
 // laço de iteração e, convergidos, dão a mesma solução.
 // Datum: com pontos fixos, eles são constantes; na rede livre, todos os pontos são incógnitas
@@ -312,10 +314,11 @@
     function wrap2Pi(rad) { return ((rad % TWO_PI) + TWO_PI) % TWO_PI; }
     function wrapPi(rad) { const w = wrap2Pi(rad); return w > Math.PI ? w - TWO_PI : w; }
 
-    // Vetor irradiado, convenção do ajusta_planos (io.js, obsToXYZ) com α = Hz + ω
+    // Vetor irradiado no referencial dextrogiro (X para α = 90°, Y para α = 0), com α = Hz + ω;
+    // é o polarToLocal de shared/total_station.mjs e o obsToXYZ do ajusta_planos
     function polarToDelta(hz, zen, s, omega) {
         const a = hz + omega, sz = Math.sin(zen);
-        return [s * sz * Math.cos(a), s * sz * Math.sin(a), s * Math.cos(zen)];
+        return [s * sz * Math.sin(a), s * sz * Math.cos(a), s * Math.cos(zen)];
     }
 
     // F(L, X) de uma visada
@@ -330,8 +333,8 @@
         const a = hz + omega;
         const sa = Math.sin(a), ca = Math.cos(a), sz = Math.sin(zen), cz = Math.cos(zen);
         return [
-            [s * sz * sa, -s * cz * ca, -sz * ca],
             [-s * sz * ca, -s * cz * sa, -sz * sa],
+            [s * sz * sa, -s * cz * ca, -sz * ca],
             [0, s * sz, -cz]
         ];
     }
@@ -339,7 +342,7 @@
     // ∂F/∂ω da estação: igual à coluna de Hz em B, pois α = Hz + ω
     function omegaColumn(L, omega) {
         const a = L[0] + omega, ssz = L[2] * Math.sin(L[1]);
-        return [ssz * Math.sin(a), -ssz * Math.cos(a), 0];
+        return [-ssz * Math.cos(a), ssz * Math.sin(a), 0];
     }
 
     // Modelo paramétrico: observações calculadas f(X) = (Hz, Z, S) da estação para o ponto.
@@ -347,7 +350,7 @@
     function observationF(st, omega, tg) {
         const dx = tg[0] - st[0], dy = tg[1] - st[1], dz = tg[2] - st[2];
         const h = Math.hypot(dx, dy);
-        return [wrap2Pi(Math.atan2(dy, dx) - omega), Math.atan2(h, dz), Math.hypot(h, dz)];
+        return [wrap2Pi(Math.atan2(dx, dy) - omega), Math.atan2(h, dz), Math.hypot(h, dz)];
     }
 
     // Derivadas de (Hz, Z, S) em relação às coordenadas do PONTO VISADO, uma coluna por
@@ -357,8 +360,8 @@
         const dx = tg[0] - st[0], dy = tg[1] - st[1], dz = tg[2] - st[2];
         const h2 = dx * dx + dy * dy, h = Math.sqrt(h2), s2 = h2 + dz * dz, s = Math.sqrt(s2);
         return [
-            [-dy / h2, dx * dz / (s2 * h), dx / s],
-            [dx / h2, dy * dz / (s2 * h), dy / s],
+            [dy / h2, dx * dz / (s2 * h), dx / s],
+            [-dx / h2, dy * dz / (s2 * h), dy / s],
             [0, -h / s2, dz / s]
         ];
     }
@@ -405,14 +408,16 @@
     // ---------------------------------------------------------------- pose de estação
     // Rotação em torno de Z + translação (Procrustes sem escala) entre os vetores locais da
     // estação (ω = 0, origem no instrumento) e as coordenadas conhecidas dos pontos visados.
-    // Com a posição da estação já conhecida, só a orientação é estimada.
+    // Com a posição da estação já conhecida, só a orientação é estimada. Como o azimute
+    // α = atan2(ΔX, ΔY) cresce no sentido horário, somar ω gira os vetores de −ω no sentido
+    // trigonométrico do plano XY (ver applyPose).
     function fitStationPose(pairs, ownXYZ) {
         let xyz, omega;
         if (ownXYZ) {
             let sx = 0, sy = 0;
             pairs.forEach(p => {
-                const azK = Math.atan2(p.known[1] - ownXYZ[1], p.known[0] - ownXYZ[0]);
-                const azL = Math.atan2(p.local[1], p.local[0]);
+                const azK = Math.atan2(p.known[0] - ownXYZ[0], p.known[1] - ownXYZ[1]);
+                const azL = Math.atan2(p.local[0], p.local[1]);
                 sx += Math.cos(azK - azL); sy += Math.sin(azK - azL);
             });
             omega = Math.atan2(sy, sx);
@@ -429,11 +434,12 @@
                 a += lx * kx + ly * ky;
                 b += lx * ky - ly * kx;
             });
-            omega = Math.atan2(b, a);
+            // atan2(b, a) é o giro trigonométrico de local para conhecido; ω é o oposto
+            omega = Math.atan2(-b, a);
             const c = Math.cos(omega), s = Math.sin(omega);
             let z = 0;
             pairs.forEach(p => { z += p.known[2] - p.local[2]; });
-            xyz = [kc[0] - (c * lc[0] - s * lc[1]), kc[1] - (s * lc[0] + c * lc[1]), z / n];
+            xyz = [kc[0] - (c * lc[0] + s * lc[1]), kc[1] - (-s * lc[0] + c * lc[1]), z / n];
         }
         omega = wrap2Pi(omega);
         const misfits = pairs.map(p => {
@@ -443,9 +449,10 @@
         return { xyz, omega, misfits };
     }
 
+    // polarToDelta(Hz, Z, S, ω) = applyPose(0, ω, polarToDelta(Hz, Z, S, 0)): R_z(−ω)
     function applyPose(xyz, omega, local) {
         const c = Math.cos(omega), s = Math.sin(omega);
-        return [xyz[0] + c * local[0] - s * local[1], xyz[1] + s * local[0] + c * local[1], xyz[2] + local[2]];
+        return [xyz[0] + c * local[0] + s * local[1], xyz[1] - s * local[0] + c * local[1], xyz[2] + local[2]];
     }
 
     // ---------------------------------------------------------------- montagem da rede
@@ -862,8 +869,8 @@
 
     // ---------------------------------------------------------------- injunções internas
     // Espaço nulo da rede livre (u × 4): translações em X, Y, Z e rotação em torno da
-    // vertical, δX = −(Y − Ȳ), δY = X − X̄, δω = 1 (o azimute α = Hz + ω gira junto e a
-    // leitura Hz não muda). As injunções internas usam essas colunas só nas coordenadas
+    // vertical, δX = Y − Ȳ, δY = −(X − X̄), δω = 1 (giro horário: o azimute α = Hz + ω
+    // cresce junto e a leitura Hz não muda). As injunções internas usam essas colunas só nas coordenadas
     // (withOmega = false): a norma minimizada é a das coordenadas, sem misturar radianos
     // com metros — a solução de traço mínimo de Σ_Xa sobre as coordenadas.
     function nullSpace(net, Xv, withOmega) {
@@ -875,8 +882,8 @@
         net.index.forEach(e => {
             if (e.x !== null) {
                 H[e.x][0] = 1; H[e.y][1] = 1; H[e.z][2] = 1;
-                H[e.x][3] = -(Xv[e.y] - cy);
-                H[e.y][3] = Xv[e.x] - cx;
+                H[e.x][3] = Xv[e.y] - cy;
+                H[e.y][3] = -(Xv[e.x] - cx);
             }
             if (e.w !== null && withOmega) H[e.w][3] = 1;
         });

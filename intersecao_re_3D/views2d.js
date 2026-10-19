@@ -8,9 +8,10 @@
     const tr = (pt, en) => (globalThis.APP_LANG === 'en' ? en : pt);
 
     // h, v: índices de (X, Y, Z) nos eixos horizontal e vertical da tela.
-    // Na planta, X (zero do círculo) aponta para cima e Y para a direita — sem espelhar.
+    // Na planta, X (α = 90°) aponta para a direita e Y (zero dos azimutes) para cima: o
+    // referencial é dextrogiro, então a tela mostra a rede sem espelhar.
     const PANELS = {
-        xy: { h: 1, v: 0, get title() { return tr('Planta XY', 'XY plan'); }, hName: 'Y', vName: 'X' },
+        xy: { h: 0, v: 1, get title() { return tr('Planta XY', 'XY plan'); }, hName: 'X', vName: 'Y' },
         xz: { h: 0, v: 2, get title() { return tr('Corte XZ', 'XZ section'); }, hName: 'X', vName: 'Z' },
         yz: { h: 1, v: 2, get title() { return tr('Corte YZ', 'YZ section'); }, hName: 'Y', vName: 'Z' }
     };

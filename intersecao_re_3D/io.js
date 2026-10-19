@@ -239,12 +239,12 @@
 
     function wrap2Pi(rad) { return ((rad % TWO_PI) + TWO_PI) % TWO_PI; }
 
-    // Observação exata de `st` (orientação omega) para `p`, na convenção do ajusta_planos:
-    // ΔX = S sinZ cos(Hz+ω), ΔY = S sinZ sin(Hz+ω), ΔZ = S cosZ.
+    // Observação exata de `st` (orientação omega) para `p`, no referencial dextrogiro
+    // (shared/total_station.mjs): ΔX = S sinZ sin(Hz+ω), ΔY = S sinZ cos(Hz+ω), ΔZ = S cosZ.
     function exactObservation(st, omega, p) {
         const dx = p[0] - st[0], dy = p[1] - st[1], dz = p[2] - st[2];
         const s = Math.sqrt(dx * dx + dy * dy + dz * dz);
-        return { hz: wrap2Pi(Math.atan2(dy, dx) - omega), zen: Math.acos(dz / s), dist: s };
+        return { hz: wrap2Pi(Math.atan2(dx, dy) - omega), zen: Math.acos(dz / s), dist: s };
     }
 
     // Uma estação de origem que vê três pontos fixos, e estações encadeadas por pontos de

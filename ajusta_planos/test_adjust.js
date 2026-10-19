@@ -73,18 +73,20 @@ approx(io.gmsToDeg(4, 17, 9), 4.285833333333, 1e-9, 'gmsToDeg');
 }
 
 // ---------------------------------------------------------------- ajustamento
-// Referências calculadas de forma independente (numpy) sobre os mesmos CSVs.
+// Referências calculadas de forma independente (numpy) sobre os mesmos CSVs, no referencial
+// dextrogiro (X = S sinZ sinAz, Y = S sinZ cosAz): são as do antigo referencial de mão esquerda
+// com A e B trocados, e VtPV, σ0² e χ² não mudam.
 const REF = {
     'piso_7col.csv': {
         m: 50, dof: 47, VtPV: 723.286, sigma02: 15.3891,
-        Xa: [5.55000229e-04, -5.64020766e-04, 9.99999687e-01, 1.60890582],
+        Xa: [-5.64020766e-04, 5.55000229e-04, 9.99999687e-01, 1.60890582],
         chi2low: 29.956, chi2upp: 67.821, globalPass: false
     },
     // Esta referência foi calculada sobre os números que hoje estão em parede_esquerda_7col.csv
     // (o antigo parede_frontal.csv era uma cópia dela, ver readme).
     'parede_esquerda_7col.csv': {
         m: 51, dof: 48, VtPV: 20.686, sigma02: 0.4310,
-        Xa: [9.99918489e-01, -1.27306307e-02, -9.72759912e-04, -3.85785009],
+        Xa: [-1.27306307e-02, 9.99918489e-01, -9.72759912e-04, -3.85785009],
         chi2low: 30.755, chi2upp: 69.023, globalPass: false
     }
 };
@@ -212,23 +214,25 @@ console.log('\nMecânica do gauge');
     ok('piso: automático fixa C (normal ≈ +Z)');
     const ptsW = loadSample('parede_esquerda_7col.csv');
     const X0par = A.initialPlanePCA(ptsW.map(p => p.xyz));
-    assert.strictEqual(A.resolvePinIndex(X0par, { pinParam: 'auto' }), 0);
-    ok('parede: automático fixa A (normal ≈ +X)');
+    assert.strictEqual(A.resolvePinIndex(X0par, { pinParam: 'auto' }), 1);
+    ok('parede: automático fixa B (normal ≈ ±Y, a direção do zero do círculo)');
     assert.strictEqual(A.resolvePinIndex(X0piso, { pinParam: 'D' }), 3);
     ok('escolha manual respeitada');
 
+    // (No piso, A e B são as duas componentes quase nulas da normal; fixa-se A, a que era B
+    // antes de o referencial virar dextrogiro — o problema é o mesmo, espelhado.)
     // Fixar um parâmetro quase nulo é um gauge legítimo, porém quase ortogonal à direção de
     // escala: não muda a resposta, mas arruína o condicionamento e a velocidade de convergência.
     // O simulador precisa mostrar isso, então tem de sair medido — não escondido nem estourado.
     const good = A.adjustPlane(loadSample('piso_7col.csv'), Object.assign({}, S, { gauge: 'reduction', pinParam: 'C' }));
-    const bad = A.adjustPlane(loadSample('piso_7col.csv'), Object.assign({}, S, { gauge: 'reduction', pinParam: 'B' }));
+    const bad = A.adjustPlane(loadSample('piso_7col.csv'), Object.assign({}, S, { gauge: 'reduction', pinParam: 'A' }));
 
     assert.ok(good.pinQuality > 0.5, `fixar C deveria ser um bom gauge, qualidade ${good.pinQuality}`);
-    assert.ok(bad.pinQuality < 1e-3, `fixar B deveria ser um gauge ruim, qualidade ${bad.pinQuality}`);
-    ok(`qualidade do gauge: C = ${good.pinQuality.toFixed(3)}, B = ${bad.pinQuality.toExponential(1)}`);
+    assert.ok(bad.pinQuality < 1e-3, `fixar A deveria ser um gauge ruim, qualidade ${bad.pinQuality}`);
+    ok(`qualidade do gauge: C = ${good.pinQuality.toFixed(3)}, A = ${bad.pinQuality.toExponential(1)}`);
 
     assert.ok(bad.condSystem > good.condSystem * 100,
-        `fixar B deveria piorar muito o condicionamento: ${good.condSystem} -> ${bad.condSystem}`);
+        `fixar A deveria piorar muito o condicionamento: ${good.condSystem} -> ${bad.condSystem}`);
     ok(`cond(N_r) dispara: ${good.condSystem.toExponential(1)} -> ${bad.condSystem.toExponential(1)}`);
 
     // No limite padrão de iterações o gauge ruim PARA ANTES da convergência — e o resultado
@@ -241,7 +245,7 @@ console.log('\nMecânica do gauge');
     // Com iterações suficientes chega exatamente no mesmo plano: o gauge é convenção, o que
     // ele muda é o caminho numérico.
     const fixed = A.adjustPlane(loadSample('piso_7col.csv'),
-        Object.assign({}, S, { gauge: 'reduction', pinParam: 'B', maxIter: 200 }));
+        Object.assign({}, S, { gauge: 'reduction', pinParam: 'A', maxIter: 200 }));
     assert.ok(fixed.converged, 'com mais iterações o gauge ruim deve convergir');
     assert.ok(fixed.iterations > good.iterations * 5,
         `deveria custar muito mais iterações: ${good.iterations} -> ${fixed.iterations}`);
@@ -293,8 +297,8 @@ console.log('\nNormalização dos parâmetros');
     const nrm = A.normalizeParameters(res);
     assert.strictEqual(nrm.classification.tipo, 'vertical');
     ok('parede classificada como vertical');
-    assert.ok(nrm.Xn[0] > 0, 'plano vertical deve ter a normal apontando para +X');
-    ok('sentido escolhido próximo de +X');
+    assert.ok(nrm.Xn[1] > 0, 'plano vertical deve ter a normal apontando para +Y');
+    ok('sentido escolhido próximo de +Y (zero do círculo)');
 }
 
 {
@@ -522,11 +526,12 @@ console.log('\nAmostras de samples/');
     assert.ok(ALL_SAMPLES.length >= 6, `esperadas ao menos 6 amostras, achadas ${ALL_SAMPLES.length}`);
 
     // eixo = componente dominante da normal (0=X, 1=Y, 2=Z); lado = de que lado da estação.
+    // Referencial dextrogiro: X em Az = 90°, Y no zero do círculo.
     const GEOMETRIA = {
-        'parede_frontal.csv':       { tipo: 'vertical',   eixo: 1, lado: -1 },
-        'parede_traseira_7col.csv': { tipo: 'vertical',   eixo: 0, lado: -1 },
-        'parede_esquerda_7col.csv': { tipo: 'vertical',   eixo: 0, lado: +1 },
-        'parede_direita_7col.csv':  { tipo: 'vertical',   eixo: 1, lado: +1 },
+        'parede_frontal.csv':       { tipo: 'vertical',   eixo: 0, lado: -1 },
+        'parede_traseira_7col.csv': { tipo: 'vertical',   eixo: 1, lado: -1 },
+        'parede_esquerda_7col.csv': { tipo: 'vertical',   eixo: 1, lado: +1 },
+        'parede_direita_7col.csv':  { tipo: 'vertical',   eixo: 0, lado: +1 },
         'piso_7col.csv':            { tipo: 'horizontal', eixo: 2, lado: -1 },
         'teto_7col.csv':            { tipo: 'horizontal', eixo: 2, lado: +1 }
     };
@@ -679,4 +684,35 @@ console.log('\nHistograma dos resíduos (vista 1D)');
     ok('curva normal degenerada devolve vazio em vez de NaN');
 }
 
-console.log(`\n${passed} verificações OK\n`);
+// ---------------------------------------------------------------- referencial dextrogiro
+console.log('\nReferencial dextrogiro');
+{
+    const D = Math.PI / 180;
+    const ex = io.obsToXYZ(90 * D, 90 * D, 1), ey = io.obsToXYZ(0, 90 * D, 1), ez = io.obsToXYZ(0, 0, 1);
+    const err = Math.max(...[...ex.map((v, i) => Math.abs(v - [1, 0, 0][i])), ...ey.map((v, i) => Math.abs(v - [0, 1, 0][i])),
+        ...ez.map((v, i) => Math.abs(v - [0, 0, 1][i]))]);
+    approx(err, 0, 1e-15, 'Az 90° → +X, Az 0° → +Y, zênite → +Z');
+    approx(linalg.dot(linalg.cross(ex, ey), ez), 1, 1e-15, 'det[e_X, e_Y, e_Z] = +1');
+    const o = io.xyzToObs(3, 4, 1.5);
+    approx(o.az, Math.atan2(3, 4), 1e-15, 'azimute = atan2(X, Y)');
+}
+
+// Concordância com o núcleo compartilhado (ES module, carregado por import dinâmico)
+(async () => {
+    const TS = await import(path.join(__dirname, '..', 'shared', 'total_station.mjs'));
+    console.log('\nConcordância com shared/total_station.mjs');
+    let dPos = 0, dJac = 0, dCov = 0;
+    for (const [az, zen, sd] of [[0.2, 1.3, 7], [2.9, 1.7, 15], [4.1, 0.9, 3.3], [5.9, 2.2, 40]]) {
+        dPos = Math.max(dPos, ...io.obsToXYZ(az, zen, sd).map((v, i) => Math.abs(v - TS.polarToLocal(az, zen, sd)[i])));
+        const J = io.jacobianGMStoXYZ(az, zen, sd), K = TS.polarJacobian(az, zen, sd);
+        dJac = Math.max(dJac, ...J.flatMap((r, i) => r.map((v, j) => Math.abs(v - K[i][j]))));
+        const C = io.sigmaXYZ(az, zen, sd, S);
+        const sig = TS.polarSigmas(sd, zen, { angleSec: S.sigAngSec, mm: S.edmMm, ppm: S.edmPpm });
+        const T = TS.localCovariance(az, zen, sd, sig);
+        dCov = Math.max(dCov, ...C.flatMap((r, i) => r.map((v, j) => Math.abs(v - T[i][j]) / Math.abs(T[i][i]))));
+    }
+    approx(dPos, 0, 1e-12, 'obsToXYZ = polarToLocal');
+    approx(dJac, 0, 1e-12, 'jacobianGMStoXYZ = polarJacobian');
+    approx(dCov, 0, 1e-12, 'sigmaXYZ = localCovariance (mesmo modelo a + b·S e σ angular)');
+    console.log(`\n${passed} verificações OK\n`);
+})().catch(e => { console.error(e); process.exit(1); });

@@ -118,13 +118,13 @@ async function main() {
   assert.match(await page.textContent('#error'),/More than 3 m/);
   assert.equal((await state()).points.at(-1).E,added.E,'typed coordinates cannot bypass the street rule');
   // Rejected drag leaves coordinates/history intact; legal drag snaps visibly.
-  const dragStart=await pointPos(added.id);await page.mouse.move(dragStart.x,dragStart.y);await page.mouse.down();
+  await settle(2);const dragStart=await pointPos(added.id);await page.mouse.move(dragStart.x,dragStart.y);await page.mouse.down();
   const farScreen=await page.evaluate(p=>{const v=window.__networkTestApp.getView(),r=document.querySelector('#canvas').getBoundingClientRect();return {x:r.x+v.width/2+(p.E-v.center[0])*v.scale,y:r.y+v.height/2-(p.N-v.center[1])*v.scale};},candidates.far);
-  await page.mouse.move(farScreen.x,farScreen.y,{steps:5});assert.equal(await page.locator('#placement-feedback.invalid').isVisible(),true);await page.mouse.up();await settle(2);
+  await page.mouse.move(farScreen.x,farScreen.y,{steps:5});await page.locator('#placement-feedback.invalid').waitFor({state:'visible',timeout:5000});await page.mouse.up();await settle(2);
   assert.equal((await state()).points.at(-1).E,added.E);
   await page.click('#undo');await settle(2);assert.equal((await state()).points.length,5);
   await page.click('#redo');await settle(2);assert.equal((await state()).points.length,6);
-  const legalStart=await pointPos(added.id);await page.mouse.move(legalStart.x,legalStart.y);await page.mouse.down();
+  await settle(2);const legalStart=await pointPos(added.id);await page.mouse.move(legalStart.x,legalStart.y);await page.mouse.down();
   const legalEnd=await page.evaluate(p=>{const v=window.__networkTestApp.getView(),r=document.querySelector('#canvas').getBoundingClientRect();return {x:r.x+v.width/2+(p.E-v.center[0])*v.scale,y:r.y+v.height/2-(p.N-v.center[1])*v.scale};},candidates.near2);
   await page.mouse.move(legalEnd.x,legalEnd.y,{steps:5});assert.match(await page.textContent('#placement-feedback'),/Snap to street/);await page.mouse.up();await settle(2);
   assert.ok(Math.hypot((await state()).points.at(-1).E-candidates.near2.nearest[0],(await state()).points.at(-1).N-candidates.near2.nearest[1])<.01);

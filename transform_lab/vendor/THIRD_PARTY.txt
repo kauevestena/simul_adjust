@@ -1,0 +1,7 @@
+Third-party code bundled with transform_lab (all MIT-licensed, served locally: no CDN requests).
+
+three.js r160           vendor/three.module.min.js, vendor/OrbitControls.js   (copied from ../camera_proj/vendor)
+                        License: vendor/THREE-LICENSE.txt
+KaTeX 0.16.9            vendor/katex/katex.min.js, auto-render.min.js, katex.min.css, fonts/*.woff2
+                        (npm pack katex@0.16.9; the CSS keeps only the woff2 sources)
+                        License: vendor/katex/KATEX-LICENSE.txt

@@ -53,8 +53,8 @@
     }
 
     // Faces opostas são as de normais paralelas. Escolhe o emparelhamento que maximiza a soma
-    // dos |n_i·n_j| — os nomes dos arquivos não servem de guia: nas amostras a "frontal" (-Y)
-    // opõe a "direita" (+Y), e a "esquerda" (+X) opõe a "traseira" (-X).
+    // dos |n_i·n_j| — os nomes dos arquivos não servem de guia: nas amostras a "frontal" (-X)
+    // opõe a "direita" (+X), e a "esquerda" (+Y) opõe a "traseira" (-Y).
     function pairFaces(planes) {
         const n = planes.map(unit);
         const cos = (i, j) => Math.abs(n[i][0] * n[j][0] + n[i][1] * n[j][1] + n[i][2] * n[j][2]);

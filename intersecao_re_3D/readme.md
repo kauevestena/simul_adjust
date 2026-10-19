@@ -29,8 +29,8 @@ Each sighting from station *i* to point *j* gives three implicit condition equat
 component of the radiated vector:
 
 ```
-F1 = Xj − Xi − S·sinZ·cos(Hz + ωi) = 0
-F2 = Yj − Yi − S·sinZ·sin(Hz + ωi) = 0
+F1 = Xj − Xi − S·sinZ·sin(Hz + ωi) = 0
+F2 = Yj − Yi − S·sinZ·cos(Hz + ωi) = 0
 F3 = Zj − Zi − S·cosZ              = 0
 ```
 
@@ -40,7 +40,7 @@ combined model. Fixed points enter as constants.
 
 | matrix | what it is here |
 |---|---|
-| `A = ∂F/∂Xa` | +I at the target (if free), −I at the station, and the `ω` column `[S sinZ sinα, −S sinZ cosα, 0]` |
+| `A = ∂F/∂Xa` | +I at the target (if free), −I at the station, and the `ω` column `[−S sinZ cosα, S sinZ sinα, 0]` |
 | `B = ∂F/∂La` | block-diagonal 3×3: the Jacobian of the polar → Cartesian radiation, the same one `ajusta_planos` uses |
 | `M = B P⁻¹ Bᵀ` | block 3×3 per sighting: the Cartesian MVC of the radiated vector (`Σ_XYZ` in `ajusta_planos`) |
 | `W` | Gemael's iterated misclosure `F(L0, X0) + B(Lb − L0)` |
@@ -55,7 +55,7 @@ iterations. Every iteration's corrections, `VᵀPV` and ‖W‖ are kept and rep
 ### The parametric alternative
 
 The parametric model writes each observation as an explicit function of the unknowns:
-`Hz = atan2(ΔY, ΔX) − ω`, `Z = atan2(h, ΔZ)`, `S = |Δ|`, with `V = AX + L`, `L = L0 − Lb`,
+`Hz = atan2(ΔX, ΔY) − ω`, `Z = atan2(h, ΔZ)`, `S = |Δ|`, with `V = AX + L`, `L = L0 − Lb`,
 `N = AᵀPA`, `U = AᵀPL`, `X = −N⁻¹U`. It is the combined model with `F = f(Xa) − La`, that is
 `B = −I`, `M = P⁻¹`, `W = L`, so `adjustment.js` runs both through the same iteration loop:
 only the per-sighting blocks differ.
@@ -107,10 +107,12 @@ because M01/M02 come from A's own sightings.
 
 ### Conventions
 
-The radiation follows `ajusta_planos/io.js`: `X` along the circle zero, `Y` along Hz = 90°
-(clockwise), `Z` up. Angles are decimal degrees, distances metres. That frame is left-handed;
-the 3D view draws `(Y, X, Z)` and the plan view puts X up and Y right so the network is not
-mirrored. Instrument and target heights are not modelled — the sightings are taken as
+The radiation follows `shared/total_station.mjs`, the right-handed frame used by every simulator
+in the repository: `X` along Hz + ω = 90°, `Y` along the azimuth zero (azimuths grow clockwise,
+from `Y` towards `X`), `Z` up. Angles are decimal degrees, distances metres. The 3D view draws
+`(X, Y, Z)` directly and the plan view puts X right and Y up. (Until October 2026 this simulator
+used the left-handed X ↔ Y swap of this frame; the adjusted values are the same with X and Y
+exchanged.) Instrument and target heights are not modelled — the sightings are taken as
 instrument centre to target point. Earth curvature and refraction are ignored, which is right
 for local networks like the sample (≤ 15 m); for long sightings see Ghilani ch. 23.
 

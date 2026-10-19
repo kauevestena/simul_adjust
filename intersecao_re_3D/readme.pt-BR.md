@@ -29,8 +29,8 @@ Cada visada da estação *i* ao ponto *j* dá três equações de condição imp
 componente do vetor irradiado:
 
 ```
-F1 = Xj − Xi − S·sinZ·cos(Hz + ωi) = 0
-F2 = Yj − Yi − S·sinZ·sin(Hz + ωi) = 0
+F1 = Xj − Xi − S·sinZ·sin(Hz + ωi) = 0
+F2 = Yj − Yi − S·sinZ·cos(Hz + ωi) = 0
 F3 = Zj − Zi − S·cosZ              = 0
 ```
 
@@ -40,7 +40,7 @@ modelo combinado. Os pontos fixos entram como constantes.
 
 | matriz | o que é aqui |
 |---|---|
-| `A = ∂F/∂Xa` | +I no ponto visado (se livre), −I na estação e a coluna de `ω`: `[S sinZ sinα, −S sinZ cosα, 0]` |
+| `A = ∂F/∂Xa` | +I no ponto visado (se livre), −I na estação e a coluna de `ω`: `[−S sinZ cosα, S sinZ sinα, 0]` |
 | `B = ∂F/∂La` | bloco-diagonal 3×3: a jacobiana da irradiação polar → cartesiana, a mesma do `ajusta_planos` |
 | `M = B P⁻¹ Bᵀ` | bloco 3×3 por visada: a MVC cartesiana do vetor irradiado (`Σ_XYZ` no `ajusta_planos`) |
 | `W` | erro de fechamento iterado de Gemael, `F(L0, X0) + B(Lb − L0)` |
@@ -55,7 +55,7 @@ iterações. As correções, `VᵀPV` e ‖W‖ de cada iteração são guardado
 ### A alternativa paramétrica
 
 O modelo paramétrico escreve cada observação como função explícita das incógnitas:
-`Hz = atan2(ΔY, ΔX) − ω`, `Z = atan2(h, ΔZ)`, `S = |Δ|`, com `V = AX + L`, `L = L0 − Lb`,
+`Hz = atan2(ΔX, ΔY) − ω`, `Z = atan2(h, ΔZ)`, `S = |Δ|`, com `V = AX + L`, `L = L0 − Lb`,
 `N = AᵀPA`, `U = AᵀPL`, `X = −N⁻¹U`. É o modelo combinado com `F = f(Xa) − La`, isto é,
 `B = −I`, `M = P⁻¹`, `W = L`; por isso o `adjustment.js` roda os dois no mesmo laço de iteração:
 só os blocos por visada mudam.
@@ -107,9 +107,11 @@ saem das próprias visadas de A.
 
 ### Convenções
 
-A irradiação segue `ajusta_planos/io.js`: `X` no zero do círculo, `Y` em Hz = 90° (sentido
-horário), `Z` para cima. Esse referencial é de mão esquerda; a vista 3D desenha `(Y, X, Z)` e a
-planta põe X para cima e Y para a direita, para a rede não aparecer espelhada. Alturas de
+A irradiação segue `shared/total_station.mjs`, o referencial dextrogiro usado por todos os
+simuladores do repositório: `X` em Hz + ω = 90°, `Y` no zero dos azimutes (que crescem no sentido
+horário, de `Y` para `X`), `Z` para cima. A vista 3D desenha `(X, Y, Z)` diretamente e a planta
+põe X para a direita e Y para cima. (Até outubro de 2026 o simulador usava a troca X ↔ Y deste
+referencial, de mão esquerda; os valores ajustados são os mesmos, com X e Y trocados.) Alturas de
 instrumento e de alvo não são modeladas — as visadas são do centro do instrumento ao ponto
 visado. Curvatura da Terra e refração são ignoradas, o que vale para redes locais como a amostra
 (≤ 15 m); para visadas longas, veja Ghilani cap. 23.

@@ -108,14 +108,17 @@
 
     // --- Modelo geométrico e estocástico ---
 
+    // Referencial dextrogiro, o mesmo de shared/total_station.mjs (polarToLocal): X para o
+    // azimute de 90°, Y para o zero do círculo, Z para cima. O azimute cresce no sentido
+    // horário, de Y para X: az = atan2(X, Y).
     function obsToXYZ(azRad, zenRad, sd) {
         const sz = Math.sin(zenRad), cz = Math.cos(zenRad);
-        return [sd * sz * Math.cos(azRad), sd * sz * Math.sin(azRad), sd * cz];
+        return [sd * sz * Math.sin(azRad), sd * sz * Math.cos(azRad), sd * cz];
     }
 
     function xyzToObs(x, y, z) {
         const sd = Math.sqrt(x * x + y * y + z * z);
-        return { az: wrap2Pi(Math.atan2(y, x)), zen: Math.acos(z / sd), sd };
+        return { az: wrap2Pi(Math.atan2(x, y)), zen: Math.acos(z / sd), sd };
     }
 
     // Jacobiana 3x3 de (X,Y,Z) em relação a (azimute, zenital, distância inclinada)
@@ -123,8 +126,8 @@
         const sa = Math.sin(azRad), ca = Math.cos(azRad);
         const sz = Math.sin(zenRad), cz = Math.cos(zenRad);
         return [
-            [-sd * sz * sa, sd * cz * ca, sz * ca],
             [sd * sz * ca, sd * cz * sa, sz * sa],
+            [-sd * sz * sa, sd * cz * ca, sz * ca],
             [0, -sd * sz, cz]
         ];
     }

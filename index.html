@@ -1245,6 +1245,15 @@
 </header>
 <!-- Simulators Grid -->
 <main class="simulators-grid" id="simulatorsGrid">
+<article class="sim-card" data-card-id="transform_lab" data-category="ajustamento" style="--card-accent: #6366f1; --card-accent-glow: rgba(99, 102, 241, 0.2); --card-icon-bg: rgba(99, 102, 241, 0.12); --card-btn-bg: linear-gradient(135deg, #4338ca, #6366f1);">
+<div class="card-top"><div class="card-icon-box">🧭</div><span class="card-category-badge">Ajustamento · PT-BR / EN</span></div>
+<h2 class="card-title">Transform Lab: Transformação 3D entre Referenciais</h2>
+<div class="card-path">transform_lab/</div>
+<p class="card-description">Transforme uma folha A4 impressa (cm) nas medições de uma estação total sem prisma (m) por 3 rotações, 3 translações e escala, pelos métodos combinado e paramétrico.</p>
+<ul class="card-features"><li>Quatro parametrizações da rotação e injunções de distância</li><li>Pontos de verificação, vistas 2D/3D e histograma dos resíduos</li><li>Página de teoria e comparação de soluções</li></ul>
+<div class="card-tags"><span class="tech-tag">Mínimos Quadrados</span><span class="tech-tag">Gauss–Helmert</span><span class="tech-tag">Client-side</span></div>
+<div class="card-actions"><a class="btn-launch" href="transform_lab/"><span class="btn-text">Abrir Simulador →</span></a><a class="btn-icon-ext" href="transform_lab/" rel="noopener" target="_blank" title="Abrir em nova aba">↗</a></div>
+</article>
       <article class="sim-card" data-card-id="network_preanalysis" data-category="ajustamento" style="--card-accent: #2dd4bf; --card-accent-glow: rgba(45, 212, 191, 0.2); --card-icon-bg: rgba(45, 212, 191, 0.12); --card-btn-bg: linear-gradient(135deg, #0f766e, #0d9488);">
         <div class="card-top"><div class="card-icon-box">📐</div><span class="card-category-badge">Pré-análise · PT-BR / EN</span></div>
         <h2 class="card-title">Pré-análise de Redes Topográficas</h2>
@@ -1924,6 +1933,7 @@ Análise geoespacial e mapeamento de cobertura de vegetação urbana obtida a pa
   }
 };
   const cardTranslations = {
+"transform_lab": {"pt-BR": {"badge": "Ajustamento · PT-BR / EN", "title": "Transform Lab: Transformação 3D entre Referenciais", "desc": "Transforme uma folha A4 impressa (cm) nas medições de uma estação total sem prisma (m) por 3 rotações, 3 translações e escala, pelos métodos combinado e paramétrico.", "features": ["Quatro parametrizações da rotação e injunções de distância", "Pontos de verificação, vistas 2D/3D e histograma dos resíduos", "Página de teoria e comparação de soluções"], "tags": ["Mínimos Quadrados", "Gauss–Helmert", "PT-BR / EN"], "btn": "Abrir Simulador →"}, "en": {"badge": "Adjustment · PT-BR / EN", "title": "Transform Lab: 3D Transformation between Frames", "desc": "Transform a printed A4 sheet (cm) into reflectorless total-station measurements (m) with 3 rotations, 3 translations and scale, using the combined and parametric methods.", "features": ["Four rotation parametrizations and distance constraints", "Check points, 2D/3D views and residual histogram", "Theory page and solution comparison"], "tags": ["Least Squares", "Gauss–Helmert", "PT-BR / EN"], "btn": "Open Simulator →"}},
 "erro_profundidade": {"pt-BR": {"badge": "Fotogrametria · PT-BR / EN", "title": "Simulador de Erro em Profundidade", "desc": "Explore a incerteza em profundidade na interseção fotogramétrica com câmeras paralelas ou convergentes.", "features": ["Sliders de base, distância, focal, sensor, resolução e erro em pixels", "Geometria em escala e comparação de incertezas", "Gráfico com passos de 0,5 m e exportação CSV"], "tags": ["Fotogrametria", "Propagação de erros", "PT-BR / EN"], "btn": "Abrir Simulador →"}, "en": {"badge": "Photogrammetry · PT-BR / EN", "title": "Depth Error Simulator", "desc": "Explore depth uncertainty in photogrammetric intersection with parallel or convergent cameras.", "features": ["Sliders for baseline, distance, focal length, sensor, resolution and pixel error", "True-scale geometry and uncertainty comparison", "Chart at 0.5 m intervals and CSV export"], "tags": ["Photogrammetry", "Error propagation", "PT-BR / EN"], "btn": "Open Simulator →"}},
   "network_preanalysis": {
   "pt-BR": {

@@ -2,8 +2,10 @@
 - They're reflectorless Total Station raw observations. They're encoded in 7 columns, 3 first are GMS of observed azimuth, 3 following are GMS of observed zenith angle, the 7th is slope distance
 - They were observed in a completely arbitrary order
 - They must be transformed to XYZ coordinates, using the following equations:
-    - X = SD * sin(Z) * cos(A)
-    - Y = SD * sin(Z) * sin(A)
+    - X = SD * sin(Z) * sin(A)
+    - Y = SD * sin(Z) * cos(A)
     - Z = SD * cos(Z)
+    - This is the right-handed frame shared by every simulator (`shared/total_station.mjs`): X points to
+      azimuth 90°, Y to the azimuth zero, Z up; the azimuth grows clockwise, from Y towards X.
 - The azimuth and zenith angles must be converted from GMS to decimal degrees (and optionally to radians) before applying the equations above. The slope distance is in meters.
 - the covariance of the XYZ coordinates can be computed from the covariance of the observations, using the Jacobian matrix of the transformation above. The covariance of the observations is a diagonal matrix with the variances of the azimuth, zenith and slope distance in the diagonal. The variances are computed from the nominal 1 sigma precision of the observations, which are 2 mm + 2 ppm for the EDM and 2 arcsec for the angles. The user can change these values in the "Settings" tab. (more details in the "ajusta_planos/specs.md" file)
