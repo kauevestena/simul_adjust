@@ -82,6 +82,28 @@ const server = http.createServer((req, res) => {
   assert.ok(par > ref0.s0, `parametric σ̂0² ${par} > combined ${ref0.s0}`);
   await page.evaluate(() => window.__lab.set('method', 'combinado')); await ready(page);
 
+  // import is the default: sample preloaded, simulation-only fields hidden
+  assert.equal(await page.evaluate(() => window.__lab.state.source), 'import');
+  assert.equal(await page.evaluate(() => window.__lab.dataset.meta.source), 'import');
+  assert.match(await page.textContent('#importStatus'), /66 points/);
+  assert.equal(await page.evaluate(() => window.__lab.result.counts.tsOnly), 3, 'the 3 extra IDs of the sample are only transformed');
+  assert.equal(await page.evaluate(() => window.__lab.state.importOpts.renumber), false);
+  const hidden = path => page.evaluate(p => document.querySelector(`[data-path="${p}"]`).closest('label').hidden, path);
+  for (const p of ['preset', 'seed', 'distance', 'obliquity', 'collectedPct', 'extraPoints', 'reference.trueSigmaMm', 'reference.printScalePpmX']) assert.equal(await hidden(p), true, `${p} hidden when importing`);
+  for (const p of ['refUnit', 'tsUnit', 'instrument.angleSec']) assert.equal(await hidden(p), false, `${p} shown when importing`);
+  await page.selectOption('#importFormat', 'xyz');
+  assert.equal(await hidden('instrument.angleSec'), true, 'instrument σ not used by xyz files');
+  await page.selectOption('#importFormat', 'raw');
+  // a unit change re-parses the same file instead of dropping the import
+  const x0 = await page.evaluate(() => window.__lab.dataset.ts[0].xyz[0]);
+  await page.selectOption('[data-path="tsUnit"]', 'mm'); await ready(page);
+  assert.equal(await page.evaluate(() => window.__lab.state.source), 'import');
+  assert.ok(Math.abs(await page.evaluate(() => window.__lab.dataset.ts[0].xyz[0]) / x0 - 1000) < 1e-6, 'mm = 1000 × m');
+  await page.selectOption('[data-path="tsUnit"]', 'm'); await ready(page);
+  // simulate mode brings the simulation options back
+  await page.selectOption('#source', 'sim'); await ready(page);
+  for (const p of ['preset', 'seed', 'obliquity', 'reference.trueSigmaMm']) assert.equal(await hidden(p), false, `${p} shown when simulating`);
+
   // gimbal lock scenario through the form
   await page.selectOption('[data-path="preset"]', 'landscape'); await ready(page);
   const gl = await page.evaluate(() => { const r = window.__lab.result; return r.ok ? r.res.flags.map(f => f.code) : [r.error.code]; });
@@ -111,13 +133,12 @@ const server = http.createServer((req, res) => {
   const text = fs.readFileSync(await dl.path(), 'utf8');
   assert.equal(text.replace(/^﻿/, '').trim().split(/\r?\n/).length, 2416);
   const [dl2] = await Promise.all([page.waitForEvent('download'), page.click('#dlObs')]);
-  assert.ok(fs.readFileSync(await dl2.path(), 'utf8').includes('hz_deg'));
+  assert.ok(fs.readFileSync(await dl2.path(), 'utf8').includes('point_id,azimuth_deg'));
 
-  // import: the committed sample file
-  await page.selectOption('#source', 'import');
-  await page.selectOption('#importFormat', 'raw');
+  // import a file through the file input
+  await page.selectOption('#source', 'import'); await ready(page);
   await page.setInputFiles('#importFile', path.join(ROOT, 'transform_lab', 'data', 'sample_ts_raw.csv'));
-  await page.waitForFunction(() => window.__lab.state.source === 'import');
+  await page.waitForFunction(() => window.__lab.state.rawName === 'sample_ts_raw.csv');
   await ready(page);
   assert.ok(await page.evaluate(() => window.__lab.result.ok && window.__lab.dataset.meta.source === 'import'));
   assert.match(await page.textContent('#importStatus'), /66 points/);

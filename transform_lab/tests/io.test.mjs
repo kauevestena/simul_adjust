@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { parseTsRaw, parseJob, parseXyz, tsFromRaw, tsFromXyz, renumberByOrder, builtinReference, observationsCsv, referenceCsv, resultsCsv } from '../core/io.mjs';
+import { buildImported, parseTsRaw, parseJob, parseXyz, tsFromRaw, tsFromXyz, renumberByOrder, builtinReference, observationsCsv, referenceCsv, resultsCsv } from '../core/io.mjs';
 import { simulateDataset } from '../core/simulate.mjs';
 import { run } from '../core/pipeline.mjs';
 import { buildData } from '../scripts/generate_data.mjs';
@@ -60,4 +60,25 @@ test('results CSV has one line per point', () => {
   const csv = resultsCsv(r, ['name', 'role', 'x', 'y', 'z', 'sx', 'sy', 'sz', 'dx', 'dy', 'dz', 'stat']);
   assert.equal(csv.trim().split('\r\n').length, r.points.length + 1);
   assert.ok(referenceCsv(builtinReference('mm'), 'mm').includes('B0,30,0,0'));
+});
+
+test('buildImported re-parses the same text for another unit and format', async () => {
+  const { buildImported } = await import('../core/io.mjs');
+  const fs = await import('node:fs');
+  const text = fs.readFileSync(new URL('../data/sample_ts_raw.csv', import.meta.url), 'utf8');
+  const m = buildImported(text, { tsUnit: 'm', name: 'sample' }), mm = buildImported(text, { tsUnit: 'mm', name: 'sample' });
+  assert.equal(m.dataset.ts.length, 66);
+  assert.equal(m.dataset.truth, null);
+  assert.equal(m.dataset.meta.source, 'import');
+  assert.ok(Math.abs(mm.dataset.ts[0].xyz[0] / m.dataset.ts[0].xyz[0] - 1000) < 1e-9);
+  assert.ok(Math.abs(mm.dataset.ts[0].cov[0][0] / m.dataset.ts[0].cov[0][0] - 1e6) < 1e-3);
+});
+
+test('the documented columns (Point ID; Azimuth; Zenith Angle; Slope Distance) parse with a header, ; and decimal commas', () => {
+  const { rows, errors } = parseTsRaw('Point ID;Azimuth;Zenith Angle;Slope Distance\nA0;12,5;88,25;7,9825\n7;300;90;8,1\n', {});
+  assert.equal(errors.length, 0); assert.equal(rows.length, 2);
+  assert.deepEqual([rows[0].name, rows[0].hzDeg, rows[0].zenDeg, rows[0].dist], ['A0', 12.5, 88.25, 7.9825]);
+  // numeric IDs stay unmatched unless the grid-order option is on
+  const off = buildImported('A0;12;88;8\n7;300;90;8\n', { renumber: false }), on = buildImported('A0;12;88;8\n7;300;90;8\n', { renumber: true });
+  assert.equal(off.dataset.ts[1].name, '7'); assert.equal(on.dataset.ts[1].name, 'G0');
 });

@@ -10,7 +10,7 @@ e um fator de escala opcional, ajustados pelos métodos **combinado** (Gauss–H
 - **Conjunto de referência**: a grade A4 impressa de [`foundation/target_grid`](foundation/target_grid)
   (70 vértices A0…R2, espaçados de 3 cm, em **centímetros**), colada numa superfície rígida e plana.
 - **Segundo conjunto**: os mesmos vértices medidos **sem prisma** com uma estação total, em **metros**
-  (`Hz`, `Z`, `S` brutos → coordenadas locais com a MVC propagada, como em
+  (azimute, ângulo zenital e distância inclinada brutos → coordenadas locais com a MVC propagada, como em
   [`shared/total_station.mjs`](../shared/total_station.mjs)).
 
 Abra `index.html` por um servidor web (`python3 -m http.server` na raiz do repositório e depois
@@ -33,7 +33,7 @@ links preservam `?lang=`.
 `x_T = t + λ R(p) x_S`, com `x_S` as coordenadas impressas e `x_T` as da estação total.
 
 - **Referenciais: todos dextrogiros.** Folha: `x` para a direita, `y` para cima, `z` saindo da folha.
-  Estação total: `X` em `Hz = 90°`, `Y` em `Hz = 0°` (zero do círculo), `Z` para cima;
+  Estação total: `X` em `Hz = 90°`, `Y` em `Hz = 0°` (zero do círculo, que é arbitrário: outra origem apenas gira o referencial em torno de `Z`, e a rotação da transformação a absorve), `Z` para cima;
   `X = S senZ senHz`, `Y = S senZ cosHz`, `Z = S cosZ`. (Até outubro de 2026, `intersecao_re_3D` e
   `ajusta_planos` usavam a troca levogira deste referencial; foram corrigidos junto com este laboratório
   e seus testes verificam a concordância com `shared/total_station.mjs`.)
@@ -53,6 +53,10 @@ links preservam `?lang=`.
 - **Modelo estocástico da referência**: `σ = 0,1 mm` por ponto (palpite fundamentado) mais uma incerteza
   de escala da impressora em ppm, opcional. A simulação pode usar um erro de impressão *real* diferente
   do declarado.
+
+**Formato de importação.** Colunas: *ID do ponto; Azimute; Ângulo zenital; Distância inclinada* (colunas de σ opcionais depois). A origem do azimute é arbitrária. Um ID sem correspondente na referência é apenas transformado (nunca entra no ajustamento nem é ponto de verificação); a opção «IDs numéricos seguem a ordem da grade» vem desligada.
+
+**Origem dos dados.** *Importar arquivo* é o padrão e o arquivo de exemplo (`data/sample_ts_raw.csv`) já vem carregado; as opções que só fazem sentido com dados simulados (cenário, semente, geometria, % coletado, pontos extras, erro de impressão verdadeiro) ficam ocultas até escolher *Simulação*. Trocar unidades ou a precisão do instrumento reanalisa o arquivo carregado.
 
 ### Injunções (equações de restrição)
 

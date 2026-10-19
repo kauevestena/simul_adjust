@@ -31,7 +31,8 @@ export function parseTable(text) {
   return { delim, rows };
 }
 
-// name ; Hz ; V (zenith) ; S [; σHz″ ; σV″ ; σS(m)]   angles in decimal degrees or packed DDD.MMSS
+// Point ID ; Azimuth (arbitrary circle origin) ; Zenith Angle ; Slope Distance [; σAz″ ; σZ″ ; σS(m)]
+// angles in decimal degrees or packed DDD.MMSS; the first non-numeric row is taken as a header
 export function parseTsRaw(text, { angleFormat = 'deg' } = {}) {
   const { delim, rows } = parseTable(text);
   const out = [], errors = [];
@@ -102,6 +103,19 @@ export function renumberByOrder(ts, ref) {
   });
 }
 
+// Pure import pipeline shared by the page and the tests: raw text + options → dataset (re-run on any option change)
+export function buildImported(text, { format = 'raw', angleFormat = 'deg', renumber = true, refUnit = 'cm', tsUnit = 'm', instrument, name = '' } = {}) {
+  const ref = builtinReference(refUnit);
+  let rows, errors, ts;
+  if (format === 'xyz') { ({ rows, errors } = parseXyz(text)); ts = tsFromXyz(rows); }
+  else {
+    ({ rows, errors } = format === 'job' ? parseJob(text) : parseTsRaw(text, { angleFormat }));
+    ts = tsFromRaw(rows, { tsUnit, instrument });
+  }
+  if (renumber) ts = renumberByOrder(ts, ref);
+  return { dataset: { version: 1, refUnit, tsUnit, ref, ts, truth: null, meta: { source: 'import', file: name } }, errors };
+}
+
 export function referenceFromCsv(text, unit) {
   const { rows, errors } = parseXyz(text);
   return { unit, errors, ref: rows.map(r => ({ name: r.name, x: r.xyz[0], y: r.xyz[1], z: r.xyz[2] })) };
@@ -120,7 +134,7 @@ export const toCsv = (header, lines) => [header.map(q).join(','), ...lines.map(l
 export function observationsCsv(dataset) {
   const lines = dataset.ts.filter(t => t.polar).map(t => [t.name, t.polar.hzDeg.toFixed(7), t.polar.zenDeg.toFixed(7), t.polar.dist.toFixed(5),
     (t.polar.sigmas[0] / ARCSEC).toFixed(5), (t.polar.sigmas[1] / ARCSEC).toFixed(5), t.polar.sigmas[2].toFixed(7)]);
-  return toCsv(['name', 'hz_deg', 'zenith_deg', 'slope_distance_m', 'sigma_hz_arcsec', 'sigma_zenith_arcsec', 'sigma_dist_m'], lines);
+  return toCsv(['point_id', 'azimuth_deg', 'zenith_deg', 'slope_distance_m', 'sigma_hz_arcsec', 'sigma_zenith_arcsec', 'sigma_dist_m'], lines);
 }
 
 export function referenceCsv(ref, unit) {

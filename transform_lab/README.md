@@ -10,7 +10,7 @@ and an optional scale factor, adjusted by the **combined** (Gauss–Helmert) and
 - **Reference set**: the printed A4 grid of [`foundation/target_grid`](foundation/target_grid)
   (70 vertices A0…R2, 3 cm apart, in **centimetres**), stuck on a rigid, flat surface.
 - **Second set**: the same vertices measured **reflectorless** with a total station, in **metres**
-  (raw `Hz`, `Z`, `S` → local coordinates with the propagated VCM, as in
+  (raw azimuth, zenith angle and slope distance → local coordinates with the propagated VCM, as in
   [`shared/total_station.mjs`](../shared/total_station.mjs)).
 
 Open `index.html` through a web server (`python3 -m http.server` from the repository root, then
@@ -33,7 +33,7 @@ keeps `?lang=`.
 `x_T = t + λ R(p) x_S`, with `x_S` the printed coordinates and `x_T` the total-station ones.
 
 - **Frames: all right-handed.** Sheet: `x` right, `y` up, `z` out of the sheet. Total station:
-  `X` at `Hz = 90°`, `Y` at `Hz = 0°` (circle zero), `Z` up; `X = S sinZ sinHz`,
+  `X` at `Hz = 90°`, `Y` at `Hz = 0°` (the circle zero, which is arbitrary: a different origin only rotates the frame about `Z`, and the transformation rotation absorbs it), `Z` up; `X = S sinZ sinHz`,
   `Y = S sinZ cosHz`, `Z = S cosZ`. (Until October 2026 `intersecao_re_3D` and `ajusta_planos`
   used the left-handed swap of this frame; they were fixed together with this lab and their tests
   check agreement with `shared/total_station.mjs`.)
@@ -53,6 +53,10 @@ keeps `?lang=`.
 - **Reference stochastic model**: `σ = 0.1 mm` per point (an educated guess) plus an optional
   printer-scale uncertainty in ppm. The simulation can use a *true* printing error different from
   the declared one.
+
+**Import format.** Columns: *Point ID; Azimuth; Zenith Angle; Slope Distance* (optional σ columns after them). The azimuth origin is arbitrary. An ID with no match in the reference is only transformed (never in the adjustment, never a check point); the option "numeric IDs follow the grid order" is off by default.
+
+**Data source.** *Import a file* is the default and the sample file (`data/sample_ts_raw.csv`) is preloaded; options that only make sense for simulated data (scenario, seed, geometry, collected %, extra points, true printing error) are hidden until you choose *Simulation*. Changing units or instrument precision re-parses the loaded file.
 
 ### Constraint equations (*injunções*)
 
