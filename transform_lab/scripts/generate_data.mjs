@@ -14,7 +14,7 @@ export function buildData() {
   return {
     'reference_grid.csv': referenceCsv(pts, 'cm'),
     'reference_distances.csv': distancesCsv(distanceTable(pts, S)),
-    'sample_ts_raw.csv': observationsCsv(simulateDataset({ seed: 7 }))
+    'sample_ts_raw.csv': observationsCsv(simulateDataset({ seed: 7, azimuthOffset: 137.2 }))
   };
 }
 

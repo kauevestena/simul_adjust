@@ -3,7 +3,7 @@ import { FIELDS, renderFields, loadState, saveState, defaultState, buildDataset,
 import { run } from './core/pipeline.mjs';
 import { PRESETS } from './core/simulate.mjs';
 import { referencePoints, referenceCovariance, distanceTable, distancesCsv } from './core/reference.mjs';
-import { parseTsRaw, parseJob, parseXyz, tsFromRaw, tsFromXyz, renumberByOrder, builtinReference, observationsCsv, referenceCsv, resultsCsv } from './core/io.mjs';
+import { buildImported, builtinReference, observationsCsv, referenceCsv, resultsCsv } from './core/io.mjs';
 import { UNITS } from './core/units.mjs';
 import { SheetView } from './views/view2d.mjs';
 import { StationView } from './views/view3d.mjs';
@@ -196,9 +196,9 @@ function onCfg() { recompute(); }
 function buildForms() {
   forms.sim = renderFields($('simForm'), FIELDS.sim, () => state.sim, path => {
     if (path === 'preset') { Object.assign(state.sim, PRESETS[state.sim.preset]); forms.sim.refresh(); }
-    else if (['refUnit', 'tsUnit'].includes(path)) state.imported = null, state.source = 'sim', $('source').value = 'sim', toggleImport();
+    else if (state.source === 'import' && (['refUnit', 'tsUnit'].includes(path) || path.startsWith('instrument.'))) { applyImport(); return; }
     recompute();
-  });
+  }, () => ({ source: state.source, format: state.importOpts.format }));
   forms.ref = renderFields($('refForm'), FIELDS.reference, () => state.cfg, onCfg);
   forms.model = renderFields($('modelForm'), FIELDS.model, () => state.cfg, onCfg);
   forms.checks = renderFields($('checkForm'), FIELDS.checks, () => state.cfg, path => { if (path === 'checkPct' || path === 'checkSeed') state.cfg.checkOverride = {}; recompute(); });
@@ -207,39 +207,57 @@ function buildForms() {
 }
 
 function toggleImport() {
-  const imp = $('source').value === 'import';
-  $('importBox').hidden = !imp; $('simForm').hidden = imp && false;
-  $('angleRow').hidden = $('importFormat').value !== 'raw';
+  const imp = state.source === 'import';
+  $('source').value = state.source;
+  $('importBox').hidden = !imp;
+  $('angleRow').hidden = state.importOpts.format !== 'raw';
+  $('importFormat').value = state.importOpts.format; $('angleFormat').value = state.importOpts.angleFormat; $('renumber').checked = state.importOpts.renumber;
+  forms.sim?.refresh();
+}
+
+// Parse the stored raw text with the current options (units, instrument σ, format) and recompute
+function applyImport() {
+  const status = $('importStatus');
+  if (!state.rawText) { status.textContent = ''; return false; }
+  try {
+    const { dataset: ds, errors } = buildImported(state.rawText, { ...state.importOpts, refUnit: state.sim.refUnit, tsUnit: state.sim.tsUnit, instrument: state.sim.instrument, name: state.rawName });
+    if (!ds.ts.length) { status.textContent = t('i.importEmpty'); return false; }
+    state.imported = ds; state.source = 'import'; state.cfg.checkOverride = {};
+    status.textContent = t('i.importOk', { n: ds.ts.length, bad: errors.length, file: state.rawName });
+    toggleImport(); recompute();
+    return true;
+  } catch (err) { status.textContent = t('i.importFail', { message: String(err.message || err) }); return false; }
+}
+
+async function loadSample() {
+  try {
+    const res = await fetch('data/sample_ts_raw.csv');
+    if (!res.ok) throw new Error(String(res.status));
+    state.rawText = await res.text(); state.rawName = 'sample_ts_raw.csv';
+    state.importOpts = { format: 'raw', angleFormat: 'deg', renumber: false };
+    return applyImport();
+  } catch { $('importStatus').textContent = t('i.sampleFail'); return false; }
 }
 
 async function onImport(ev) {
   const file = ev.target.files[0];
   if (!file) return;
-  const status = $('importStatus');
-  try {
-    const text = await readFile(file), fmtSel = $('importFormat').value;
-    const refUnit = state.sim.refUnit, tsUnit = state.sim.tsUnit, ref = builtinReference(refUnit);
-    let rows, errors, ts;
-    if (fmtSel === 'xyz') { ({ rows, errors } = parseXyz(text)); ts = tsFromXyz(rows); }
-    else {
-      ({ rows, errors } = fmtSel === 'job' ? parseJob(text) : parseTsRaw(text, { angleFormat: $('angleFormat').value }));
-      ts = tsFromRaw(rows, { tsUnit, instrument: state.sim.instrument });
-    }
-    if ($('renumber').checked) ts = renumberByOrder(ts, ref);
-    if (!ts.length) { status.textContent = t('i.importEmpty'); return; }
-    state.imported = { version: 1, refUnit, tsUnit, ref, ts, truth: null, meta: { source: 'import', file: file.name } };
-    state.source = 'import'; state.cfg.checkOverride = {};
-    status.textContent = t('i.importOk', { n: ts.length, bad: errors.length, file: file.name });
-    recompute();
-  } catch (err) { status.textContent = t('i.importFail', { message: String(err.message || err) }); }
+  try { state.rawText = await readFile(file); state.rawName = file.name; applyImport(); }
+  catch (err) { $('importStatus').textContent = t('i.importFail', { message: String(err.message || err) }); }
   ev.target.value = '';
 }
 
 function wire() {
-  $('source').addEventListener('change', () => { toggleImport(); if ($('source').value === 'sim') { state.source = 'sim'; recompute(); } else if (state.imported) { state.source = 'import'; recompute(); } });
-  $('importFormat').addEventListener('change', toggleImport);
+  $('source').addEventListener('change', async () => {
+    state.source = $('source').value; toggleImport();
+    if (state.source === 'sim') recompute();
+    else if (!state.rawText || !applyImport()) { if (!(await loadSample())) { state.source = 'sim'; toggleImport(); recompute(); } }
+  });
+  const reopts = () => { state.importOpts = { format: $('importFormat').value, angleFormat: $('angleFormat').value, renumber: $('renumber').checked }; toggleImport(); applyImport(); };
+  ['importFormat', 'angleFormat', 'renumber'].forEach(id => $(id).addEventListener('change', reopts));
+  $('loadSample').addEventListener('click', () => loadSample());
   $('importFile').addEventListener('change', onImport);
-  $('resetBtn').addEventListener('click', () => { state = defaultState(); $('source').value = 'sim'; Object.values(forms).forEach(f => f.refresh()); toggleImport(); recompute(); });
+  $('resetBtn').addEventListener('click', async () => { state = defaultState(); Object.values(forms).forEach(f => f.refresh()); toggleImport(); if (!(await loadSample())) { state.source = 'sim'; toggleImport(); recompute(); } });
   document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => { activeTab = b.dataset.tab; renderActiveTab(); }));
   $('vecScale').addEventListener('input', e => { const k = Math.max(1, Math.round(Math.pow(10, Number(e.target.value) / 1000 * 3.5))); $('vecScaleOut').textContent = `×${k}`; view2d.setOptions({ vecScale: k, auto: false }); $('optVecAuto').checked = false; });
   $('optVecAuto').addEventListener('change', e => { view2d.setOptions({ auto: e.target.checked }); $('vecScaleOut').textContent = `×${view2d.currentK}`; });
@@ -262,7 +280,7 @@ function wire() {
   $('ellScaleOut').textContent = '×20'; $('binsOut').textContent = '15';
 }
 
-function init() {
+async function init() {
   const canvas = $('canvas2d');
   view2d = new SheetView(canvas, $('tip2d'));
   view2d.onToggle = (name, makeCheck) => {
@@ -273,7 +291,8 @@ function init() {
   bootLanguage();
   buildForms(); wire(); toggleImport();
   onLanguage(() => { renderAll(); });
-  recompute();
+  // Import is the default: restore the stored file or preload the sample before the first solve
+  if (state.source === 'import' && !(state.rawText && applyImport()) && !(await loadSample())) { state.source = 'sim'; toggleImport(); recompute(); }
 }
 
 init();

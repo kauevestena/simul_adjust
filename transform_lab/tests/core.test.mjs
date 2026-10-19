@@ -203,3 +203,38 @@ test('units: mm reference and cm TS give the same adjusted pose as cm / m', () =
   close(rotationDifference(rr.res.R, ra.res.R), 0, 1e-8);
   assert.equal(rr.pre, 0.1);
 });
+
+test('the azimuth origin is arbitrary: a constant shift of every azimuth only rotates the frame about Z', () => {
+  for (const off of [137.2, 250]) {
+    const d0 = simulateDataset({ seed: 21 }), d1 = simulateDataset({ seed: 21, azimuthOffset: off });
+    for (const method of ['combinado', 'parametrico']) for (const rotation of ['euler', 'quaternion']) {
+      const a = run(d0, { method, rotation }), b = run(d1, { method, rotation });
+      close(b.res.sigma0sq, a.res.sigma0sq, 1e-6, `${method} σ̂0²`);
+      close(b.res.lambda, a.res.lambda, 1e-10, 'λ');
+      close(b.counts.check, a.counts.check, 0, 'same roles');
+      // x' = Rz x with Rz = rotation by −off about Z in the (sinHz, cosHz) convention: R' = Rz·R, t' = Rz·t
+      const c = Math.cos(off * Math.PI / 180), s = Math.sin(off * Math.PI / 180), Rz = [[c, s, 0], [-s, c, 0], [0, 0, 1]];
+      const mul = (A, B) => A.map(r => B[0].map((_, j) => r.reduce((acc, v, k) => acc + v * B[k][j], 0)));
+      close(rotationDifference(b.res.R, mul(Rz, a.res.R)), 0, 1e-8, 'R′ = Rz·R');
+      close(b.res.Omega, a.res.Omega, 1e-7 * (1 + a.res.Omega), 'Ω');
+    }
+  }
+});
+
+test('IDs with no match are only transformed: never control, never check, and they do not change the fit', () => {
+  const base = simulateDataset({ seed: 5, extraPoints: 0 });
+  const more = structuredClone(base);
+  const extra = base.ts[0];
+  ['7', 'foo', 'EX9'].forEach((name, i) => more.ts.push({ ...structuredClone(extra), name, xyz: extra.xyz.map(v => v + 0.05 * (i + 1)) }));
+  for (const checkPct of [0, 30, 90]) {
+    const a = run(base, { checkPct }), b = run(more, { checkPct });
+    assert.equal(b.counts.tsOnly, 3);
+    for (const n of ['7', 'foo', 'EX9']) assert.equal(b.points.find(p => p.name === n).role, 'tsOnly');
+    assert.equal(b.counts.control, a.counts.control); assert.equal(b.counts.check, a.counts.check);
+    close(b.res.Omega, a.res.Omega, 1e-9, 'Ω'); close(b.res.lambda, a.res.lambda, 1e-12, 'λ');
+    b.res.t.forEach((v, i) => close(v, a.res.t[i], 1e-12, 't'));
+  }
+  // with injunções as well
+  const a = run(base, { injunctions: { set: 'n8', type: 'relative', factor: 1 } }), b = run(more, { injunctions: { set: 'n8', type: 'relative', factor: 1 } });
+  close(b.res.Omega, a.res.Omega, 1e-9, 'Ω with injunções');
+});

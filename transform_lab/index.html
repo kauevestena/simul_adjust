@@ -25,14 +25,15 @@
       <summary data-t="s.data"></summary>
       <div class="body">
         <label class="field"><span data-t="f.source"></span>
-          <select id="source"><option value="sim" data-t="o.sim"></option><option value="import" data-t="o.import"></option></select></label>
+          <select id="source"><option value="import" data-t="o.import"></option><option value="sim" data-t="o.sim"></option></select></label>
         <div id="simForm" class="body" style="padding:0"></div>
         <div id="importBox" hidden class="body" style="padding:0">
           <label class="field"><span data-t="f.importFormat"></span>
             <select id="importFormat"><option value="raw" data-t="o.importRaw"></option><option value="job" data-t="o.importJob"></option><option value="xyz" data-t="o.importXyz"></option></select></label>
           <label class="field" id="angleRow"><span data-t="f.angleFormat"></span>
             <select id="angleFormat"><option value="deg" data-t="o.angleDeg"></option><option value="dmmss" data-t="o.angleDmmss"></option></select></label>
-          <label class="field field-check"><span data-t="f.renumber"></span><input type="checkbox" id="renumber" checked></label>
+          <label class="field field-check"><span data-t="f.renumber"></span><input type="checkbox" id="renumber"></label>
+          <div class="row"><button class="btn secondary" id="loadSample" type="button" data-t="b.loadSample"></button></div>
           <input type="file" id="importFile" accept=".csv,.txt,.job,text/*" aria-label="file">
           <p class="note" data-t="h.importFormats"></p>
           <p class="note" id="importStatus" role="status"></p>

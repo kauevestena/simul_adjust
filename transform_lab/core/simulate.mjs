@@ -29,7 +29,8 @@ export const DEFAULT_SIM = {
   refUnit: 'cm', tsUnit: 'm',
   instrument: { angleSec: 2, mm: 2, ppm: 2, pointingMm: 0 },
   reference: { trueSigmaMm: 0.1, printScalePpmX: 0, printScalePpmY: 0 },
-  collectedPct: 90, extraPoints: 3
+  collectedPct: 90, extraPoints: 3,
+  azimuthOffset: 0                      // deg; arbitrary origin of the horizontal circle (does not change the adjustment)
 };
 
 // Columns of R (sheet axes expressed in the TS frame) for a sheet centred on c
@@ -84,7 +85,9 @@ export function simulateDataset(input = {}) {
   const measure = (name, xm) => {
     const exact = localToPolar(xm);
     const sig = polarSigmas(exact.dist, exact.zen, cfg.instrument);
-    const o = simulatePolar(xm, sig, cfg.noise === false ? () => 0 : rNoise.normal);
+    const o0 = simulatePolar(xm, sig, cfg.noise === false ? () => 0 : rNoise.normal);
+    // the horizontal circle zero is arbitrary: every azimuth is read from an unknown origin
+    const o = { ...o0, hz: ((o0.hz + (cfg.azimuthOffset || 0) * DEG) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) };
     const sigM = polarSigmas(o.dist, o.zen, cfg.instrument);     // evaluated at the measured values, as in the field
     const xyzM = polarToLocal(o.hz, o.zen, o.dist);
     const covM = localCovariance(o.hz, o.zen, o.dist, sigM);

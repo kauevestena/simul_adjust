@@ -6,14 +6,14 @@ import { UNITS } from './core/units.mjs';
 
 export const STORE_KEY = 'transform_lab_state_v1';
 
-export const defaultState = () => ({ source: 'sim', sim: structuredClone(DEFAULT_SIM), imported: null, cfg: mergeConfig({}) });
+export const defaultState = () => ({ source: 'import', sim: structuredClone(DEFAULT_SIM), imported: null, rawText: null, rawName: '', importOpts: { format: 'raw', angleFormat: 'deg', renumber: false }, cfg: mergeConfig({}) });
 
 export function loadState() {
   try {
     const raw = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
     if (raw && raw.v === 1) {
       const s = defaultState();
-      return { source: raw.source === 'import' && raw.imported ? 'import' : 'sim', sim: { ...s.sim, ...raw.sim, instrument: { ...s.sim.instrument, ...raw.sim?.instrument }, reference: { ...s.sim.reference, ...raw.sim?.reference } }, imported: raw.imported || null, cfg: mergeConfig(raw.cfg) };
+      return { source: raw.source === 'sim' ? 'sim' : 'import', rawText: raw.rawText || null, rawName: raw.rawName || '', importOpts: { ...s.importOpts, ...raw.importOpts }, sim: { ...s.sim, ...raw.sim, instrument: { ...s.sim.instrument, ...raw.sim?.instrument }, reference: { ...s.sim.reference, ...raw.sim?.reference } }, imported: raw.imported || null, cfg: mergeConfig(raw.cfg) };
     }
   } catch { /* corrupted or blocked storage */ }
   return defaultState();
@@ -24,6 +24,10 @@ export function saveState(state) {
 }
 
 export const buildDataset = state => (state.source === 'import' && state.imported ? state.imported : simulateDataset(state.sim));
+
+// Visibility predicates of the data form: ctx = { source, format }
+const simOnly = (c, x) => x.source === 'sim';
+const instrumentShown = (c, x) => x.source === 'sim' || x.format !== 'xyz';
 
 // ---------------------------------------------------------------- paths
 export const getPath = (o, path) => path.split('.').reduce((a, k) => (a == null ? a : a[k]), o);
@@ -37,20 +41,20 @@ export function setPath(o, path, v) {
 // field: { path, type: 'select'|'number'|'range'|'check', label (key), hint (key), options, min, max, step, show(cfg) }
 export const FIELDS = {
   sim: [
-    { path: 'preset', type: 'select', label: L('f.preset'), hint: L('h.preset'), options: ['wall', 'frontal', 'oblique', 'landscape', 'table', 'tableAligned', 'easel'] },
-    { path: 'seed', type: 'number', label: L('f.seed'), min: 1, step: 1 },
-    { path: 'distance', type: 'number', label: L('f.distance'), min: 1, max: 100, step: 0.5 },
-    { path: 'obliquity', type: 'number', label: L('f.obliquity'), hint: L('h.obliquity'), min: -80, max: 80, step: 5 },
-    { path: 'collectedPct', type: 'range', label: L('f.collectedPct'), min: 20, max: 100, step: 5, suffix: '%' },
-    { path: 'extraPoints', type: 'number', label: L('f.extraPoints'), hint: L('h.extraPoints'), min: 0, max: 10, step: 1 },
-    { path: 'instrument.angleSec', type: 'number', label: L('f.angleSec'), min: 0.1, step: 0.1 },
-    { path: 'instrument.mm', type: 'number', label: L('f.edmMm'), min: 0, step: 0.5 },
-    { path: 'instrument.ppm', type: 'number', label: L('f.edmPpm'), min: 0, step: 0.5 },
-    { path: 'reference.trueSigmaMm', type: 'number', label: L('f.trueSigma'), hint: L('h.trueSigma'), min: 0, step: 0.01 },
-    { path: 'reference.printScalePpmX', type: 'number', label: L('f.truePpmX'), hint: L('h.truePpm'), step: 50 },
-    { path: 'reference.printScalePpmY', type: 'number', label: L('f.truePpmY'), step: 50 },
     { path: 'refUnit', type: 'select', label: L('f.refUnit'), hint: L('h.units'), options: ['mm', 'cm', 'm'], optionLabel: v => v },
-    { path: 'tsUnit', type: 'select', label: L('f.tsUnit'), options: ['mm', 'cm', 'm'], optionLabel: v => v }
+    { path: 'tsUnit', type: 'select', label: L('f.tsUnit'), options: ['mm', 'cm', 'm'], optionLabel: v => v },
+    { path: 'preset', type: 'select', label: L('f.preset'), hint: L('h.preset'), options: ['wall', 'frontal', 'oblique', 'landscape', 'table', 'tableAligned', 'easel'], show: simOnly },
+    { path: 'seed', type: 'number', label: L('f.seed'), min: 1, step: 1, show: simOnly },
+    { path: 'distance', type: 'number', label: L('f.distance'), min: 1, max: 100, step: 0.5, show: simOnly },
+    { path: 'obliquity', type: 'number', label: L('f.obliquity'), hint: L('h.obliquity'), min: -80, max: 80, step: 5, show: simOnly },
+    { path: 'collectedPct', type: 'range', label: L('f.collectedPct'), min: 20, max: 100, step: 5, suffix: '%', show: simOnly },
+    { path: 'extraPoints', type: 'number', label: L('f.extraPoints'), hint: L('h.extraPoints'), min: 0, max: 10, step: 1, show: simOnly },
+    { path: 'instrument.angleSec', type: 'number', label: L('f.angleSec'), min: 0.1, step: 0.1, show: instrumentShown },
+    { path: 'instrument.mm', type: 'number', label: L('f.edmMm'), min: 0, step: 0.5, show: instrumentShown },
+    { path: 'instrument.ppm', type: 'number', label: L('f.edmPpm'), min: 0, step: 0.5, show: instrumentShown },
+    { path: 'reference.trueSigmaMm', type: 'number', label: L('f.trueSigma'), hint: L('h.trueSigma'), min: 0, step: 0.01, show: simOnly },
+    { path: 'reference.printScalePpmX', type: 'number', label: L('f.truePpmX'), hint: L('h.truePpm'), step: 50, show: simOnly },
+    { path: 'reference.printScalePpmY', type: 'number', label: L('f.truePpmY'), step: 50, show: simOnly }
   ],
   model: [
     { path: 'method', type: 'select', label: L('f.method'), hint: L('h.method'), options: ['combinado', 'parametrico'] },
@@ -84,7 +88,7 @@ export const FIELDS = {
   ]
 };
 
-export function renderFields(host, fields, getCfg, onChange) {
+export function renderFields(host, fields, getCfg, onChange, getCtx = () => ({})) {
   host.textContent = '';
   const rows = [];
   for (const f of fields) {
@@ -127,7 +131,7 @@ export function renderFields(host, fields, getCfg, onChange) {
       const v = getPath(cfg, f.path);
       if (f.type === 'check') input.checked = !!v; else input.value = String(v);
       if (out) out.textContent = `${v}${f.suffix || ''}`;
-      row.hidden = f.show ? !f.show(cfg) : false;
+      row.hidden = f.show ? !f.show(cfg, getCtx()) : false;
     });
   }
   applyLanguage(host);
