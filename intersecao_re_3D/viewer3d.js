@@ -1,8 +1,6 @@
 // --- Visualizador 3D da rede: estações, pontos fixos e livres, visadas e elipsoides (three.js) ---
-// O referencial do ajustamento segue o ajusta_planos: X na direção do zero do círculo, Y a
-// 90° no sentido horário e Z para cima. Esse terno é de mão esquerda; desenhá-lo direto no
-// three.js espelharia a rede. A tela usa (Y, X, Z), que é de mão direita e mostra a planta
-// como ela é: X para "cima", Y para a direita.
+// O referencial do ajustamento é dextrogiro (shared/total_station.mjs): X em α = 90°, Y no zero
+// dos azimutes e Z para cima, o mesmo terno do three.js — a rede é desenhada como está.
 (function (root) {
     'use strict';
     const tr = (pt, en) => (globalThis.APP_LANG === 'en' ? en : pt);
@@ -24,9 +22,8 @@
         confK: 1
     };
 
-    // mundo (X, Y, Z) -> tela (Y, X, Z)
-    const toDisplay = p => [p[1], p[0], p[2]];
-    const SWAP = [[0, 1, 0], [1, 0, 0], [0, 0, 1]];
+    // mundo (X, Y, Z) -> tela (X, Y, Z): ambos dextrogiros, Z para cima
+    const toDisplay = p => [p[0], p[1], p[2]];
 
     class NetworkViewer3D {
         constructor(containerId) {
@@ -213,12 +210,10 @@
                 color: new THREE.Color(this.opts.colorEllipsoid),
                 transparent: true, opacity: 0.32, roughness: 0.5, depthWrite: false
             });
-            const L = NetAdjust.linalg;
             const k = this.opts.confK * this.opts.ellipsoidScale;
             this.scene3.points.forEach(p => {
                 if (!p.Sigma) return;
-                const Sd = L.matmul(L.matmul(SWAP, p.Sigma), SWAP);
-                const el = NetAdjust.ellipsoid3D(Sd, k);
+                const el = NetAdjust.ellipsoid3D(p.Sigma, k);
                 if (!(el.axesAsc[2] > 0)) return;
                 const R = el.R;
                 const mesh = new THREE.Mesh(this._geo.sphere, mat);

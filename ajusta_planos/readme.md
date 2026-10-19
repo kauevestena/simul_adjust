@@ -14,12 +14,14 @@ so they share a coordinate frame: the instrument is the origin and its distance 
 reads directly off `|D|` after normalization. Azimuth zero is not aligned with the room, which
 is why the wall names do not line up with the axes.
 
+> **Frame.** Coordinates are right-handed, as in every simulator of the repository (`shared/total_station.mjs`): `X = SD·sinZ·sinAz`, `Y = SD·sinZ·cosAz`, `Z = SD·cosZ`, so the azimuth zero points along `+Y`. Until October 2026 this simulator used the left-handed swap (`X ↔ Y`); every adjusted quantity is the same with the two axes exchanged.
+
 | sample | pts | plane | `|D|` | out of plumb / tilt | σ̂₀ |
 |---|---|---|---|---|---|
-| `parede_frontal.csv` | 53 | vertical, −Y | 3.247 m | 5.03 mm/m | 2.35 |
-| `parede_traseira_7col.csv` | 32 | vertical, −X | 7.223 m | 2.43 mm/m | 0.51 |
-| `parede_esquerda_7col.csv` | 51 | vertical, +X | 3.858 m | 0.97 mm/m | 0.66 |
-| `parede_direita_7col.csv` | 26 | vertical, +Y | 4.055 m | 11.84 mm/m | 3.07 |
+| `parede_frontal.csv` | 53 | vertical, −X | 3.247 m | 5.03 mm/m | 2.35 |
+| `parede_traseira_7col.csv` | 32 | vertical, −Y | 7.223 m | 2.43 mm/m | 0.51 |
+| `parede_esquerda_7col.csv` | 51 | vertical, +Y | 3.858 m | 0.97 mm/m | 0.66 |
+| `parede_direita_7col.csv` | 26 | vertical, +X | 4.055 m | 11.84 mm/m | 3.07 |
 | `piso_7col.csv` | 50 | horizontal, below | 1.609 m | 0.79 mm/m | 3.92 |
 | `teto_7col.csv` | 33 | horizontal, above | 1.745 m | 0.76 mm/m | 5.18 |
 
@@ -64,7 +66,7 @@ rule called it *horizontal*. The spread is still computed and reported — the i
 it just no longer decides.
 
 The classification picks the reference axis used to fix the **sense** of the normal (+Z for
-horizontal planes, +X for vertical ones), so getting it wrong risks flipping the sign of the whole
+horizontal planes, +Y for vertical ones), so getting it wrong risks flipping the sign of the whole
 parameter vector. Changing the rule did not move any result on the six samples: every plane came
 back identical to machine precision, only the label changed.
 
@@ -109,7 +111,7 @@ Two traps the implementation deliberately avoids:
   normal component (never D), which is always ≥ 1/√3.
 
 The optional normalization step then fixes the *sense* of the normal (nearer +Z for horizontal
-planes, nearer +X for vertical ones, classified by the Z spread of the internal displacement
+planes, nearer +Y for vertical ones, classified by the Z spread of the internal displacement
 vectors) and rescales to `‖n‖ = 1`, propagating the MVC through the Jacobian of that
 transformation. It is what makes results from different gauges directly comparable.
 
@@ -142,7 +144,7 @@ point of the page is that the volume is an *algebraic* function of the 24 parame
 uncertainty comes from covariance propagation rather than simulation.
 
 Opposing faces are paired by their **normals**, not by filename — the names mislead: `frontal`
-(−Y) opposes `direita` (+Y), and `esquerda` (+X) opposes `traseira` (−X). Each of the 8 vertices
+(−X) opposes `direita` (+X), and `esquerda` (+Y) opposes `traseira` (−Y). Each of the 8 vertices
 solves `M v = -d` for one plane per pair; the six faces are planar by construction, so the
 divergence theorem over the triangulated boundary is exact:
 

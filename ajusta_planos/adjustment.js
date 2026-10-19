@@ -721,7 +721,7 @@
         if (s < 1e-12) throw new Error('Vetor normal degenerado; normalização impossível.');
 
         const cls = classifyPlane(result.Lb, n);
-        const refAxis = cls.isHorizontal ? 2 : 0; // horizontal -> +Z; vertical -> +X
+        const refAxis = cls.isHorizontal ? 2 : 1; // horizontal -> +Z; vertical -> +Y (zero do círculo)
         const sign = (n[refAxis] < 0) ? -1 : 1;
 
         const Xn = [sign * X[0] / s, sign * X[1] / s, sign * X[2] / s, sign * X[3] / s];

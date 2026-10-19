@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>transform_lab · Teoria / Theory</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="vendor/katex/katex.min.css">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    html[lang="pt-BR"] .en, html[lang="en"] .pt { display: none !important; }
+    .fig { background: var(--panel); border: 1px solid var(--grid); border-radius: 10px; padding: 8px; margin: 12px 0; }
+    .fig svg { width: 100%; height: auto; max-width: 560px; display: block; margin: 0 auto; }
+    .fig text { fill: var(--ink); font-size: 12px; font-family: system-ui, sans-serif; }
+    .fig .m { fill: var(--muted); }
+  </style>
+</head>
+<body>
+<header class="topbar">
+  <a class="portal" href="../" data-t="portal"></a>
+  <nav>
+    <a data-page="index.html" href="index.html" data-t="navSimulator"></a>
+    <a data-page="comparacao.html" href="comparacao.html" data-t="navCompare"></a>
+  </nav>
+  <div class="heading"><span data-t="subtitle"></span><h1 data-t="theory.title"></h1></div>
+  <div class="languages" role="group" aria-label="Language"><button data-lang="pt-BR">PT</button><button data-lang="en">EN</button></div>
+</header>
+
+<div class="pagelayout">
+<nav class="toc" aria-label="TOC">
+  <strong class="pt">Conteúdo</strong><strong class="en">Contents</strong>
+  <a href="#s1"><span class="pt">1. Referenciais e unidades</span><span class="en">1. Frames and units</span></a>
+  <a href="#s2"><span class="pt">2. Observações e modelo estocástico</span><span class="en">2. Observations and stochastic model</span></a>
+  <a href="#s3"><span class="pt">3. Modelo funcional</span><span class="en">3. Functional model</span></a>
+  <a href="#s4"><span class="pt">4. Parametrizações da rotação</span><span class="en">4. Rotation parametrizations</span></a>
+  <a href="#s5"><span class="pt">5. Valores aproximados</span><span class="en">5. Approximate values</span></a>
+  <a href="#s6"><span class="pt">6. Método paramétrico</span><span class="en">6. Parametric method</span></a>
+  <a href="#s7"><span class="pt">7. Método combinado</span><span class="en">7. Combined method</span></a>
+  <a href="#s8"><span class="pt">8. Injunções</span><span class="en">8. Constraint equations</span></a>
+  <a href="#s9"><span class="pt">9. Qualidade do ajustamento</span><span class="en">9. Adjustment quality</span></a>
+  <a href="#s10"><span class="pt">10. Verificação e propagação</span><span class="en">10. Check points and propagation</span></a>
+  <a href="#s11"><span class="pt">11. Referências</span><span class="en">11. References</span></a>
+</nav>
+
+<article class="doc" id="doc">
+
+<!-- ============================================================ 1 -->
+<h2 id="s1"><span class="pt">1. Referenciais e unidades</span><span class="en">1. Frames and units</span></h2>
+<p class="pt">Há dois conjuntos dos mesmos pontos. O <strong>conjunto de referência</strong> (<em>S</em>, de <em>sheet</em>) é a folha A4 impressa com 70 vértices de uma grade de 3 cm (A0…R2), em <strong>centímetros</strong>: origem no vértice inferior esquerdo, \(x\) para a direita, \(y\) para cima e \(z\) saindo da folha. O <strong>conjunto da estação total</strong> (<em>T</em>) é medido sem prisma, em <strong>metros</strong>, num referencial local com origem no instrumento: \(X\) aponta para \(Hz = 90^\circ\), \(Y\) para o zero do círculo (\(Hz = 0\)) e \(Z\) para cima; as leituras \(Hz\) crescem no sentido horário, de \(Y\) para \(X\).</p>
+<p class="en">There are two sets of the same points. The <strong>reference set</strong> (<em>S</em>, for <em>sheet</em>) is the printed A4 sheet with 70 vertices of a 3&nbsp;cm grid (A0…R2), in <strong>centimetres</strong>: origin at the lower-left vertex, \(x\) to the right, \(y\) up and \(z\) out of the sheet. The <strong>total-station set</strong> (<em>T</em>) is measured reflectorless, in <strong>metres</strong>, in a local frame with its origin at the instrument: \(X\) points to \(Hz = 90^\circ\), \(Y\) to the circle zero (\(Hz = 0\)) and \(Z\) up; the \(Hz\) readings grow clockwise, from \(Y\) towards \(X\).</p>
+<p class="pt"><strong>Os dois referenciais são dextrogiros</strong> (\(\mathbf e_x \times \mathbf e_y = \mathbf e_z\)). É isso que permite uma rotação própria (\(\det R = +1\)) levar um ao outro; com um referencial levogiro seria preciso uma reflexão.</p>
+<p class="en"><strong>Both frames are right-handed</strong> (\(\mathbf e_x \times \mathbf e_y = \mathbf e_z\)). That is what allows a proper rotation (\(\det R = +1\)) to take one into the other; with a left-handed frame a reflection would be needed.</p>
+<div class="fig"><svg viewBox="0 0 560 230" role="img" aria-label="frames">
+  <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+  <g style="color:var(--ink)" stroke="currentColor" stroke-width="1.6" fill="none">
+    <rect x="300" y="40" width="110" height="150" stroke="var(--muted)" stroke-dasharray="4 3"/>
+    <line x1="300" y1="190" x2="400" y2="190" marker-end="url(#ar)"/><line x1="300" y1="190" x2="300" y2="55" marker-end="url(#ar)"/>
+    <line x1="300" y1="190" x2="335" y2="160" marker-end="url(#ar)" stroke="var(--c-check)"/>
+    <line x1="60" y1="190" x2="150" y2="190" marker-end="url(#ar)"/><line x1="60" y1="190" x2="60" y2="80" marker-end="url(#ar)"/>
+    <line x1="60" y1="190" x2="95" y2="160" marker-end="url(#ar)" stroke="var(--c-check)"/>
+    <path d="M150,125 C 200,60 250,60 296,110" stroke="var(--c-control)" marker-end="url(#ar)"/>
+  </g>
+  <text x="404" y="194">x</text><text x="306" y="54">y</text><text x="338" y="158">z</text><text x="320" y="214">S (cm)</text>
+  <text x="154" y="194">X (Hz 90°)</text><text x="66" y="78">Y (Hz 0°)</text><text x="98" y="158">Z</text><text x="60" y="214">T (m)</text>
+  <text x="168" y="62" style="fill:var(--c-control)">t, λ, R</text>
+</svg></div>
+<div class="eq">$$\mathbf x_T = \mathbf t + \lambda\, R\, \mathbf x_S $$</div>
+<p class="pt">(\(\mathbf x_S\) em cm, \(\mathbf x_T\) em m.) São 3 rotações, 3 translações e, opcionalmente, um fator de escala \(\lambda\). Se as unidades forem diferentes (cm → m), \(\lambda_0 = 0{,}01\) é a razão nominal entre elas e <strong>o \(\lambda\) estimado absorve a conversão</strong>; o simulador também permite converter a referência antes (\(\lambda \approx 1\)) ou fixar \(\lambda\) (movimento rígido, 6 parâmetros). Reportamos \(\delta\lambda = \lambda/\lambda_0 - 1\) em ppm: é o erro de escala <em>físico</em> da folha impressa.</p>
+<p class="en">(\(\mathbf x_S\) in cm, \(\mathbf x_T\) in m.) That is 3 rotations, 3 translations and, optionally, a scale factor \(\lambda\). If the units differ (cm → m), \(\lambda_0 = 0.01\) is their nominal ratio and <strong>the estimated \(\lambda\) absorbs the conversion</strong>; the simulator can also convert the reference beforehand (\(\lambda \approx 1\)) or fix \(\lambda\) (rigid motion, 6 parameters). We report \(\delta\lambda = \lambda/\lambda_0 - 1\) in ppm: it is the <em>physical</em> scale error of the printed sheet.</p>
+
+<!-- ============================================================ 2 -->
+<h2 id="s2"><span class="pt">2. Observações e modelo estocástico</span><span class="en">2. Observations and stochastic model</span></h2>
+<h3><span class="pt">2.1 Estação total: de polar a cartesiano</span><span class="en">2.1 Total station: from polar to Cartesian</span></h3>
+<p class="pt">Cada ponto é medido por \(Hz\), ângulo zenital \(Z\) e distância inclinada \(S\). As coordenadas locais e sua MVC (propagação pela jacobiana) são:</p>
+<p class="en">Each point is measured by \(Hz\), zenith angle \(Z\) and slope distance \(S\). The local coordinates and their VCM (propagation through the Jacobian) are:</p>
+<div class="eq">$$\mathbf x_T = \begin{bmatrix} S \sin Z \sin Hz \\ S \sin Z \cos Hz \\ S \cos Z \end{bmatrix}, \qquad
+J = \frac{\partial \mathbf x_T}{\partial (Hz, Z, S)} = \begin{bmatrix} S\sin Z\cos Hz & S\cos Z \sin Hz & \sin Z\sin Hz \\ -S\sin Z\sin Hz & S\cos Z\cos Hz & \sin Z\cos Hz \\ 0 & -S\sin Z & \cos Z \end{bmatrix}$$
+$$\Sigma_T = J\,\mathrm{diag}(\sigma_{Hz}^2,\ \sigma_Z^2,\ \sigma_S^2)\,J^{T}, \qquad \sigma_S = a + b\,S\ \ (2\,\mathrm{mm} + 2\,\mathrm{ppm})$$</div>
+<p class="pt">Sem prisma, os ângulos valem 1″–5″ (≈ 0,05–0,2 mm a 8 m), mas a distância vale ≈ 2 mm: a MVC de cada ponto é um <strong>«charuto» alongado ao longo da visada</strong> (\(\sigma_S \gg S\,\sigma_{Hz}\)). Por isso \(\Sigma_T\) é cheia (covariâncias entre \(X, Y, Z\)), e o simulador deixa comparar o uso da matriz completa com o da diagonal.</p>
+<p class="en">Reflectorless, the angles are good to 1″–5″ (≈ 0.05–0.2 mm at 8 m), but the distance is good to ≈ 2 mm: the VCM of every point is a <strong>“cigar” elongated along the line of sight</strong> (\(\sigma_S \gg S\,\sigma_{Hz}\)). Hence \(\Sigma_T\) is full (covariances between \(X, Y, Z\)), and the simulator lets you compare the full matrix with its diagonal.</p>
+<h3><span class="pt">2.2 A folha impressa</span><span class="en">2.2 The printed sheet</span></h3>
+<p class="pt">Impressa em laser e colada numa superfície rígida e plana, a folha é muito precisa, mas não perfeita. O que se encontra na literatura: o posicionamento aleatório de cada ponto depende da resolução (pixels de 21–42 µm a 1200–600 dpi), e a literatura de patentes trata o erro de colocação da imagem como ±5 mm de especificação (≈ 1 mm página a página), com a máquina mais exata perto do centro; o <strong>erro sistemático de escala</strong>, causado pela retração do papel no fusor, é citado entre 0,1 % e 0,5 % (≈ 0,3 % ≈ 600–700 µm em papel leve), maior na direção transversal; e medições amadoras em A4 de laser dão 0,4 mm numa direção e ≈ 1 mm na outra. Não há valor normativo para a folha A4, então os padrões do simulador são suposições didáticas: \(\sigma = 0{,}1\) mm por ponto (palpite do professor) e escala incerta em ppm, ambos editáveis.</p>
+<p class="en">Printed on a laser printer and stuck on a rigid, flat surface, the sheet is very precise, but not perfect. What the literature offers: the random placement of each dot depends on resolution (21–42 µm pixels at 1200–600 dpi), and the patent literature treats image placement as ±5 mm by specification (≈ 1 mm page to page), the engine being most accurate near the centre line; the <strong>systematic scale error</strong>, caused by paper shrinking in the fuser, is quoted between 0.1 % and 0.5 % (≈ 0.3 % ≈ 600–700 µm on light paper), larger across the feed; and hobbyist measurements on laser-printed A4 give 0.4 mm in one direction and ≈ 1 mm in the other. There is no normative value for an A4 sheet, so the simulator defaults are didactic assumptions: \(\sigma = 0.1\) mm per point (the lecturer’s educated guess) and an uncertain scale in ppm, both editable.</p>
+<div class="eq">$$\Sigma_S = \sigma_{xy}^2\,\mathrm{diag}(1,1,0) + \sigma_z^2\,\mathrm{diag}(0,0,1) + \Sigma_{ppm},\quad \mathrm{Cov}(\delta x_i, \delta x_j) = x_i x_j\,\sigma_{ppm,x}^2,\ \ \mathrm{Cov}(\delta y_i, \delta y_j) = y_i y_j\,\sigma_{ppm,y}^2$$</div>
+<p class="pt">O termo de escala é comum a todos os pontos: torna \(\Sigma_S\) <strong>densa</strong> (pontos correlacionados). A simulação pode usar uma impressão <em>real</em> diferente da declarada, para mostrar o que o teste global denuncia.</p>
+<p class="en">The scale term is common to all points: it makes \(\Sigma_S\) <strong>dense</strong> (correlated points). The simulation may use a <em>real</em> printing different from the declared one, to show what the global test reveals.</p>
+
+<!-- ============================================================ 3 -->
+<h2 id="s3"><span class="pt">3. Modelo funcional</span><span class="en">3. Functional model</span></h2>
+<p class="pt">Para \(m\) pontos de controle (casados e não reservados como verificação), o vetor dos parâmetros é \(X_a = [\mathbf t;\ \mathbf p;\ \lambda]\), com \(\mathbf p\) os \(s\) parâmetros da rotação. Cada ponto contribui com 3 equações:</p>
+<p class="en">For \(m\) control points (matched and not held back as check points) the parameter vector is \(X_a = [\mathbf t;\ \mathbf p;\ \lambda]\), with \(\mathbf p\) the \(s\) rotation parameters. Every point contributes 3 equations:</p>
+<div class="eq">$$x_{T,ir} = t_r + \lambda \sum_{c=1}^{3} R_{rc}(\mathbf p)\, x_{S,ic}, \qquad i = 1,\dots,m;\ r = 1,2,3$$</div>
+<p class="pt">Número de incógnitas: \(u = 3 + s + [\lambda]\). Número de equações: \(3m\). Com as \(c\) injunções entre parâmetros (seção 4), a redundância é \(r = 3m - u + c\): \(3m-7\) (similaridade) ou \(3m-6\) (rígido), qualquer que seja a parametrização.</p>
+<p class="en">Unknowns: \(u = 3 + s + [\lambda]\). Equations: \(3m\). With the \(c\) constraints between parameters (section 4), the redundancy is \(r = 3m - u + c\): \(3m-7\) (similarity) or \(3m-6\) (rigid), whatever the parametrization.</p>
+
+<!-- ============================================================ 4 -->
+<h2 id="s4"><span class="pt">4. Parametrizações da rotação</span><span class="en">4. Rotation parametrizations</span></h2>
+<p class="pt">A rotação tem 3 graus de liberdade, mas pode ser escrita com 3, 4 ou 9 parâmetros. Os excedentes exigem <strong>equações de injunção</strong> \(g(\mathbf p) = 0\) (absolutas), tratadas por multiplicadores de Lagrange (seção 8). Os ângulos de Euler são o padrão porque não precisam de nenhuma.</p>
+<p class="en">A rotation has 3 degrees of freedom, but can be written with 3, 4 or 9 parameters. The surplus requires <strong>constraint equations</strong> \(g(\mathbf p) = 0\) (absolute), handled by Lagrange multipliers (section 8). Euler angles are the default because they need none.</p>
+<table>
+<thead><tr><th><span class="pt">Parametrização</span><span class="en">Parametrization</span></th><th>\(s\)</th><th>\(R(\mathbf p)\)</th><th><span class="pt">Injunções</span><span class="en">Constraints</span></th><th><span class="pt">Degeneração</span><span class="en">Degeneracy</span></th></tr></thead>
+<tbody>
+<tr><td><span class="pt">Euler</span><span class="en">Euler</span> \((\omega,\varphi,\kappa)\)</td><td>3</td><td>\(R_3(\kappa)R_2(\varphi)R_1(\omega)\)</td><td>—</td><td><span class="pt">\(\varphi = \pm 90^\circ\) (gimbal lock)</span><span class="en">\(\varphi = \pm 90^\circ\) (gimbal lock)</span></td></tr>
+<tr><td><span class="pt">Quatérnio</span><span class="en">Quaternion</span> \(\mathbf q\)</td><td>4</td><td>\(\|\mathbf q\|^2 R(\hat{\mathbf q})\)</td><td>\(\mathbf q^T\mathbf q - 1 = 0\)</td><td><span class="pt">\(\pm\mathbf q\) equivalentes</span><span class="en">\(\pm\mathbf q\) equivalent</span></td></tr>
+<tr><td><span class="pt">Matriz</span><span class="en">Matrix</span> \(R\)</td><td>9</td><td>\(r_{ij}\)</td><td>\(R^TR - I = 0\) (6)</td><td><span class="pt">3ª coluna só vem das injunções (folha plana)</span><span class="en">3rd column comes only from the constraints (planar sheet)</span></td></tr>
+<tr><td><span class="pt">Eixo-ângulo</span><span class="en">Axis–angle</span> \((\mathbf n,\theta)\)</td><td>4</td><td>\(I + \sin\theta [\mathbf n]_\times + (1-\cos\theta)[\mathbf n]_\times^2\)</td><td>\(\mathbf n^T\mathbf n - 1 = 0\)</td><td><span class="pt">\(\theta \approx 0\): eixo indefinido</span><span class="en">\(\theta \approx 0\): undefined axis</span></td></tr>
+</tbody></table>
+<div class="eq">$$R_1(\omega) = \begin{bmatrix}1&0&0\\0&\cos\omega&\sin\omega\\0&-\sin\omega&\cos\omega\end{bmatrix},\
+R_2(\varphi) = \begin{bmatrix}\cos\varphi&0&-\sin\varphi\\0&1&0\\\sin\varphi&0&\cos\varphi\end{bmatrix},\
+R_3(\kappa) = \begin{bmatrix}\cos\kappa&\sin\kappa&0\\-\sin\kappa&\cos\kappa&0\\0&0&1\end{bmatrix}$$
+$$R_{31} = \sin\varphi \quad\Rightarrow\quad |\cos\varphi| \to 0:\ \ R = \begin{bmatrix} 0 & \sin(\omega+\kappa) & \cos(\omega+\kappa)\\ 0 & \cos(\omega+\kappa) & -\sin(\omega+\kappa) \\ 1 & 0 & 0\end{bmatrix}\ (\varphi = 90^\circ)$$</div>
+<p class="pt"><strong>Gimbal lock.</strong> Em \(\varphi = \pm 90^\circ\), \(\omega\) e \(\kappa\) giram em torno do mesmo eixo e só a soma (ou diferença) é determinada: a matriz normal fica singular. Ocorre naturalmente quando a folha é colada na parede <em>em paisagem</em> (eixo \(x\) da folha vertical, \(R_{31} = \pm 1\)); perto disso, \(\omega\) e \(\kappa\) têm \(\sigma\) enormes e correlação \(\approx -1\), embora \(R\) seja bem determinada. O quatérnio e a matriz de rotação não têm esse problema. No <strong>eixo-ângulo</strong> a singularidade é outra: com \(\theta = 0\) (folha alinhada com a estação) o eixo não existe.</p>
+<p class="en"><strong>Gimbal lock.</strong> At \(\varphi = \pm 90^\circ\), \(\omega\) and \(\kappa\) turn about the same axis and only their sum (or difference) is determined: the normal matrix becomes singular. It happens naturally when the sheet is stuck on the wall <em>in landscape</em> (the sheet \(x\) axis vertical, \(R_{31} = \pm 1\)); near it, \(\omega\) and \(\kappa\) get huge \(\sigma\) and a correlation \(\approx -1\), although \(R\) is well determined. The quaternion and the rotation matrix do not have this problem. For <strong>axis–angle</strong> the singularity is different: with \(\theta = 0\) (sheet aligned with the station) the axis does not exist.</p>
+<p class="pt"><strong>Quatérnio.</strong> Usa-se a forma homogênea \(R(\mathbf q) = (q_0^2 - \mathbf v^T\mathbf v) I + 2\mathbf v\mathbf v^T + 2 q_0 [\mathbf v]_\times\) (\(\mathbf v = (q_1,q_2,q_3)\)), igual a \(\|\mathbf q\|^2\) vezes uma rotação. Sem a injunção \(\|\mathbf q\| = 1\) e com \(\lambda\) estimado, \(\|\mathbf q\|^2\) e \(\lambda\) são indistinguíveis (singular); com \(\lambda\) fixo, \(\|\mathbf q\|^2\) vira silenciosamente uma escala. <strong>Matriz:</strong> 9 elementos exigem 6 injunções; sem elas é uma transformação afim geral e, como a folha é plana (\(z_S = 0\)), a 3ª coluna nem aparece nos dados. Desligue «Aplicar injunções da rotação» para ver cada caso.</p>
+<p class="en"><strong>Quaternion.</strong> The homogeneous form \(R(\mathbf q) = (q_0^2 - \mathbf v^T\mathbf v) I + 2\mathbf v\mathbf v^T + 2 q_0 [\mathbf v]_\times\) (\(\mathbf v = (q_1,q_2,q_3)\)) is used, equal to \(\|\mathbf q\|^2\) times a rotation. Without the constraint \(\|\mathbf q\| = 1\) and with \(\lambda\) estimated, \(\|\mathbf q\|^2\) and \(\lambda\) are indistinguishable (singular); with \(\lambda\) fixed, \(\|\mathbf q\|^2\) silently becomes a scale. <strong>Matrix:</strong> 9 elements require 6 constraints; without them it is a general affine map and, as the sheet is planar (\(z_S = 0\)), the 3rd column does not even appear in the data. Switch “Apply rotation constraints” off to see each case.</p>
+
+<!-- ============================================================ 5 -->
+<h2 id="s5"><span class="pt">5. Valores aproximados</span><span class="en">5. Approximate values</span></h2>
+<p class="pt">O modelo é não linear. O ponto de partida vem da solução fechada de Horn (1987): com os centroides \(\bar{\mathbf x}_S, \bar{\mathbf x}_T\) e \(H = \sum_i (\mathbf x_{S,i}-\bar{\mathbf x}_S)(\mathbf x_{T,i}-\bar{\mathbf x}_T)^T\), o quatérnio da rotação é o autovetor de maior autovalor da matriz simétrica \(4\times4\)</p>
+<p class="en">The model is non-linear. The starting point comes from Horn’s (1987) closed-form solution: with the centroids \(\bar{\mathbf x}_S, \bar{\mathbf x}_T\) and \(H = \sum_i (\mathbf x_{S,i}-\bar{\mathbf x}_S)(\mathbf x_{T,i}-\bar{\mathbf x}_T)^T\), the rotation quaternion is the eigenvector of the largest eigenvalue of the symmetric \(4\times4\) matrix</p>
+<div class="eq">$$N_H = \begin{bmatrix} \mathrm{tr}H & \Delta^T \\ \Delta & H + H^T - \mathrm{tr}H\, I\end{bmatrix},\quad \Delta = [H_{23}-H_{32},\ H_{31}-H_{13},\ H_{12}-H_{21}]^T,\quad \lambda_0 = \frac{\sum_i \mathbf a_i^T R^T \mathbf b_i}{\sum_i \mathbf a_i^T\mathbf a_i},\quad \mathbf t_0 = \bar{\mathbf x}_T - \lambda_0 R\,\bar{\mathbf x}_S$$</div>
+<p class="pt">(\(\mathbf a_i, \mathbf b_i\) centrados). Funciona com a folha plana e é convertido para a parametrização escolhida; depois o ajustamento itera, normalmente em 1–3 passos.</p>
+<p class="en">(\(\mathbf a_i, \mathbf b_i\) centred). It works with a planar sheet and is converted to the chosen parametrization; the adjustment then iterates, normally in 1–3 steps.</p>
+
+<!-- ============================================================ 6 -->
+<h2 id="s6"><span class="pt">6. Método paramétrico (Gauss–Markov)</span><span class="en">6. Parametric method (Gauss–Markov)</span></h2>
+<p class="pt">A referência é <strong>constante</strong>: só a estação total é observada, \(L_b = \mathbf x_T\) (empilhado, \(3m\)), com \(P = \Sigma_T^{-1}\) (\(\sigma_0 = 1\) a priori). O modelo é \(L_a = F(X_a)\).</p>
+<p class="en">The reference is <strong>constant</strong>: only the total station is observed, \(L_b = \mathbf x_T\) (stacked, \(3m\)), with \(P = \Sigma_T^{-1}\) (\(\sigma_0 = 1\) a priori). The model is \(L_a = F(X_a)\).</p>
+<h3><span class="pt">Forma matricial</span><span class="en">Matrix form</span></h3>
+<div class="eq">$$V = A X + L,\quad L = F(X_0) - L_b,\quad A = \frac{\partial F}{\partial X}\Big|_{X_0},\quad N = A^T P A,\quad U = A^T P L,\quad X = -N^{-1}U$$
+$$\hat\sigma_0^2 = \frac{V^T P V}{n-u},\qquad \Sigma_{X_a} = \hat\sigma_0^2\, N^{-1},\qquad Q_V = P^{-1} - A N^{-1}A^T$$</div>
+<h3><span class="pt">Forma algébrica (por ponto)</span><span class="en">Algebraic form (per point)</span></h3>
+<div class="eq">$$A_i = \Big[\ I_3\ \Big|\ \lambda\,\tfrac{\partial R}{\partial p_1}\mathbf x_{S,i}\ \cdots\ \lambda\,\tfrac{\partial R}{\partial p_s}\mathbf x_{S,i}\ \Big|\ R\,\mathbf x_{S,i}\ \Big]\ \ (3\times u),\qquad
+L_i = \mathbf t_0 + \lambda_0 R_0 \mathbf x_{S,i} - \mathbf x_{T,i}$$
+$$N = \sum_{i=1}^{m} A_i^T P_i A_i,\qquad U = \sum_{i=1}^{m} A_i^T P_i L_i,\qquad P_i = \Sigma_{T,i}^{-1}$$</div>
+<p class="pt">Como \(\mathbf x_S\) entra como constante, qualquer erro da folha impressa aparece como resíduo da estação total e <strong>infla \(\hat\sigma_0^2\)</strong>: o teste global pode rejeitar o modelo só porque a referência «não é exata».</p>
+<p class="en">Since \(\mathbf x_S\) enters as a constant, any error of the printed sheet shows up as a total-station residual and <strong>inflates \(\hat\sigma_0^2\)</strong>: the global test may reject the model only because the reference “is not exact”.</p>
+
+<!-- ============================================================ 7 -->
+<h2 id="s7"><span class="pt">7. Método combinado (Gauss–Helmert)</span><span class="en">7. Combined method (Gauss–Helmert)</span></h2>
+<p class="pt">Os dois conjuntos são observados, \(L_b = [\mathbf x_T;\ \mathbf x_S]\) (\(6m\)), cada um com a sua MVC: \(\Sigma = \mathrm{blockdiag}(\Sigma_T,\Sigma_S)\), com \(\Sigma_S\) possivelmente densa. As observações e os parâmetros aparecem misturados numa relação implícita \(F(X_a, L_a) = 0\).</p>
+<p class="en">Both sets are observed, \(L_b = [\mathbf x_T;\ \mathbf x_S]\) (\(6m\)), each with its own VCM: \(\Sigma = \mathrm{blockdiag}(\Sigma_T,\Sigma_S)\), with \(\Sigma_S\) possibly dense. Observations and parameters appear mixed in an implicit relation \(F(X_a, L_a) = 0\).</p>
+<h3><span class="pt">Forma matricial</span><span class="en">Matrix form</span></h3>
+<div class="eq">$$F_i = \mathbf x^a_{T,i} - \mathbf t - \lambda R\,\mathbf x^a_{S,i} = \mathbf 0,\qquad A X + B V + W = 0,\quad A = \frac{\partial F}{\partial X_a},\ B = \frac{\partial F}{\partial L_a},\ W = F(X_0, L_0) + B\,(L_b - L_0)$$
+$$M = B P^{-1} B^T = B\,\Sigma\,B^T,\quad N = A^T M^{-1} A,\quad U = A^T M^{-1} W,\quad X = -N^{-1}U,\quad K = -M^{-1}(AX + W),\quad V = P^{-1}B^T K$$
+$$\Omega = V^T P V = K^T M K,\qquad \hat\sigma_0^2 = \frac{\Omega}{r},\qquad Q_V = P^{-1}B^T\big(M^{-1} - M^{-1}A N^{-1}A^T M^{-1}\big)B P^{-1}$$</div>
+<h3><span class="pt">Forma algébrica (por ponto)</span><span class="en">Algebraic form (per point)</span></h3>
+<p class="pt">\(B_i\) tem 3 colunas para \(\mathbf x_{T,i}\) (\(I_3\)) e 3 para \(\mathbf x_{S,i}\) (\(-\lambda R\)).</p>
+<p class="en">\(B_i\) has 3 columns for \(\mathbf x_{T,i}\) (\(I_3\)) and 3 for \(\mathbf x_{S,i}\) (\(-\lambda R\)).</p>
+<div class="eq">$$A_i = -\Big[\ I_3\ \Big|\ \lambda\,\tfrac{\partial R}{\partial \mathbf p}\mathbf x_{S,i}\ \Big|\ R\,\mathbf x_{S,i}\ \Big],\qquad B_i = \Big[\ I_3\ \ \Big|\ -\lambda R\ \Big]$$
+$$M_i = B_i \begin{bmatrix}\Sigma_{T,i} & 0\\ 0 & \Sigma_{S,i}\end{bmatrix} B_i^T = \Sigma_{T,i} + \lambda^2 R\,\Sigma_{S,i}R^T,\qquad N = \sum_i A_i^T M_i^{-1} A_i,\qquad U = \sum_i A_i^T M_i^{-1} W_i$$</div>
+<div class="callout"><p class="pt"><strong>Leitura.</strong> Com \(\Sigma_S\) em blocos por ponto, o combinado é o paramétrico com a variância de cada ponto <em>inflada</em> pela da referência, \(\Sigma_{T,i} \to \Sigma_{T,i} + \lambda^2 R\Sigma_{S,i}R^T\) (a diferença restante é só que \(A_i\) usa o \(\mathbf x_S\) ajustado). Se \(\Sigma_S \to 0\), os dois métodos coincidem; se a folha tem erro de impressão, só o combinado o reconhece, e por isso \(\hat\sigma_0^2 \approx 1\) nele e \(> 1\) no paramétrico. Com \(\Sigma_S\) densa (escala), há ainda covariâncias entre pontos que a forma por ponto não mostra.</p>
+<p class="en"><strong>Reading.</strong> With a point-wise block \(\Sigma_S\), the combined method is the parametric one with each point’s variance <em>inflated</em> by the reference’s, \(\Sigma_{T,i} \to \Sigma_{T,i} + \lambda^2 R\Sigma_{S,i}R^T\) (the only remaining difference is that \(A_i\) uses the adjusted \(\mathbf x_S\)). If \(\Sigma_S \to 0\) the two methods coincide; if the sheet has printing error only the combined method recognizes it, which is why \(\hat\sigma_0^2 \approx 1\) in it and \(> 1\) in the parametric one. With a dense \(\Sigma_S\) (scale) there are also covariances between points that the point-wise form does not show.</p></div>
+
+<!-- ============================================================ 8 -->
+<h2 id="s8"><span class="pt">8. Injunções (equações de restrição)</span><span class="en">8. Constraint equations (injunções)</span></h2>
+<h3><span class="pt">8.1 Injunções entre os parâmetros</span><span class="en">8.1 Constraints between the parameters</span></h3>
+<p class="pt">Uma injunção \(g(X_a) = 0\) entra pelo sistema <strong>orlado</strong> (Lagrange), com \(C = \partial g/\partial X_a\) (\(k \times u\)):</p>
+<p class="en">A constraint \(g(X_a) = 0\) enters through the <strong>bordered</strong> system (Lagrange), with \(C = \partial g/\partial X_a\) (\(k \times u\)):</p>
+<div class="eq">$$\begin{bmatrix} N & C^T\\ C & 0\end{bmatrix}\begin{bmatrix} X\\ K_c\end{bmatrix} = \begin{bmatrix} -U\\ -g\end{bmatrix},\qquad \Sigma_{X_a} = \hat\sigma_0^2\Big[\begin{bmatrix} N & C^T\\ C & 0\end{bmatrix}^{-1}\Big]_{u\times u},\qquad r = n - u + k$$</div>
+<p class="pt">São as da seção 4 (norma do quatérnio e do eixo, ortonormalidade de \(R\)). \(N\) pode ser singular; a matriz orlada, não. A covariância é o bloco \(u\times u\) da inversa da orlada, nunca \(N^{-1}\).</p>
+<p class="en">These are the ones of section 4 (quaternion and axis norm, orthonormality of \(R\)). \(N\) may be singular; the bordered matrix is not. The covariance is the \(u\times u\) block of the inverse of the bordered matrix, never \(N^{-1}\).</p>
+<h3><span class="pt">8.2 Injunções de distância</span><span class="en">8.2 Distance constraints</span></h3>
+<p class="pt">Como os pontos da folha são muito precisos, a distância entre dois deles é muito bem conhecida (\(d_{ij}\), com \(\sigma_d\) propagado da MVC da referência). O simulador gera o CSV com os 2415 pares. Essas distâncias valem para os pontos da <strong>estação total</strong>: depois do ajustamento, \(\|\mathbf x^a_{T,i} - \mathbf x^a_{T,j}\| = D_{ij} = \lambda_0 d_{ij}\) deve valer (\(\lambda_0\) é a razão nominal de unidades). O gradiente de cada equação é o versor entre os pontos:</p>
+<p class="en">As the sheet points are very precise, the distance between two of them is very well known (\(d_{ij}\), with \(\sigma_d\) propagated from the reference VCM). The simulator generates the CSV with the 2415 pairs. These distances apply to the <strong>total-station</strong> points: after the adjustment, \(\|\mathbf x^a_{T,i} - \mathbf x^a_{T,j}\| = D_{ij} = \lambda_0 d_{ij}\) must hold (\(\lambda_0\) is the nominal unit ratio). The gradient of each equation is the unit vector between the points:</p>
+<div class="eq">$$h_{ij}(L_a) = \|\mathbf x^a_{T,i} - \mathbf x^a_{T,j}\| - D_{ij} = 0,\qquad \mathbf g_{ij} = \frac{\mathbf x_{T,i}-\mathbf x_{T,j}}{\|\mathbf x_{T,i}-\mathbf x_{T,j}\|},\qquad \sigma_{d,ij}^2 = \mathbf u_{ij}^T\big(\Sigma_{S,ii} + \Sigma_{S,jj} - \Sigma_{S,ij} - \Sigma_{S,ji}\big)\mathbf u_{ij}$$</div>
+<ul>
+<li class="pt"><strong>Absoluta:</strong> \(h_{ij} = 0\) exata, uma equação de condição a mais (linhas \([\mathbf g_{ij}, -\mathbf g_{ij}]\) em \(B\), sem \(A\)).</li>
+<li class="en"><strong>Absolute:</strong> \(h_{ij} = 0\) exactly, one more condition equation (rows \([\mathbf g_{ij}, -\mathbf g_{ij}]\) in \(B\), none in \(A\)).</li>
+<li class="pt"><strong>Relativa:</strong> \(D_{ij}\) é uma observação com \(\sigma_{D} = f\,\lambda_0\sigma_{d,ij}\) (\(f\) = fator do usuário): \(h_{ij}(L_a) - D^a_{ij} = 0\), com \(-1\) na coluna da distância.</li>
+<li class="en"><strong>Relative:</strong> \(D_{ij}\) is an observation with \(\sigma_{D} = f\,\lambda_0\sigma_{d,ij}\) (\(f\) = user factor): \(h_{ij}(L_a) - D^a_{ij} = 0\), with \(-1\) in the distance column.</li>
+</ul>
+<p class="pt">Conjuntos: todos os pares; só vizinhos (com diagonais, 231 pares); só vizinhos horizontais e verticais (123); ou um percentual aleatório. Muitas distâncias são <strong>dependentes</strong>: para pontos de uma folha plana, só \(2m-3\) distâncias são independentes (a forma plana), e os 231 pares de vizinhos já a determinam — «todos os pares» não acrescenta informação. O simulador seleciona o subconjunto independente (por Gram–Schmidt nos gradientes) e informa «pares → independentes → usados»: equações dependentes tornariam \(M\) singular (absolutas) ou contariam a mesma informação várias vezes (relativas).</p>
+<p class="en">Sets: all pairs; neighbours only (with diagonals, 231 pairs); horizontal and vertical neighbours only (123); or a random percentage. Many distances are <strong>dependent</strong>: for the points of a planar sheet only \(2m-3\) distances are independent (the planar shape), and the 231 neighbour pairs already determine it — “all pairs” adds no information. The simulator selects the independent subset (Gram–Schmidt on the gradients) and reports “pairs → independent → used”: dependent equations would make \(M\) singular (absolute) or count the same information several times (relative).</p>
+<div class="callout warn"><p class="pt"><strong>O que as injunções fazem — e o que não fazem.</strong> No <em>paramétrico</em>, os pontos ajustados são \(F(X_a) = \mathbf t + \lambda R\mathbf x_S\): uma cópia da referência, então \(\|\mathbf x^a_{T,i}-\mathbf x^a_{T,j}\| = \lambda d_{ij}\) e todas as injunções absolutas se reduzem a uma: \(\lambda = \lambda_0\). No movimento rígido (\(\lambda\) fixo) elas já valem e <strong>nada muda</strong>. No <em>combinado</em>, elas agem sobre os pontos da estação total, e por meio de \(F\) restringem a forma dos \(\mathbf x_S\) ajustados: quanto mais injunções (e mais rígidas), mais o combinado se aproxima do paramétrico, pois a referência vai sendo «travada». As injunções relativas fazem isso suavemente. Cuidado: as \(D_{ij}\) vêm das mesmas coordenadas impressas, então ponderar cada uma por \(\sigma_d\) isolado ignora as correlações (conta informação em duplicidade), e injunções <em>absolutas</em> com erro de escala real na impressão enviesam o resultado.</p>
+<p class="en"><strong>What the constraints do — and what they do not.</strong> In the <em>parametric</em> method, the adjusted points are \(F(X_a) = \mathbf t + \lambda R\mathbf x_S\): a copy of the reference, so \(\|\mathbf x^a_{T,i}-\mathbf x^a_{T,j}\| = \lambda d_{ij}\) and all absolute constraints reduce to one: \(\lambda = \lambda_0\). In rigid motion (\(\lambda\) fixed) they already hold and <strong>nothing changes</strong>. In the <em>combined</em> method they act on the total-station points and, through \(F\), restrict the shape of the adjusted \(\mathbf x_S\): the more (and the stiffer) constraints, the closer the combined method gets to the parametric one, as the reference gets “locked”. Relative constraints do that gently. Beware: the \(D_{ij}\) come from the same printed coordinates, so weighting each one by its isolated \(\sigma_d\) ignores the correlations (it counts information twice), and <em>absolute</em> constraints with a true printing scale error bias the result.</p></div>
+
+<!-- ============================================================ 9 -->
+<h2 id="s9"><span class="pt">9. Qualidade do ajustamento</span><span class="en">9. Adjustment quality</span></h2>
+<div class="eq">$$r = \underbrace{3m + k_D}_{n_{eq}} - u + k_{rot},\qquad \hat\sigma_0^2 = \frac{\Omega}{r},\qquad \Omega \in \big[\chi^2_{\alpha/2}(r),\ \chi^2_{1-\alpha/2}(r)\big]$$
+$$\kappa_{red} = \mathrm{cond}\big(Z^T N Z\big),\ \ \mathrm{null}(C) = Z,\qquad \Sigma_\varepsilon = J_\varepsilon \Sigma_{\mathbf p} J_\varepsilon^T,\ \ J_\varepsilon = \mathrm{vee}\big(\tfrac{\partial R}{\partial p_k}R^T\big)$$</div>
+<p class="pt">\(k_D\) é o número de injunções de distância usadas e \(k_{rot}\) as da rotação. O condicionamento é medido na parte do espaço permitida pelas injunções (\(Z\), \(7\times7\) para qualquer parametrização), então é comparável entre elas; \(\Sigma_\varepsilon\), a covariância do vetor de pequenas rotações, também <strong>não depende da parametrização</strong>. Os resíduos padronizados \(v_i/\sigma_{v_i}\), com \(\sigma_{v_i}^2 = (Q_V)_{ii}\), alimentam o histograma (esperado: N(0,1)); a estatística por ponto é \(T_i = K_i^T (Q_{K,ii})^{-1} K_i \sim \chi^2(3)\), correta mesmo com a MVC densa.</p>
+<p class="en">\(k_D\) is the number of distance constraints used and \(k_{rot}\) the rotation ones. The conditioning is measured on the part of the space allowed by the constraints (\(Z\), \(7\times7\) for any parametrization), so it is comparable between them; \(\Sigma_\varepsilon\), the covariance of the small-rotation vector, also <strong>does not depend on the parametrization</strong>. The standardized residuals \(v_i/\sigma_{v_i}\), with \(\sigma_{v_i}^2 = (Q_V)_{ii}\), feed the histogram (expected: N(0,1)); the per-point statistic is \(T_i = K_i^T (Q_{K,ii})^{-1} K_i \sim \chi^2(3)\), correct even with the dense VCM.</p>
+
+<!-- ============================================================ 10 -->
+<h2 id="s10"><span class="pt">10. Pontos de verificação e propagação</span><span class="en">10. Check points and propagation</span></h2>
+<p class="pt">Pontos casados podem ser reservados (controle × verificação: sorteio de 0 a 90 % em passos de 5 %, ou clique no gráfico). Eles não entram no ajustamento nem nas injunções, para validar de forma independente: a discrepância é \(\mathbf d_c = \mathbf x_{T,c} - (\hat{\mathbf t} + \hat\lambda \hat R\,\mathbf x_{S,c})\), com</p>
+<p class="en">Matched points can be held back (control × check: a random 0 to 90 % in 5 % steps, or click in the plot). They enter neither the adjustment nor the constraints, so they validate independently: the discrepancy is \(\mathbf d_c = \mathbf x_{T,c} - (\hat{\mathbf t} + \hat\lambda \hat R\,\mathbf x_{S,c})\), with</p>
+<div class="eq">$$\Sigma_{d} = \Sigma_{T,c} + J_c\,\Sigma_{X}\,J_c^T + \underbrace{\hat\lambda^2 \hat R\,\Sigma_{S,c}\hat R^T + \cdots}_{\star},\qquad \chi^2 = \mathbf d^T\Sigma_d^{-1}\mathbf d \sim \chi^2(3c),\quad J_c = \frac{\partial (\mathbf t + \lambda R\mathbf x_S)}{\partial X}$$</div>
+<p class="pt">O termo marcado com \(\star\) existe só no método combinado (no paramétrico a referência é exata) e inclui as covariâncias cruzadas com \(\hat X\) quando \(\Sigma_S\) é densa. As discrepâncias são correlacionadas entre si (partilham \(\hat X\)), por isso o teste conjunto usa \(\Sigma_d\) completa (\(3c \times 3c\)). Cada discrepância é decomposta na parte <em>no plano</em> da folha e na parte <em>normal</em> a ela (\(\mathbf n = \hat R\,\mathbf e_z\)): a normal é ≈ 2 mm (a incerteza em profundidade da estação total), o plano é ≈ 0,1–0,5 mm.</p>
+<p class="en">The term marked \(\star\) exists only in the combined method (in the parametric one the reference is exact), and includes the cross-covariances with \(\hat X\) when \(\Sigma_S\) is dense. The discrepancies are correlated with one another (they share \(\hat X\)), so the joint test uses the full \(\Sigma_d\) (\(3c \times 3c\)). Each discrepancy is split into the part <em>in the plane</em> of the sheet and the part <em>normal</em> to it (\(\mathbf n = \hat R\,\mathbf e_z\)): the normal one is ≈ 2 mm (the total station’s depth uncertainty), the in-plane one ≈ 0.1–0.5 mm.</p>
+<p class="pt"><strong>Pontos sem correspondência.</strong> Pontos da referência não coletados são só <em>transformados</em> (\(\mathbf x_T = \hat{\mathbf t} + \hat\lambda\hat R\mathbf x_S\)); pontos só da estação total fazem o caminho inverso, com a MVC propagada:</p>
+<p class="en"><strong>Points with no counterpart.</strong> Reference points that were not collected are only <em>transformed</em> (\(\mathbf x_T = \hat{\mathbf t} + \hat\lambda\hat R\mathbf x_S\)); points seen only by the total station take the inverse path, with the VCM propagated:</p>
+<div class="eq">$$\mathbf x_S = \hat\lambda^{-1}\hat R^T(\mathbf x_T - \hat{\mathbf t}),\qquad \Sigma_S = G_T\Sigma_T G_T^T + G_X\Sigma_X G_X^T,\quad G_T = \hat\lambda^{-1}\hat R^T$$</div>
+<p class="pt">Nos pontos marcados sobre a folha, \(z_S \approx 0\): o desvio de \(z_S\) em relação a seu \(\sigma\) é uma verificação direta do modelo.</p>
+<p class="en">For points marked on the sheet, \(z_S \approx 0\): the deviation of \(z_S\) relative to its \(\sigma\) is a direct check of the model.</p>
+
+<!-- ============================================================ 11 -->
+<h2 id="s11"><span class="pt">11. Referências</span><span class="en">11. References</span></h2>
+<ul>
+<li>GEMAEL, C. <em>Introdução ao Ajustamento de Observações: Aplicações Geodésicas</em>. Curitiba: Editora UFPR, 1994. <span class="pt">(notação, modelos paramétrico/combinado e injunções).</span><span class="en">(notation, parametric/combined models and injunções).</span></li>
+<li>GHILANI, C. D.; WOLF, P. R. <em>Adjustment Computations</em>, 6th ed. Wiley, 2017.</li>
+<li>HORN, B. K. P. Closed-form solution of absolute orientation using unit quaternions. <em>J. Opt. Soc. Am. A</em> 4(4), 629–642, 1987.</li>
+<li>UMEYAMA, S. Least-squares estimation of transformation parameters between two point patterns. <em>IEEE TPAMI</em> 13(4), 376–380, 1991.</li>
+<li>NEITZEL, F. Generalization of total least-squares on example of unweighted and weighted 2D similarity transformation. <em>J. Geodesy</em> 84, 751–762, 2010.</li>
+<li><span class="pt">Fabricante: ficha técnica de estações totais sem prisma (distância 2 mm + 2 ppm; ângulos 1″–7″; ponto laser ≈ 7 × 10 mm a 30 m).</span><span class="en">Manufacturer: reflectorless total-station datasheets (distance 2 mm + 2 ppm; angles 1″–7″; laser spot ≈ 7 × 10 mm at 30 m).</span></li>
+<li><span class="pt">Precisão da impressão a laser: patentes US 5815187 A (exatidão dimensional de impressoras a laser) e US 8467592 (distorção do substrato, retração do papel); texto «Laser printer vs laser cutter alignment/scale» (softsolder.com, 2022). Não há norma para folhas A4: os valores do simulador são hipóteses didáticas.</span><span class="en">Laser-printing accuracy: patents US 5815187 A (dimensional accuracy of laser printers) and US 8467592 (substrate distortion, paper shrinkage); “Laser printer vs laser cutter alignment/scale” (softsolder.com, 2022). There is no standard for A4 sheets: the simulator values are didactic assumptions.</span></li>
+</ul>
+</article>
+</div>
+
+<link rel="stylesheet" href="vendor/katex/katex.min.css">
+<script defer src="vendor/katex/katex.min.js"></script>
+<script defer src="vendor/katex/auto-render.min.js"></script>
+<script type="module" src="theory.mjs"></script>
+</body>
+</html>

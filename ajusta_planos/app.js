@@ -487,7 +487,7 @@ const app = {
         const names = ['A', 'B', 'C', 'D'];
 
         badge.innerHTML = `<span class="text-stone-500">${r.gaugeLabel}</span>` + (norm
-            ? ` · <span class="text-indigo-600 font-semibold">normalizado · plano ${norm.classification.tipo} · sentido ${norm.classification.isHorizontal ? '+Z' : '+X'}</span>`
+            ? ` · <span class="text-indigo-600 font-semibold">normalizado · plano ${norm.classification.tipo} · sentido ${norm.classification.isHorizontal ? '+Z' : '+Y'}</span>`
             : ' · <span class="text-stone-400">não normalizado</span>');
 
         const rows = names.map((n, i) => `
@@ -1151,7 +1151,7 @@ const app = {
             L.push(`  ${n} = ${X[i].toFixed(12)}   σ = ${Math.sqrt(Math.max(S[i][i], 0)).toExponential(4)}`);
         });
         if (norm) {
-            L.push(`  Classificação: plano ${norm.classification.tipo}; sentido referido a ${norm.classification.isHorizontal ? '+Z' : '+X'}`);
+            L.push(`  Classificação: plano ${norm.classification.tipo}; sentido referido a ${norm.classification.isHorizontal ? '+Z' : '+Y'}`);
             L.push(`  Escala removida: ${norm.scale.toFixed(12)}   sinal: ${norm.sign > 0 ? '+' : '-'}`);
         }
         L.push('');

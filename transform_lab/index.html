@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>transform_lab</title>
+  <meta name="description" content="Similarity transformation between a printed reference sheet and a total-station survey: combined vs parametric least squares.">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="portal" href="../" data-t="portal"></a>
+  <nav>
+    <a data-page="teoria.html" href="teoria.html" data-t="navTheory"></a>
+    <a data-page="comparacao.html" href="comparacao.html" data-t="navCompare"></a>
+  </nav>
+  <div class="heading"><span data-t="subtitle"></span><h1 data-t="title"></h1></div>
+  <div class="languages" role="group" aria-label="Language"><button data-lang="pt-BR">PT</button><button data-lang="en">EN</button></div>
+</header>
+
+<main class="layout">
+  <aside class="sidebar" aria-label="Controls">
+    <details class="card" open id="secData">
+      <summary data-t="s.data"></summary>
+      <div class="body">
+        <label class="field"><span data-t="f.source"></span>
+          <select id="source"><option value="sim" data-t="o.sim"></option><option value="import" data-t="o.import"></option></select></label>
+        <div id="simForm" class="body" style="padding:0"></div>
+        <div id="importBox" hidden class="body" style="padding:0">
+          <label class="field"><span data-t="f.importFormat"></span>
+            <select id="importFormat"><option value="raw" data-t="o.importRaw"></option><option value="job" data-t="o.importJob"></option><option value="xyz" data-t="o.importXyz"></option></select></label>
+          <label class="field" id="angleRow"><span data-t="f.angleFormat"></span>
+            <select id="angleFormat"><option value="deg" data-t="o.angleDeg"></option><option value="dmmss" data-t="o.angleDmmss"></option></select></label>
+          <label class="field field-check"><span data-t="f.renumber"></span><input type="checkbox" id="renumber" checked></label>
+          <input type="file" id="importFile" accept=".csv,.txt,.job,text/*" aria-label="file">
+          <p class="note" data-t="h.importFormats"></p>
+          <p class="note" id="importStatus" role="status"></p>
+        </div>
+        <div class="row">
+          <button class="btn secondary" id="dlObs" data-t="b.dlObs"></button>
+          <button class="btn secondary" id="dlRef" data-t="b.dlRef"></button>
+          <button class="btn secondary" id="dlDist" data-t="b.dlDist"></button>
+        </div>
+      </div>
+    </details>
+    <details class="card" open><summary data-t="s.reference"></summary><div class="body" id="refForm"></div></details>
+    <details class="card" open><summary data-t="s.model"></summary><div class="body" id="modelForm"></div></details>
+    <details class="card" open><summary data-t="s.checks"></summary><div class="body" id="checkForm"></div></details>
+    <details class="card" open><summary data-t="s.injunctions"></summary><div class="body"><div id="injForm" class="body" style="padding:0"></div><p class="note" id="injInfo"></p></div></details>
+    <details class="card"><summary data-t="s.output"></summary><div class="body" id="outForm"></div></details>
+    <div class="row"><button class="btn secondary" id="resetBtn" data-t="b.reset"></button></div>
+  </aside>
+
+  <section class="content">
+    <div class="summary" id="summary" aria-live="polite"></div>
+    <div class="messages" id="messages" role="status"></div>
+    <div class="tabs" role="tablist">
+      <button role="tab" data-tab="view2d" aria-selected="true" data-t="tab.2d"></button>
+      <button role="tab" data-tab="view3d" aria-selected="false" data-t="tab.3d"></button>
+      <button role="tab" data-tab="hist" aria-selected="false" data-t="tab.hist"></button>
+      <button role="tab" data-tab="results" aria-selected="false" data-t="tab.results"></button>
+      <button role="tab" data-tab="points" aria-selected="false" data-t="tab.points"></button>
+    </div>
+
+    <div class="tabpanel" id="tab-view2d">
+      <div class="toolbar">
+        <span class="legend" id="legend2d"></span>
+        <label><span data-t="v.exag"></span><input type="range" id="vecScale" min="0" max="1000" value="600" step="10" aria-label="vector exaggeration"><output id="vecScaleOut"></output></label>
+        <label><input type="checkbox" id="optVecAuto" checked><span data-t="v.auto"></span></label>
+        <label><input type="checkbox" id="optLabels" checked><span data-t="v.labels"></span></label>
+        <label><input type="checkbox" id="optEdges" checked><span data-t="v.edges"></span></label>
+      </div>
+      <div class="plot"><canvas id="canvas2d" aria-label="2D view"></canvas><div class="tooltip" id="tip2d" hidden></div></div>
+      <p class="note" data-t="v.help2d"></p>
+    </div>
+
+    <div class="tabpanel" id="tab-view3d" hidden>
+      <div class="toolbar">
+        <span class="legend" id="legend3d"></span>
+        <label><input type="checkbox" id="opt3dEllipsoids" checked><span data-t="v.ellipsoids"></span></label>
+        <label><span data-t="v.ellipsoidScale"></span><input type="range" id="ellScale" min="1" max="200" value="20" aria-label="ellipsoid scale"><output id="ellScaleOut"></output></label>
+        <label><input type="checkbox" id="opt3dLines"><span data-t="v.sightLines"></span></label>
+        <button class="btn secondary" id="fitSheet" data-t="v.fitSheet"></button>
+        <button class="btn secondary" id="fitScene" data-t="v.fitScene"></button>
+      </div>
+      <div class="plot" id="host3d"></div>
+      <p class="note" id="msg3d" data-t="v.help3d"></p>
+    </div>
+
+    <div class="tabpanel" id="tab-hist" hidden>
+      <div class="toolbar">
+        <span class="legend" id="legendHist"></span>
+        <label><span data-t="v.bins"></span><input type="range" id="bins" min="5" max="40" value="15" aria-label="bins"><output id="binsOut"></output></label>
+      </div>
+      <div class="plot"><canvas id="canvasHist" aria-label="histogram"></canvas></div>
+      <p class="stats-line" id="histStats"></p>
+      <p class="note" data-t="v.helpHist"></p>
+    </div>
+
+    <div class="tabpanel" id="tab-results" hidden><div id="resultsBox"></div></div>
+    <div class="tabpanel" id="tab-points" hidden>
+      <div class="toolbar"><button class="btn secondary" id="dlResults" data-t="b.dlResults"></button></div>
+      <div class="tablewrap"><table id="pointsTable"></table></div>
+    </div>
+  </section>
+</main>
+<script type="module" src="app.mjs"></script>
+</body>
+</html>

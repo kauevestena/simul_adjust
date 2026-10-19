@@ -1,0 +1,21 @@
+name: Legacy least-squares simulator tests
+on:
+  push:
+    paths: ["intersecao_re_3D/**", "ajusta_planos/**", "shared/total_station.mjs", ".github/workflows/lsq-legacy.yml"]
+  pull_request:
+    paths: ["intersecao_re_3D/**", "ajusta_planos/**", "shared/total_station.mjs", ".github/workflows/lsq-legacy.yml"]
+permissions:
+  contents: read
+jobs:
+  lsq-legacy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: node intersecao_re_3D/test_adjust.js
+      - run: node intersecao_re_3D/test_preproc.js
+      - run: node ajusta_planos/test_adjust.js
+      - run: node ajusta_planos/test_volume.js

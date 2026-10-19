@@ -163,7 +163,7 @@ console.log('\nAs seis amostras reais');
         return { pts, X: nrm.Xn, Sigma: nrm.SigmaXn, dof: res.dof, m: res.m, sigma02: res.sigma02 };
     });
 
-    // Pareamento: os nomes enganam — a frontal (−Y) opõe a direita (+Y)
+    // Pareamento: os nomes enganam — a frontal (−X) opõe a direita (+X)
     const par = Vol.pairFaces(faces.map(f => f.X));
     const nomes = par.pairs.map(([i, j]) => [Vol.SLOTS[i].key, Vol.SLOTS[j].key].sort().join('+')).sort();
     assert.deepStrictEqual(nomes, ['direita+frontal', 'esquerda+traseira', 'piso+teto'], nomes.join(' '));

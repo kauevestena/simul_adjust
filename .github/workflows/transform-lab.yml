@@ -1,0 +1,23 @@
+name: Transform Lab tests
+on:
+  push:
+    paths: ["transform_lab/**", "shared/total_station.mjs", "index.html", ".github/workflows/transform-lab.yml"]
+  pull_request:
+    paths: ["transform_lab/**", "shared/total_station.mjs", "index.html", ".github/workflows/transform-lab.yml"]
+permissions:
+  contents: read
+jobs:
+  transform-lab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: transform_lab/package-lock.json
+      - run: npm ci --prefix transform_lab
+      - run: npm test --prefix transform_lab
+      - run: npx --prefix transform_lab playwright install --with-deps chromium
+      - run: npm run test:browser --prefix transform_lab

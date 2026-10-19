@@ -118,7 +118,7 @@ console.log('\nRede sintética sem ruído');
 }
 
 // ---------------------------------------------------------------- oráculo paramétrico
-// Gauss-Markov com as equações de observação explícitas Hz = atan2(ΔY,ΔX) - ω, Z = acos(ΔZ/S),
+// Gauss-Markov com as equações de observação explícitas Hz = atan2(ΔX,ΔY) - ω, Z = acos(ΔZ/S),
 // S = |Δ|. Convergido, o modelo combinado tem de dar exatamente a mesma solução: as duas
 // formulações descrevem as mesmas observações e a mesma geometria.
 function gaussMarkov(res) {
@@ -138,9 +138,9 @@ function gaussMarkov(res) {
             const dx = tg[0] - st[0], dy = tg[1] - st[1], dz = tg[2] - st[2];
             const h2 = dx * dx + dy * dy, h = Math.sqrt(h2), s2 = h2 + dz * dz, s = Math.sqrt(s2);
             const om = X[es.w];
-            const calc = [Math.atan2(dy, dx) - om, Math.acos(dz / s), s];
+            const calc = [Math.atan2(dx, dy) - om, Math.acos(dz / s), s];
             const obs = res.Lb[k];
-            const dHz = [-dy / h2, dx / h2, 0];
+            const dHz = [dy / h2, -dx / h2, 0];
             const dZen = [dx * dz / (s2 * h), dy * dz / (s2 * h), -h / s2];
             const dS = [dx / s, dy / s, dz / s];
             [dHz, dZen, dS].forEach((d, c) => {
@@ -492,7 +492,8 @@ const LIVRE = Object.assign({}, S, TIGHT, { datum: 'livre' });
     ok(`traço de Σ_Xa: ${(traceOf(lv) * 1e6).toFixed(1)} mm² na rede livre (mínimo) < ${(traceOf(res) * 1e6).toFixed(1)} mm² nas injunções mínimas`);
 }
 {
-    // Mover o datum assumido move a rede rigidamente: translação (X, Y, Z) e rotação (ω)
+    // Mover o datum assumido move a rede rigidamente: translação (X, Y, Z) e rotação (ω).
+    // Somar ω gira a rede no sentido horário (azimutes crescem de Y para X): R_z(−ω).
     const rows = loadSample();
     const base = NA.adjustNetwork(rows, MIN);
     const th = 30 * DEG, T = [1000, 2000, 100];
@@ -500,7 +501,7 @@ const LIVRE = Object.assign({}, S, TIGHT, { datum: 'livre' });
     let err = 0;
     base.pointResults.forEach(p => {
         const q = moved.pointResults.find(o => o.name === p.name).xyz;
-        const e = [T[0] + Math.cos(th) * p.xyz[0] - Math.sin(th) * p.xyz[1], T[1] + Math.sin(th) * p.xyz[0] + Math.cos(th) * p.xyz[1], T[2] + p.xyz[2]];
+        const e = [T[0] + Math.cos(th) * p.xyz[0] + Math.sin(th) * p.xyz[1], T[1] - Math.sin(th) * p.xyz[0] + Math.cos(th) * p.xyz[1], T[2] + p.xyz[2]];
         err = Math.max(err, Math.hypot(q[0] - e[0], q[1] - e[1], q[2] - e[2]));
     });
     assert.ok(err < 1e-6, `movimento rígido ${err}`);
@@ -686,4 +687,48 @@ console.log('\nSaídas');
     ok('relatório em texto (alternativa sem jsPDF) gerado');
 }
 
-console.log(`\n${passed} verificações aprovadas.\n`);
+// ---------------------------------------------------------------- referencial dextrogiro
+console.log('\nReferencial dextrogiro');
+{
+    const ex = NA.polarToDelta(90 * DEG, 90 * DEG, 1, 0), ey = NA.polarToDelta(0, 90 * DEG, 1, 0);
+    const ez = NA.polarToDelta(0, 0, 1, 0);
+    approx(maxAbsDiff([ex, ey, ez], [[1, 0, 0], [0, 1, 0], [0, 0, 1]]), 0, 1e-15, 'Hz 90° → +X, Hz 0° → +Y, zênite → +Z');
+    const det = ex[0] * (ey[1] * ez[2] - ey[2] * ez[1]) - ex[1] * (ey[0] * ez[2] - ey[2] * ez[0]) + ex[2] * (ey[0] * ez[1] - ey[1] * ez[0]);
+    approx(det, 1, 1e-15, 'det[e_X, e_Y, e_Z] = +1');
+    const a = NA.polarToDelta(10 * DEG, 90 * DEG, 1, 0), b = NA.polarToDelta(20 * DEG, 90 * DEG, 1, 0);
+    assert.ok(a[0] * b[1] - a[1] * b[0] < 0);
+    ok('leitura crescente gira no sentido horário em torno de +Z');
+    // ω aplicado pela pose e pela irradiação dá o mesmo vetor; a pose é recuperada
+    const om = 1.234, st = [5, -3, 1.2];
+    const pairs = [[0.3, 1.5, 9], [2.1, 1.6, 12], [4.4, 1.45, 7.5], [5.5, 1.62, 10]].map(([hz, zen, s]) => {
+        const local = NA.polarToDelta(hz, zen, s, 0);
+        const d = NA.polarToDelta(hz, zen, s, om);
+        assert.ok(maxAbsDiff(NA.applyPose([0, 0, 0], om, local), d) < 1e-14);
+        return { local, known: [st[0] + d[0], st[1] + d[1], st[2] + d[2]] };
+    });
+    ok('applyPose(0, ω, irradiação local) = irradiação com ω');
+    const free = NA.fitStationPose(pairs, null), own = NA.fitStationPose(pairs, st);
+    approx(NA.wrapPi(free.omega - om), 0, 1e-12, 'Procrustes recupera ω');
+    approx(maxAbsDiff(free.xyz, st), 0, 1e-12, 'Procrustes recupera a estação');
+    approx(NA.wrapPi(own.omega - om), 0, 1e-12, 'com a estação conhecida, ω recuperado');
+}
+
+// Concordância com o núcleo compartilhado (ES module, carregado por import dinâmico)
+(async () => {
+    const TS = await import(path.join(__dirname, '..', 'shared', 'total_station.mjs'));
+    console.log('\nConcordância com shared/total_station.mjs');
+    let dPos = 0, dJac = 0, dObs = 0;
+    for (const [hz, zen, s] of [[0.2, 1.3, 7], [2.9, 1.7, 15], [4.1, 0.9, 3.3], [5.9, 2.2, 40]]) {
+        dPos = Math.max(dPos, maxAbsDiff(NA.polarToDelta(hz, zen, s, 0), TS.polarToLocal(hz, zen, s)));
+        const B = NA.jacobianB([hz, zen, s], 0), J = TS.polarJacobian(hz, zen, s);
+        dJac = Math.max(dJac, maxAbsDiff(B, J.map(r => r.map(v => -v))));
+        const st = [1, 2, 3], om = 0.7, d = NA.polarToDelta(hz, zen, s, om);
+        const f = NA.observationF(st, om, [st[0] + d[0], st[1] + d[1], st[2] + d[2]]);
+        const p = TS.localToPolar(d);
+        dObs = Math.max(dObs, Math.abs(NA.wrapPi(f[0] - (p.hz - om))), Math.abs(f[1] - p.zen), Math.abs(f[2] - p.dist));
+    }
+    approx(dPos, 0, 1e-12, 'polarToDelta = polarToLocal');
+    approx(dJac, 0, 1e-12, 'jacobianB = −polarJacobian');
+    approx(dObs, 0, 1e-12, 'observationF = localToPolar − ω');
+    console.log(`\n${passed} verificações aprovadas.\n`);
+})().catch(e => { console.error(e); process.exit(1); });

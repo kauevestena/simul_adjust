@@ -110,7 +110,7 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 my-4">
                 <figure class="fig p-2">
-                    <svg viewBox="0 0 320 250" role="img" aria-label="Planta: eixo X, zero do círculo, orientação ω, leitura Hz e azimute α da visada">
+                    <svg viewBox="0 0 320 250" role="img" aria-label="Planta: eixos X e Y, zero do círculo, orientação ω, leitura Hz e azimute α da visada">
                         <defs>
                             <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
                                 <path d="M0,0 L10,5 L0,10 z" fill="#57534e" />
@@ -118,9 +118,9 @@
                         </defs>
                         <text x="10" y="18" font-size="12" font-weight="700" fill="#1c1917">Planta</text>
                         <line x1="130" y1="170" x2="130" y2="32" stroke="#57534e" stroke-width="1.4" marker-end="url(#arr)" />
-                        <text x="136" y="40" font-size="11" fill="#57534e">X (α = 0)</text>
+                        <text x="136" y="40" font-size="11" fill="#57534e">Y (α = 0)</text>
                         <line x1="130" y1="170" x2="300" y2="170" stroke="#57534e" stroke-width="1.4" marker-end="url(#arr)" />
-                        <text x="288" y="186" font-size="11" fill="#57534e">Y</text>
+                        <text x="270" y="186" font-size="11" fill="#57534e">X (α = 90°)</text>
                         <line x1="130" y1="170" x2="192.5" y2="61.7" stroke="#d97706" stroke-width="1.4" stroke-dasharray="5 4" />
                         <text x="196" y="58" font-size="11" fill="#b45309">zero do círculo</text>
                         <line x1="130" y1="170" x2="261.6" y2="122.1" stroke="#0f766e" stroke-width="1.8" />
@@ -160,10 +160,12 @@
 
             <p>Com \(\Delta X = X_j - X_i\) e assim por diante, a visada liga as observações às coordenadas pela
                 <strong>irradiação</strong>, a mesma do ajustamento de planos:</p>
-            <div class="eq">$$\Delta X = S \sin Z \cos(Hz + \omega_i), \qquad \Delta Y = S \sin Z \sin(Hz + \omega_i), \qquad \Delta Z = S \cos Z$$</div>
-            <p>\(X\) aponta para o zero dos azimutes e \(Y\) para \(\alpha = 90^\circ\), no sentido horário, com \(Z\)
-                para cima. Esse terno é de mão esquerda; as vistas do simulador desenham a planta com \(X\) para
-                cima e \(Y\) para a direita, para que a rede não apareça espelhada.</p>
+            <div class="eq">$$\Delta X = S \sin Z \sin(Hz + \omega_i), \qquad \Delta Y = S \sin Z \cos(Hz + \omega_i), \qquad \Delta Z = S \cos Z$$</div>
+            <p>\(X\) aponta para \(\alpha = 90^\circ\) e \(Y\) para o zero dos azimutes (\(\alpha = 0\)) — os
+                azimutes crescem no sentido horário, de \(Y\) para \(X\) —, com \(Z\) para cima. O terno é
+                dextrogiro (de mão direita), o mesmo de todos os simuladores do repositório
+                (<code>shared/total_station.mjs</code>), e as vistas desenham a planta com \(X\) para a direita e
+                \(Y\) para cima.</p>
             <p>Com \(m\) visadas há \(n = 3m\) observações. As alturas de instrumento e de alvo são nulas por
                 construção, e curvatura e refração são desprezíveis nas distâncias da rede (até ~15 m).</p>
 
@@ -217,7 +219,7 @@
             <p>Em vez de explicitar cada observação, escreve-se uma relação implícita entre observações e
                 incógnitas, \(F(L_a, X_a) = 0\). Para a visada \(i \to j\), três equações de condição — uma por
                 componente do vetor irradiado:</p>
-            <div class="eq">$$F_k = \begin{bmatrix} X_j - X_i - S \sin Z \cos\alpha \\ Y_j - Y_i - S \sin Z \sin\alpha \\ Z_j - Z_i - S \cos Z \end{bmatrix} = 0, \qquad \alpha = Hz + \omega_i$$</div>
+            <div class="eq">$$F_k = \begin{bmatrix} X_j - X_i - S \sin Z \sin\alpha \\ Y_j - Y_i - S \sin Z \cos\alpha \\ Z_j - Z_i - S \cos Z \end{bmatrix} = 0, \qquad \alpha = Hz + \omega_i$$</div>
 
             <h3>Linearização (forma iterada de Gemael)</h3>
             <p>Em torno de \((L_0, X_0)\) — na primeira iteração \(L_0 = L_b\):</p>
@@ -227,16 +229,16 @@
             <p>Em \(A\), as coordenadas entram com \(\pm 1\) — o vetor irradiado é uma diferença de coordenadas —, e
                 a orientação com a derivada do vetor em relação a \(\alpha\):</p>
             <div class="eq">$$A_k = \begin{bmatrix}
-                -1 & 0 & 0 & S \sin Z \sin\alpha & 1 & 0 & 0 \\
-                0 & -1 & 0 & -S \sin Z \cos\alpha & 0 & 1 & 0 \\
+                -1 & 0 & 0 & -S \sin Z \cos\alpha & 1 & 0 & 0 \\
+                0 & -1 & 0 & S \sin Z \sin\alpha & 0 & 1 & 0 \\
                 0 & 0 & -1 & 0 & 0 & 0 & 1
                 \end{bmatrix}
                 \qquad \text{colunas: } X_i \ \ Y_i \ \ Z_i \ \ \omega_i \ \big| \ X_j \ \ Y_j \ \ Z_j$$</div>
             <p>\(B\) é bloco-diagonal; cada bloco \(3 \times 3\) é a jacobiana da irradiação em relação a
                 \((Hz, Z, S)\):</p>
             <div class="eq">$$B_k = \begin{bmatrix}
-                S \sin Z \sin\alpha & -S \cos Z \cos\alpha & -\sin Z \cos\alpha \\
                 -S \sin Z \cos\alpha & -S \cos Z \sin\alpha & -\sin Z \sin\alpha \\
+                S \sin Z \sin\alpha & -S \cos Z \cos\alpha & -\sin Z \cos\alpha \\
                 0 & S \sin Z & -\cos Z
                 \end{bmatrix}, \qquad B = \operatorname{diag}(B_1, \dots, B_m)$$</div>
             <p>Note que a coluna de \(\omega_i\) em \(A_k\) é igual à coluna de \(Hz\) em \(B_k\): girar o círculo ou
@@ -437,8 +439,8 @@
                     no datum local assumido. Na rede livre sem apoio, parte de uma estação semente nesse datum.</li>
                 <li>Uma estação que vê ao menos dois pontos conhecidos é posicionada por um ajuste de rotação em torno
                     da vertical mais translação (Procrustes sem escala) entre os vetores locais
-                    \(l = (S\sin Z\cos Hz,\ S\sin Z\sin Hz,\ S\cos Z)\) e as coordenadas conhecidas:
-                    \[\omega = \operatorname{atan2}\!\left(\sum (l_x k_y - l_y k_x),\ \sum (l_x k_x + l_y k_y)\right)\]
+                    \(l = (S\sin Z\sin Hz,\ S\sin Z\cos Hz,\ S\cos Z)\) e as coordenadas conhecidas:
+                    \[\omega = \operatorname{atan2}\!\left(\sum (l_y k_x - l_x k_y),\ \sum (l_x k_x + l_y k_y)\right)\]
                     com os vetores centrados nos respectivos centróides.</li>
                 <li>Ela irradia os pontos ainda desconhecidos, e o processo se repete até esgotar as estações.</li>
                 <li>Visadas que destoam na resseção são deixadas de fora e reportadas — inclusive quando a diferença
