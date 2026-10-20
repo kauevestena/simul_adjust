@@ -82,3 +82,26 @@ test('the documented columns (Point ID; Azimuth; Zenith Angle; Slope Distance) p
   const off = buildImported('A0;12;88;8\n7;300;90;8\n', { renumber: false }), on = buildImported('A0;12;88;8\n7;300;90;8\n', { renumber: true });
   assert.equal(off.dataset.ts[1].name, '7'); assert.equal(on.dataset.ts[1].name, 'G0');
 });
+
+test('data/ATV-AJ.csv is the serpentine conversion of the original job file', async () => {
+  const { convertJob } = await import('../scripts/convert_job.mjs');
+  const csv = readFileSync(new URL('../data/ATV-AJ.csv', import.meta.url), 'utf8');
+  const warn = console.warn; console.warn = () => {};
+  try { assert.equal(convertJob(readFileSync(new URL('../foundation/inputs/ATV-AJ.txt', import.meta.url), 'utf8')), csv); } finally { console.warn = warn; }
+  const lines = csv.trim().split(/\r?\n/);
+  assert.equal(lines[0], 'Point ID,Azimuth,Zenith Angle,Slope Distance');
+  const names = lines.slice(1).map(l => l.split(',')[0]);
+  assert.equal(new Set(names).size, 70);
+  assert.deepEqual(names.slice(0, 8), ['A0', 'B0', 'C0', 'D0', 'E0', 'F0', 'G0', 'N0']);   // second line starts at the right end
+  const { dataset } = buildImported(csv, {});
+  assert.equal(run(dataset, { checkPct: 0 }).counts.tsOnly, 0);
+});
+
+test('data/ATV-AJ_56.csv is the first 8 scan lines (56 points) of the same conversion', async () => {
+  const { convertJob } = await import('../scripts/convert_job.mjs');
+  const job = readFileSync(new URL('../foundation/inputs/ATV-AJ.txt', import.meta.url), 'utf8');
+  const csv = readFileSync(new URL('../data/ATV-AJ_56.csv', import.meta.url), 'utf8');
+  const warn = console.warn; console.warn = () => {};
+  try { assert.equal(convertJob(job, { rows: 8 }), csv); } finally { console.warn = warn; }
+  assert.equal(csv.trim().split(/\r?\n/).length, 57);
+});
