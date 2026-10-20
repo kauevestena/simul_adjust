@@ -56,6 +56,8 @@ keeps `?lang=`.
 
 **Import format.** Columns: *Point ID; Azimuth; Zenith Angle; Slope Distance* (optional σ columns after them). The azimuth origin is arbitrary. An ID with no match in the reference is only transformed (never in the adjustment, never a check point); the option "numeric IDs follow the grid order" is off by default.
 
+**Real example.** `data/ATV-AJ.csv` is the original job file `foundation/inputs/ATV-AJ.txt` converted with `node transform_lab/scripts/convert_job.mjs <job.txt> <out.csv>`: the grid was scanned in serpentine order from the bottom row (left→right, then right→left…), so the script assigns the names A0…R2 accordingly (a repeated job ID is a re-shot: the later reading is kept). `data/ATV-AJ_56.csv` keeps only the first 8 scan lines (`--rows 8`, 56 points): the last 14 points (IDs 57–70) sit about 10 mm away from the others as a block (the sheet or the instrument moved), so the 70-point file is a ready-made example of a gross error. The "numeric IDs follow the grid order" option assumes row-major order and does not fit such a file.
+
 **Data source.** *Import a file* is the default and the sample file (`data/sample_ts_raw.csv`) is preloaded; options that only make sense for simulated data (scenario, seed, geometry, collected %, extra points, true printing error) are hidden until you choose *Simulation*. Changing units or instrument precision re-parses the loaded file.
 
 ### Constraint equations (*injunções*)

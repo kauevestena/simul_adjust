@@ -56,6 +56,8 @@ links preservam `?lang=`.
 
 **Formato de importação.** Colunas: *ID do ponto; Azimute; Ângulo zenital; Distância inclinada* (colunas de σ opcionais depois). A origem do azimute é arbitrária. Um ID sem correspondente na referência é apenas transformado (nunca entra no ajustamento nem é ponto de verificação); a opção «IDs numéricos seguem a ordem da grade» vem desligada.
 
+**Exemplo real.** `data/ATV-AJ.csv` é o arquivo de campanha original `foundation/inputs/ATV-AJ.txt` convertido com `node transform_lab/scripts/convert_job.mjs <job.txt> <saida.csv>`: a grade foi varrida em serpentina a partir da linha de baixo (esquerda→direita, depois direita→esquerda…), e o script atribui os nomes A0…R2 de acordo (um ID repetido é uma remedição: vale a leitura posterior). `data/ATV-AJ_56.csv` mantém só as 8 primeiras linhas de varredura (`--rows 8`, 56 pontos): os 14 últimos pontos (IDs 57–70) ficam cerca de 10 mm deslocados em bloco (a folha ou o instrumento se mexeu), então o arquivo de 70 pontos é um exemplo pronto de erro grosseiro. A opção «IDs numéricos seguem a ordem da grade» supõe ordem por linhas e não serve para esse arquivo.
+
 **Origem dos dados.** *Importar arquivo* é o padrão e o arquivo de exemplo (`data/sample_ts_raw.csv`) já vem carregado; as opções que só fazem sentido com dados simulados (cenário, semente, geometria, % coletado, pontos extras, erro de impressão verdadeiro) ficam ocultas até escolher *Simulação*. Trocar unidades ou a precisão do instrumento reanalisa o arquivo carregado.
 
 ### Injunções (equações de restrição)
