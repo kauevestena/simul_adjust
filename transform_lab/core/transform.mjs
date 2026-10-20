@@ -14,7 +14,7 @@
 import {
   zeros, matmul, matvec, invert, dot, eigSym, nullBasis, SingularError, symmetrize
 } from './linalg.mjs';
-import { solveGaussHelmert, cofactorK, residualVariances, sensitivity } from './lsq.mjs';
+import { solveGaussHelmert, cofactorK, blockStats, tmatvec, sensitivity } from './lsq.mjs';
 import { PARAMETRIZATIONS, horn, smallAngleColumn } from './rotations.mjs';
 import { globalTest } from './stats.mjs';
 
@@ -58,6 +58,16 @@ export function rotationCovariance(layout, X, SigmaX) {
   return symmetrize(matmul(JS, J[0].map((_, j) => J.map(row => row[j]))));
 }
 
+// True when a 3m × 3m covariance has no entry between different points (3 × 3 diagonal blocks)
+function pointwise(S, m) {
+  for (let r = 0; r < 3 * m; r++) {
+    const row = S[r], b = Math.floor(r / 3);
+    for (let c = 0; c < 3 * m; c++) if (Math.floor(c / 3) !== b && row[c] !== 0) return false;
+  }
+  return true;
+}
+const block3 = (S, i) => [0, 1, 2].map(r => [0, 1, 2].map(c => S[3 * i + r][3 * i + c]));
+
 const hGradient = (La, i, j) => {
   const d = [La[3 * i] - La[3 * j], La[3 * i + 1] - La[3 * j + 1], La[3 * i + 2] - La[3 * j + 2]];
   const len = Math.hypot(...d) || 1e-300;
@@ -70,9 +80,10 @@ const hGradient = (La, i, j) => {
 // SigmaS          3m × 3m covariance of the reference points (used by the combined model only)
 // lambda0         nominal scale (unit ratio, 1 when the reference was pre-converted)
 // injunctions     { pairs: [{ i, j, D, sigma }], type: 'absolute' | 'relative' } with i, j control indices
+// alpha           significance level of the two-tailed global χ² test
 export function adjustTransformation({
   method = 'combinado', rotation = 'euler', estimateScale = true, constrainRotation = true,
-  src, dst, SigmaT, SigmaS, lambda0 = 1, injunctions = null, start = null, tol = 1e-11, maxIter = 40
+  src, dst, SigmaT, SigmaS, lambda0 = 1, injunctions = null, start = null, tol = 1e-11, maxIter = 40, alpha = 0.05
 }) {
   const m = src.length, P = PARAMETRIZATIONS[rotation];
   if (m < 3) throw new Error('fewer than 3 control points');
@@ -102,7 +113,10 @@ export function adjustTransformation({
   const blocks = SigmaT.map((S, i) => ({ start: 3 * i, S }));
   if (comb) {
     src.forEach((p, i) => { Lb[3 * m + 3 * i] = p[0]; Lb[3 * m + 3 * i + 1] = p[1]; Lb[3 * m + 3 * i + 2] = p[2]; });
-    blocks.push({ start: 3 * m, S: SigmaS });
+    // uncorrelated printed points (no printer scale term) enter point by point, which keeps M
+    // block diagonal; a dense Σ_S (scale uncertainty in ppm) enters as one block
+    if (pointwise(SigmaS, m)) for (let i = 0; i < m; i++) blocks.push({ start: 3 * m + 3 * i, S: block3(SigmaS, i) });
+    else blocks.push({ start: 3 * m, S: SigmaS });
   }
   const dBase = comb ? 6 * m : 3 * m;
   if (relObs) pairs.forEach((q, r) => { Lb[dBase + r] = q.D; blocks.push({ start: dBase + r, S: [[q.sigma * q.sigma]] }); });
@@ -157,18 +171,23 @@ export function adjustTransformation({
   const R = P.toMatrix(un.p);
   const SigmaXapriori = symmetrize(sol.Q11);
   const sigma0sq = r > 0 ? sol.Omega / r : NaN;
-  const test = globalTest(sol.Omega, r, 0.05);
+  const test = globalTest(sol.Omega, r, alpha);
 
   // ---- cofactors of K and V, point statistics
+  // PV = BᵀK; for the three TS coordinates of point i, g_i = (BᵀK)_i and H_i = B_iᵀ Q_K B_i
+  // (the blocks of BᵀK and of its cofactor; with distance injunções they also collect the
+  // injunction rows). T_i = g_iᵀ H_i⁻¹ g_i ~ χ²(3) tests a bias in the whole point.
   const QK = cofactorK(sol);
-  const qv = residualVariances(sol, QK);
+  const stats = blockStats(sol, QK), qv = stats.qv;
+  const BtK = tmatvec(sol.B, sol.K);
+  const redOf = (start, k) => { let s = 0; for (let c = 0; c < k; c++) s += stats.redundancy[start + c]; return s; };
   const pointStat = [];
   for (let i = 0; i < m; i++) {
-    const Ki = [sol.K[3 * i], sol.K[3 * i + 1], sol.K[3 * i + 2]];
-    const Q = [0, 1, 2].map(a => [0, 1, 2].map(b => QK[3 * i + a][3 * i + b]));
+    const g = [BtK[3 * i], BtK[3 * i + 1], BtK[3 * i + 2]], H = stats.G[i].G;
     let T = NaN;
-    try { T = dot(Ki, matvec(invert(Q, { relTol: 1e-9 }), Ki)); } catch { /* no redundancy at this point */ }
-    pointStat.push({ T, redundancy: (Q[0][0] + Q[1][1] + Q[2][2]) });
+    try { T = dot(g, matvec(invert(H, { relTol: 1e-9 }), g)); } catch { /* no redundancy at this point */ }
+    const rT = redOf(3 * i, 3), rS = comb ? redOf(3 * m + 3 * i, 3) : 0;
+    pointStat.push({ T, g, H, rT, rS, redundancy: rT + rS });
   }
   // prior variance of every observation (diagonal of Σ) and standardized residuals v/σ_v;
   // observations with (numerically) no redundancy have no defined standardized residual
@@ -202,8 +221,8 @@ export function adjustTransformation({
     method, rotation, estimateScale, layout, X: sol.X, t: un.t, p: un.p, lambda: un.lambda, R,
     lambda0, deltaLambdaPpm: (un.lambda / lambda0 - 1) * 1e6,
     SigmaXapriori, sigma0sq, SigmaX: SigmaXapriori.map(row => row.map(v => v * (sigma0sq > 0 ? sigma0sq : 1))),
-    Omega: sol.Omega, r, nEq, nUnknown: u, nConstraints: nC, test, converged: sol.converged, iterations: sol.iterations, history: sol.history,
-    V: sol.V, K: sol.K, La: sol.La, Lb, qv, standardized, pointStat, cond, flags, m, kInj, type, comb, parametricAbsolute,
+    Omega: sol.Omega, r, nEq, nUnknown: u, nConstraints: nC, test, alpha, converged: sol.converged, iterations: sol.iterations, history: sol.history,
+    V: sol.V, K: sol.K, La: sol.La, Lb, qv, redundancyObs: stats.redundancy, BtK, standardized, pointStat, cond, flags, m, kInj, type, comb, parametricAbsolute,
     sol, sens: null
   };
 }

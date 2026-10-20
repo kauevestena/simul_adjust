@@ -45,13 +45,17 @@ de 3 m, usando o carregador Terrarium compartilhado com `nivelamento`. Veja a [d
 it transforms a printed A4 reference grid (70 points, cm) into reflectorless total-station measurements (m)
 with 3 rotations, 3 translations and an optional scale, by the combined (Gauss–Helmert) and parametric
 (Gauss–Markov) methods, with four rotation parametrizations, distance constraint equations (*injunções*),
-check points, 2D/3D views, a residual histogram, a theory page and a solution-comparison page. See its
-[documentation](transform_lab/README.md).
+check points, outlier detection (iterative data snooping, Pope's τ, the kσ rule, RANSAC), a plane fitted to
+the sheet points to show the total-station error, 2D/3D views, a residual histogram, a theory page (the 3D
+transformation in matrix and scalar form) and a solution-comparison page. As in `ajusta_planos`, it adjusts
+only when ▶ is pressed. See its [documentation](transform_lab/README.md).
 
 Laboratório bilíngue para *Ajustamento de Observações 2*: transforma uma grade A4 impressa (70 pontos, cm) nas
 medições de uma estação total sem prisma (m) com 3 rotações, 3 translações e escala opcional, pelos métodos
 combinado e paramétrico, com quatro parametrizações da rotação, injunções de distância, pontos de verificação,
-vistas 2D/3D, histograma dos resíduos, página de teoria e de comparação. Veja a
+detecção de outliers (data snooping iterativo, τ de Pope, regra kσ, RANSAC), um plano ajustado aos pontos da
+folha para mostrar o erro da estação, vistas 2D/3D, histograma dos resíduos, página de teoria (a transformação 3D
+em forma matricial e escalar) e de comparação. Como no `ajusta_planos`, só ajusta quando ▶ é pressionado. Veja a
 [documentação em português](transform_lab/README.pt-BR.md).
 
 ### Right-handed frames / Referenciais dextrogiros

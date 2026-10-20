@@ -102,6 +102,97 @@ export function invert(A, { relTol = 1e-13 } = {}) {
 
 export const solve = (A, b, opts) => matvec(invert(A, opts), b);
 
+// Inverse of a symmetric positive definite matrix through the Cholesky factor of its
+// equilibrated copy (d_i = 1/√A_ii), on typed arrays: about n³ flops instead of the 2n³ of
+// Gauss–Jordan. A pivot below relTol (the equilibrated matrix has a unit diagonal) means the
+// matrix is not positive definite to working precision: SingularError.
+export function invertSPD(A, { relTol = 1e-13 } = {}) {
+  const n = A.length;
+  const d = new Float64Array(n);
+  for (let i = 0; i < n; i++) {
+    if (!(A[i][i] > 0)) throw new SingularError(i, n);
+    d[i] = 1 / Math.sqrt(A[i][i]);
+  }
+  // every loop below runs along rows of the row-major arrays (contiguous memory)
+  const L = new Float64Array(n * n);                       // lower triangle, row-major
+  for (let i = 0; i < n; i++) {
+    const Ai = A[i], di = d[i], ri = i * n;
+    for (let j = 0; j <= i; j++) {
+      let s = Ai[j] * di * d[j];
+      const rj = j * n;
+      for (let k = 0; k < j; k++) s -= L[ri + k] * L[rj + k];
+      if (i === j) {
+        if (!(s > relTol)) throw new SingularError(i, n);
+        L[ri + i] = Math.sqrt(s);
+      } else L[ri + j] = s / L[rj + j];
+    }
+  }
+  // W = L⁻¹ (lower triangular), row by row: row i = (e_i − Σ_k<i L_ik W_k) / L_ii
+  const W = new Float64Array(n * n);
+  for (let i = 0; i < n; i++) {
+    const ri = i * n;
+    W[ri + i] = 1;
+    for (let k = 0; k < i; k++) {
+      const f = L[ri + k];
+      if (f === 0) continue;
+      const rk = k * n;
+      for (let j = 0; j <= k; j++) W[ri + j] -= f * W[rk + j];
+    }
+    const inv = 1 / L[ri + i];
+    for (let j = 0; j <= i; j++) W[ri + j] *= inv;
+  }
+  // (DAD)⁻¹ = Wᵀ W = Σ_k w_k w_kᵀ (rows of W, rank-one updates of the lower triangle)
+  const P = new Float64Array(n * n);
+  for (let k = 0; k < n; k++) {
+    const rk = k * n;
+    for (let i = 0; i <= k; i++) {
+      const f = W[rk + i];
+      if (f === 0) continue;
+      const ri = i * n;
+      for (let j = 0; j <= i; j++) P[ri + j] += f * W[rk + j];
+    }
+  }
+  // A⁻¹ = D (DAD)⁻¹ D
+  const out = zeros(n, n);
+  for (let i = 0; i < n; i++) {
+    const ri = i * n, oi = out[i];
+    for (let j = 0; j <= i; j++) { const v = P[ri + j] * d[i] * d[j]; oi[j] = v; out[j][i] = v; }
+  }
+  return out;
+}
+
+// Groups of rows/columns that the nonzero pattern of a symmetric matrix connects. Each group
+// is an independent diagonal block (after a permutation), so the inverse is block by block.
+export function components(A) {
+  const n = A.length, parent = new Int32Array(n);
+  for (let i = 0; i < n; i++) parent[i] = i;
+  const find = i => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+  for (let i = 0; i < n; i++) {
+    const row = A[i];
+    for (let j = i + 1; j < n; j++) if (row[j] !== 0) { const a = find(i), b = find(j); if (a !== b) parent[a] = b; }
+  }
+  const groups = new Map();
+  for (let i = 0; i < n; i++) { const r = find(i); if (!groups.has(r)) groups.set(r, []); groups.get(r).push(i); }
+  return [...groups.values()];
+}
+
+// Inverse of a symmetric positive (semi)definite matrix by independent blocks: the condition
+// equations of different points do not share observations, so M = BΣBᵀ is usually block
+// diagonal and its inverse costs a few 3×3 inversions instead of one dense inversion.
+// Each block is inverted by Cholesky, falling back to Gauss–Jordan with pivoting.
+export function invertSym(A, opts) {
+  const n = A.length;
+  const inv = S => { try { return invertSPD(S, opts); } catch (e) { if (e instanceof SingularError) return invert(S, opts); throw e; } };
+  const groups = components(A);
+  if (groups.length === 1) return inv(A);
+  const out = zeros(n, n);
+  for (const g of groups) {
+    const Si = inv(g.map(i => g.map(j => A[i][j])));
+    for (let a = 0; a < g.length; a++) { const row = out[g[a]], src = Si[a]; for (let b = 0; b < g.length; b++) row[g[b]] = src[b]; }
+  }
+  return out;
+}
+
 // Inverse of a block-diagonal matrix given as [{ offset, M }]; blocks are inverted independently
 export function invertBlocks(blocks, opts) {
   return blocks.map(({ offset, M }) => ({ offset, M: invert(M, opts) }));

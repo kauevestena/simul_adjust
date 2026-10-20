@@ -111,3 +111,36 @@ test('linalg: relative-pivot inverse, independent rows, null basis', () => {
   const { values } = eigSym([[2, 1], [1, 2]]);
   close(values[0], 1, 1e-12); close(values[1], 3, 1e-12);
 });
+
+// The closed forms printed on the theory page (§3.3–3.5) must be the ones the code uses
+test('theory page formulas: r_ij of each parametrization and the Euler derivatives', () => {
+  const [w, f, k] = [0.41, -0.73, 1.27], cw = Math.cos(w), sw = Math.sin(w), cf = Math.cos(f), sf = Math.sin(f), ck = Math.cos(k), sk = Math.sin(k);
+  const euler = [
+    [cf * ck, cw * sk + sw * sf * ck, sw * sk - cw * sf * ck],
+    [-cf * sk, cw * ck - sw * sf * sk, sw * ck + cw * sf * sk],
+    [sf, -sw * cf, cw * cf]
+  ];
+  close(maxDiff(euler, PARAMETRIZATIONS.euler.toMatrix([w, f, k])), 0, 1e-15, 'Euler r_ij');
+  const [dw, df, dk] = PARAMETRIZATIONS.euler.derivatives([w, f, k]), R = euler;
+  // ∂R/∂ω: columns (0, −r_·3, r_·2);  ∂R/∂κ: rows (r_2·, −r_1·, 0)
+  close(maxDiff(dw, R.map(r => [0, -r[2], r[1]])), 0, 1e-15, '∂R/∂ω');
+  close(maxDiff(dk, [R[1], R[0].map(v => -v), [0, 0, 0]]), 0, 1e-15, '∂R/∂κ');
+  close(maxDiff(df, [[-sf * ck, sw * cf * ck, -cw * cf * ck], [sf * sk, -sw * cf * sk, cw * cf * sk], [cf, sw * sf, -cw * sf]]), 0, 1e-15, '∂R/∂φ');
+  // small angles: R ≈ [[1, κ, −φ], [−κ, 1, ω], [φ, −ω, 1]]
+  const e = 1e-6, small = PARAMETRIZATIONS.euler.toMatrix([e, 2 * e, 3 * e]);
+  close(maxDiff(small, [[1, 3 * e, -2 * e], [-3 * e, 1, e], [2 * e, -e, 1]]), 0, 1e-11, 'small angles');
+  const [q0, q1, q2, q3] = PARAMS.quaternion;
+  const quat = [
+    [q0 * q0 + q1 * q1 - q2 * q2 - q3 * q3, 2 * (q1 * q2 - q0 * q3), 2 * (q1 * q3 + q0 * q2)],
+    [2 * (q1 * q2 + q0 * q3), q0 * q0 - q1 * q1 + q2 * q2 - q3 * q3, 2 * (q2 * q3 - q0 * q1)],
+    [2 * (q1 * q3 - q0 * q2), 2 * (q2 * q3 + q0 * q1), q0 * q0 - q1 * q1 - q2 * q2 + q3 * q3]
+  ];
+  close(maxDiff(quat, quatMatrix(PARAMS.quaternion)), 0, 1e-15, 'quaternion r_ij');
+  const [nx, ny, nz, th] = PARAMS.axisAngle, c = Math.cos(th), s = Math.sin(th), C = 1 - c;
+  const axis = [
+    [c + nx * nx * C, nx * ny * C - nz * s, nx * nz * C + ny * s],
+    [ny * nx * C + nz * s, c + ny * ny * C, ny * nz * C - nx * s],
+    [nz * nx * C - ny * s, nz * ny * C + nx * s, c + nz * nz * C]
+  ];
+  close(maxDiff(axis, PARAMETRIZATIONS.axisAngle.toMatrix(PARAMS.axisAngle)), 0, 1e-15, 'axis–angle r_ij');
+});
