@@ -116,6 +116,35 @@ export function buildImported(text, { format = 'raw', angleFormat = 'deg', renum
   return { dataset: { version: 1, refUnit, tsUnit, ref, ts, truth: null, meta: { source: 'import', file: name } }, errors };
 }
 
+// Gross errors injected for teaching: each { name, obs: 'S' | 'Hz' | 'Z', k } shifts that raw
+// observation of the named total-station point by k of its standard deviations and recomputes
+// the coordinates. The stochastic model is not told (the crew in the field would not know).
+// Points without polar observations (coordinate files) are shifted along the line of sight.
+export const BLUNDER_OBS = ['S', 'Hz', 'Z'];
+export function applyBlunders(dataset, blunders = []) {
+  if (!blunders?.length) return dataset;
+  const f = unitFactor('m', dataset.tsUnit);
+  const byName = new Map(blunders.map(b => [b.name, b]));
+  const ts = dataset.ts.map(t => {
+    const b = byName.get(t.name);
+    if (!b) return t;
+    if (t.polar) {
+      const k = Math.max(0, ['Hz', 'Z', 'S'].indexOf(b.obs));
+      const sig = t.polar.sigmas, delta = b.k * sig[k];   // rad, rad or m
+      const hz = t.polar.hzDeg * DEG + (k === 0 ? delta : 0), zen = t.polar.zenDeg * DEG + (k === 1 ? delta : 0), dist = t.polar.dist + (k === 2 ? delta : 0);
+      return {
+        ...t, xyz: polarToLocal(hz, zen, dist).map(v => v * f), cov: localCovariance(hz, zen, dist, sig).map(row => row.map(v => v * f * f)),
+        polar: { ...t.polar, hzDeg: hz / DEG, zenDeg: zen / DEG, dist }, blunder: { obs: ['Hz', 'Z', 'S'][k], k: b.k, size: delta }
+      };
+    }
+    const s = Math.hypot(...t.xyz), u = t.xyz.map(v => v / s);
+    const sd = Math.sqrt(Math.max(u.reduce((a, ui, i) => a + ui * (t.cov[i][0] * u[0] + t.cov[i][1] * u[1] + t.cov[i][2] * u[2]), 0), 0));
+    const delta = b.k * sd;
+    return { ...t, xyz: t.xyz.map((v, i) => v + delta * u[i]), blunder: { obs: 'S', k: b.k, size: delta / f } };
+  });
+  return { ...dataset, ts };
+}
+
 export function referenceFromCsv(text, unit) {
   const { rows, errors } = parseXyz(text);
   return { unit, errors, ref: rows.map(r => ({ name: r.name, x: r.xyz[0], y: r.xyz[1], z: r.xyz[2] })) };

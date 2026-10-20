@@ -27,11 +27,16 @@ export function t(key, values = {}) {
   return (words[key]?.[language === 'pt-BR' ? 0 : 1] ?? key).replace(/\{(\w+)\}/g, (_, k) => values[k] ?? '');
 }
 
+// Text without markup, for places that cannot show it (option text, titles, aria labels):
+// σ<sub>d</sub> becomes σd instead of showing the tags
+export const stripTags = s => String(s).replace(/<[^>]*>/g, '');
+export const plain = (key, values) => stripTags(t(key, values));
+
 export function applyLanguage(root = document) {
-  root.querySelectorAll('[data-t]').forEach(el => { el.textContent = t(el.dataset.t); });
+  root.querySelectorAll('[data-t]').forEach(el => { el.textContent = plain(el.dataset.t); });
   root.querySelectorAll('[data-t-html]').forEach(el => { el.innerHTML = t(el.dataset.tHtml); });
-  root.querySelectorAll('[data-label]').forEach(el => { el.setAttribute('aria-label', t(el.dataset.label)); el.title = t(el.dataset.label); });
-  root.querySelectorAll('[data-ph]').forEach(el => el.setAttribute('placeholder', t(el.dataset.ph)));
+  root.querySelectorAll('[data-label]').forEach(el => { el.setAttribute('aria-label', plain(el.dataset.label)); el.title = plain(el.dataset.label); });
+  root.querySelectorAll('[data-ph]').forEach(el => el.setAttribute('placeholder', plain(el.dataset.ph)));
 }
 
 export function setLanguage(lang, { rerender = true } = {}) {
@@ -42,7 +47,7 @@ export function setLanguage(lang, { rerender = true } = {}) {
   history.replaceState(null, '', url);
   document.documentElement.lang = language;
   applyLanguage(document);
-  document.title = `transform_lab · ${t('title')}`;
+  document.title = `transform_lab · ${plain(document.body?.dataset.titleKey || 'title')}`;
   document.querySelectorAll('[data-lang]').forEach(el => el.setAttribute('aria-pressed', String(el.dataset.lang === language)));
   document.querySelectorAll('a.portal').forEach(el => { el.href = `../?lang=${language}`; });
   document.querySelectorAll('a[data-page]').forEach(el => { el.href = `${el.dataset.page}?lang=${language}`; });

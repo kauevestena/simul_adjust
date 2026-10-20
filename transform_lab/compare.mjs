@@ -1,36 +1,36 @@
 // Comparison page: any two configurations on the same dataset and the same random draws.
-import { t, bootLanguage, onLanguage } from './i18n.mjs';
-import { FIELDS, renderFields, loadState, buildDataset, fmt, fmtSig, toMm, setPath, getPath } from './ui.mjs';
+// A ready-made pair is applied and compared at once; edits in the dialogs or in the common
+// fields only mark the comparison as out of date until ▶ Comparar A × B.
+import { t, plain, bootLanguage, onLanguage } from './i18n.mjs';
+import { FIELDS, renderFields, loadState, datasetFrom, fetchText, useSample, SAMPLES, DEFAULT_SAMPLE, fmt, fmtSig, toMm, setPath, getPath, theme, onThemeChange, ROLE_KEYS } from './ui.mjs';
 import { run, mergeConfig } from './core/pipeline.mjs';
 import { PRESETS, simulateDataset } from './core/simulate.mjs';
 import { rotationDifference } from './core/rotations.mjs';
 import { SheetView } from './views/view2d.mjs';
 import { drawHistogram } from './views/histogram.mjs';
-import { theme, onThemeChange, ROLE_KEYS } from './ui.mjs';
 import { UNITS } from './core/units.mjs';
 import { COMPARE_PRESETS } from './compare-presets.mjs';
 
 const $ = id => document.getElementById(id);
-const KEY = 'transform_lab_compare_v1';
+const KEY = 'transform_lab_compare_v2';
 const ARC = 206264.806;
-const clone = o => structuredClone(o);
 
-let base, ds, a, b, scenario = null, resA = null, resB = null;
+let base, ds, a, b, scenario = null, resA = null, resB = null, stale = false;
 const forms = {};
 
 function load() {
   base = loadState();
   try {
     const raw = JSON.parse(localStorage.getItem(KEY) || 'null');
-    if (raw && raw.v === 1) { a = mergeConfig(raw.a); b = mergeConfig(raw.b); scenario = raw.scenario || null; return; }
+    if (raw && raw.v === 2) { a = mergeConfig(raw.a); b = mergeConfig(raw.b); scenario = raw.scenario || null; return; }
   } catch { /* ignore */ }
   a = mergeConfig(base.cfg); b = mergeConfig({ ...base.cfg, method: base.cfg.method === 'combinado' ? 'parametrico' : 'combinado' });
 }
-const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ v: 1, a, b, scenario })); } catch { /* ignore */ } };
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ v: 2, a, b, scenario })); } catch { /* ignore */ } };
 
 function dataset() {
   if (scenario) return simulateDataset({ ...base.sim, ...PRESETS[scenario], preset: scenario });
-  return buildDataset(base);
+  return datasetFrom(base).dataset;
 }
 
 function applyPreset(name) {
@@ -43,14 +43,14 @@ function applyPreset(name) {
 }
 
 // ---------------------------------------------------------------- summaries and results
-const summary = c => [t(`o.${c.method}`), t(`o.${c.rotation}`), t(`o.${c.scaleMode}`),
-  c.injunctions.set === 'none' ? t('i.none') : `${t(`o.${c.injunctions.set}`)} · ${t(`o.${c.injunctions.type}`)}`,
-  `${t('f.tsCovariance')}: ${t(`o.${c.tsCovariance}`)}`, c.constrainRotation ? '' : t('m.flag.constraintsOff')].filter(Boolean).join(' · ');
+const summary = c => [plain(`o.${c.method}`), plain(`o.${c.rotation}`), plain(`o.${c.scaleMode}`),
+  c.injunctions.set === 'none' ? plain('i.none') : `${plain(`o.${c.injunctions.set}`)} · ${plain(`o.${c.injunctions.type}`)}`,
+  `${plain('f.tsCovariance')}: ${plain(`o.${c.tsCovariance}`)}`, c.constrainRotation ? '' : plain('m.flag.constraintsOff')].filter(Boolean).join(' · ');
 
 function row(label, va, vb, delta = '') { return `<tr><td>${label}</td><td>${va}</td><td>${vb}</td><td>${delta}</td></tr>`; }
 
 function column(r) {
-  if (!r.ok) return null;
+  if (!r?.ok) return null;
   const res = r.res, c = r.checks, mm = v => fmt(toMm(v, r.tsUnit), 3);
   return {
     lambda: fmtSig(res.lambda, 8), delta: fmt(r.params.deltaPpm, 1), sdLam: res.estimateScale ? fmt(Math.sqrt(res.SigmaXapriori[res.nUnknown - 1][res.nUnknown - 1] * r.s2) / r.lambda0 * 1e6, 1) : '—',
@@ -63,8 +63,9 @@ function column(r) {
 }
 
 function renderTable() {
+  if (!resA || !resB) { $('cmpTable').innerHTML = `<tbody><tr><td class="waiting">${t('cmp.stale')}</td></tr></tbody>`; return; }
   const A = column(resA), B = column(resB), dash = '—';
-  const failMsg = r => (r.ok ? '' : t(`m.err.${r.error.code}`, { n: r.error.count ?? '', rotation: r.error.rotation ? t(`o.${r.error.rotation}`) : '', message: r.error.message ?? '' }));
+  const failMsg = r => (r.ok ? '' : t(`m.err.${r.error.code}`, { n: r.error.count ?? '', rotation: r.error.rotation ? plain(`o.${r.error.rotation}`) : '', message: r.error.message ?? '' }));
   let dRot = dash, dT = dash, dLam = dash;
   if (A && B) {
     dRot = `${fmt(rotationDifference(resA.res.R, resB.res.R) * ARC, 2)}″`;
@@ -98,12 +99,13 @@ function renderTable() {
 }
 
 function labels2d() {
-  return { scale: t('v.scaleBar', { mm: '{mm}', k: '{k}' }), role: Object.fromEntries(ROLE_KEYS.map(r => [r, t(`role.${r}`)])), inPlane: t('v.inPlane'), normal: t('v.normal'), clickHint: '' };
+  return { scale: t('v.scaleBar', { mm: '{mm}', k: '{k}' }), role: { ...Object.fromEntries(ROLE_KEYS.map(r => [r, t(`role.${r}`)])), collected: t('role.collected') }, inPlane: t('v.inPlane'), normal: t('v.normal'), clickHint: '', waiting: t('cmp.stale'), flagged: t('v.legendFlag') };
 }
 
 let viewA, viewB;
 function renderPlots() {
   $('titleA2d').textContent = `A · ${summary(a)}`; $('titleB2d').textContent = `B · ${summary(b)}`;
+  if (!ds) return;
   [[viewA, resA], [viewB, resB]].forEach(([v, r]) => v.setData(ds, r, labels2d()));
   // same exaggeration for both so the panels are comparable
   const k = Math.max(viewA.currentK || 1, viewB.currentK || 1);
@@ -111,50 +113,64 @@ function renderPlots() {
   const th = theme();
   for (const [id, r] of [['histA', resA], ['histB', resB]]) {
     const canvas = $(id);
-    if (!r.ok) { drawHistogram(canvas, [], { labels: { empty: t('v.noData') } }); continue; }
+    if (!r?.ok) { drawHistogram(canvas, [], { labels: { empty: r ? t('v.noData') : t('cmp.stale') } }); continue; }
     const m = r.res.m, st = r.res.standardized;
-    drawHistogram(canvas, [{ values: st.slice(0, 3 * m), color: th.control }, { values: r.res.comb ? st.slice(3 * m, 6 * m) : [], color: th.uncollected }], { bins: 15, labels: { x: t('v.stdRes'), y: t('v.count'), empty: t('v.noData') } });
+    drawHistogram(canvas, [{ values: st.slice(0, 3 * m), color: th.control }, { values: r.res.comb ? st.slice(3 * m, 6 * m) : [], color: th.uncollected }], { bins: 15, labels: { x: plain('v.stdRes'), y: plain('v.count'), empty: t('v.noData') } });
   }
 }
 
 function update() {
   ds = dataset();
-  resA = run(ds, a); resB = run(ds, b);
+  resA = run(ds, a); resB = run(ds, b); stale = false;
+  render();
+}
+
+function render() {
   $('sumA').textContent = summary(a); $('sumB').textContent = summary(b);
-  const src = ds.meta?.source === 'import' ? t('cmp.dsImport', { file: ds.meta.file ?? '' }) : t('cmp.dsSim', { scenario: t(`o.${ds.meta.config.preset}`), seed: ds.meta.config.seed, n: ds.ts.length });
-  $('datasetInfo').textContent = `${t('cmp.dataset')}: ${src} · ${t('cmp.sameData', { pct: a.checkPct, seed: a.checkSeed })}`;
-  $('presetDesc').textContent = t(`cmp.d.${$('preset').value}`);
+  if (ds) {
+    const src = ds.meta?.source === 'import' ? t('cmp.dsImport', { file: ds.meta.file ?? '' }) : t('cmp.dsSim', { scenario: plain(`o.${ds.meta.config.preset}`), seed: ds.meta.config.seed, n: ds.ts.length });
+    $('datasetInfo').textContent = `${plain('cmp.dataset')}: ${src} · ${plain('cmp.sameData', { pct: a.checkPct, seed: a.checkSeed })}`;
+  }
+  $('presetDesc').textContent = plain(`cmp.d.${$('preset').value}`);
   forms.commonRefresh?.();
   renderTable(); renderPlots(); renderMessages();
+  $('runCompare').classList.toggle('pending', stale);
 }
+
+function markStale() { save(); resA = null; resB = null; stale = true; render(); }
 
 function renderMessages() {
   const msgs = [];
-  if (scenario) msgs.push(['info', t('cmp.scenarioNote', { scenario: t(`o.${scenario}`) })]);
+  if (stale) msgs.push(['warn', t('cmp.stale')]);
+  if (scenario) msgs.push(['info', t('cmp.scenarioNote', { scenario: plain(`o.${scenario}`) })]);
   $('messages').innerHTML = msgs.map(([k, m]) => `<div class="msg ${k}">${m}</div>`).join('');
 }
 
 // ---------------------------------------------------------------- forms
+const pick = (list, paths) => list.filter(f => paths.includes(f.path));
 function buildForms() {
-  const onChange = () => { save(); update(); };
+  const groups = [
+    ['s.model', [...pick(FIELDS.workflow, ['method', 'rotation', 'scaleMode']), ...FIELDS.modelAdv]],
+    ['s.reference', FIELDS.reference],
+    ['s.injunctions', [...pick(FIELDS.workflow, ['injunctions.set', 'injunctions.type']), ...pick(FIELDS.checkInj, ['injunctions.randomPct', 'injunctions.factor', 'injunctions.seed'])]]
+  ];
   const dlg = (host, cfg) => {
     host.textContent = '';
-    const groups = [['s.model', FIELDS.model], ['s.reference', FIELDS.reference], ['s.injunctions', FIELDS.injunctions]];
     return groups.map(([title, fields]) => {
-      const h = document.createElement('strong'); h.dataset.t = title; host.append(h);
-      const box = document.createElement('div'); box.className = 'body'; box.style.padding = '0'; host.append(box);
-      return renderFields(box, fields, () => cfg(), onChange);
+      const h = document.createElement('span'); h.className = 'subhead'; h.dataset.t = title; host.append(h);
+      const box = document.createElement('div'); box.className = 'fields'; host.append(box);
+      return renderFields(box, fields, () => cfg(), () => markStale());
     });
   };
   forms.A = dlg($('formA'), () => a); forms.B = dlg($('formB'), () => b);
-  // checks and output are common to both configurations (same check points, same statistics)
-  const shared = [...FIELDS.checks, ...FIELDS.output];
+  // check points, tests and output are common to both configurations
+  const shared = [...pick(FIELDS.workflow, ['checkPct']), ...pick(FIELDS.checkInj, ['checkSeed']), ...pick(FIELDS.tests, ['alpha']), ...FIELDS.output];
   const view = {};
   const r = renderFields($('commonForm'), shared, () => view.cfg, path => {
     const v = getPath(view.cfg, path);
     setPath(a, path, v); setPath(b, path, v);
     if (path === 'checkPct' || path === 'checkSeed') { a.checkOverride = {}; b.checkOverride = {}; }
-    save(); update();
+    markStale();
   });
   view.cfg = a;
   forms.commonRefresh = () => { view.cfg = a; r.refresh(); };
@@ -162,25 +178,31 @@ function buildForms() {
 }
 
 function fillPresets() {
-  const sel = $('preset'); sel.textContent = '';
-  Object.keys(COMPARE_PRESETS).forEach(k => { const o = document.createElement('option'); o.value = k; o.textContent = t(`cmp.p.${k}`); sel.append(o); });
+  const sel = $('preset'), cur = sel.value; sel.textContent = '';
+  Object.keys(COMPARE_PRESETS).forEach(k => { const o = document.createElement('option'); o.value = k; o.textContent = plain(`cmp.p.${k}`); sel.append(o); });
+  if (cur) sel.value = cur;
 }
 
-function init() {
+async function init() {
   bootLanguage();
   load();
+  // nothing stored yet: the same default data set as the simulator
+  if (base.source === 'import' && !base.rawText) {
+    try { useSample(base, DEFAULT_SAMPLE, await fetchText(SAMPLES[DEFAULT_SAMPLE].file)); } catch { base.source = 'sim'; }
+  }
   fillPresets();
   viewA = new SheetView($('canvasA'), $('tipA')); viewB = new SheetView($('canvasB'), $('tipB'));
   buildForms();
   $('applyPreset').addEventListener('click', () => applyPreset($('preset').value));
-  $('preset').addEventListener('change', () => { $('presetDesc').textContent = t(`cmp.d.${$('preset').value}`); });
+  $('preset').addEventListener('change', () => { $('presetDesc').textContent = plain(`cmp.d.${$('preset').value}`); });
   $('useMain').addEventListener('click', () => { scenario = null; a = mergeConfig(base.cfg); b = mergeConfig(base.cfg); save(); forms.A.forEach(f => f.refresh()); forms.B.forEach(f => f.refresh()); update(); });
+  $('runCompare').addEventListener('click', () => update());
   $('editA').addEventListener('click', () => { forms.A.forEach(f => f.refresh()); $('dlgA').showModal(); });
   $('editB').addEventListener('click', () => { forms.B.forEach(f => f.refresh()); $('dlgB').showModal(); });
-  onLanguage(() => { fillPresets(); update(); });
+  onLanguage(() => { fillPresets(); render(); });
   onThemeChange(() => renderPlots());
   update();
 }
 init();
 
-window.__cmp = { get a() { return a; }, get b() { return b; }, get resA() { return resA; }, get resB() { return resB; }, applyPreset, presets: COMPARE_PRESETS };
+window.__cmp = { get a() { return a; }, get b() { return b; }, get resA() { return resA; }, get resB() { return resB; }, get stale() { return stale; }, applyPreset, run: () => update(), presets: COMPARE_PRESETS };

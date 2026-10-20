@@ -1,7 +1,13 @@
-Third-party code bundled with transform_lab (all MIT-licensed, served locally: no CDN requests).
+Third-party code and fonts bundled with transform_lab (served locally: no CDN requests).
 
 three.js r160           vendor/three.module.min.js, vendor/OrbitControls.js   (copied from ../camera_proj/vendor)
-                        License: vendor/THREE-LICENSE.txt
+                        License (MIT): vendor/THREE-LICENSE.txt
 KaTeX 0.16.9            vendor/katex/katex.min.js, auto-render.min.js, katex.min.css, fonts/*.woff2
                         (npm pack katex@0.16.9; the CSS keeps only the woff2 sources)
-                        License: vendor/katex/KATEX-LICENSE.txt
+                        License (MIT): vendor/katex/KATEX-LICENSE.txt
+Inter 4 (Fontsource)    vendor/fonts/inter-{latin,greek}-{400,600,700}-normal.woff2
+                        (npm pack @fontsource/inter@5.0.18), the typeface of ajusta_planos
+                        License (SIL OFL 1.1): vendor/fonts/Inter-OFL.txt
+JetBrains Mono          vendor/fonts/jetbrains-mono-{latin,greek}-{400,700}-normal.woff2
+                        (npm pack @fontsource/jetbrains-mono@5.0.20), for numbers and inputs
+                        License (SIL OFL 1.1): vendor/fonts/JetBrainsMono-OFL.txt

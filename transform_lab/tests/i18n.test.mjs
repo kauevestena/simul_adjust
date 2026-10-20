@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { words, detectLanguage, setLanguage, t } from '../i18n.mjs';
 import { COMPARE_PRESETS } from '../compare-presets.mjs';
+import { OUTLIER_METHODS } from '../core/pipeline.mjs';
 
 const read = f => readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
 
@@ -24,21 +25,24 @@ test('every entry has a non-empty PT and EN string with the same placeholders', 
   }
 });
 
-const SOURCES = ['index.html', 'comparacao.html', 'teoria.html', 'app.mjs', 'compare.mjs', 'ui.mjs', 'theory.mjs', 'views/view2d.mjs', 'views/view3d.mjs', 'views/histogram.mjs'];
+const SOURCES = ['index.html', 'comparacao.html', 'teoria.html', 'app.mjs', 'compare.mjs', 'ui.mjs', 'theory.mjs', 'views/view2d.mjs', 'views/view3d.mjs', 'views/histogram.mjs', 'views/planeview.mjs'];
 
 test('every key referenced by the pages and modules exists in both languages', () => {
   for (const file of SOURCES) {
     const src = read(file);
     for (const m of src.matchAll(/data-(?:t|t-html|label|ph)="([^"]+)"/g)) assert.ok(words[m[1]], `${file}: ${m[1]}`);
-    for (const m of src.matchAll(/\b(?:t|L)\('([^']+)'/g)) assert.ok(words[m[1]], `${file}: ${m[1]}`);
+    for (const m of src.matchAll(/\b(?:t|L|plain)\('([^']+)'/g)) assert.ok(words[m[1]], `${file}: ${m[1]}`);
   }
 });
 
 test('dynamic key families are complete', () => {
   const need = [];
   ['combinado', 'parametrico', 'euler', 'quaternion', 'matrix', 'axisAngle', 'estimate', 'rigid', 'full', 'diagonal', 'none', 'n8', 'n4', 'all', 'random', 'relative', 'absolute', 'aposteriori', 'apriori', 'wall', 'frontal', 'oblique', 'landscape', 'table', 'tableAligned', 'easel'].forEach(v => need.push(`o.${v}`));
-  ['control', 'check', 'uncollected', 'tsOnly'].forEach(v => need.push(`role.${v}`));
-  ['singular', 'collinear', 'fewPoints', 'fewControl', 'internal'].forEach(v => need.push(`m.err.${v}`));
+  OUTLIER_METHODS.forEach(v => need.push(`o.${v}`, `h.o.${v}`));
+  ['std', 'w', 'planeW', 'planeD'].forEach(v => need.push(`v.helpHist.${v}`));
+  ['none', 'minPoints', 'essential'].forEach(v => need.push(`rel.stop.${v}`));
+  ['control', 'check', 'excluded', 'uncollected', 'tsOnly', 'collected'].forEach(v => need.push(`role.${v}`));
+  ['singular', 'collinear', 'fewPoints', 'fewControl', 'internal', 'fewPlane', 'collinearPlane', 'singularPlane'].forEach(v => need.push(`m.err.${v}`));
   ['gimbal', 'axisUndefined', 'constraintsOff', 'notConverged', 'illConditioned', 'constraintViolated'].forEach(v => need.push(`m.flag.${v}`));
   Object.keys(COMPARE_PRESETS).forEach(v => need.push(`cmp.p.${v}`, `cmp.d.${v}`));
   need.forEach(k => assert.ok(words[k], k));

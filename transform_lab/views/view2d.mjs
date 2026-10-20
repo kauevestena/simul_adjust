@@ -1,5 +1,7 @@
 // 2D view in the sheet frame (x right, y up): the reference grid, residual vectors of the
-// control points, discrepancies of the check points, TS-only points, injunction edges.
+// control points, discrepancies of the check and excluded points, TS-only points, injunction
+// edges, and a rose ring around the points that the outlier detection flagged. Before the
+// adjustment (result = null) it shows which reference points the total station collected.
 import { theme, toMm } from '../ui.mjs';
 
 const MARGIN = 34;
@@ -16,14 +18,22 @@ export class SheetView {
     new ResizeObserver(() => this.draw()).observe(canvas.parentElement);
   }
 
-  setData(dataset, result, labels) { this.data = { dataset, result, labels }; this.draw(); }
+  // extra: { flagged: Set of names, excluded: { name: true } } (the second one before an adjustment)
+  setData(dataset, result, labels, extra = {}) { this.data = { dataset, result, labels, flagged: extra.flagged || new Set(), excluded: extra.excluded || {} }; this.draw(); }
   setOptions(o) { Object.assign(this.opts, o); this.draw(); }
 
   _pos(p) {
-    const { dataset } = this.data;
     if (p.role === 'tsOnly') return [p.sheet[0], p.sheet[1]];
-    const r = dataset.ref[p.e];
+    const r = this.data.dataset.ref[p.e];
     return [r.x, r.y];
+  }
+
+  // points to draw: the result's, or (before an adjustment) the reference marked collected / not
+  _points() {
+    const { dataset, result, excluded } = this.data;
+    if (result?.ok) return result.points.map(p => ({ p, xy: this._pos(p) }));
+    const seen = new Set(dataset.ts.map(q => q.name));
+    return dataset.ref.map((r, e) => ({ p: { name: r.name, e, role: !seen.has(r.name) ? 'uncollected' : excluded[r.name] ? 'excluded' : 'collected' }, xy: [r.x, r.y] }));
   }
 
   draw() {
@@ -33,10 +43,10 @@ export class SheetView {
     const ctx = this.ctx; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const th = theme(); ctx.clearRect(0, 0, W, H);
     this.hit = [];
-    if (!this.data || !this.data.result.ok) return;
-    const { dataset, result, labels } = this.data;
+    if (!this.data) return;
+    const { dataset, result, labels, flagged } = this.data;
     const refs = dataset.ref, xs = refs.map(p => p.x), ys = refs.map(p => p.y);
-    const pts = result.points.map(p => ({ p, xy: this._pos(p) }));
+    const pts = this._points();
     const allx = [...xs, ...pts.map(q => q.xy[0])], ally = [...ys, ...pts.map(q => q.xy[1])];
     const x0 = Math.min(...allx), x1 = Math.max(...allx), y0 = Math.min(...ally), y1 = Math.max(...ally);
     const s = Math.min((W - 2 * MARGIN) / (x1 - x0 || 1), (H - 2 * MARGIN) / (y1 - y0 || 1));
@@ -55,7 +65,7 @@ export class SheetView {
     }
 
     // injunction edges
-    if (this.opts.edges && result.injInfo.rows?.length) {
+    if (result?.ok && this.opts.edges && result.injInfo.rows?.length) {
       const pos = new Map(pts.map(q => [q.p.name, q.xy]));
       ctx.strokeStyle = th.accent; ctx.globalAlpha = 0.55; ctx.lineWidth = 1.2;
       ctx.beginPath();
@@ -64,37 +74,48 @@ export class SheetView {
     }
 
     // residual vectors (in-plane part of the sheet-frame difference, exaggerated)
-    const k = this.opts.auto ? this._autoK(pts, xs) : this.opts.vecScale;
+    const k = result?.ok ? (this.opts.auto ? this._autoK(pts, xs) : this.opts.vecScale) : 1;
     this.currentK = k;
-    pts.forEach(({ p, xy }) => {
-      if (!p.sheetDiff || (p.role !== 'control' && p.role !== 'check')) return;
-      const dx = p.sheetDiff[0] * k, dy = p.sheetDiff[1] * k;
-      ctx.strokeStyle = p.role === 'check' ? th.check : th.control; ctx.lineWidth = 1.8;
-      ctx.beginPath(); ctx.moveTo(X(xy[0]), Y(xy[1])); ctx.lineTo(X(xy[0] + dx), Y(xy[1] + dy)); ctx.stroke();
-    });
+    if (result?.ok) {
+      pts.forEach(({ p, xy }) => {
+        if (!p.sheetDiff || !['control', 'check', 'excluded'].includes(p.role)) return;
+        const dx = p.sheetDiff[0] * k, dy = p.sheetDiff[1] * k;
+        ctx.strokeStyle = th[p.role]; ctx.lineWidth = 1.8;
+        if (p.role === 'excluded') ctx.setLineDash([4, 3]);
+        ctx.beginPath(); ctx.moveTo(X(xy[0]), Y(xy[1])); ctx.lineTo(X(xy[0] + dx), Y(xy[1] + dy)); ctx.stroke();
+        ctx.setLineDash([]);
+      });
+    }
 
     // points
     pts.forEach(({ p, xy }) => {
       const px = X(xy[0]), py = Y(xy[1]);
-      ctx.lineWidth = 2; ctx.fillStyle = th.surface;
+      ctx.lineWidth = 2;
       if (p.role === 'control') { ctx.fillStyle = th.control; ctx.beginPath(); ctx.arc(px, py, 4, 0, 7); ctx.fill(); }
+      else if (p.role === 'collected') { ctx.fillStyle = th.muted; ctx.beginPath(); ctx.arc(px, py, 3.5, 0, 7); ctx.fill(); }
       else if (p.role === 'check') { ctx.fillStyle = th.check; ctx.beginPath(); ctx.moveTo(px, py - 5.5); ctx.lineTo(px + 5.5, py); ctx.lineTo(px, py + 5.5); ctx.lineTo(px - 5.5, py); ctx.closePath(); ctx.fill(); }
-      else if (p.role === 'uncollected') { ctx.strokeStyle = th.uncollected; ctx.beginPath(); ctx.arc(px, py, 4.5, 0, 7); ctx.stroke(); }
-      else { ctx.fillStyle = th.tsOnly; ctx.fillRect(px - 4.5, py - 4.5, 9, 9); }
+      else if (p.role === 'excluded') { ctx.strokeStyle = th.excluded; ctx.beginPath(); ctx.moveTo(px - 4, py - 4); ctx.lineTo(px + 4, py + 4); ctx.moveTo(px + 4, py - 4); ctx.lineTo(px - 4, py + 4); ctx.stroke(); }
+      else if (p.role === 'uncollected') { ctx.strokeStyle = th.uncollected; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(px, py, 4.5, 0, 7); ctx.stroke(); }
+      else { ctx.fillStyle = th.tsOnly; ctx.globalAlpha = p.inactive ? 0.4 : 1; ctx.fillRect(px - 4.5, py - 4.5, 9, 9); ctx.globalAlpha = 1; }
+      if (flagged.has(p.name)) { ctx.strokeStyle = th.flag; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(px, py, 9, 0, 7); ctx.stroke(); }
       this.hit.push({ p, px, py });
       if (this.opts.labels && (refs.length <= 80 || p.role === 'tsOnly')) {
-        ctx.fillStyle = th.muted; ctx.font = '10px system-ui, sans-serif'; ctx.fillText(p.name, px + 6, py - 6);
+        ctx.fillStyle = th.muted; ctx.font = '10px Inter, system-ui, sans-serif'; ctx.fillText(p.name, px + 6, py - 6);
       }
     });
 
     // scale bar of the residual vectors: 0.1 mm of residual drawn at the exaggeration
-    const mmInRef = 1e-3 / (result.refUnitM ?? 0.01);                     // 1 mm in reference units
-    const bar = 0.1 * mmInRef * k * s;
-    if (bar > 6 && bar < W * 0.6) {
-      const bx = 14, by = H - 16;
-      ctx.strokeStyle = th.ink; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + bar, by); ctx.stroke();
-      ctx.fillStyle = th.ink; ctx.font = '11px system-ui, sans-serif';
-      ctx.fillText(labels.scale.replace('{mm}', '0.1').replace('{k}', String(k)), bx + bar + 8, by + 4);
+    if (result?.ok) {
+      const mmInRef = 1e-3 / (result.refUnitM ?? 0.01);
+      const bar = 0.1 * mmInRef * k * s;
+      if (bar > 6 && bar < W * 0.6) {
+        const bx = 14, by = H - 16;
+        ctx.strokeStyle = th.ink; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + bar, by); ctx.stroke();
+        ctx.fillStyle = th.ink; ctx.font = '11px Inter, system-ui, sans-serif';
+        ctx.fillText(labels.scale.replace('{mm}', '0.1').replace('{k}', String(k)), bx + bar + 8, by + 4);
+      }
+    } else if (labels.waiting) {
+      ctx.fillStyle = th.muted; ctx.font = '12px Inter, system-ui, sans-serif'; ctx.fillText(labels.waiting, 14, H - 12);
     }
   }
 
@@ -119,15 +140,16 @@ export class SheetView {
   _hover(e) {
     const h = this._nearest(e);
     if (!h) { this.tip.hidden = true; return; }
-    const { dataset, labels } = this.data, p = h.p, u = dataset.refUnit;
-    const lines = [`<strong>${p.name}</strong> · ${labels.role[p.role]}`];
-    if (p.sheetDiff) lines.push(`${labels.inPlane}: ${Math.hypot(p.sheetDiff[0], p.sheetDiff[1]) ? toMm(Math.hypot(p.sheetDiff[0], p.sheetDiff[1]), u).toFixed(3) : '0'} mm`, `${labels.normal}: ${toMm(p.sheetDiff[2], u).toFixed(3)} mm`);
+    const { dataset, labels, flagged } = this.data, p = h.p, u = dataset.refUnit;
+    const lines = [`<strong>${p.name}</strong> · ${labels.role[p.role] ?? ''}`];
+    if (p.sheetDiff) lines.push(`${labels.inPlane}: ${toMm(Math.hypot(p.sheetDiff[0], p.sheetDiff[1]), u).toFixed(3)} mm`, `${labels.normal}: ${toMm(p.sheetDiff[2], u).toFixed(3)} mm`);
     if (p.role === 'tsOnly') lines.push(`z<sub>S</sub> = ${toMm(p.sheet[2], u).toFixed(3)} ± ${toMm(p.sheetSigma[2], u).toFixed(3)} mm`);
+    if (flagged.has(p.name)) lines.push(`<span style="color:#fda4af">${labels.flagged}</span>`);
     if (p.role === 'control' || p.role === 'check') lines.push(labels.clickHint);
     this.tip.innerHTML = lines.join('<br>');
     this.tip.hidden = false;
     const r = this.canvas.getBoundingClientRect();
-    this.tip.style.left = `${Math.min(e.clientX - r.left + 14, r.width - 170)}px`;
+    this.tip.style.left = `${Math.min(e.clientX - r.left + 14, r.width - 180)}px`;
     this.tip.style.top = `${Math.max(e.clientY - r.top - 10, 4)}px`;
   }
 }

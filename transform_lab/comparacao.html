@@ -4,59 +4,64 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>transform_lab · Comparação / Comparison</title>
-  <link rel="icon" href="data:,">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⇄</text></svg>">
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
-<header class="topbar">
-  <a class="portal" href="../" data-t="portal"></a>
-  <nav>
-    <a data-page="index.html" href="index.html" data-t="navSimulator"></a>
-    <a data-page="teoria.html" href="teoria.html" data-t="navTheory"></a>
-  </nav>
-  <div class="heading"><span data-t="subtitle"></span><h1 data-t="cmp.title"></h1></div>
-  <div class="languages" role="group" aria-label="Language"><button data-lang="pt-BR">PT</button><button data-lang="en">EN</button></div>
+<body data-title-key="cmp.title">
+<header class="appbar">
+  <div class="appbar-inner">
+    <div class="brand"><h1 data-t="cmp.title"></h1><p data-t="subtitle"></p></div>
+    <nav class="appbar-nav">
+      <a class="hlink portal" href="../" data-t="portal"></a>
+      <a class="hlink strong" data-page="index.html" href="index.html" data-t="navSimulator"></a>
+      <a class="hlink strong" data-page="teoria.html" href="teoria.html" data-t="navTheory"></a>
+      <div class="languages" role="group" aria-label="Language"><button data-lang="pt-BR">PT</button><button data-lang="en">EN</button></div>
+    </nav>
+  </div>
 </header>
 
-<main class="doc" style="max-width:1280px">
-  <p data-t="cmp.intro"></p>
-  <p class="note" id="datasetInfo"></p>
-
-  <details class="card" open>
-    <summary data-t="cmp.setup"></summary>
-    <div class="body">
-      <div class="row">
-        <label class="field preset-row"><span data-t="cmp.preset"></span><select id="preset"></select></label>
-        <button class="btn" id="applyPreset" data-t="cmp.apply"></button>
-        <button class="btn secondary" id="useMain" data-t="cmp.useMain"></button>
-      </div>
-      <p class="note" id="presetDesc"></p>
-      <div class="cmp-grid">
-        <div><strong data-t="cmp.configA"></strong><p class="cfg-summary" id="sumA"></p><button class="btn secondary" id="editA" data-t="cmp.edit"></button></div>
-        <div><strong data-t="cmp.configB"></strong><p class="cfg-summary" id="sumB"></p><button class="btn secondary" id="editB" data-t="cmp.edit"></button></div>
-      </div>
-      <div class="body" id="commonForm" style="padding:0"></div>
+<main class="cmp-main">
+  <section class="card">
+    <h2 class="card-title" data-t="cmp.setup"></h2>
+    <p class="note" data-t="cmp.intro" style="margin-bottom:8px"></p>
+    <p class="hint" id="datasetInfo" style="margin-bottom:12px"></p>
+    <div class="row" style="align-items:flex-end">
+      <label class="fld" style="flex:1 1 320px"><span class="field-label" data-t="cmp.preset"></span><select id="preset" class="field"></select></label>
+      <button class="btn btn-indigo" id="applyPreset" data-t="cmp.apply"></button>
+      <button class="btn btn-secondary" id="useMain" data-t="cmp.useMain"></button>
     </div>
-  </details>
+    <p class="hint" id="presetDesc" style="margin-top:6px"></p>
+    <div class="cmp-grid sep">
+      <div><span class="field-label" data-t="cmp.configA"></span><p class="cfg-summary" id="sumA"></p><button class="btn btn-secondary btn-sm" id="editA" data-t="cmp.edit"></button></div>
+      <div><span class="field-label" data-t="cmp.configB"></span><p class="cfg-summary" id="sumB"></p><button class="btn btn-secondary btn-sm" id="editB" data-t="cmp.edit"></button></div>
+    </div>
+    <div class="fields sep" id="commonForm"></div>
+    <button class="btn btn-primary" id="runCompare" data-t="cmp.run" style="margin-top:12px"></button>
+  </section>
 
   <div class="messages" id="messages" role="status"></div>
-  <h2 data-t="cmp.results" style="font-size:18px;margin:16px 0 8px"></h2>
-  <div class="tablewrap"><table id="cmpTable"></table></div>
 
-  <h2 data-t="cmp.plots" style="font-size:18px;margin:22px 0 8px"></h2>
-  <div class="cmp-grid">
-    <div><strong id="titleA2d"></strong><div class="plot" style="height:min(60dvh,560px)"><canvas id="canvasA"></canvas><div class="tooltip" id="tipA" hidden></div></div></div>
-    <div><strong id="titleB2d"></strong><div class="plot" style="height:min(60dvh,560px)"><canvas id="canvasB"></canvas><div class="tooltip" id="tipB" hidden></div></div></div>
-  </div>
-  <p class="note" data-t="cmp.help2d"></p>
-  <div class="cmp-grid" style="margin-top:14px">
-    <div><strong data-t="cmp.histA"></strong><div class="plot" style="height:300px"><canvas id="histA"></canvas></div></div>
-    <div><strong data-t="cmp.histB"></strong><div class="plot" style="height:300px"><canvas id="histB"></canvas></div></div>
-  </div>
+  <section class="card">
+    <h2 class="card-title" data-t="cmp.results"></h2>
+    <div class="table-container"><table id="cmpTable"></table></div>
+  </section>
+
+  <section class="card">
+    <h2 class="card-title" data-t="cmp.plots"></h2>
+    <div class="cmp-grid">
+      <div><span class="field-label" id="titleA2d"></span><div class="plot" style="height:min(60dvh,520px)"><canvas id="canvasA"></canvas><div class="tooltip" id="tipA" hidden></div></div></div>
+      <div><span class="field-label" id="titleB2d"></span><div class="plot" style="height:min(60dvh,520px)"><canvas id="canvasB"></canvas><div class="tooltip" id="tipB" hidden></div></div></div>
+    </div>
+    <p class="help" data-t="cmp.help2d"></p>
+    <div class="cmp-grid" style="margin-top:14px">
+      <div><span class="field-label" data-t="cmp.histA"></span><div class="plot" style="height:300px;min-height:240px"><canvas id="histA"></canvas></div></div>
+      <div><span class="field-label" data-t="cmp.histB"></span><div class="plot" style="height:300px;min-height:240px"><canvas id="histB"></canvas></div></div>
+    </div>
+  </section>
 </main>
 
-<dialog id="dlgA"><div class="dlg-head"><strong data-t="cmp.configA"></strong><button class="btn secondary" data-close="dlgA" data-t="cmp.close"></button></div><div class="dlg-body" id="formA"></div><div class="dlg-foot"><button class="btn" data-close="dlgA" data-t="cmp.close"></button></div></dialog>
-<dialog id="dlgB"><div class="dlg-head"><strong data-t="cmp.configB"></strong><button class="btn secondary" data-close="dlgB" data-t="cmp.close"></button></div><div class="dlg-body" id="formB"></div><div class="dlg-foot"><button class="btn" data-close="dlgB" data-t="cmp.close"></button></div></dialog>
+<dialog id="dlgA"><div class="dlg-head"><strong data-t="cmp.configA"></strong><button class="x-btn" data-close="dlgA" aria-label="close">×</button></div><div class="dlg-body" id="formA"></div><div class="dlg-foot"><button class="btn btn-secondary" data-close="dlgA" data-t="cmp.close"></button></div></dialog>
+<dialog id="dlgB"><div class="dlg-head"><strong data-t="cmp.configB"></strong><button class="x-btn" data-close="dlgB" aria-label="close">×</button></div><div class="dlg-body" id="formB"></div><div class="dlg-foot"><button class="btn btn-secondary" data-close="dlgB" data-t="cmp.close"></button></div></dialog>
 <script type="module" src="compare.mjs"></script>
 </body>
 </html>

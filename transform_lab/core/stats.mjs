@@ -1,4 +1,5 @@
-// χ² and normal distributions (logGamma, incomplete gamma and χ² inverse ported from
+// χ², normal and Student t distributions and the critical values of the outlier tests
+// (logGamma, incomplete gamma/beta, χ² and t inverses and Pope's τ ported from
 // intersecao_re_3D/adjustment.js, which took them from ajusta_planos and nivelamento).
 
 export function logGamma(z) {
@@ -78,6 +79,74 @@ export function normInv(p) {
 }
 
 export const normPdf = x => Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
+
+// Continued fraction of the regularized incomplete beta function (Numerical Recipes betacf)
+function betacf(a, b, x) {
+  const EPS = 1e-14, FPMIN = 1e-300, ITMAX = 300;
+  const qab = a + b, qap = a + 1, qam = a - 1;
+  let c = 1, d = 1 - qab * x / qap;
+  if (Math.abs(d) < FPMIN) d = FPMIN;
+  d = 1 / d;
+  let h = d;
+  for (let m = 1; m <= ITMAX; m++) {
+    const m2 = 2 * m;
+    let aa = m * (b - m) * x / ((qam + m2) * (a + m2));
+    d = 1 + aa * d; if (Math.abs(d) < FPMIN) d = FPMIN;
+    c = 1 + aa / c; if (Math.abs(c) < FPMIN) c = FPMIN;
+    d = 1 / d; h *= d * c;
+    aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
+    d = 1 + aa * d; if (Math.abs(d) < FPMIN) d = FPMIN;
+    c = 1 + aa / c; if (Math.abs(c) < FPMIN) c = FPMIN;
+    d = 1 / d;
+    const del = d * c;
+    h *= del;
+    if (Math.abs(del - 1) < EPS) break;
+  }
+  return h;
+}
+
+// I_x(a, b), the regularized incomplete beta function
+export function incompleteBeta(a, b, x) {
+  if (x <= 0) return 0;
+  if (x >= 1) return 1;
+  const front = Math.exp(logGamma(a + b) - logGamma(a) - logGamma(b) + a * Math.log(x) + b * Math.log(1 - x));
+  return x < (a + 1) / (a + b + 2) ? front * betacf(a, b, x) / a : 1 - front * betacf(b, a, 1 - x) / b;
+}
+
+export function tCDF(t, dof) {
+  const p = 0.5 * incompleteBeta(dof / 2, 0.5, dof / (dof + t * t));
+  return t >= 0 ? 1 - p : p;
+}
+
+export function tInv(p, dof) {
+  if (p <= 0) return -Infinity;
+  if (p >= 1) return Infinity;
+  if (!(dof > 0)) return NaN;
+  const guess = Math.abs(normInv(p)) + 1;
+  let lo = -guess, hi = guess;
+  while (tCDF(lo, dof) > p) lo *= 2;
+  while (tCDF(hi, dof) < p) hi *= 2;
+  for (let i = 0; i < 200; i++) {
+    const mid = (lo + hi) / 2;
+    if (tCDF(mid, dof) < p) lo = mid; else hi = mid;
+  }
+  return (lo + hi) / 2;
+}
+
+// ---------------------------------------------------------------- outlier tests
+// Baarda's w-test: |w| > z(1 − α0/2), σ0 known a priori
+export const wCritical = alpha0 => normInv(1 - alpha0 / 2);
+
+// Pope's τ-test (σ0 estimated by σ̂0 from r degrees of freedom): τ_c = t √r / √(r − 1 + t²),
+// t the Student quantile with r − 1 degrees of freedom
+export function tauCritical(alpha0, r) {
+  if (!(r >= 2)) return NaN;
+  const t = tInv(1 - alpha0 / 2, r - 1);
+  return t * Math.sqrt(r) / Math.sqrt(r - 1 + t * t);
+}
+
+// Non-centrality δ0 = z(1 − α0/2) + z(β0): the shift of w that the test detects with power β0
+export const delta0 = (alpha0, power = 0.8) => wCritical(alpha0) + normInv(power);
 
 // Histogram with equal bins over [min, max]; values outside are clamped into the end bins
 export function histogram(values, { bins = 15, min, max } = {}) {

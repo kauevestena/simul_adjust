@@ -3,109 +3,230 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>transform_lab</title>
-  <meta name="description" content="Similarity transformation between a printed reference sheet and a total-station survey: combined vs parametric least squares.">
-  <link rel="icon" href="data:,">
+  <title>Transform Lab</title>
+  <meta name="description" content="3D transformation between a printed reference sheet and a total-station survey: combined vs parametric least squares, outlier detection and the plane of the sheet.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⟲</text></svg>">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header class="topbar">
-  <a class="portal" href="../" data-t="portal"></a>
-  <nav>
-    <a data-page="teoria.html" href="teoria.html" data-t="navTheory"></a>
-    <a data-page="comparacao.html" href="comparacao.html" data-t="navCompare"></a>
-  </nav>
-  <div class="heading"><span data-t="subtitle"></span><h1 data-t="title"></h1></div>
-  <div class="languages" role="group" aria-label="Language"><button data-lang="pt-BR">PT</button><button data-lang="en">EN</button></div>
+<header class="appbar">
+  <div class="appbar-inner">
+    <div class="brand"><h1 data-t="title"></h1><p data-t="subtitle"></p></div>
+    <nav class="appbar-nav">
+      <a class="hlink portal" href="../" data-t="portal"></a>
+      <a class="hlink strong" data-page="teoria.html" href="teoria.html" data-t="navTheory"></a>
+      <a class="hlink strong" data-page="comparacao.html" href="comparacao.html" data-t="navCompare"></a>
+      <div class="languages" role="group" aria-label="Language"><button data-lang="pt-BR">PT</button><button data-lang="en">EN</button></div>
+    </nav>
+  </div>
 </header>
 
-<main class="layout">
-  <aside class="sidebar" aria-label="Controls">
-    <details class="card" open id="secData">
-      <summary data-t="s.data"></summary>
-      <div class="body">
-        <label class="field"><span data-t="f.source"></span>
-          <select id="source"><option value="import" data-t="o.import"></option><option value="sim" data-t="o.sim"></option></select></label>
-        <div id="simForm" class="body" style="padding:0"></div>
-        <div id="importBox" hidden class="body" style="padding:0">
-          <label class="field"><span data-t="f.importFormat"></span>
-            <select id="importFormat"><option value="raw" data-t="o.importRaw"></option><option value="job" data-t="o.importJob"></option><option value="xyz" data-t="o.importXyz"></option></select></label>
-          <label class="field" id="angleRow"><span data-t="f.angleFormat"></span>
-            <select id="angleFormat"><option value="deg" data-t="o.angleDeg"></option><option value="dmmss" data-t="o.angleDmmss"></option></select></label>
-          <label class="field field-check"><span data-t="f.renumber"></span><input type="checkbox" id="renumber"></label>
-          <div class="row"><button class="btn secondary" id="loadSample" type="button" data-t="b.loadSample"></button></div>
-          <input type="file" id="importFile" accept=".csv,.txt,.job,text/*" aria-label="file">
-          <p class="note" data-t="h.importFormats"></p>
-          <p class="note" id="importStatus" role="status"></p>
-        </div>
-        <div class="row">
-          <button class="btn secondary" id="dlObs" data-t="b.dlObs"></button>
-          <button class="btn secondary" id="dlRef" data-t="b.dlRef"></button>
-          <button class="btn secondary" id="dlDist" data-t="b.dlDist"></button>
+<main class="app">
+  <!-- ============================ left column ============================ -->
+  <aside class="col-left" aria-label="Controls">
+    <section class="card" id="cardData">
+      <h2 class="card-title" data-t="s.data"></h2>
+      <span class="field-label" data-t="f.samples"></span>
+      <p class="hint" data-t="h.samples" style="margin:0 0 6px"></p>
+      <div class="grid-2">
+        <button class="btn btn-secondary" data-sample="atv56" data-t="b.sampleAtv56"></button>
+        <button class="btn btn-secondary" data-sample="atv70" data-t="b.sampleAtv70"></button>
+        <button class="btn btn-secondary" data-sample="sim66" data-t="b.sampleSim"></button>
+      </div>
+      <div class="sep stack">
+        <label class="fld"><span class="field-label" data-t="f.file"></span><input type="file" id="importFile" accept=".csv,.txt,.job,text/*"></label>
+        <p class="hint" data-t="h.importFormats"></p>
+        <div class="fields">
+          <label class="fld wide"><span class="field-label" data-t="f.importFormat"></span>
+            <select id="importFormat" class="field"><option value="raw" data-t="o.importRaw"></option><option value="job" data-t="o.importJob"></option><option value="xyz" data-t="o.importXyz"></option></select></label>
+          <label class="fld wide" id="angleRow"><span class="field-label" data-t="f.angleFormat"></span>
+            <select id="angleFormat" class="field"><option value="deg" data-t="o.angleDeg"></option><option value="dmmss" data-t="o.angleDmmss"></option></select></label>
+          <div id="unitsForm" class="fields wide" style="grid-column:1/-1"></div>
+          <label class="fld fld-check"><input type="checkbox" id="renumber"><span class="field-label" data-t="f.renumber"></span></label>
         </div>
       </div>
-    </details>
-    <details class="card" open><summary data-t="s.reference"></summary><div class="body" id="refForm"></div></details>
-    <details class="card" open><summary data-t="s.model"></summary><div class="body" id="modelForm"></div></details>
-    <details class="card" open><summary data-t="s.checks"></summary><div class="body" id="checkForm"></div></details>
-    <details class="card" open><summary data-t="s.injunctions"></summary><div class="body"><div id="injForm" class="body" style="padding:0"></div><p class="note" id="injInfo"></p></div></details>
-    <details class="card"><summary data-t="s.output"></summary><div class="body" id="outForm"></div></details>
-    <div class="row"><button class="btn secondary" id="resetBtn" data-t="b.reset"></button></div>
+      <details class="sub sep" id="synthBox">
+        <summary data-t="s.synth"></summary>
+        <div id="simForm" class="fields"></div>
+        <button class="btn btn-secondary w-full" id="btnGenerate" data-t="b.generate" style="margin-top:8px"></button>
+      </details>
+      <div class="stack" style="margin-top:12px">
+        <button class="btn btn-rose w-full" id="btnBlunder" data-t="b.blunder"></button>
+        <button class="btn btn-secondary btn-sm w-full" id="btnClearBlunders" data-t="b.clearBlunders" hidden></button>
+      </div>
+      <p class="status" id="dataStatus" role="status"></p>
+      <div class="sep row">
+        <button class="btn btn-secondary btn-sm" id="dlObs" data-t="b.dlObs"></button>
+        <button class="btn btn-secondary btn-sm" id="dlRef" data-t="b.dlRef"></button>
+        <button class="btn btn-secondary btn-sm" id="dlDist" data-t="b.dlDist"></button>
+      </div>
+    </section>
+
+    <section class="card" id="cardFlow">
+      <h2 class="card-title" data-t="s.workflow"></h2>
+      <div class="steps">
+        <div class="step" id="step1"><span class="step-num">1</span>
+          <div class="step-body">
+            <div id="workflowForm" class="fields"></div>
+            <p class="hint" id="injInfo"></p>
+            <p class="pending-note" id="pendingNote" data-t="i.pending" hidden></p>
+            <button class="btn btn-primary w-full" id="btnRun" data-t="b.run"></button>
+            <p class="hint" data-t="h.moreSettings"></p>
+          </div>
+        </div>
+        <div class="step" id="step2"><span class="step-num">2</span>
+          <div class="step-body">
+            <label class="fld"><span class="field-label" data-t="f.outlierMethod"></span>
+              <select id="outlierMethod" class="field"><option value="snooping" data-t="o.snooping"></option><option value="tau" data-t="o.tau"></option><option value="ksigma" data-t="o.ksigma"></option><option value="ransac" data-t="o.ransac"></option></select></label>
+            <p class="hint" id="outlierHint"></p>
+            <button class="btn btn-amber w-full" id="btnOutliers" data-t="b.detect"></button>
+          </div>
+        </div>
+        <div class="step" id="step3"><span class="step-num">3</span>
+          <div class="step-body">
+            <p class="hint" data-t-html="h.step3"></p>
+            <div class="grid-2">
+              <button class="btn btn-secondary btn-sm" id="btnDeactivate" data-t="b.deactivate"></button>
+              <button class="btn btn-secondary btn-sm" id="btnReactivate" data-t="b.reactivate"></button>
+            </div>
+          </div>
+        </div>
+        <div class="step" id="step4"><span class="step-num">4</span>
+          <div class="step-body"><p class="hint" data-t="h.step4"></p></div>
+        </div>
+        <div class="step" id="step5"><span class="step-num">5</span>
+          <div class="step-body">
+            <button class="btn btn-secondary btn-sm w-full" id="dlResults" data-t="b.dlResults"></button>
+            <button class="btn btn-secondary btn-sm w-full" id="dlParams" data-t="b.dlParams"></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" id="panelGlobalTest" aria-live="polite"></section>
   </aside>
 
-  <section class="content">
-    <div class="summary" id="summary" aria-live="polite"></div>
+  <!-- ============================ right column ============================ -->
+  <section class="col-right">
+    <div class="tiles" id="summary" aria-live="polite"></div>
     <div class="messages" id="messages" role="status"></div>
-    <div class="tabs" role="tablist">
-      <button role="tab" data-tab="view2d" aria-selected="true" data-t="tab.2d"></button>
-      <button role="tab" data-tab="view3d" aria-selected="false" data-t="tab.3d"></button>
-      <button role="tab" data-tab="hist" aria-selected="false" data-t="tab.hist"></button>
-      <button role="tab" data-tab="results" aria-selected="false" data-t="tab.results"></button>
-      <button role="tab" data-tab="points" aria-selected="false" data-t="tab.points"></button>
-    </div>
 
-    <div class="tabpanel" id="tab-view2d">
-      <div class="toolbar">
-        <span class="legend" id="legend2d"></span>
-        <label><span data-t="v.exag"></span><input type="range" id="vecScale" min="0" max="1000" value="600" step="10" aria-label="vector exaggeration"><output id="vecScaleOut"></output></label>
-        <label><input type="checkbox" id="optVecAuto" checked><span data-t="v.auto"></span></label>
-        <label><input type="checkbox" id="optLabels" checked><span data-t="v.labels"></span></label>
-        <label><input type="checkbox" id="optEdges" checked><span data-t="v.edges"></span></label>
+    <section class="card tight">
+      <div class="tabs" role="tablist">
+        <button role="tab" data-tab="view2d" aria-selected="true" data-t="tab.2d"></button>
+        <button role="tab" data-tab="view3d" aria-selected="false" data-t="tab.3d"></button>
+        <button role="tab" data-tab="plane" aria-selected="false" data-t="tab.plane"></button>
+        <button role="tab" data-tab="hist" aria-selected="false" data-t="tab.hist"></button>
+        <button role="tab" data-tab="points" aria-selected="false" data-t="tab.points"></button>
+        <button role="tab" data-tab="results" aria-selected="false" data-t="tab.results"></button>
+        <button role="tab" data-tab="settings" aria-selected="false" data-t="tab.settings"></button>
       </div>
-      <div class="plot"><canvas id="canvas2d" aria-label="2D view"></canvas><div class="tooltip" id="tip2d" hidden></div></div>
-      <p class="note" data-t="v.help2d"></p>
-    </div>
 
-    <div class="tabpanel" id="tab-view3d" hidden>
-      <div class="toolbar">
-        <span class="legend" id="legend3d"></span>
-        <label><input type="checkbox" id="opt3dEllipsoids" checked><span data-t="v.ellipsoids"></span></label>
-        <label><span data-t="v.ellipsoidScale"></span><input type="range" id="ellScale" min="1" max="200" value="20" aria-label="ellipsoid scale"><output id="ellScaleOut"></output></label>
-        <label><input type="checkbox" id="opt3dLines"><span data-t="v.sightLines"></span></label>
-        <button class="btn secondary" id="fitSheet" data-t="v.fitSheet"></button>
-        <button class="btn secondary" id="fitScene" data-t="v.fitScene"></button>
+      <div class="tabpanel" id="tab-view2d">
+        <div class="toolbar">
+          <span class="legend" id="legend2d"></span>
+        </div>
+        <div class="toolbar">
+          <label><span data-t="v.exag"></span><input type="range" id="vecScale" min="0" max="1000" value="600" step="10" aria-label="vector exaggeration"><output id="vecScaleOut" class="val"></output></label>
+          <label><input type="checkbox" id="optVecAuto" checked><span data-t="v.auto"></span></label>
+          <label><input type="checkbox" id="optLabels" checked><span data-t="v.labels"></span></label>
+          <label><input type="checkbox" id="optEdges" checked><span data-t="v.edges"></span></label>
+        </div>
+        <div class="plot"><canvas id="canvas2d" aria-label="2D view"></canvas><div class="tooltip" id="tip2d" hidden></div></div>
+        <p class="help" data-t="v.help2d"></p>
       </div>
-      <div class="plot" id="host3d"></div>
-      <p class="note" id="msg3d" data-t="v.help3d"></p>
-    </div>
 
-    <div class="tabpanel" id="tab-hist" hidden>
-      <div class="toolbar">
-        <span class="legend" id="legendHist"></span>
-        <label><span data-t="v.bins"></span><input type="range" id="bins" min="5" max="40" value="15" aria-label="bins"><output id="binsOut"></output></label>
+      <div class="tabpanel" id="tab-view3d" hidden>
+        <div class="toolbar">
+          <button class="btn btn-secondary btn-sm" id="fitSheet" data-t="v.fitSheet"></button>
+          <button class="btn btn-secondary btn-sm" id="fitScene" data-t="v.fitScene"></button>
+          <label><input type="checkbox" id="opt3dEllipsoids" checked><span data-t="v.ellipsoids"></span></label>
+          <label><input type="checkbox" id="opt3dPlane" checked><span data-t="v.plane"></span></label>
+          <label><input type="checkbox" id="opt3dDev" checked><span data-t="v.deviations"></span></label>
+          <label><input type="checkbox" id="opt3dLines"><span data-t="v.sightLines"></span></label>
+        </div>
+        <div class="toolbar">
+          <label><span data-t="v.ellipsoidScale"></span><input type="range" id="ellScale" min="1" max="200" value="20" aria-label="ellipsoid scale"><output id="ellScaleOut" class="val"></output></label>
+          <label><span data-t="v.devScale"></span><input type="range" id="devScale" min="1" max="500" value="40" aria-label="deviation scale"><output id="devScaleOut" class="val"></output></label>
+          <span class="legend" id="legend3d"></span>
+        </div>
+        <div class="plot" id="host3d"></div>
+        <p class="help" id="msg3d" data-t="v.help3d"></p>
       </div>
-      <div class="plot"><canvas id="canvasHist" aria-label="histogram"></canvas></div>
-      <p class="stats-line" id="histStats"></p>
-      <p class="note" data-t="v.helpHist"></p>
-    </div>
 
-    <div class="tabpanel" id="tab-results" hidden><div id="resultsBox"></div></div>
-    <div class="tabpanel" id="tab-points" hidden>
-      <div class="toolbar"><button class="btn secondary" id="dlResults" data-t="b.dlResults"></button></div>
-      <div class="tablewrap"><table id="pointsTable"></table></div>
-    </div>
+      <div class="tabpanel" id="tab-plane" hidden>
+        <div class="toolbar">
+          <label><span data-t="v.planeValue"></span>
+            <select id="planeValue" class="field"><option value="d" data-t="o.planeD"></option><option value="w" data-t="o.planeW"></option></select></label>
+          <label><input type="checkbox" id="planeHeat" checked><span data-t="v.heat"></span></label>
+          <label><input type="checkbox" id="planeLabels" checked><span data-t="v.labels"></span></label>
+          <span class="legend" id="legendPlane"></span>
+        </div>
+        <div class="plot short"><canvas id="canvasPlane" aria-label="plane deviations"></canvas><div class="tooltip" id="tipPlane" hidden></div></div>
+        <canvas id="planeBar" class="colorbar" aria-label="colour bar"></canvas>
+        <p class="stats-line" id="planeInfo"></p>
+        <p class="help" data-t="v.helpPlane"></p>
+      </div>
+
+      <div class="tabpanel" id="tab-hist" hidden>
+        <div class="toolbar">
+          <label><span data-t="v.histQuantity"></span>
+            <select id="histQuantity" class="field"><option value="std" data-t="o.histStd"></option><option value="w" data-t="o.histW"></option><option value="planeW" data-t="o.histPlaneW"></option><option value="planeD" data-t="o.histPlaneD"></option></select></label>
+          <label><span data-t="v.bins"></span><input type="range" id="bins" min="5" max="40" value="15" aria-label="bins"><output id="binsOut" class="val"></output></label>
+          <label><input type="checkbox" id="histCrit" checked><span data-t="v.critLines"></span></label>
+          <span class="legend" id="legendHist"></span>
+        </div>
+        <div class="plot short"><canvas id="canvasHist" aria-label="histogram"></canvas></div>
+        <p class="stats-line" id="histStats"></p>
+        <p class="help" id="helpHist"></p>
+      </div>
+
+      <div class="tabpanel" id="tab-points" hidden>
+        <div class="toolbar"><p class="note" data-t-html="v.helpPoints"></p></div>
+        <div class="table-container tall"><table id="pointsTable"></table></div>
+      </div>
+
+      <div class="tabpanel" id="tab-results" hidden><div id="resultsBox"></div></div>
+
+      <div class="tabpanel" id="tab-settings" hidden>
+        <div class="settings">
+          <div><h3 data-t-html="s.instrument"></h3><div id="instrumentForm" class="fields"></div><p class="hint" data-t="h.instrument"></p></div>
+          <div><h3 data-t="s.reference"></h3><div id="refForm" class="fields"></div></div>
+          <div><h3 data-t="s.modelAdv"></h3><div id="modelForm" class="fields"></div></div>
+          <div><h3 data-t="s.checksInj"></h3><div id="checkInjForm" class="fields"></div></div>
+          <div><h3 data-t="s.tests"></h3><div id="testsForm" class="fields"></div><p class="hint" id="critHint"></p></div>
+          <div><h3 data-t="s.output"></h3><div id="outForm" class="fields"></div>
+            <div class="explain" data-t-html="h.settingsExplain"></div>
+            <button class="btn btn-secondary w-full" id="resetBtn" data-t="b.reset" style="margin-top:12px"></button></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 class="card-title"><span data-t="s.params"></span></h2>
+      <div id="paramsPanel"></div>
+    </section>
+
+    <section class="card">
+      <h2 class="card-title"><span data-t="s.reliability"></span></h2>
+      <div id="reliabilityPanel"></div>
+      <p class="hint" data-t-html="h.reliability" style="margin-top:8px"></p>
+    </section>
   </section>
 </main>
+
+<dialog id="dlgBlunder">
+  <div class="dlg-head"><h3 data-t="b.blunder"></h3><button class="x-btn" data-close="dlgBlunder" aria-label="close">×</button></div>
+  <div class="dlg-body">
+    <label class="fld fld-range"><span class="range-head"><span class="field-label" data-t="f.blunderK"></span><output id="blunderKOut"></output></span>
+      <input type="range" id="blunderK" min="3" max="60" step="1" value="10"></label>
+    <label class="fld"><span class="field-label" data-t="f.blunderObs"></span>
+      <select id="blunderObs" class="field"><option value="S" data-t="o.obsS"></option><option value="Hz" data-t="o.obsHz"></option><option value="Z" data-t="o.obsZ"></option></select></label>
+    <div class="fld"><span class="field-label" data-t="f.blunderPoints"></span><div class="pick-list" id="blunderList"></div></div>
+  </div>
+  <div class="dlg-foot"><button class="btn btn-secondary" data-close="dlgBlunder" data-t="b.cancel"></button><button class="btn btn-rose" id="btnInject" data-t="b.inject"></button></div>
+</dialog>
+
 <script type="module" src="app.mjs"></script>
 </body>
 </html>
