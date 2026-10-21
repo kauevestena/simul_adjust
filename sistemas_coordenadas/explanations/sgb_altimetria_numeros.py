@@ -2,7 +2,7 @@
 """Números derivados da aula sgb_altimetria.tex / Derived numbers for sgb_altimetria.tex.
 
 Refaz, com Python puro (só os módulos math e random), toda conta que aparece nos slides: marés
-e ciclo nodal, subida do mar desde a época do datum, erros do nivelamento, o exemplo de
+e ciclo nodal, projeção ilustrativa do NMM desde a época do datum, erros do nivelamento, o exemplo de
 ajustamento de 4 nós, número geopotencial e altitude normal, e a linha do tempo. Rodar nesta pasta:
 
     python3 sgb_altimetria_numeros.py             # imprime todos os números das aulas
@@ -29,13 +29,23 @@ EPS = 23.4393             # ° obliquidade média / mean obliquity
 INCL = 5.145              # ° inclinação da órbita da Lua / inclination of the lunar orbit
 R_TERRA = 6_371_000.0     # m
 GAMMA = 9.78              # m/s², gravidade normal média na altura do continente (ordem de grandeza)
-TAXA_NMM = 2.24           # mm/ano, tendência do NMM na região de Imbituba (estudo UFPR, 2017)
+TAXA_NMM = 2.24           # mm/ano, estimativa de estudo; extrapolação ilustrativa / study estimate
 TAXA_NMM_INC = 0.4        # mm/ano, incerteza informada no mesmo estudo / uncertainty in the same study
 TAXA_SUBS = -3.02         # mm/ano, componente vertical do marégrafo (GNSS), mesmo estudo
 EPOCA_IMBITUBA = (1949 + 1957 + 1) / 2   # = 1953,5: meio do intervalo 1949--1957 (inclusive)
 ANO_ATUAL = 2026
 ARCSEC = pi / 648_000.0       # rad
 VOLTA_TERRA_KM = 40_075.0     # km, circunferência equatorial / equatorial circumference
+
+# IBGE (2019), REALT-2018, 2.a ed., p. 35, tabela do BLOCO PRINCIPAL.
+# These are principal-block counts, not a national total. See sgb_altimetria_fontes.md.
+REALT2018_MAIN_BENCHMARKS = 66_882
+REALT2018_MAIN_SECTIONS = 70_426
+REALT2018_CIRCUIT_RESIDUAL_SECTIONS = 62_782
+# IBGE (2019), p. 36, Figura 16: frequências empíricas, não tolerâncias de campo.
+# Empirical frequencies within symmetric intervals ±k*sqrt(K) mm; not field limits.
+REALT2018_RESIDUAL_PERCENTAGES = ((1, 92.7), (2, 98.0), (3, 99.1), (4, 99.5))
+SANTANA_ADOPTION_YEAR = 1980  # IBGE (2019), p. 13; RRNN implantadas em 1980/81, p. 44.
 
 
 def titulo(txt):
@@ -153,7 +163,7 @@ def aula1():
     print("\n  O mar sobe, a altitude não / The sea rises, the altitude does not")
     anos = ANO_ATUAL - EPOCA_IMBITUBA
     linha("anos desde o meio do intervalo 1949-1957", anos, "{:.1f}")
-    linha("subida do NMM desde a época do datum (cm)", TAXA_NMM * anos / 10, "{:.1f}")
+    linha("projeção ilustrativa do NMM, taxa constante (cm)", TAXA_NMM * anos / 10, "{:.1f}")
     linha("incerteza (cm), só da taxa", TAXA_NMM_INC * anos / 10, "{:.1f}")
     linha("subsidência do marégrafo no mesmo intervalo (cm), se constante", -TAXA_SUBS * anos / 10,
           "{:.1f}")
@@ -169,10 +179,13 @@ def aula1():
     print("\n  Linha do tempo / Timeline (anos)")
     linha("Torres: ligação da rede (dez/1946) a partir do início (1945) (anos)", 1946.9 - 1945.8,
           "{:.1f}")
-    linha("1945 -> troca Torres/Imbituba (1958-59)", 1958.5 - 1945.8, "{:.0f}")
+    print("  Imbituba: substituição em 1958 (IBGE 2011, p. 8); adoção em 1959 (IBGE 2019, p. 13).")
+    print("  Imbituba: replacement in 1958; adoption in 1959 in the respective official reports.")
     linha("janela de observação do datum de Imbituba (anos)", 1957 - 1949 + 1, "{:.0f}")
     linha("janela de observação do datum de Santana (anos)", 1958 - 1957 + 1, "{:.0f}")
-    linha("de Santana 1957-58 à adoção 1980-81 (anos)", 1980.5 - 1957.5, "{:.0f}")
+    linha("Santana: ano de adoção / adoption year (IBGE 2019, p. 13)",
+          SANTANA_ADOPTION_YEAR, "{:.0f}")
+    print("  1980/81: implantação das RRNN / establishment of benchmarks (IBGE 2019, p. 44).")
 
 
 # ---------------------------------------------------------------- AULA 2
@@ -181,9 +194,42 @@ def curvatura_mm(s_m, k_ref=0.0):
     return (1 - k_ref) * s_m ** 2 / (2 * R_TERRA) * 1000
 
 
-def tol_mm(K_km, c=3.0):
-    """Tolerância c * sqrt(K) em mm (c = 3 mm sqrt(K): valor citado para a R.PR 22/1983; a conferir)."""
-    return c * sqrt(K_km)
+def section_tolerance_mm(K_km):
+    """Seção: discrepância ida/volta / section discrepancy, IBGE 1983, VI.3.1, p. 30.
+
+    K is the one-way section length in km, not the sum of forward/backward distances.
+    The fundamental high-precision class limits sections to 3 km.
+    """
+    if not 0 <= K_km <= 3:
+        raise ValueError("Seção fundamental: 0 <= K <= 3 km / fundamental section length.")
+    return 3.0 * sqrt(K_km)
+
+
+def line_tolerance_mm(K_km):
+    """Linha: discrepância ida/volta / line discrepancy, IBGE 1983, VI.3.2."""
+    return 4.0 * sqrt(K_km)
+
+
+def adjusted_line_std_limit_mm(K_km):
+    """Erro-padrão máximo após ajuste / maximum adjusted-line standard error, VI.4."""
+    return 2.0 * sqrt(K_km)
+
+
+def circuit_closure_limit_mm(perimeter_km):
+    """Circuito após correções / corrected-circuit closure, IBGE 1983, VI.3.3."""
+    if perimeter_km < 0:
+        raise ValueError("Perímetro não negativo / nonnegative perimeter.")
+    return 0.5 * perimeter_km
+
+
+def distance_normalized_residual(v_mm, K_km):
+    """v/sqrt(K), em mm/sqrt(km); diferente de v/sigma_v (adimensional).
+
+    Distance-normalized residual, not a dimensionless data-snooping statistic.
+    """
+    if K_km <= 0:
+        raise ValueError("Comprimento positivo / positive length required.")
+    return v_mm / sqrt(K_km)
 
 
 def passeios(n_linhas=6, n_km=100, sigma_mm=1.0, seed=42):
@@ -222,13 +268,13 @@ def aula2():
     linha("... com distâncias iguais (mm)", 0.0, "{:.1f}")
 
     print("\n  Ida e volta / Forward and back")
-    ida, volta, K = 12.347, -12.343, 3.2
+    ida, volta, K = 12.347, -12.343, 2.8
     linha("discrepância ida+volta (mm)", abs(ida + volta) * 1000, "{:.1f}")
     linha("média |ida|, |volta| (m)", (abs(ida) + abs(volta)) / 2, "{:.3f}")
-    linha("tolerância 3 sqrt(K), K = 3,2 km (mm)", tol_mm(K), "{:.1f}")
-    ida2, volta2, K2 = 8.912, -8.904, 5.0
+    linha("seção: tolerância 3 sqrt(K), K = 2,8 km (mm)", section_tolerance_mm(K), "{:.1f}")
+    ida2, volta2, K2 = 8.912, -8.904, 2.0
     linha("Sua vez: discrepância (mm)", abs(ida2 + volta2) * 1000, "{:.1f}")
-    linha("Sua vez: tolerância, K = 5 km (mm)", tol_mm(K2), "{:.1f}")
+    linha("Sua vez: tolerância da seção, K = 2 km (mm)", section_tolerance_mm(K2), "{:.1f}")
 
     print("\n  O erro que cresce / The error that grows")
     eta, delta = 1.0, 0.1       # mm/sqrt(km); mm/km
@@ -236,8 +282,11 @@ def aula2():
         linha(f"aleatório eta sqrt(K), K = {Kk} km (mm)", eta * sqrt(Kk), "{:.1f}")
         linha(f"sistemático delta K, K = {Kk} km (mm)", delta * Kk, "{:.1f}")
     linha("K onde os dois se igualam: (eta/delta)^2 (km)", (eta / delta) ** 2, "{:.0f}")
-    for Kk in (4, 16, 39, 100):
-        linha(f"tolerância 3 sqrt(K), K = {Kk} km (mm)", tol_mm(Kk), "{:.1f}")
+    for Kk in (0.25, 1, 2, 3):
+        linha(f"seção: 3 sqrt(K), K = {Kk} km (mm)", section_tolerance_mm(Kk), "{:.1f}")
+    linha("linha: discrepância 4 sqrt(K), K = 16 km (mm)", line_tolerance_mm(16), "{:.1f}")
+    linha("linha: erro-padrão máximo após ajuste, K = 16 km (mm)",
+          adjusted_line_std_limit_mm(16), "{:.1f}")
 
     print("\n  Circuito / Loop")
     sec = [(10, 15.4301), (8, -4.2276), (12, -13.7819), (9, 2.5854)]
@@ -245,14 +294,23 @@ def aula2():
     Kp = sum(k for k, _ in sec)
     linha("perímetro K (km)", Kp, "{:.0f}")
     linha("fechamento w = soma dos desníveis (mm)", w * 1000, "{:.1f}")
-    linha("tolerância 3 sqrt(K) (mm)", tol_mm(Kp), "{:.1f}")
-    linha("w / sqrt(K) (mm por raiz de km)", w * 1000 / sqrt(Kp), "{:.2f}")
+    linha("limite do circuito, 0,5 mm/km * K (mm)", circuit_closure_limit_mm(Kp), "{:.1f}")
+    linha("|w| / K (mm/km)", abs(w) * 1000 / Kp, "{:.3f}")
+    linha("limite do circuito, K = 100 km (mm)", circuit_closure_limit_mm(100), "{:.1f}")
+    linha("exercício: |w|/K, w=21 mm, K=100 km (mm/km)", 21 / 100, "{:.2f}")
 
-    print("\n  A rede / The network (IBGE, resumos de busca)")
-    linha("voltas à Terra: 230 000 km (1992)", 230_000 / VOLTA_TERRA_KM, "{:.1f}")
-    linha("voltas à Terra: 370 000 km (2011)", 370_000 / VOLTA_TERRA_KM, "{:.1f}")
+    print("\n  Escala ilustrativa / Illustrative scale (hypothetical lengths)")
+    linha("voltas à Terra: comprimento hipotético 230 000 km", 230_000 / VOLTA_TERRA_KM, "{:.1f}")
+    linha("voltas à Terra: comprimento hipotético 370 000 km", 370_000 / VOLTA_TERRA_KM, "{:.1f}")
     linha("RRNN 2011 / RRNN 1992", 69_590 / 43_079, "{:.2f}")
-    linha("RRNN hoje (71 475) / RRNN 2011", 71_475 / 69_590, "{:.3f}")
+    print("  Os conjuntos AAGP, 2011 e bloco principal de 2018 têm abrangências distintas.")
+    print("  AAGP, 2011 and the 2018 principal block have different scopes.")
+    linha("REALT-2018: RRNN do bloco principal / principal benchmarks",
+          REALT2018_MAIN_BENCHMARKS, "{:.0f}")
+    linha("REALT-2018: seções do bloco principal / principal sections",
+          REALT2018_MAIN_SECTIONS, "{:.0f}")
+    linha("REALT-2018: seções com resíduos em circuitos / circuit residual sections",
+          REALT2018_CIRCUIT_RESIDUAL_SECTIONS, "{:.0f}")
 
     print("\n  O que o nível não vê / What the level does not see")
     for H, dg_mgal in ((1000, 20), (1000, 50), (500, 20)):
@@ -379,8 +437,8 @@ def aula3():
     linha("bloco 1 (r = 1): sigma0 (sem unidade)", s01, "{:.2f}")
 
     print("\n  Linha do tempo (anos) / Timeline (years)")
-    linha("1945 -> 2011: do primeiro nivelamento ao primeiro ajuste simultâneo", 2011 - 1945, "{:.0f}")
-    linha("1945 -> 1975: os oito ajustamentos parciais", 1975 - 1945, "{:.0f}")
+    linha("1945 -> 2011: do primeiro nivelamento à retomada do ajuste simultâneo", 2011 - 1945, "{:.0f}")
+    linha("1945 -> 1975: oito ajustamentos (só do 4º em diante particionados)", 1975 - 1945, "{:.0f}")
     linha("2005 -> 2011: a equipe DALTI até o ajuste simultâneo", 2011 - 2005, "{:.0f}")
     linha("2011 -> 2018: do ajuste simultâneo ao REALT-2018", 2018 - 2011, "{:.0f}")
 
@@ -400,16 +458,33 @@ def aula3():
     linha("W0 do IHRS (m²/s²), IAG 2015", 62_636_853.4, "{:.1f}")
     linha("... em metros, com gamma = 9,8 (não usar para altitudes!)", 62_636_853.4 / 9.8, "{:.0f}")
 
-    print("\n  Qualidade do ajustamento (resumo de busca do relatório do IBGE)")
-    for k_, pct in ((1, 92.7), (2, 98.0), (3, 99.1), (4, 99.5)):
+    print("\n  REALT-2018: resíduos do bloco principal / principal-block residuals (IBGE 2019, p. 36)")
+    for k_, pct in REALT2018_RESIDUAL_PERCENTAGES:
         linha(f"correções dentro de ±{k_} mm sqrt(K) (%)", pct, "{:.1f}")
     linha("fora de ±1 mm sqrt(K) (%)", 100 - 92.7, "{:.1f}")
     linha("fora de ±4 mm sqrt(K) (%)", 100 - 99.5, "{:.1f}")
-    linha("em 74 000 observações, 0,5 % são", 0.005 * 74_000, "{:.0f}")
+    print("  Frequências de resíduos ajustados, não requisitos de aceitação em campo.")
+    print("  Adjusted-residual frequencies, not field-acceptance requirements.")
+    print("  Não se aplica a frequência de 2018 às observações de 2011.")
+    print("  Do not apply the 2018 frequencies to the 2011 observation count.")
 
     print("\n  Gravidade / Gravity")
     linha("g máx - g mín na Terra (m/s²), 9,834 - 9,764", 9.834 - 9.764, "{:.3f}")
     linha("variação relativa (%)", (9.834 - 9.764) / 9.8 * 100, "{:.2f}")
+
+
+def benchmark_difference_std_mm(sigma_new_mm, sigma_1_mm, sigma_2_mm, cov_12_mm2=0.0):
+    """Incerteza da diferença nova-publicada / New-minus-published uncertainty.
+
+    Assumes the new corrected measurement is independent of the published heights.
+    Var(r) = Var(new) + Var(H2) + Var(H1) - 2 Cov(H1,H2).
+    All sigmas in mm; covariance in mm². This is not a field section tolerance.
+    """
+    if min(sigma_new_mm, sigma_1_mm, sigma_2_mm) < 0:
+        raise ValueError("Desvios-padrão não negativos / nonnegative standard deviations.")
+    if abs(cov_12_mm2) > sigma_1_mm * sigma_2_mm:
+        raise ValueError("Covariância inválida / invalid covariance.")
+    return sqrt(sigma_new_mm ** 2 + sigma_1_mm ** 2 + sigma_2_mm ** 2 - 2 * cov_12_mm2)
 
 
 # ---------------------------------------------------------------- AULA 4
@@ -443,6 +518,13 @@ def aula4():
         linha(f"{dm:.2f} m  ->  m²/s² (gamma = 9,78)", dm * GAMMA, "{:.2f}")
     linha("12,7 m²/s²  ->  metros", 12.7 / GAMMA, "{:.2f}")
     linha("W0 do IHRS (IAG 2015) (m²/s²)", 62_636_853.4, "{:.1f}")
+
+    print("\n  Verificação de RRNN / Benchmark compatibility (illustrative uncertainties)")
+    discrepancy_mm = (7.759 - (20.100 - 12.345)) * 1000
+    sigma_r = benchmark_difference_std_mm(3.0, 4.0, 4.0, 8.0)
+    linha("nova diferença corrigida menos publicada (mm)", discrepancy_mm, "{:.1f}")
+    linha("incerteza combinada sigma_r (mm), inclui covariância", sigma_r, "{:.1f}")
+    linha("|r| / sigma_r (adimensional / dimensionless)", abs(discrepancy_mm) / sigma_r, "{:.1f}")
 
     print("\n  Linha do tempo do SIRGAS vertical / SIRGAS vertical timeline")
     linha("1997 (GT III) -> 2015 (IHRS) (anos)", 2015 - 1997, "{:.0f}")
@@ -510,3 +592,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
