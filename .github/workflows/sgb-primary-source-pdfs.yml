@@ -47,7 +47,13 @@ jobs:
               pdf = Path("sistemas_coordenadas/explanations") / (name + ".pdf")
               bbox = qa / (name + ".html")
               subprocess.run(["pdftotext", "-bbox", str(pdf), str(bbox)], check=True)
-              pages = ET.parse(bbox).getroot().findall(".//{*}page")
+              raw_xml = bbox.read_text(encoding="utf-8")
+              # Poppler may emit XML-1.0 control characters for mapped math glyphs.
+              # Filter only illegal XML characters; retain all words and coordinates.
+              valid_xml = "".join(c for c in raw_xml if c in "\t\n\r" or
+                  0x20 <= ord(c) <= 0xD7FF or 0xE000 <= ord(c) <= 0xFFFD or
+                  0x10000 <= ord(c) <= 0x10FFFF)
+              pages = ET.fromstring(valid_xml).findall(".//{*}page")
               assert len(pages) == 165, (name, len(pages))
               for i, page in enumerate(pages, 1):
                   words = page.findall(".//{*}word")
