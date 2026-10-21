@@ -82,8 +82,8 @@ Na pasta / From sistemas_coordenadas/explanations:
 - latexmk -pdf -interaction=nonstopmode -halt-on-error sgb_altimetria.tex
 - latexmk -pdf -interaction=nonstopmode -halt-on-error sgb_altimetria_en.tex
 
-O build de validação usa pdfTeX/TeX Live 2022, Metropolis, babel-portuges e a implementação compatível siunitx v2 distribuída com siunitx. Em uma instalação completa do TeX Live, os comandos acima bastam. As dependências adicionais do ambiente de revisão não são incluídas no repositório.
-The validation build uses pdfTeX/TeX Live 2022, Metropolis, babel-portuges and the compatible siunitx v2 implementation distributed with siunitx. A complete TeX Live installation can use the commands above. Additional reviewer-environment dependencies are not vendored.
+A revisão local usou pdfTeX/TeX Live 2022 e a implementação compatível siunitx v2. A regeneração final no GitHub Actions usa pdfTeX/TeX Live 2023 (Debian), Metropolis, babel-portuges e siunitx da distribuição. Ambos os ambientes compilaram as duas línguas. As dependências adicionais de revisão não são incluídas no repositório.
+Local review used pdfTeX/TeX Live 2022 and the compatible siunitx v2 implementation. Final regeneration in GitHub Actions uses pdfTeX/TeX Live 2023 (Debian), Metropolis, babel-portuges and the distribution siunitx package. Both environments compiled both languages. Additional reviewer-environment dependencies are not vendored.
 
 ## Integridade dos PDFs consultados / Consulted-PDF integrity
 
