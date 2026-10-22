@@ -58,6 +58,21 @@ folha para mostrar o erro da estação, vistas 2D/3D, histograma dos resíduos, 
 em forma matricial e escalar) e de comparação. Como no `ajusta_planos`, só ajusta quando ▶ é pressionado. Veja a
 [documentação em português](transform_lab/README.pt-BR.md).
 
+### DTM Lab / Laboratório de MDT
+
+[`dtm_lab`](https://github.com/kauevestena/dtm_lab) lives in its own repository, which follows this monorepo's `AGENTS.md`, because its
+459 MB COPC point cloud is served from a release snapshot through a Pages artifact. It runs eight ground filters
+(slope, PMF, SMRF, progressive TIN, robust interpolation, CSF, MCC, block minimum) and five interpolators (TIN, IDW,
+natural neighbour, kriging, thin-plate spline) on tiles of a classified 69 M-point LiDAR cloud streamed in Potree,
+and scores them against the reference classification (Type I/II, κ, RMSEz by zone, PEC-PCD); a second page compares
+PDAL's SMRF, PMF and CSF on the whole cloud. [Open it](https://kauevestena.github.io/dtm_lab/).
+
+Fica em repositório próprio, que segue o `AGENTS.md` deste monorepo, porque a nuvem COPC de 459 MB é servida de um
+snapshot de release por meio de um artefato do Pages. Roda oito filtros de solo e cinco interpoladores sobre recortes
+de uma nuvem LiDAR classificada de 69 M de pontos, transmitida no Potree, e os avalia contra a classificação de
+referência (erros tipo I/II, κ, RMSEz por zona, PEC-PCD); uma segunda página compara SMRF, PMF e CSF da PDAL na nuvem
+inteira. [Abrir](https://kauevestena.github.io/dtm_lab/).
+
 ### Right-handed frames / Referenciais dextrogiros
 
 Every simulator uses **right-handed** frames. The total-station local frame is `X = S·sinZ·sinHz`,
