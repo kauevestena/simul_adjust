@@ -23,45 +23,17 @@
 % Acompanha a aula o simulador nivelamento/ (nivelamento por mínimos quadrados: sigma em mm/raiz(km),
 % fechamento, erro grosseiro, Monte Carlo) e continua a série sgb_sirgas2000.tex.
 %
-% Fontes dos fatos e números citados (ATENÇÃO: os sites do IBGE e do SIRGAS ficaram inacessíveis
-% no ambiente de construção; tudo abaixo vem de RESUMOS DE BUSCA desses documentos, lidos em
-% 2026-10-19/20, e não de leitura integral. O slide A8 lista o que não foi conferido.)
-%   [A] IBGE, página "Rede Altimétrica" (geodésia): origem em Urussanga (SC), nivelamento desde
-%       out/1945; 71 475 RRNN hoje; REALT-2018: bloco principal ligado ao datum de Imbituba (RN 4X),
-%       rede do Amapá ao datum de Santana (RN 9329T); conversão dos números geopotenciais em
-%       altitudes normais.
-%   [B] IBGE (2011), relatório do ajustamento simultâneo da Rede Altimétrica e notícia de 2013:
-%       > 74 000 observações desde 1945, 69 590 RRNN, programa GHOST (Helmert blocking), equipe
-%       DALTI (início em 2005, divulgação em jun/2011); oito ajustamentos parciais entre 1945 e 1975
-%       (1948, 1952, 1959, 1962, 1963, 1966, 1970, 1975; só os três primeiros com todas as
-%       observações; a partir do quarto, blocos com altitudes fixadas); macrocircuitos (1991) e AAGP.
-%   [C] IBGE (2018; 2.ª ed. 2019), "Reajustamento da Rede Altimétrica com Números Geopotenciais"
-%       e notícias de 30/07/2018 e 30/09/2019: gravidade real em todas as RRNN; até 2011 só
-%       correção com gravidade teórica; g entre 9,764 e 9,834 m/s2 (faixa da Terra toda).
-%   [D] Siqueira, Lima, Luz (2018), SIRGAS Boletín 23: > 100 mil pontos gravimétricos (IBGE e BNDG),
-%       Geogrid_7c, modelos EIGEN-6C4 e GOCO05c.
-%   [E] IBGE, "Esclarecimento sobre a relação entre o Datum Vertical do SGB (Imbituba e Santana)
-%       e os níveis de redução e zeros hidrográficos no litoral brasileiro"; páginas e notas da
-%       RMPG (proposta em 1996 por UFRJ e UFPR; Coordenação de Geodésia desde 2001; seis estações;
-%       série jul/2001-dez/2024; dados meteorológicos desde 1/4/2022); Manual Técnico n.o 11 (CGEM,
-%       2010).
-%   [F] Revista Brasileira de Geografia (1957) e textos do IBGE: Torres (fev/1919 a fev/1920; rede
-%       ligada em dez/1946; substituído por Imbituba em 1958 com > 30 000 km); Imbituba (obs.
-%       1949-1957); Santana (1957-58; alturas do Amapá em 1980-81); estuário do Amazonas e Marajó
-%       não atravessados por nivelamento de alta precisão.
-%   [G] Da Silva e De Freitas (2017) e tese da UFPR (2017): Imbituba, séries PSMSL 1948-1968,
-%       tendência do NMM +2,24 +/- 0,4 mm/ano, componente vertical -3,02 mm/ano.
-%   [H] Jaramillo, Freitas, Luz (2019), Bol. Ciênc. Geod. 25(1): 45 a 140 cm entre os segmentos;
-%       Freitas et al. (2013) e Bol. Ciênc. Geod. (2016): ~1,3 m (GOCE GO_CONS_SPW_R4); ~330 km
-%       entre as redes.
-%   [I] SIRGAS (sirgas.ipgh.org): GT III criado em 1997 (assembleia da IAG, Rio), consolidado em
-%       Cartagena (2001), IHRF desde a Resolução n.o 1 da IAG (2015); W0 = 62 636 853,4 m2/s2;
-%       Sánchez e Sideris (2017); NOAA (época de datum de 19 anos).
-%   [J] Resolução PR n.o 22/1983 do IBGE, COMO CITADA em artigos (UFPE, UFPR, RBGeo): 3 mm raiz(K)
-%       por seção (um trabalho cita 2 mm raiz(K)); o texto da norma NÃO foi lido.
-%   [K] Apresentações do IBGE: 1992, 43 079 RRNN e ~230 000 km; 2011, ~370 000 km.
-%   Neste repositório: geoide_e_alturas.tex, quase_geoide.tex (REALT: 94 % e 76 %), gravimetria.tex.
-%   Números derivados (marés, ciclo nodal, nivelamento, rede de 4 nós, C e H*): sgb_altimetria_numeros.py.
+% Fontes primárias consultadas em 2026-10-21 (PDFs lidos, não apenas resumos de busca):
+% IBGE (1983), R.PR 22/1983, Quadro VI, p. 30: seção 3 mm raiz(K), linha 4 mm raiz(K),
+% circuito 0,5 mm/km, erro-padrão da linha após ajuste 2 mm raiz(K).
+% IBGE (2011), Ajustamento simultâneo da RAAP: pp. 2, 8, 10-12.
+% IBGE (2019), REALT-2018, 2.a ed.: p. 13 (data), pp. 35-36 (contagens e resíduos),
+% pp. 40-44 (linhas individuais e Amapá). 66 882 RRNN = bloco principal, não total nacional.
+% Siqueira, Lima e Luz (2018), SIRGAS, slides 3-4, 9, 20-21, 31-36.
+% SIRGAS GT III: sistema vertical, IHRS e densificação regional do IHRF.
+% Referências completas, páginas, alcance da revisão e ressalvas: sgb_altimetria_fontes.md.
+% As estimativas de estudos sobre NMM, subsidência e diferença entre data permanecem
+% qualificadas. A extrapolação de tendência até 2026 é ilustrativa.
 
 \newif\ifEN
 \ifdefined\aulaEN \ENtrue \fi
@@ -178,6 +150,7 @@
 \newcommand{\gr}{\ensuremath{{}^{\circ}}}
 \newcommand{\ud}[1]{\ensuremath{\,\mathrm{#1}}\xspace}
 \newcommand{\geopu}{\ensuremath{\,\mathrm{m^2/s^2}}\xspace}
+\newcommand{\fonteslide}[1]{\par\smallskip{\tiny\color{mStoneMid}#1}}
 
 % ---- coordenadas das figuras: sgb_altimetria_numeros.py --figuras (série sintética: ilustrativa) ----
 \newcommand{\mareDia}[1]{\draw[#1] plot[smooth] coordinates {(0.00,1.00) (0.07,1.16) (0.15,1.25) (0.22,1.27) (0.30,1.21) (0.38,1.09) (0.45,0.91) (0.53,0.68) (0.60,0.42) (0.67,0.15) (0.75,-0.12) (0.82,-0.38) (0.90,-0.59) (0.97,-0.76) (1.05,-0.87) (1.12,-0.91) (1.20,-0.89) (1.27,-0.80) (1.35,-0.65) (1.43,-0.46) (1.50,-0.24) (1.57,0.00) (1.65,0.24) (1.72,0.47) (1.80,0.66) (1.88,0.80) (1.95,0.89) (2.02,0.91) (2.10,0.87) (2.17,0.76) (2.25,0.60) (2.32,0.38) (2.40,0.13) (2.48,-0.15) (2.55,-0.42) (2.62,-0.68) (2.70,-0.91) (2.77,-1.09) (2.85,-1.22) (2.92,-1.27) (3.00,-1.26) (3.07,-1.17) (3.15,-1.01) (3.23,-0.79) (3.30,-0.53) (3.38,-0.23) (3.45,0.08) (3.52,0.38) (3.60,0.67) (3.67,0.92) (3.75,1.11) (3.82,1.25) (3.90,1.31) (3.97,1.30) (4.05,1.21) (4.12,1.06) (4.20,0.86) (4.27,0.61) (4.35,0.34) (4.42,0.05) (4.50,-0.22) (4.58,-0.47) (4.65,-0.68) (4.72,-0.84) (4.80,-0.93) (4.88,-0.96) (4.95,-0.92) (5.02,-0.82) (5.10,-0.66) (5.17,-0.46) (5.25,-0.23) (5.33,0.02) (5.40,0.26) (5.47,0.47) (5.55,0.66) (5.62,0.79) (5.70,0.86) (5.77,0.87) (5.85,0.81) (5.92,0.69) (6.00,0.52) (6.08,0.29) (6.15,0.04) (6.22,-0.22) (6.30,-0.49) (6.38,-0.73) (6.45,-0.94) (6.52,-1.10) (6.60,-1.20) (6.67,-1.23) (6.75,-1.18) (6.83,-1.07) (6.90,-0.89) (6.97,-0.65) (7.05,-0.38) (7.12,-0.07) (7.20,0.24)};}
@@ -1046,13 +1019,13 @@ the ellipsoid}}
     \fi
     \ifnum#1>3
       \fill[corTempo!30] ({1958-1915},-0.1) rectangle ({1959.5-1915},2.2);
-      \node[corTempo, above right, font=\tiny] at ({1958.0-1915},2.2) {\tr{troca de zero: 1958--59}{change of zero: 1958--59}};
+      \node[corTempo, above right, font=\tiny] at ({1958.0-1915},2.2) {\tr{1958 / 1959: datas nos relatórios}{1958 / 1959: report dates}};
     \fi
     \ifnum#1>4
       \fill[corSist!75] ({1957-1915},1.6) rectangle ({1959-1915},2.05);
       \node[corSist, right] at ({1960-1915},1.83) {Santana (1957--58)};
-      \draw[corSist, thick, dashed] ({1980.5-1915},0) -- ({1980.5-1915},2.2);
-      \node[corSist, above, font=\tiny] at ({1980.5-1915},2.2) {\tr{1980--81: alturas do Amapá}{1980--81: Amapá heights}};
+      \draw[corSist, thick, dashed] ({1980-1915},0) -- ({1980-1915},2.2);
+      \node[corSist, above, font=\tiny] at ({1980-1915},2.2) {\tr{1980: adoção de Santana}{1980: Santana adopted}};
     \fi
   \end{tikzpicture}}
 
@@ -1161,29 +1134,30 @@ the ellipsoid}}
   \faixaZeros{3}
 \end{frame}
 
-\begin{frame}{\tr{A troca de zero (1958--59)}{Changing the zero (1958--59)}}
+\begin{frame}{\tr{Torres e Imbituba: duas datas documentadas}{Torres and Imbituba: two documented dates}}
   \begin{columns}[T]
     \begin{column}{0.54\textwidth}
       \footnotesize
-      \tr{Em \bnum{1958--59}, o datum de \textbf{Imbituba} substitui o de Torres. A rede já
-      tinha \bnum{mais de \num{30000}\,km} de linhas de nivelamento.}{In \bnum{1958--59}, the
-      \textbf{Imbituba} datum replaces Torres'. The network already had \bnum{more than
-      \num{30000}\,km} of leveling lines.}
-      \medskip
-
-      \tr{Os ajustamentos de \num{1948} e \num{1952} foram no datum de Torres; os seis de
-      \num{1959} a \num{1975}, no de Imbituba.}{The adjustments of \num{1948} and \num{1952}
-      were on the Torres datum; the six from \num{1959} to \num{1975}, on the Imbituba
-      one.}
+      \tr{O relatório do \bnum{IBGE de 2011}, p. 8, situa a substituição de Torres por
+      Imbituba em \bnum{1958}, com cerca de \num{30000}\,km de linhas.}{
+      The \bnum{2011 IBGE report}, p. 8, dates the replacement of Torres by Imbituba
+      to \bnum{1958}, with about \num{30000}\,km of lines.}
+      \par\medskip
+      \tr{O relatório do \bnum{REALT, 2.ª ed. (2019)}, p. 13, descreve a adoção
+      de Imbituba em \bnum{1959}, quando terminou o terceiro ajustamento.
+      Os ajustes de 1948 e 1952 usaram Torres; a partir de 1959, Imbituba.}{
+      The \bnum{REALT report, 2nd ed. (2019)}, p. 13, describes Imbituba's adoption
+      in \bnum{1959}, when the third adjustment ended. The 1948 and 1952 adjustments
+      used Torres; those from 1959 onward used Imbituba.}
     \end{column}
     \begin{column}{0.42\textwidth}
-      \begin{regra}[title={\tr{Trocar de zero é somar um número}{Changing the zero is adding a
-        number}}]
-        \small\tr{Se a rede é coerente, todas as altitudes mudam do \emph{mesmo valor}: a
-        rede inteira ``desliza'' para cima ou para baixo, como a régua do início da
-        aula.}{If the network is consistent, all heights change by the \emph{same value}: the
-        whole network ``slides'' up or down, like the ruler at the start of the class.}
-      \end{regra}
+      \begin{cuidado}[title={\tr{Uma ressalva histórica}{A historical qualification}}]
+        \footnotesize
+        \tr{As duas publicações oficiais dão anos distintos. A cronologia registra
+        ambos, sem supor que descrevam exatamente o mesmo ato administrativo.}{
+        The two official publications give different years. The timeline records both
+        without assuming they describe exactly the same administrative act.}
+      \end{cuidado}
     \end{column}
   \end{columns}
   \vfill
@@ -1224,10 +1198,12 @@ the ellipsoid}}
 
       \tr{Por isso a pequena rede do \bnum{Amapá} nunca foi ligada à do resto do país. Ela
       ganhou um \bnum{zero próprio}: o nível médio do mar no \textbf{porto de Santana}, de
-      \bnum{1957--58}, usado para estabelecer as alturas em \bnum{1980--81}.}{That is why the
-      small \bnum{Amapá} network was never tied to that of the rest of the country. It got its
-      \bnum{own zero}: the mean sea level at the \textbf{port of Santana}, from
-      \bnum{1957--58}, used to establish the heights in \bnum{1980--81}.}
+      \bnum{1957--58}, adotado em \bnum{1980}. As RRNN antigas foram implantadas
+      em \bnum{1980--81}.}{That is why the small \bnum{Amapá} network was never tied to
+      that of the rest of the country. It got its \bnum{own zero}: mean sea level at the
+      \textbf{port of Santana} in \bnum{1957--58}, adopted in \bnum{1980}.
+      The old benchmarks were established in \bnum{1980--81}.}
+      \fonteslide{IBGE (2019), \tr{pp. 13 e 44}{pp. 13 and 44}.}
       \medskip
 
       {\scriptsize\tr{As RRNN mais próximas das duas redes ficam a cerca de \num{330}\,km.}{The
@@ -1270,15 +1246,15 @@ the ellipsoid}}
         \tr{RN do datum}{Datum RN} & \textbf{4X} & \textbf{9329T} \\
         \tr{Onde vale}{Where it applies} & \tr{quase todo o país}{almost the whole country} &
         \tr{o Amapá}{Amapá} \\
-        \tr{Adotado}{Adopted} & 1958--59 & 1980--81 \\
+        \tr{Adotado}{Adopted} & 1958 / 1959\textsuperscript{a} & 1980 \\
         \bottomrule
       \end{tabular}
       \bigskip
 
-      \footnotesize\tr{As altitudes do país apoiam-se em \bnum{dois valores de nível médio do
-      mar}. Não há nivelamento entre as duas redes; como os dois zeros se relacionam é assunto
-      da Aula 4.}{The country's heights rest on \bnum{two values of mean sea level}. There is no
-      leveling between the two networks; how the two zeros relate is the subject of Class 4.}
+      \footnotesize\tr{\textsuperscript{a}IBGE (2011), p. 8: 1958; IBGE (2019), p. 13: 1959.
+      As altitudes apoiam-se em dois valores de NMM; a relação entre eles volta na Aula 4.}{
+      \textsuperscript{a}IBGE (2011), p. 8: 1958; IBGE (2019), p. 13: 1959.
+      The heights rest on two MSL values; their relation returns in Class 4.}
     \end{column}
   \end{columns}
 \end{frame}
@@ -1474,10 +1450,11 @@ not change}}
     \end{column}
     \begin{column}{0.42\textwidth}
       \small
-      \tr{O datum foi congelado na janela de 1949--57. Desde então o nível do mar \bnum{subiu}
-      na região: cerca de \bnum{\num{16}\,cm} até hoje, pela taxa do estudo.}{The datum was
-      frozen at the 1949--57 window. Since then the sea level has \bnum{risen} in the region:
-      about \bnum{\num{16}\,cm} to date, by the rate in the study.}
+      \tr{O datum usa a janela de 1949--57. Se a taxa do estudo fosse constante,
+      a projeção até 2026 seria de cerca de \bnum{\num{16}\,cm}.
+      É uma extrapolação ilustrativa.}{The datum uses the 1949--57 window. If the study's
+      rate were constant, the projection to 2026 would be about \bnum{\num{16}\,cm}.
+      This is an illustrative extrapolation.}
       \medskip
 
       \tr{A \textbf{altitude de uma RN} não muda por isso: ela é ``tantos metros acima do
@@ -1949,8 +1926,8 @@ not change}}
       \end{tabular}
       \smallskip
 
-      {\footnotesize\tr{Seção de $K=\num{3.2}$\,km: tolerância $3\sqrt{K}=\num{5.4}$\,mm. Aceita.}{Section
-      with $K=\num{3.2}$\,km: tolerance $3\sqrt{K}=\num{5.4}$\,mm. Accepted.}}
+      {\footnotesize\tr{Seção de $K=\num{2.8}$\,km: tolerância $3\sqrt{K}=\num{5.0}$\,mm. Aceita.}{Section
+      with $K=\num{2.8}$\,km: tolerance $3\sqrt{K}=\num{5.0}$\,mm. Accepted.}}
     \end{column}
     \begin{column}{0.46\textwidth}
       \begin{ideia}[title={\tr{Para que serve}{What it is for}}]
@@ -2272,45 +2249,50 @@ distance}}
 
 \begin{frame}{\tr{Tolerância: quando refazer uma seção}{Tolerance: when to redo a section}}
   \begin{columns}[T]
-    \begin{column}{0.52\textwidth}
+    \begin{column}{0.49\textwidth}
       \small
-      \tr{Antes de aceitar uma seção, compara-se a discrepância entre ida e volta com um
-      limite que \bnum{cresce com a raiz} do comprimento:}{Before accepting a section, the
-      discrepancy between forward and back is compared with a limit that \bnum{grows with the
-      square root} of the length:}
+      \tr{Uma seção liga duas RRNN. Os desníveis de ida (1) e volta (2) têm
+      sinais opostos:}{A section joins two benchmarks. Forward (1) and backward (2)
+      height differences have opposite signs:}
       \[
-        |d|\le 3\,\mathrm{mm}\sqrt{K}
+        |d|=|\Delta h_1+\Delta h_2|
+        \le 3\,\mathrm{mm}\sqrt K
       \]
-      \renewcommand{\arraystretch}{1.3}
+      \footnotesize
+      \tr{$K$ em km, contado uma vez. Seções de alta precisão fundamental: até 3 km.}{
+      $K$ is the one-way length in km. Fundamental high-precision sections: at most 3 km.}
+      \par\medskip
       \begin{tabular}{@{}rr@{}}
         \toprule
-        $K$ (km) & \tr{limite}{limit} \\
+        $K$ (km) & \tr{limite de discrepância}{discrepancy limit}\\
         \midrule
-        \num{4} & \num{6.0}\,mm \\
-        \num{16} & \num{12.0}\,mm \\
-        \num{39} & \num{18.7}\,mm \\
-        \num{100} & \num{30.0}\,mm \\
+        \num{0.25} & \num{1.5}\,mm\\
+        \num{1} & \num{3.0}\,mm\\
+        \num{2} & \num{4.2}\,mm\\
+        \num{3} & \num{5.2}\,mm\\
         \bottomrule
       \end{tabular}
     \end{column}
-    \begin{column}{0.44\textwidth}
-      \begin{ideia}[title={\tr{O que é, e o que não é}{What it is, and what it is not}}]
-        \footnotesize\tr{A tolerância \emph{não} é o erro esperado: é um limite \emph{acima do
-        qual} a seção é refeita. O erro típico é bem menor.}{The tolerance is \emph{not} the
-        expected error: it is a limit \emph{above which} the section is redone. The typical
-        error is much smaller.}
+    \begin{column}{0.47\textwidth}
+      \begin{ideia}[title={\tr{O erro-padrão após o ajuste}{Standard error after adjustment}}]
+        \footnotesize
+        \tr{O valor \bnum{$2\,\mathrm{mm}\sqrt K$} é o erro-padrão máximo de uma
+        \emph{linha após o ajustamento}. Ele avalia outra grandeza.}{The value
+        \bnum{$2\,\mathrm{mm}\sqrt K$} is the maximum standard error of an
+        \emph{adjusted line}. It evaluates a different quantity.}
       \end{ideia}
-      \medskip
-      \begin{cuidado}[title={\tr{A conferir}{To check}}]
-        \footnotesize\tr{O valor \num{3}\,mm$\sqrt{K}$ é o que artigos citam para a Resolução
-        PR 22/1983 do IBGE (alta precisão, por seção); outro trabalho fala em
-        \num{2}\,mm$\sqrt{K}$. \emph{Confira no texto da norma} antes de usar.}{The value
-        \num{3}\,mm$\sqrt{K}$ is what papers cite for IBGE's Resolution PR 22/1983 (high
-        precision, per section); another work mentions \num{2}\,mm$\sqrt{K}$. \emph{Check the
-        text of the standard} before using it.}
+      \par\medskip
+      \begin{cuidado}[title={\tr{Linha e circuito}{Lines and circuits}}]
+        \footnotesize
+        \tr{Discrepância de ida/volta de uma \bnum{linha}: $4\,\mathrm{mm}\sqrt K$.
+        Num \bnum{circuito}, a discrepância acumulada dividida pelo perímetro
+        deve ser no máximo \num{0.5}\,mm/km.}{Forward/backward discrepancy of a
+        \bnum{line}: $4\,\mathrm{mm}\sqrt K$. For a \bnum{circuit}, accumulated
+        discrepancy divided by perimeter must not exceed \num{0.5}\,mm/km.}
       \end{cuidado}
     \end{column}
   \end{columns}
+  \fonteslide{IBGE (1983), R.PR 22/1983, \tr{Quadro VI, itens 3.1--3.3 e 4, p. 30}{Table VI, items 3.1--3.3 and 4, p. 30}.}
 \end{frame}
 
 \begin{frame}{\tr{Sua vez}{Your turn}}
@@ -2319,9 +2301,9 @@ distance}}
       \begin{regra}[title={\tr{Aceitar ou refazer?}{Accept or redo?}}]
         \small
         \begin{enumerate}
-          \item[(a)] \tr{Uma seção de $K=\num{5}$\,km deu ida $+\num{8.912}$\,m e volta
+          \item[(a)] \tr{Uma seção de $K=\num{2}$\,km deu ida $+\num{8.912}$\,m e volta
                 $-\num{8.904}$\,m. Qual a discrepância? Passa na tolerância
-                $3\sqrt{K}$?}{A section of $K=\num{5}$\,km gave forward $+\num{8.912}$\,m and
+                $3\sqrt{K}$?}{A section of $K=\num{2}$\,km gave forward $+\num{8.912}$\,m and
                 back $-\num{8.904}$\,m. What is the discrepancy? Does it pass the
                 $3\sqrt{K}$ tolerance?}
           \item[(b)] \tr{Numa linha de \num{2000}\,km, qual o erro típico aleatório
@@ -2336,8 +2318,8 @@ distance}}
       \onslide<2->{
       \begin{ideia}[title={\tr{Respostas}{Answers}}]
         \small\raggedright
-        (a) $|\num{8.912}-\num{8.904}|=\bnum{\num{8}\,mm}$; $3\sqrt{5}=\num{6.7}$\,mm.
-        \tr{$8>6{,}7$: \bnum{refazer} a seção.}{$8>6.7$: \bnum{redo} the section.}
+        (a) $|\num{8.912}-\num{8.904}|=\bnum{\num{8}\,mm}$; $3\sqrt{2}=\num{4.2}$\,mm.
+        \tr{$8>4{,}2$: \bnum{refazer} a seção.}{$8>4.2$: \bnum{redo} the section.}
         \medskip
 
         (b) $\sqrt{2000}=\num{44.7}$\,mm; \ $\num{0.1}\times2000=\num{200}$\,mm; \
@@ -2500,17 +2482,20 @@ altitude}}
     \end{column}
     \begin{column}{0.42\textwidth}
       \footnotesize
-      \tr{Ao voltar ao ponto de partida, a soma dos desníveis deveria ser
-      \bnum{zero}.}{Go around and return to the starting point: the sum of the height
-      differences should be \bnum{zero}.}
+      \tr{Neste exemplo fictício, os desníveis já corrigidos deveriam somar
+      \bnum{zero}.}{In this fictitious example, the corrected height differences
+      should sum to \bnum{zero}.}
       \medskip
 
       \tr{Aqui: $w=\sum\Delta h=\bnum{+\num{6.0}\,mm}$, perímetro $K=\num{39}$\,km.}{Here:
       $w=\sum\Delta h=\bnum{+\num{6.0}\,mm}$, perimeter $K=\num{39}$\,km.}
       \smallskip
 
-      \tr{Limite $3\sqrt{K}=\num{18.7}$\,mm: \bnum{passa}. E $w/\sqrt{K}=\num{0.96}$\,mm$/\sqrt{\text{km}}$.}{Limit
-      $3\sqrt{K}=\num{18.7}$\,mm: \bnum{passes}. And $w/\sqrt{K}=\num{0.96}$\,mm$/\sqrt{\text{km}}$.}
+      \tr{Com as correções aplicadas: limite $\num{0.5}K=\num{19.5}$\,mm.
+      $|w|/K=\num{0.154}$\,mm/km: \bnum{passa no controle de circuito}.}{With the corrections
+      applied: limit $\num{0.5}K=\num{19.5}$\,mm. $|w|/K=\num{0.154}$\,mm/km:
+      \bnum{passes the circuit check}.}
+      \fonteslide{IBGE (1983), VI.3.3, p. 30.}
       \medskip
 
       \begin{cuidado}[title={\tr{Necessário, não suficiente}{Necessary, not sufficient}}]
@@ -2524,47 +2509,43 @@ altitude}}
   \end{columns}
 \end{frame}
 
-\begin{frame}{\tr{Os números da rede}{The numbers of the network}}
+\begin{frame}{\tr{Os números da rede e seus universos}{Network counts and their scope}}
   \begin{columns}[T]
-    \begin{column}{0.55\textwidth}
-      \centering
-      \begin{tikzpicture}[x=1cm,y=1cm,font=\scriptsize]
-        \fill[corTempo!70] (0,0) rectangle ({0.07*43.079},-0.55);
-        \fill[corFrame!70] (0,-0.9) rectangle ({0.07*69.59},-1.45);
-        \fill[corSist!70] (0,-1.8) rectangle ({0.07*71.475},-2.35);
-        \node[left] at (0,-0.28) {1992};
-        \node[left] at (0,-1.18) {2011};
-        \node[left] at (0,-2.08) {\tr{hoje}{today}};
-        \node[right] at ({0.07*43.079},-0.28) {\num{43079}};
-        \node[right] at ({0.07*69.59},-1.18) {\num{69590}};
-        \node[right] at ({0.07*71.475},-2.08) {\num{71475}};
-        \draw[thick] (0,0.1) -- (0,-2.5);
-        \node[below] at (2.5,-2.55) {\tr{referências de nível (RRNN)}{benchmarks (RRNN)}};
-      \end{tikzpicture}
-    \end{column}
-    \begin{column}{0.41\textwidth}
-      \footnotesize
-      \renewcommand{\arraystretch}{1.3}
-      \begin{tabular}{@{}lL{3.9cm}@{}}
+    \begin{column}{0.52\textwidth}
+      \small
+      \renewcommand{\arraystretch}{1.5}
+      \begin{tabular}{@{}lr@{}}
         \toprule
-        1945 & \tr{começa o nivelamento}{leveling begins} \\
-        1958--59 & \tr{$>\num{30000}$\,km de linhas}{$>\num{30000}$\,km of lines} \\
-        1992 & \tr{$\approx\num{230000}$\,km (ida e volta)}{$\approx\num{230000}$\,km (forward and back)} \\
-        2011 & \tr{$>\num{74000}$ observações; $\approx\num{370000}$\,km}{$>\num{74000}$ observations; $\approx\num{370000}$\,km} \\
+        \tr{Conjunto}{Set} & \tr{RRNN}{Benchmarks}\\
+        \midrule
+        AAGP (1992) & \num{43079}\\
+        \tr{Ajuste de 2011}{2011 adjustment} & \num{69590}\\
+        \tr{REALT-2018, principal}{REALT-2018, principal} & \num{66882}\\
         \bottomrule
       \end{tabular}
-      \medskip
-
-      \tr{De 1992 a 2011 a rede cresceu \bnum{\num{1.6}} vez. Os \num{370000}\,km de 2011 dão
-      \bnum{\num{9.2}} voltas ao redor da Terra.}{From 1992 to 2011 the network grew by a factor
-      of \bnum{\num{1.6}}. The \num{370000}\,km of 2011 make \bnum{\num{9.2}} turns around the
-      Earth.}
-      \smallskip
-
-      {\tiny\tr{Números do IBGE, tirados de resumos de busca (ver apêndice A8).}{IBGE numbers, taken
-      from search summaries (see appendix A8).}}
+      \par\medskip
+      \footnotesize\tr{Bloco principal: \num{70426} seções; \num{62782} resíduos
+      em seções formando circuitos.}{Principal block: \num{70426} sections;
+      \num{62782} residuals in circuit-forming sections.}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{cuidado}[title={\tr{Qual é o conjunto contado?}{Which set is being counted?}}]
+        \footnotesize
+        \tr{\num{66882} é o \bnum{bloco principal}, vinculado a Imbituba.
+        O relatório trata separadamente as linhas rejeitadas desse bloco e a rede
+        do Amapá. Esse número não é um total nacional de RRNN.}{
+        \num{66882} counts the \bnum{principal block}, tied to Imbituba.
+        The report treats lines excluded from that block and the Amapá network
+        separately. This is not a national benchmark total.}
+      \end{cuidado}
+      \par\medskip
+      \footnotesize\tr{Os três conjuntos têm abrangências diferentes. Sua comparação
+      direta não mede crescimento nem perda de marcos.}{
+      The three sets have different scopes. A direct comparison does not measure
+      network growth or benchmark loss.}
     \end{column}
   \end{columns}
+  \fonteslide{IBGE (2011), \tr{pp. 2 e 12}{pp. 2 and 12}; IBGE (2019), \tr{pp. 35 e 40--44}{pp. 35 and 40--44}.}
 \end{frame}
 
 \begin{frame}{\tr{Sua vez}{Your turn}}
@@ -2573,13 +2554,15 @@ altitude}}
       \begin{regra}[title={\tr{Fechamento e voltas}{Misclosure and turns}}]
         \small
         \begin{enumerate}
-          \item[(a)] \tr{Um circuito de $K=\num{100}$\,km fechou em $w=\num{21}$\,mm. Passa
-                em $3\sqrt{K}$? Quanto vale $w/\sqrt{K}$?}{A loop of $K=\num{100}$\,km closed at
-                $w=\num{21}$\,mm. Does it pass $3\sqrt{K}$? What is $w/\sqrt{K}$?}
-          \item[(b)] \tr{A rede de 1992 tinha \num{230000}\,km de nivelamento; a de 2011,
-                \num{370000}\,km. Quantas voltas à Terra (\num{40075}\,km) a mais?}{The 1992
-                network had \num{230000}\,km of leveling; that of 2011, \num{370000}\,km. How
-                many more turns around the Earth (\num{40075}\,km)?}
+          \item[(a)] \tr{Um circuito de $K=\num{100}$\,km tem fechamento corrigido
+                $w=\num{21}$\,mm. Passa no controle de \num{0.5}\,mm/km?
+                Quanto vale $|w|/K$?}{A \num{100}\,km circuit has corrected misclosure
+                $w=\num{21}$\,mm. Does it pass the \num{0.5}\,mm/km check?
+                What is $|w|/K$?}
+          \item[(b)] \tr{Compare dois comprimentos hipotéticos: \num{230000} e
+                \num{370000}\,km. Quantas voltas à Terra (\num{40075}\,km) a mais?}{Compare
+                two hypothetical lengths: \num{230000} and \num{370000}\,km. How many more
+                turns around the Earth (\num{40075}\,km)?}
         \end{enumerate}
       \end{regra}
     \end{column}
@@ -2587,17 +2570,17 @@ altitude}}
       \onslide<2->{
       \begin{ideia}[title={\tr{Respostas}{Answers}}]
         \small\raggedright
-        (a) $3\sqrt{\num{100}}=\num{30}$\,mm: \tr{\bnum{passa}}{\bnum{passes}} ($21<30$);
-        $w/\sqrt{K}=\num{21}/\num{10}=\bnum{\num{2.1}}$\,mm$/\sqrt{\text{km}}$.
+        (a) $\num{0.5}\times\num{100}=\num{50}$\,mm:
+        \tr{\bnum{passa}}{\bnum{passes}} ($21<50$);
+        $|w|/K=\num{21}/\num{100}=\bnum{\num{0.21}}$\,mm/km.
         \medskip
 
         (b) $\dfrac{\num{370000}-\num{230000}}{\num{40075}}\approx\bnum{\num{3.5}}$
         \tr{voltas.}{turns.}
         \medskip
 
-        \tr{Passar não é ser ótimo: $\num{2.1}$ é o \emph{dobro} do $\eta$ de $\num{1}$
-        que usamos antes.}{Passing is not being great: $\num{2.1}$ is \emph{twice} the $\eta$ of
-        $\num{1}$ that we used before.}
+        \tr{Cumprir o limite não prova ausência de viés sistemático.}{Meeting the limit
+        does not prove that systematic bias is absent.}
       \end{ideia}
       }
     \end{column}
@@ -2680,12 +2663,12 @@ zero}}
       \end{tabular}
       \medskip
 
-      \begin{cuidado}[title={\tr{Do tamanho da tolerância}{As big as the tolerance}}]
-        \scriptsize\tr{Num circuito de \num{100}\,km, a tolerância é \num{30}\,mm. Uma serra
-        de \num{1000}\,m e \num{20}\,mGal já come \emph{dois terços} dela --- \emph{sem
-        nenhum erro de medida}.}{On a \num{100}\,km loop, the tolerance is \num{30}\,mm. A
-        \num{1000}\,m ridge and \num{20}\,mGal already eat \emph{two thirds} of it ---
-        \emph{with no measurement error at all}.}
+      \begin{cuidado}[title={\tr{Correções e controle}{Corrections and checks}}]
+        \scriptsize\tr{O efeito de \num{20.4}\,mm antecede correções. Num circuito de
+        \num{100}\,km, o limite após correções é \num{50}\,mm ($\num{0.5}$\,mm/km).}{
+        The \num{20.4}\,mm effect precedes corrections. For \num{100}\,km, the
+        corrected-circuit limit is \num{50}\,mm ($\num{0.5}$\,mm/km).}
+        \fonteslide{IBGE (1983), pp. 28--30, VI.3.3.}
         \smallskip
 
         \tr{(1\,mGal $=10^{-5}$\,m/s$^{2}$)}{(1\,mGal $=10^{-5}$\,m/s$^{2}$)}
@@ -2784,10 +2767,11 @@ zero}}
           If errors are random, the total grows as $\eta\sqrt{K}$; if systematic, as
           $\delta K$ --- and that one wins over long distances.}
     \item \textbf{\tr{Como é a rede de RRNN?}{What does the benchmark network look like?}}
-          \tr{Linhas ao longo das estradas, formando circuitos e macrocircuitos: cerca de
-          \bnum{\num{71000}} RRNN hoje, e \num{370000}\,km nivelados até 2011.}{Lines along
-          roads, forming loops and macro-loops: about \bnum{\num{71000}} benchmarks today, and
-          \num{370000}\,km leveled up to 2011.}
+          \tr{Linhas ao longo das estradas, formando circuitos e macrocircuitos.
+          O bloco principal do REALT-2018 tem \bnum{\num{66882}} RRNN; há outros conjuntos
+          tratados separadamente.}{Lines along roads, forming loops and macro-loops.
+          The REALT-2018 principal block has \bnum{\num{66882}} benchmarks; other sets
+          are treated separately.}
     \item \textbf{\tr{Por que um circuito sem erro não fecha?}{Why does an error-free loop not
           close?}} \tr{Porque o nível mede $\Delta n$ e as superfícies de nível não são
           paralelas. O que fecha é o número geopotencial, $\sum g\,\Delta n$.}{Because the level
@@ -2807,8 +2791,8 @@ zero}}
                 lance.}{The zero arrives by \bnum{leveling}: $\Delta h=$ back $-$ fore, setup by
                 setup.}
           \item \tr{Erro aleatório: $\eta\sqrt{K}$. Sistemático: $\delta K$. Tolerância de seção:
-                $3\sqrt{K}$ mm (\emph{a conferir}).}{Random error: $\eta\sqrt{K}$. Systematic:
-                $\delta K$. Section tolerance: $3\sqrt{K}$ mm (\emph{to check}).}
+                $3\sqrt{K}$ mm (IBGE, 1983, p. 30).}{Random error: $\eta\sqrt{K}$. Systematic:
+                $\delta K$. Section tolerance: $3\sqrt{K}$ mm (IBGE, 1983, p. 30).}
           \item \tr{A rede é de linhas e circuitos; fechar bem é \bnum{necessário, não
                 suficiente}.}{The network is made of lines and loops; closing well is
                 \bnum{necessary, not sufficient}.}
@@ -3271,7 +3255,7 @@ zero}}
     \foreach \a in {1948,1952} { \fill[corErro] ({\a-1945},0) circle (0.1); }
     \foreach \a in {1959,1962,1963,1966,1970,1975} { \fill[corFrame] ({\a-1945},0) circle (0.1); }
     \draw[decorate, decoration={brace, amplitude=4pt}] ({1948-1945},0.4) -- ({1975-1945},0.4);
-    \node[above, align=center] at ({1961.5-1945},0.7) {\tr{\textbf{8 ajustamentos parciais}}{\textbf{8 partial adjustments}}\\\tr{(1945--75)}{(1945--75)}};
+    \node[above, align=center] at ({1961.5-1945},0.7) {\tr{\textbf{8 ajustamentos}}{\textbf{8 adjustments}}\\\tr{(1945--75)}{(1945--75)}};
     \node[corErro, below, font=\tiny] at ({1950-1945},-0.65) {\tr{datum de Torres}{Torres datum}};
     \node[corFrame, below, font=\tiny] at ({1967-1945},-0.65) {\tr{datum de Imbituba}{Imbituba datum}};
     % macrocircuitos
@@ -3290,8 +3274,8 @@ zero}}
   \begin{columns}[T]
     \begin{column}{0.31\textwidth}
       \begin{cuidado}[title={\tr{Até 1975}{Up to 1975}}]
-        \footnotesize\tr{Oito ajustamentos \emph{parciais}, por blocos.}{Eight \emph{partial}
-        adjustments, by blocks.}
+        \footnotesize\tr{Oito ajustamentos; a partir do quarto, por blocos.}{Eight adjustments;
+        from the fourth onward, by blocks.}
       \end{cuidado}
     \end{column}
     \begin{column}{0.31\textwidth}
@@ -3309,7 +3293,7 @@ zero}}
   \end{columns}
 \end{frame}
 
-\begin{frame}{\tr{1945--1975: ajustamentos parciais}{1945--1975: partial adjustments}}
+\begin{frame}{\tr{1945--1975: oito ajustamentos}{1945--1975: eight adjustments}}
   \begin{columns}[T]
     \begin{column}{0.54\textwidth}
       \small
@@ -3340,8 +3324,8 @@ zero}}
         way out.}
       \end{ideia}
       \medskip
-      {\scriptsize\tr{Fonte: resumos de relatórios do IBGE (apêndice A8).}{Source: summaries of
-      IBGE reports (appendix A8).}}
+      {\scriptsize\tr{Fonte: IBGE (2011), pp. 10--12; Siqueira et al. (2018), slides 3--4.}{
+      Source: IBGE (2011), pp. 10--12; Siqueira et al. (2018), slides 3--4.}}
     \end{column}
   \end{columns}
 \end{frame}
@@ -3439,17 +3423,18 @@ simultaneous adjustment}}
       \small
       \begin{itemize}
         \setlength{\itemsep}{4pt}
-        \item \tr{Em \bnum{1991}, a rede é dividida de outro jeito: em \emph{sub-redes} iniciais
-              de \bnum{macrocircuitos}, para evitar distorções excessivas.}{In \bnum{1991}, the
-              network is divided in another way: into initial \emph{sub-networks} of
-              \bnum{macro-loops}, to avoid excessive distortions.}
+        \item \tr{O trabalho iniciado em \bnum{1988} divide a rede em \emph{sub-redes}
+              de \bnum{macrocircuitos}, para reduzir distorções.}{The work begun in
+              \bnum{1988} divides the network into \bnum{macro-loop} sub-networks
+              to reduce distortions.}
         \item \tr{O resultado é o \bnum{AAGP}, o Ajustamento Altimétrico Global Preliminar: ainda
               \emph{não simultâneo}.}{The result is the \bnum{AAGP}, the Preliminary Global
               Altimetric Adjustment: still \emph{not simultaneous}.}
-        \item \tr{Foi o último ajustamento particionado: \num{43079} RRNN, ainda sem
-              gravidade medida. (Fontes divergem entre 1992 e 1993 para o fim do trabalho.)}{It was
-              the last partitioned adjustment: \num{43079} benchmarks, still without measured
-              gravity. (Sources differ between 1992 and 1993 for the end of the work.)}
+        \item \tr{O BDG usa \bnum{01/12/1992} como data de referência de cálculo do AAGP:
+              \num{43079} RRNN. Depois vieram ajustes isolados e ramais.}{The BDG uses
+              \bnum{1 December 1992} as the AAGP calculation reference date:
+              \num{43079} benchmarks. Isolated adjustments and spurs followed.}
+              \fonteslide{IBGE (2011), pp. 11--12.}
       \end{itemize}
     \end{column}
     \begin{column}{0.42\textwidth}
@@ -3488,13 +3473,15 @@ simultaneous adjustment}}
     \end{column}
     \begin{column}{0.42\textwidth}
       \begin{regra}[title={\tr{66 anos depois}{66 years later}}]
-        \small\tr{De 1945 a 2011 são \bnum{\num{66} anos}: a primeira vez que \emph{todas} as
-        medidas da rede foram ajustadas juntas.}{From 1945 to 2011 is \bnum{\num{66} years}: the
-        first time that \emph{all} the measurements of the network were adjusted together.}
+        \small\tr{De 1945 a 2011 são \bnum{\num{66} anos}. O novo processamento retoma o
+        ajuste simultâneo após a fase particionada; os três primeiros ajustes históricos
+        também foram globais.}{From 1945 to 2011 is \bnum{\num{66} years}.
+        The new processing returns to simultaneous adjustment after the partitioned phase;
+        the first three historical adjustments were global too.}
       \end{regra}
       \medskip
-      {\scriptsize\tr{Números do relatório do IBGE (2011), conforme resumos de busca (apêndice
-      A8).}{Numbers from IBGE's report (2011), as given in search summaries (appendix A8).}}
+      {\scriptsize\tr{Fonte: IBGE (2011), apresentação, p. 2, e introdução, p. 7.}{
+      Source: IBGE (2011), presentation, p. 2, and introduction, p. 7.}}
     \end{column}
   \end{columns}
 \end{frame}
@@ -3584,9 +3571,10 @@ simultaneous adjustment}}
   \begin{columns}[T]
     \begin{column}{0.31\textwidth}
       \begin{ideia}[title={\tr{1. Gravidade real}{1. Real gravity}}]
-        \footnotesize\tr{Pela primeira vez, \bnum{valores reais de gravidade} em todas as
-        RRNN. Até 2011, só a correção com gravidade \emph{teórica}.}{For the first time,
-        \bnum{real gravity values} at all benchmarks. Up to 2011, only the correction with
+        \footnotesize\tr{A gravidade observada, complementada por \bnum{interpolação}, entra
+        no cálculo em todas as RRNN. Em 2011 usava-se a correção com gravidade
+        \emph{teórica}.}{Observed gravity, supplemented by \bnum{interpolation},
+        enters the calculation at all benchmarks. In 2011 the correction used
         \emph{theoretical} gravity.}
       \end{ideia}
     \end{column}
@@ -3637,9 +3625,9 @@ simultaneous adjustment}}
 
   \small
   \tr{\bnum{Até 2011}: $\Delta n$ $\to$ correção com gravidade teórica $\to$ ajuste de altitudes.
-  \bnum{Em 2018}: $\Delta n$ e $g$ \emph{medida} $\to$ $\Delta C$ $\to$ ajuste de $C$ $\to$
+  \bnum{Em 2018}: $\Delta n$ e $g$ observada/interpolada $\to$ $\Delta C$ $\to$ ajuste de $C$ $\to$
   $H^{*}$.}{\bnum{Up to 2011}: $\Delta n$ $\to$ correction with theoretical gravity $\to$
-  adjustment of altitudes. \bnum{In 2018}: $\Delta n$ and \emph{measured} $g$ $\to$ $\Delta C$
+  adjustment of altitudes. \bnum{In 2018}: $\Delta n$ and observed/interpolated $g$ $\to$ $\Delta C$
   $\to$ adjustment of $C$ $\to$ $H^{*}$.}
 \end{frame}
 
@@ -3654,10 +3642,12 @@ simultaneous adjustment}}
         \Delta C_{ij}=\bar g_{ij}\,\Delta n_{ij},\qquad
         \bar g_{ij}\approx\frac{g_i+g_j}{2}
       \]
-      \tr{O $g$ de cada RN vem de uma \bnum{grade} montada com \bnum{mais de \num{100000}
-      pontos} de gravimetria (IBGE e outros bancos), por interpolação.}{The $g$ of each benchmark
-      comes from a \bnum{grid} built from \bnum{more than \num{100000}} gravity points (IBGE and
-      other databases), by interpolation.}
+      \tr{Usaram-se dados de gravidade \bnum{observados e interpolados}.
+      A interpolação reuniu \bnum{mais de \num{100000} pontos} do IBGE e do BNDG,
+      com o programa Geogrid\_7c.}{Both \bnum{observed and interpolated} gravity values
+      were used. Interpolation combined \bnum{more than \num{100000} points}
+      from IBGE and BNDG using Geogrid\_7c.}
+      \fonteslide{IBGE (2019), pp. 29--32; Siqueira et al. (2018), slide 20.}
       \medskip
 
       \tr{A mesma \emph{gravimetria} que alimenta o geoide agora também alimenta a rede de
@@ -3759,48 +3749,51 @@ simultaneous adjustment}}
   \end{columns}
 \end{frame}
 
-\begin{frame}{\tr{O ajuste ficou bom?}{Did the adjustment come out well?}}
+\begin{frame}{\tr{REALT-2018: resíduos do bloco principal}{REALT-2018: principal-block residuals}}
   \begin{columns}[T]
     \begin{column}{0.54\textwidth}
       \centering
-      \begin{tikzpicture}[x=0.9cm,y=1cm,font=\scriptsize]
+      \begin{tikzpicture}[x=0.84cm,y=1cm,font=\scriptsize]
         \foreach \i/\k/\p in {0/1/92.7, 1/2/98.0, 2/3/99.1, 3/4/99.5} {
           \fill[corFrame!70] (0,{-0.8*\i}) rectangle ({0.05*\p},{-0.8*\i-0.5});
-          \node[left] at (0,{-0.8*\i-0.25}) {$\leq\k\,\mathrm{mm}\sqrt{K}$};
+          \node[left] at (0,{-0.8*\i-0.25}) {$|v|\le\k\,\mathrm{mm}\sqrt K$};
           \node[right] at ({0.05*\p},{-0.8*\i-0.25}) {\num{\p}\,\%};
         }
         \draw[thick] (0,0.1) -- (0,-3.3);
-        \node[below, text width=5.2cm, align=center] at (2.6,-3.3) {\tr{fração das correções (resíduos) dentro do limite}{share of the corrections (residuals) within the limit}};
+        \node[below, text width=5.2cm, align=center] at (2.6,-3.3)
+          {\tr{fração das seções dentro de cada intervalo simétrico}{share of sections within each symmetric interval}};
       \end{tikzpicture}
     \end{column}
     \begin{column}{0.42\textwidth}
-      \small
-      \tr{Quase todas as correções ficaram dentro de poucos $\mathrm{mm}\sqrt{K}$ --- a mesma
-      régua da Aula 2:}{Almost all corrections stayed within a few $\mathrm{mm}\sqrt{K}$ --- the
-      same ruler as in Class 2:}
-      \begin{itemize}
-        \setlength{\itemsep}{2pt}
-        \item \tr{\bnum{\num{92.7}\,\%} em até $1\,\mathrm{mm}\sqrt{K}$;}{\bnum{\num{92.7}\,\%}
-              within $1\,\mathrm{mm}\sqrt{K}$;}
-        \item \tr{só \num{0.5}\,\% passa de $4\,\mathrm{mm}\sqrt{K}$ --- cerca de \num{370}
-              seções em \num{74000}.}{only \num{0.5}\,\% exceeds $4\,\mathrm{mm}\sqrt{K}$ ---
-              about \num{370} sections out of \num{74000}.}
-      \end{itemize}
-      \medskip
-      {\scriptsize\tr{Percentuais de um relatório do IBGE, tirados de um resumo de busca; não está
-      claro se são do ajuste de 2011 ou do de 2018 (apêndice A8).}{Percentages from an IBGE
-      report, taken from a search summary; it is unclear whether they are from the 2011 or the
-      2018 adjustment (appendix A8).}}
+      \footnotesize
+      \tr{O IBGE apresenta as correções dos desníveis em função do comprimento:
+      $v/\sqrt K$, com $K$ em km. Os percentuais são do \bnum{bloco principal do
+      REALT-2018}.}{IBGE presents height-difference corrections as a function of length:
+      $v/\sqrt K$, with $K$ in km. These percentages describe the \bnum{principal block
+      of REALT-2018}.}
+      \par\medskip
+      \begin{cuidado}[title={\tr{Resultados do ajuste}{Adjustment results}}]
+        \footnotesize
+        \tr{Essas frequências avaliam a consistência das observações no modelo ajustado.
+        A aceitação em campo usa as tolerâncias de seção, linha e circuito.
+        A incerteza das altitudes exige também suas covariâncias.}{These frequencies
+        assess observation consistency in the adjusted model. Field acceptance uses
+        section, line and circuit tolerances. Height uncertainty also requires the
+        covariance information.}
+      \end{cuidado}
     \end{column}
   \end{columns}
+  \fonteslide{IBGE (2019), REALT-2018, \tr{2.ª ed., p. 36, Figura 16; Siqueira et al. (2018), slide 31}{2nd ed., p. 36, Figure 16; Siqueira et al. (2018), slide 31}.}
 \end{frame}
 
 \begin{frame}{\tr{O que mudou nas RRNN, na prática}{What changed at the benchmarks, in practice}}
   \begin{columns}[T]
     \begin{column}{0.48\textwidth}
-      \begin{regra}[title={\tr{Só trocar o tipo de altitude}{Only changing the kind of height}}]
-        \small\tr{Com os mesmos dados, \bnum{94\,\%} das RRNN mudaram entre $-15$ e $+5$\,mm.}{With
-        the same data, \bnum{94\,\%} of the benchmarks changed between $-15$ and $+5$\,mm.}
+      \begin{regra}[title={\tr{Isolar a inserção da gravidade}{Isolating gravity integration}}]
+        \small\tr{Com os mesmos dados e geometria, inserir a gravidade real produziu
+        diferenças entre $-15$ e $+5$\,mm em \bnum{94\,\%} das RRNN.}{With the same
+        data and geometry, integrating real gravity produced differences between
+        $-15$ and $+5$\,mm at \bnum{94\,\%} of benchmarks.}
       \end{regra}
     \end{column}
     \begin{column}{0.48\textwidth}
@@ -3814,15 +3807,16 @@ simultaneous adjustment}}
   \bigskip
 
   \centering\small
-  \tr{A lição, já vista na aula do quase-geoide: o \emph{tipo} de altitude muda milímetros;
-  \bnum{dados, gravidade e ajustamento} mudam decímetros.}{The lesson, already seen in the
-  quasigeoid class: the \emph{kind} of height changes millimeters; \bnum{data, gravity and
-  adjustment} change decimeters.}
+  \tr{No teste controlado do IBGE, o efeito isolado da gravidade ficou em milímetros
+  para 94\,\% das RRNN. A depuração e a geometria da rede explicam grande parte das
+  diferenças do reajustamento completo.}{In IBGE's controlled test, the isolated gravity
+  effect was millimetric at 94\,\% of benchmarks. Data cleaning and network geometry
+  explain much of the difference in the complete readjustment.}
   \smallskip
 
-  {\footnotesize\tr{Números repetidos daquela aula. Esta aula \emph{não} atribui o salto a uma
-  causa só.}{Numbers repeated from that class. This class does \emph{not} attribute the jump to a
-  single cause.}}
+  {\footnotesize\tr{Fonte: IBGE (2019), p. 37, Figura 18; p. 40, Figura 20.
+  São duas comparações diferentes.}{Source: IBGE (2019), p. 37, Figure 18;
+  p. 40, Figure 20. These are two different comparisons.}}
 \end{frame}
 
 \begin{frame}{\tr{Sua vez}{Your turn}}
@@ -3914,10 +3908,10 @@ simultaneous adjustment}}
           $1/K$, one fixed point at the datum; spreading the disagreement and giving the
           uncertainty.}
     \item \textbf{\tr{Como foram os ajustamentos de 1945 a 2011?}{How were the adjustments from
-          1945 to 2011?}} \tr{Oito parciais em \bnum{blocos} (1948--75), macrocircuitos (1991--92)
-          e o primeiro \bnum{ajuste simultâneo} (2005--11): \num{69590} RRNN, mais de \num{74000}
-          observações.}{Eight partial ones in \bnum{blocks} (1948--75), macro-loops (1991--92)
-          and the first \bnum{simultaneous adjustment} (2005--11): \num{69590} benchmarks, more
+          1945 to 2011?}} \tr{Oito ajustes, os três primeiros globais (1948--75), macrocircuitos (1991--92)
+          e a retomada do \bnum{ajuste simultâneo} (2005--11): \num{69590} RRNN, mais de \num{74000}
+          observações.}{Eight adjustments, the first three global (1948--75), macro-loops (1991--92)
+          and the return to \bnum{simultaneous adjustment} (2005--11): \num{69590} benchmarks, more
           than \num{74000} observations.}
     \item \textbf{\tr{O que o REALT-2018 mudou?}{What did REALT-2018 change?}}
           \tr{A incógnita virou o \bnum{número geopotencial}, com \bnum{gravidade real} em todas
@@ -4105,7 +4099,7 @@ simultaneous adjustment}}
     \end{column}
     \begin{column}{0.62\textwidth}
       \small
-      \tr{Seis marégrafos geodésicos do IBGE:}{Six IBGE geodetic tide gauges:}
+      \tr{Rede do IBGE na Nota Técnica 01/2024:}{IBGE network in Technical Note 01/2024:}
       \medskip
 
       \renewcommand{\arraystretch}{1.2}
@@ -4505,13 +4499,15 @@ simultaneous adjustment}}
   \begin{tikzpicture}[x=0.92cm,y=1cm,font=\scriptsize,
       ev/.style={caixa, text width=2.9cm, minimum height=1.9cm, font=\scriptsize}]
     \draw[thick, ->] (-1.2,0) -- (13.3,0);
-    \foreach \x/\a/\c/\t in {0.9/1997/corTempo/{\tr{o GT III nasce na assembleia da IAG, no Rio}{WG III is born at the IAG assembly, in Rio}},
+    % Keep \c available for Portuguese cedillas inside the timeline labels.
+    % Preserve \c para as cedilhas nos textos da linha do tempo.
+    \foreach \x/\a/\eventColor/\t in {0.9/1997/corTempo/{\tr{o GT III nasce na assembleia da IAG, no Rio}{WG III is born at the IAG assembly, in Rio}},
                             4.5/2000/corFrame/{\tr{campanha SIRGAS2000, com GPS em marégrafos}{SIRGAS2000 campaign, with GPS at tide gauges}},
                             8.1/2001/corSist/{\tr{o GT III se consolida, em Cartagena}{WG III is consolidated, in Cartagena}},
-                            11.7/2015/corMar/{\tr{IHRS (IAG): o GT III passa a construir o IHRF na região}{IHRS (IAG): WG III starts building the IHRF in the region}}} {
-      \fill[\c] (\x,0) circle (0.13);
-      \node[above=2pt, text=\c, font=\small] at (\x,0) {\textbf{\a}};
-      \node[ev, draw=\c, fill=\c!8, below=10pt] at (\x,0) {\t};
+                            11.7/2015/corMar/{\tr{IHRS (IAG): definição do sistema global}{IHRS (IAG): global system definition}}} {
+      \fill[\eventColor] (\x,0) circle (0.13);
+      \node[above=2pt, text=\eventColor, font=\small] at (\x,0) {\textbf{\a}};
+      \node[ev, draw=\eventColor, fill=\eventColor!8, below=10pt] at (\x,0) {\t};
     }
   \end{tikzpicture}
   \bigskip
@@ -4540,18 +4536,18 @@ simultaneous adjustment}}
               networks of neighbors.}
       \end{itemize}
       \smallskip
-      \tr{Cada estação deve estar \emph{ligada por nivelamento} ao marégrafo de referência, e seu
-      \bnum{número geopotencial} deve ser conhecido.}{Each station must be \emph{connected by
-      leveling} to the reference tide gauge, and its \bnum{geopotential number} must be
-      known.}
+      \tr{A componente física usa \bnum{números geopotenciais} referidos ao $W_0$ comum,
+      com uma época definida. O nivelamento e a gravimetria ajudam a ligar os datums locais.}{
+      The physical component uses \bnum{geopotential numbers} referred to a common $W_0$,
+      at a specified epoch. Leveling and gravimetry help connect the local datums.}
+      \fonteslide{SIRGAS, \href{https://sirgas.ipgh.org/en/organization/working-groups/working-group-iii/}{Working Group III}, \tr{definição e realização vertical}{vertical definition and realization}.}
     \end{column}
     \begin{column}{0.42\textwidth}
       \begin{ideia}[title={\tr{E o Brasil?}{And Brazil?}}]
         \footnotesize\tr{O \bnum{REALT-2018} foi ajustado em \emph{números geopotenciais} justamente
-        para preparar a rede ao IHRS. Imbituba e Santana são marégrafos principais. O que falta
-        é \bnum{ligar os dois datums} ao $W_0$ global.}{\bnum{REALT-2018} was adjusted in
+        para preparar a rede ao IHRS. Imbituba e Santana são marégrafos principais. A vinculação exige expressar os dois datums em relação ao $W_0$ global.}{\bnum{REALT-2018} was adjusted in
         \emph{geopotential numbers} precisely to prepare the network for the IHRS. Imbituba and
-        Santana are main tide gauges. What is missing is to \bnum{link the two datums} to the
+        Santana are main tide gauges. The connection requires expressing both datums relative to the
         global $W_0$.}
       \end{ideia}
       \medskip
@@ -4644,14 +4640,20 @@ simultaneous adjustment}}
     \end{column}
     \begin{column}{0.42\textwidth}
       \begin{ideia}[title={\tr{Um teste de campo (números inventados)}{A field test (made-up numbers)}}]
-        \footnotesize\tr{Publicado: $H_1=\num{12.345}$ e $H_2=\num{20.100}$\,m, logo
-        $\Delta H=\num{7.755}$\,m. Medido em $K=\num{3}$\,km: $\num{7.759}$\,m. Discrepância
-        $\num{4}$\,mm; tolerância $3\sqrt{3}=\num{5.2}$\,mm: \bnum{as duas RRNN são consistentes}.
-        Se desse $\num{40}$\,mm, uma delas \emph{se mexeu} ou foi mal anotada.}{Published:
-        $H_1=\num{12.345}$ and $H_2=\num{20.100}$\,m, so $\Delta H=\num{7.755}$\,m. Measured over
-        $K=\num{3}$\,km: $\num{7.759}$\,m. Discrepancy $\num{4}$\,mm; tolerance
-        $3\sqrt{3}=\num{5.2}$\,mm: \bnum{the two benchmarks are consistent}. If it came out
-        $\num{40}$\,mm, one of them \emph{moved} or was badly recorded.}
+        \footnotesize\tr{Publicado: $H_1=\num{12.345}$ e $H_2=\num{20.100}$\,m;
+        $\Delta H=\num{7.755}$\,m. Nova diferença \emph{já corrigida}:
+        $\num{7.759}$\,m; discrepância $\num{4}$\,mm.
+        Com incerteza combinada ilustrativa $\sigma_r=\num{5}$\,mm,
+        $|r|/\sigma_r=\num{0.8}$.
+        $\sigma_r$ combina a nova medição com incertezas e covariância das RRNN.
+        O limite de ida/volta de uma seção avalia outra grandeza.}{Published:
+        $H_1=\num{12.345}$ and $H_2=\num{20.100}$\,m;
+        $\Delta H=\num{7.755}$\,m. New \emph{corrected} difference:
+        $\num{7.759}$\,m; discrepancy $\num{4}$\,mm.
+        With illustrative combined uncertainty $\sigma_r=\num{5}$\,mm,
+        $|r|/\sigma_r=\num{0.8}$.
+        $\sigma_r$ combines the new measurement with benchmark uncertainties and covariance.
+        The section forward/backward limit evaluates a different quantity.}
       \end{ideia}
     \end{column}
   \end{columns}
@@ -4977,7 +4979,7 @@ simultaneous adjustment}}
         \begin{align*}
           \sigma_{\Delta H}^{2}&=\sum_i\sigma_i^{2}=\eta^{2}\sum_iK_i=\eta^{2}K\;\Rightarrow\;\sigma=\eta\sqrt K\\
           e&=\delta K\\
-          \sigma_{\text{tot}}^{2}&=\eta^{2}K+(\delta K)^{2},\qquad K^{*}=(\eta/\delta)^{2}
+          \operatorname{RMSE}^{2}&=\eta^{2}K+(\delta K)^{2},\qquad K^{*}=(\eta/\delta)^{2}
         \end{align*}
         \tr{Com $\eta=\num{1}$\,mm$/\sqrt{\text{km}}$ e $\delta=\num{0.1}$\,mm/km: $K^{*}=\num{100}$\,km; em \num{2000}\,km, $\num{44.7}$\,mm contra $\num{200}$\,mm.}{With $\eta=\num{1}$\,mm$/\sqrt{\text{km}}$ and $\delta=\num{0.1}$\,mm/km: $K^{*}=\num{100}$\,km; at \num{2000}\,km, $\num{44.7}$\,mm versus $\num{200}$\,mm.}
       \end{tcolorbox}
@@ -4995,7 +4997,7 @@ simultaneous adjustment}}
     \end{column}
   \end{columns}
   \medskip
-  \tr{\textbf{Ida e volta}: $d=\Delta h_{\text{ida}}+\Delta h_{\text{volta}}$ (com a volta de sinal trocado); $\mathrm{Var}(d)=2\sigma_1^{2}$ se cada percurso tem $\sigma_1=\eta_1\sqrt K$. Tolerância usada nas aulas: $|d|\le 3\sqrt{K}$ mm (\emph{a conferir na norma}).}{\textbf{Forward and back}: $d=\Delta h_{\text{forward}}+\Delta h_{\text{back}}$ (with the return of opposite sign); $\mathrm{Var}(d)=2\sigma_1^{2}$ if each run has $\sigma_1=\eta_1\sqrt K$. Tolerance used in the classes: $|d|\le 3\sqrt{K}$ mm (\emph{to check in the standard}).}
+  \tr{\textbf{Ida e volta}: $d=\Delta h_{\text{ida}}+\Delta h_{\text{volta}}$ (com a volta de sinal trocado); $\mathrm{Var}(d)=2\sigma_1^{2}$ se cada percurso tem $\sigma_1=\eta_1\sqrt K$. Tolerância de seção: $|d|\le 3\sqrt{K}$ mm; erro-padrão máximo da linha ajustada: $2\sqrt K$ mm (IBGE, 1983, Quadro VI, p. 30).}{\textbf{Forward and back}: $d=\Delta h_{\text{forward}}+\Delta h_{\text{back}}$ (with the return of opposite sign); $\mathrm{Var}(d)=2\sigma_1^{2}$ if each run has $\sigma_1=\eta_1\sqrt K$. Section tolerance: $|d|\le 3\sqrt{K}$ mm; maximum standard error of an adjusted line: $2\sqrt K$ mm (IBGE, 1983, Table VI, p. 30).}
 \end{frame}
 
 \begin{frame}{\tr{A4 · Linha do tempo da altimetria brasileira (1)}{A4 · Timeline of Brazilian leveling (1)}}
@@ -5006,15 +5008,15 @@ simultaneous adjustment}}
     \textbf{\tr{Ano}{Year}} & \textbf{\tr{Marco}{Milestone}} \\
     \midrule
     \textbf{1919--20} & \tr{Marégrafo de \textbf{Torres} (RS), da Comissão da Carta Geral: NMM de fev/1919 a fev/1920, datum provisório.}{\textbf{Torres} (RS) tide gauge, of the Comissão da Carta Geral: MSL from Feb 1919 to Feb 1920, provisional datum.} \\
-    \textbf{1945} & \tr{13 de outubro: o CNG (IBGE) começa o nivelamento de precisão (Seção de Nivelamento; origem em Urussanga, SC).}{13 October: the CNG (IBGE) starts precision leveling (Leveling Section; origin at Urussanga, SC).} \\
+    \textbf{1945} & \tr{Outubro: o CNG (IBGE) começa o nivelamento de precisão (Seção de Nivelamento; origem em Urussanga, SC).}{October: the CNG (IBGE) starts precision leveling (Leveling Section; origin at Urussanga, SC).} \\
     \textbf{1946} & \tr{Dezembro: a rede é ligada ao marégrafo de Torres.}{December: the network is tied to the Torres gauge.} \\
     \textbf{1948} & \tr{Começa a série do marégrafo de Imbituba (PSMSL: 1948--68). Primeiro ajustamento (datum de Torres).}{Imbituba gauge series begins (PSMSL: 1948--68). First adjustment (Torres datum).} \\
     \textbf{1949--57} & \tr{Janela de observação do NMM de \textbf{Imbituba} (9 anos): o datum vertical.}{MSL observation window of \textbf{Imbituba} (9 years): the vertical datum.} \\
     \textbf{1952} & \tr{Segundo ajustamento (datum de Torres).}{Second adjustment (Torres datum).} \\
     \textbf{1957--58} & \tr{Janela de observação do NMM de \textbf{Santana} (2 anos).}{MSL observation window of \textbf{Santana} (2 years).} \\
-    \textbf{1958--59} & \tr{Imbituba substitui Torres; a rede já tinha $>\num{30000}$\,km. Seis ajustamentos de 1959 a 1975 (1959, 62, 63, 66, 70, 75), no datum de Imbituba.}{Imbituba replaces Torres; the network already had $>\num{30000}$\,km. Six adjustments from 1959 to 1975 (1959, 62, 63, 66, 70, 75), on the Imbituba datum.} \\
-    \textbf{1980--81} & \tr{Alturas do Amapá estabelecidas a partir do NMM de Santana (1957--58).}{Heights of Amapá established from the Santana MSL (1957--58).} \\
-    \textbf{1991--92} & \tr{Macrocircuitos e o AAGP (ajustamento global preliminar); último ajustamento particionado: \num{43079} RRNN, sem gravidade (fontes divergem entre 1992 e 1993).}{Macro-loops and the AAGP (preliminary global adjustment); last partitioned adjustment: \num{43079} benchmarks, without gravity (sources differ between 1992 and 1993).} \\
+    \textbf{1958 / 1959} & \tr{Substituição em 1958 (IBGE, 2011, p. 8); adoção e terceiro ajustamento em 1959 (IBGE, 2019, p. 13). Desde 1959, ajustes no datum de Imbituba.}{Replacement in 1958 (IBGE, 2011, p. 8); adoption and third adjustment in 1959 (IBGE, 2019, p. 13). Adjustments use Imbituba from 1959 onward.} \\
+    \textbf{1980--81} & \tr{Adoção de Santana em 1980; RRNN implantadas em 1980--81, com NMM de 1957--58 (IBGE, 2019, pp. 13 e 44).}{Santana adopted in 1980; benchmarks established in 1980--81, using 1957--58 MSL (IBGE, 2019, pp. 13 and 44).} \\
+    \textbf{1991--92} & \tr{Macrocircuitos e o AAGP (ajustamento global preliminar); último ajustamento particionado: \num{43079} RRNN, com referência de cálculo no BDG em 01/12/1992 (IBGE, 2011, p. 12).}{Macro-loops and the AAGP (preliminary global adjustment); last partitioned adjustment: \num{43079} benchmarks, with BDG calculation reference 1 December 1992 (IBGE, 2011, p. 12).} \\
     \bottomrule
   \end{tabular}
 \end{frame}
@@ -5027,16 +5029,17 @@ simultaneous adjustment}}
     \textbf{\tr{Ano}{Year}} & \textbf{\tr{Marco}{Milestone}} \\
     \midrule
     \textbf{1996} & \tr{A ideia da RMPG é proposta pela UFRJ e pela UFPR.}{The RMPG idea is proposed by UFRJ and UFPR.} \\
-    \textbf{1997} & \tr{A IAG cria o GT III do SIRGAS (Datum Vertical), na assembleia do Rio de Janeiro.}{The IAG creates SIRGAS WG III (Vertical Datum), at the Rio de Janeiro assembly.} \\
+    \textbf{1997} & \tr{Criação do GT III do SIRGAS (Datum Vertical) durante a Assembleia Científica da IAG no Rio de Janeiro.}{SIRGAS WG III (Vertical Datum) is established during the IAG Scientific Assembly in Rio de Janeiro.} \\
     \textbf{2000--01} & \tr{Campanha SIRGAS2000 com GPS em marégrafos; GT III consolidado em Cartagena (2001); a Coordenação de Geodésia passa a administrar a RMPG (2001).}{SIRGAS2000 campaign with GPS at tide gauges; WG III consolidated in Cartagena (2001); the Geodesy Coordination begins to run the RMPG (2001).} \\
     \textbf{2005--11} & \tr{DALTI: ajustamento simultâneo da rede com o GHOST; divulgado em junho de 2011 ($\num{69590}$ RRNN, $>\num{74000}$ observações).}{DALTI: simultaneous adjustment of the network with GHOST; released in June 2011 ($\num{69590}$ benchmarks, $>\num{74000}$ observations).} \\
     \textbf{2010} & \tr{Manual Técnico n.º 11 do IBGE: controle geodésico de estações maregráficas (CGEM).}{IBGE Technical Manual No.~11: geodetic control of tide gauge stations (CGEM).} \\
-    \textbf{2015} & \tr{Resolução n.º 1 da IAG: define o IHRS ($W_0=\num{62636853.4}$\,m$^{2}$/s$^{2}$); o GT III passa a construir o IHRF na região.}{IAG Resolution No.~1: defines the IHRS ($W_0=\num{62636853.4}$\,m$^{2}$/s$^{2}$); WG III starts building the IHRF in the region.} \\
+    \textbf{2015} & \tr{Resolução n.º 1 da IAG: define o IHRS ($W_0=\num{62636853.4}$\,m$^{2}$/s$^{2}$); a realização regional deve densificar o IHRF.}{IAG Resolution No.~1: defines the IHRS ($W_0=\num{62636853.4}$\,m$^{2}$/s$^{2}$); the regional realization should densify the IHRF.} \\
     \textbf{2018--19} & \tr{30/07/2018: REALT-2018 (números geopotenciais, gravidade real, altitudes normais). 30/09/2019: 2.ª edição do relatório.}{30/07/2018: REALT-2018 (geopotential numbers, real gravity, normal heights). 30/09/2019: 2nd edition of the report.} \\
     \textbf{2020} & \tr{hgeoHNOR2020: conversão de $h$ (GNSS) em $H^{*}$ (aula do quase-geoide).}{hgeoHNOR2020: converts $h$ (GNSS) to $H^{*}$ (quasigeoid class).} \\
     \textbf{2022} & \tr{1.o de abril: a RMPG passa a publicar também os dados meteorológicos.}{1 April: the RMPG also begins to publish meteorological data.} \\
     \textbf{2024} & \tr{Série consolidada da RMPG: jul/2001 a dez/2024 (\num{23.5} anos).}{Consolidated RMPG series: Jul 2001 to Dec 2024 (\num{23.5} years).} \\
-    \textbf{2026} & \tr{Hoje: \num{71475} RRNN na rede altimétrica; datum de Imbituba ainda com ``72,5 anos de idade'' (desde o meio da janela).}{Today: \num{71475} benchmarks in the vertical network; the Imbituba datum is ``72.5 years old'' (since the middle of the window).} \\
+    \textbf{2026} & \tr{Referência temporal do exemplo: \num{72.5} anos desde 1953,5, o meio da janela do NMM de Imbituba. A extrapolação de tendência é ilustrativa.}{
+      Example time reference: \num{72.5} years since 1953.5, the midpoint of Imbituba's MSL window. Trend extrapolation is illustrative.} \\
     \bottomrule
   \end{tabular}
 \end{frame}
@@ -5174,7 +5177,7 @@ simultaneous adjustment}}
     \toprule
     \textbf{\tr{Sigla}{Acronym}} & \textbf{\tr{Nome e significado}{Name and meaning}} \\
     \midrule
-    \textbf{RMPG} & \tr{Rede Maregráfica Permanente para Geodésia (IBGE; seis estações).}{Permanent Tide Gauge Network for Geodesy (IBGE; six stations).} \\
+    \textbf{RMPG} & \tr{Rede Maregráfica Permanente para Geodésia (IBGE; seis estações em 2024).}{Permanent Tide Gauge Network for Geodesy (IBGE; six stations in 2024).} \\
     \textbf{CGEM} & \tr{Controle Geodésico de Estações Maregráficas (Manual Técnico do IBGE n.º 11, 2010).}{Geodetic Control of Tide Gauge Stations (IBGE Technical Manual No.~11, 2010).} \\
     \textbf{DHN} & \tr{Diretoria de Hidrografia e Navegação (Marinha do Brasil; cartas náuticas e zeros hidrográficos).}{Directorate of Hydrography and Navigation (Brazilian Navy; nautical charts and hydrographic zeros).} \\
     \textbf{PSMSL} & \emph{Permanent Service for Mean Sea Level} \tr{(séries de nível do mar, p.\,ex.\ Imbituba 1948--68)}{(sea level series, e.g., Imbituba 1948--68)}. \\
@@ -5189,65 +5192,120 @@ simultaneous adjustment}}
   \end{tabular}
 \end{frame}
 
-\begin{frame}{\tr{A8 · Fontes e conferência de fatos (1)}{A8 · Sources and fact verification (1)}}
+\begin{frame}{\tr{A8 · Fontes primárias (1)}{A8 · Primary sources (1)}}
   \scriptsize
   \begin{itemize}
-    \setlength{\itemsep}{2pt}
-    \item \textbf{[A]} IBGE, \emph{\tr{Rede Altimétrica}{Altimetric Network}} (ibge.gov.br, \tr{página de geodésia}{geodesy page}): \tr{origem em Urussanga (1945), \num{71475} RRNN, etapas do REALT-2018, datum de Imbituba (RN 4X) e Santana (RN 9329T)}{origin at Urussanga (1945), \num{71475} benchmarks, REALT-2018 stages, Imbituba (RN 4X) and Santana (RN 9329T) datums}.
-    \item \textbf{[B]} IBGE (2011), \emph{\tr{Relatório do ajustamento simultâneo da Rede Altimétrica}{Report of the simultaneous adjustment of the Altimetric Network}} (\texttt{geoftp.ibge.gov.br}) \tr{e notícia de 2013}{and 2013 news item}: \tr{$>\num{74000}$ observações, \num{69590} RRNN, DALTI, GHOST, oito ajustamentos parciais (1945--75)}{$>\num{74000}$ observations, \num{69590} benchmarks, DALTI, GHOST, eight partial adjustments (1945--75)}.
-    \item \textbf{[C]} IBGE (2018, \tr{2.ª ed.}{2nd ed.}\ 2019), \emph{\tr{Reajustamento da Rede Altimétrica com Números Geopotenciais}{Readjustment of the Altimetric Network with Geopotential Numbers}} \tr{e notícias de 30/07/2018 e 30/09/2019}{and news items of 30/07/2018 and 30/09/2019}: \tr{gravidade real, altitudes normais, g entre \num{9.764} e \num{9.834}}{real gravity, normal heights, g between \num{9.764} and \num{9.834}}.
-    \item \textbf{[D]} Siqueira, Lima, Luz (2018), \emph{SIRGAS Boletín 23}: \tr{$>\num{100000}$ pontos gravimétricos, programa Geogrid\_7c, modelos EIGEN-6C4 e GOCO05c}{$>\num{100000}$ gravity points, Geogrid\_7c program, EIGEN-6C4 and GOCO05c models}.
-    \item \textbf{[E]} IBGE, \emph{\tr{Esclarecimento sobre a relação entre o Datum Vertical do SGB (Imbituba e Santana) e os níveis de redução e zeros hidrográficos}{Clarification on the relation between the SGB Vertical Datum (Imbituba and Santana) and reduction levels and hydrographic zeros}}; \tr{notas técnicas e relatórios da RMPG (2013, 2016, 2024); Manual Técnico n.º 11 (CGEM, 2010)}{RMPG technical notes and reports (2013, 2016, 2024); Technical Manual No.~11 (CGEM, 2010)}.
-    \item \textbf{[F]} \tr{Artigo de 1957 da \emph{Revista Brasileira de Geografia} e textos do IBGE sobre Torres (fev/1919--fev/1920), Imbituba (1949--57), Santana (1957--58; alturas do Amapá em 1980--81)}{1957 article of the \emph{Revista Brasileira de Geografia} and IBGE texts on Torres (Feb 1919--Feb 1920), Imbituba (1949--57), Santana (1957--58; Amapá heights in 1980--81)}.
-    \item \textbf{[G]} Da Silva, De Freitas (2017) \tr{e tese da UFPR (2017)}{and UFPR thesis (2017)}: \tr{Imbituba, tendência do NMM $+\num{2.24}\pm\num{0.4}$\,mm/ano; subsidência do marégrafo $\approx\num{3.02}$\,mm/ano}{Imbituba, MSL trend $+\num{2.24}\pm\num{0.4}$\,mm/yr; gauge subsidence $\approx\num{3.02}$\,mm/yr}.
+    \setlength{\itemsep}{6pt}
+    \item \textbf{[K]} IBGE (1983).
+    \href{https://geoftp.ibge.gov.br/metodos_e_outros_documentos_de_referencia/normas/legisla_resolucao_d.pdf}{\emph{Especificações e Normas Gerais para Levantamentos Geodésicos em Território Brasileiro}}.
+    R.PR 22, 21/07/1983, \tr{Quadro VI, p. 30 (PDF p. 26): controles de campo e erro-padrão após ajuste}{Table VI, p. 30 (PDF p. 26): field checks and standard error after adjustment}.
+
+    \item \textbf{[B]} IBGE (2011).
+    \href{https://geoftp.ibge.gov.br/metodos_e_outros_documentos_de_referencia/outros_documentos_tecnicos/apresentacoes_artigos/relatorioajustamento.pdf}{\emph{Ajustamento Simultâneo da Rede Altimétrica de Alta Precisão do Sistema Geodésico Brasileiro}}.
+    \tr{p. 2: \num{69590} RRNN; p. 8: origem e troca de datum em 1958;
+    pp. 10--12: oito ajustes, macrocircuitos e AAGP, referência 01/12/1992}{
+    p. 2: \num{69590} benchmarks; p. 8: origins and datum replacement in 1958;
+    pp. 10--12: eight adjustments, macro-loops and AAGP, reference 1 December 1992}.
+
+    \item \textbf{[C]} IBGE (2019).
+    \href{https://biblioteca.ibge.gov.br/visualizacao/livros/liv101666.pdf}{\emph{Reajustamento da Rede Altimétrica com Números Geopotenciais}}, \tr{2.ª ed.}{2nd ed.}
+    ISBN 978-85-240-4502-8.
+    \tr{p. 13: adoção de Imbituba em 1959 e Santana em 1980; p. 35: bloco principal;
+    p. 36, Figura 16: frequências dos resíduos; pp. 40--44: linhas individuais e Amapá}{
+    p. 13: adoption of Imbituba in 1959 and Santana in 1980; p. 35: principal block;
+    p. 36, Figure 16: residual frequencies; pp. 40--44: individual lines and Amapá}.
   \end{itemize}
 \end{frame}
 
-\begin{frame}{\tr{A8 · Fontes e conferência de fatos (2)}{A8 · Sources and fact verification (2)}}
+\begin{frame}{\tr{A8 · Fontes primárias (2) e leituras}{A8 · Primary sources (2) and further reading}}
   \scriptsize
   \begin{itemize}
-    \setlength{\itemsep}{2pt}
-    \item \textbf{[H]} Jaramillo, Freitas, Luz (2019), \emph{Boletim de Ciências Geodésicas} 25(1): \tr{defasagem entre os segmentos (Imbituba e Santana) de \num{45} a \num{140}\,cm}{lag between the segments (Imbituba and Santana) of \num{45} to \num{140}\,cm}; \tr{Freitas et al.\ (2013) e \emph{Bol.\ Ciênc.\ Geod.} (2016): $\approx\num{1.3}$\,m com o modelo GOCE GO\_CONS\_SPW\_R4; $\approx\num{330}$\,km entre as redes}{Freitas et al.\ (2013) and \emph{Bol.\ Ciênc.\ Geod.} (2016): $\approx\num{1.3}$\,m with the GOCE model GO\_CONS\_SPW\_R4; $\approx\num{330}$\,km between the networks}.
-    \item \textbf{[I]} SIRGAS (\texttt{sirgas.ipgh.org}), \tr{GT III e sistema vertical}{WG III and vertical system}; \tr{Resolução n.º 1 da IAG (2015)}{IAG Resolution No.~1 (2015)}; Sánchez \& Sideris (2017), DGFI-TUM.
-    \item \textbf{[J]} NOAA, \emph{Tidal Datums}: \tr{época de datum de 19 anos}{19-year datum epoch}.
-    \item \textbf{[K]} \tr{Resolução PR n.º 22/1983 do IBGE, \emph{como citada por} artigos da UFPE, UFPR e RBGeo: $3\,\mathrm{mm}\sqrt{K}$ por seção (um trabalho cita $2\,\mathrm{mm}\sqrt{K}$).}{IBGE Resolution PR No.~22/1983, \emph{as cited by} papers from UFPE, UFPR and RBGeo: $3\,\mathrm{mm}\sqrt{K}$ per section (one paper cites $2\,\mathrm{mm}\sqrt{K}$).}
-    \item \textbf{[L]} \tr{Apresentações do IBGE sobre ajustamentos anteriores: 1992 (\num{43079} RRNN, $\approx\num{230000}$\,km), 2011 ($\approx\num{370000}$\,km).}{IBGE presentations on earlier adjustments: 1992 (\num{43079} benchmarks, $\approx\num{230000}$\,km), 2011 ($\approx\num{370000}$\,km).}
-    \item \tr{Neste repositório: \texttt{geoide\_e\_alturas}, \texttt{quase\_geoide} (REALT: \num{94}\,\% e \num{76}\,\%), \texttt{gravimetria}; simulador \texttt{nivelamento/}; números: \texttt{sgb\_altimetria\_numeros.py}.}{In this repository: \texttt{geoide\_e\_alturas}, \texttt{quase\_geoide} (REALT: \num{94}\,\% and \num{76}\,\%), \texttt{gravimetria}; simulator \texttt{nivelamento/}; numbers: \texttt{sgb\_altimetria\_numeros.py}.}
+    \setlength{\itemsep}{5pt}
+    \item \textbf{[D]} Siqueira, J.; Lima, M.; Luz, R. (2018).
+    \href{https://sirgas.ipgh.org/docs/Boletines/Bol23/32_Siqueira_et_al_2018_Repro_red_vertical_Brasil.pdf}{\emph{Reajustamento da Rede Altimétrica Brasileira em Números Geopotenciais}}.
+    Simposio SIRGAS2018, Boletín 23.
+    \tr{slides 3--4: data dos ajustes; 9: mudança de metodologia; 20--21: interpolação;
+    31--36: resultados}{slides 3--4: adjustment dates; 9: methodology change;
+    20--21: interpolation; 31--36: results}.
+
+    \item \textbf{[I]} SIRGAS,
+    \href{https://sirgas.ipgh.org/en/organization/working-groups/working-group-iii/}{\emph{Working Group III (Vertical datum)}}.
+    \tr{Criação na Assembleia Científica da IAG de 1997; definição compatível com o IHRS;
+    realização como densificação do IHRF, com época de referência}{
+    Established at the 1997 IAG Scientific Assembly; IHRS-compatible definition;
+    realization as IHRF densification, with a reference epoch}.
+
+    \item \textbf{[A, E]} IBGE,
+    \href{https://www.ibge.gov.br/geociencias/informacoes-sobre-posicionamento-geodesico/rede-geodesica/16283-rede-altimetrica.html}{\emph{Rede Altimétrica}};
+    \emph{Controle Geodésico de Estações Maregráficas} (2010);
+    \tr{relatórios da RMPG. [J] NOAA, \emph{Tidal Datums}: época de 19 anos}{
+    RMPG reports. [J] NOAA, \emph{Tidal Datums}: 19-year epoch}.
+
+    \item \textbf{[G, H]} \tr{Taxas de NMM e subsidência, e diferença Imbituba/Santana,
+    são estimativas de estudos (2013--2019), não parâmetros oficiais de transformação.
+    Referências e limites da conferência em}{MSL/subsidence rates and the Imbituba/Santana
+    offset are study estimates (2013--2019), not official transformation parameters.
+    References and verification limits are in} \texttt{sgb\_altimetria\_fontes.md}.
   \end{itemize}
 \end{frame}
 
-\begin{frame}{\tr{A8 · O que \emph{não} foi conferido (1)}{A8 · What was \emph{not} verified (1)}}
-  \small
-  \begin{cuidado}[title={\tr{Honestidade sobre as fontes}{Honesty about the sources}}]
-    \footnotesize\tr{Os sites do IBGE e do SIRGAS ficaram \bnum{inacessíveis} durante a preparação
-    destas aulas (restrição de rede). Os fatos e números acima vêm de \emph{resumos de busca}
-    desses documentos, não de leitura integral. Antes de citar um número em trabalho formal,
-    confira no documento original.}{IBGE's and SIRGAS's sites were \bnum{inaccessible} while
-    these classes were prepared (network restriction). The facts and numbers above come from
-    \emph{search summaries} of those documents, not from reading them in full. Before citing a
-    number in formal work, check the original document.}
-  \end{cuidado}
+\begin{frame}{\tr{A8 · Grandezas diferentes na avaliação da qualidade}{A8 · Different quantities in quality assessment}}
+  \scriptsize
+  \renewcommand{\arraystretch}{1.35}
+  \begin{tabular}{@{}L{4.3cm}L{3.0cm}L{5.0cm}@{}}
+    \toprule
+    \tr{Grandeza}{Quantity} & \tr{Valor}{Value} & \tr{Interpretação}{Meaning}\\
+    \midrule
+    \tr{Ruído de uma observação}{Observation noise} &
+      $\sigma=\eta\sqrt K$ & \tr{Modelo estocástico; $\eta$ escolhido ou estimado}{Stochastic model; $\eta$ selected or estimated}\\
+    \tr{Ida/volta de seção}{Section forward/backward discrepancy} &
+      $3\,\mathrm{mm}\sqrt K$ & \tr{Controle de campo, item 3.1}{Field check, item 3.1}\\
+    \tr{Ida/volta de linha}{Line forward/backward discrepancy} &
+      $4\,\mathrm{mm}\sqrt K$ & \tr{Controle de campo, item 3.2}{Field check, item 3.2}\\
+    \tr{Fechamento de circuito}{Circuit misclosure} &
+      $|w|/K\le\num{0.5}$\,mm/km & \tr{Após as correções, item 3.3}{After corrections, item 3.3}\\
+    \tr{Erro-padrão da linha ajustada}{Adjusted-line standard error} &
+      $2\,\mathrm{mm}\sqrt K$ & \tr{Máximo aceitável após ajuste, item 4}{Maximum acceptable after adjustment, item 4}\\
+    \tr{Resíduos do REALT-2018}{REALT-2018 residuals} &
+      \num{92.7}--\num{99.5}\,\% & \tr{Frequências empíricas do bloco principal}{Empirical principal-block frequencies}\\
+    \bottomrule
+  \end{tabular}
+  \fonteslide{IBGE (1983), \tr{Quadro VI, p. 30, alta precisão fundamental}{Table VI, p. 30, fundamental high precision};
+  IBGE (2019), p. 36. $K$: \tr{comprimento em km, contado uma vez}{length in km, counted once}.}
   \smallskip
-  \footnotesize
-  \begin{itemize}
-    \setlength{\itemsep}{3pt}
-    \item \tr{\textbf{Ano da troca Torres $\to$ Imbituba}: 1958 (troca) ou 1959 (ajustamento): escrito ``1958--59''.}{\textbf{Year of the Torres $\to$ Imbituba change}: 1958 (switch) or 1959 (adjustment): written ``1958--59''.}
-    \item \tr{\textbf{Torres}: um texto fala em um ano de dados (fev/1919--fev/1920), outro em oito meses de operação.}{\textbf{Torres}: one text mentions one year of data (Feb 1919--Feb 1920), another eight months of operation.}
-    \item \tr{\textbf{Tolerância} $3\,\mathrm{mm}\sqrt{K}$: citada por artigos; o texto da R.PR 22/1983 \emph{não foi lido}.}{\textbf{Tolerance} $3\,\mathrm{mm}\sqrt{K}$: cited by papers; the text of R.PR 22/1983 \emph{was not read}.}
-    \item \tr{\textbf{Fim do ajuste particionado}: 1992 ou 1993, conforme a fonte.}{\textbf{End of the partitioned adjustment}: 1992 or 1993, depending on the source.}
-  \end{itemize}
+  \tr{A padronização $v/\sqrt K$ depende da distância. O teste estatístico
+  $v_i/\sigma_{v_i}$ do apêndice A2 é adimensional e tem outra finalidade.}{
+  Normalization by $v/\sqrt K$ depends on distance. The statistical test
+  $v_i/\sigma_{v_i}$ in Appendix A2 is dimensionless and serves a different purpose.}
 \end{frame}
 
-\begin{frame}{\tr{A8 · O que \emph{não} foi conferido (2)}{A8 · What was \emph{not} verified (2)}}
+\begin{frame}{\tr{A8 · Alcance dos números e ressalvas}{A8 · Scope of the figures and qualifications}}
   \footnotesize
   \begin{itemize}
-    \setlength{\itemsep}{4pt}
-    \item \tr{\textbf{Percentuais de qualidade} (\num{92.7}, \num{98.0}, \num{99.1}, \num{99.5}\,\%): não está claro se são do ajuste de 2011 ou de 2018.}{\textbf{Quality percentages} (\num{92.7}, \num{98.0}, \num{99.1}, \num{99.5}\,\%): it is unclear whether they come from the 2011 or the 2018 adjustment.}
-    \item \tr{\textbf{Defasagem entre os zeros}, \textbf{taxa de subida do mar} e \textbf{subsidência}: valores de \emph{estudos}, não oficiais.}{\textbf{Lag between the zeros}, \textbf{sea-rise rate} and \textbf{subsidence}: values from \emph{studies}, not official.}
-    \item \tr{\textbf{Gravidade} \num{9.764}--\num{9.834}\,m/s$^{2}$: a faixa citada pelo IBGE é a da Terra toda.}{\textbf{Gravity} \num{9.764}--\num{9.834}\,m/s$^{2}$: the range quoted by IBGE is that of the whole Earth.}
-    \item \tr{\textbf{Nada} foi afirmado sobre a causa do salto de $+20$ a $+30$\,cm do REALT-2018, nem sobre o número total de RRNN do REALT-2018.}{\textbf{Nothing} was claimed about the cause of the $+20$ to $+30$\,cm jump of REALT-2018, nor about the total number of benchmarks in REALT-2018.}
-    \item \tr{Séries e exemplos \emph{inventados} (a série sintética do nível do mar, a RN fictícia, o marégrafo de exemplo, a rede de 4 nós e os resíduos GNSS) estão marcados no texto.}{\emph{Made-up} series and examples (the synthetic sea-level series, the fictitious benchmark, the example tide gauge, the 4-node network and the GNSS residuals) are marked in the text.}
-    \item \tr{As \textbf{imagens esquemáticas} (costa ligando cidades, rede em três escalas, blocos) \emph{não} são mapas.}{The \textbf{schematic images} (coast linking cities, network at three scales, blocks) are \emph{not} maps.}
+    \setlength{\itemsep}{5pt}
+    \item \tr{\textbf{Torres/Imbituba}: IBGE (2011), p. 8, informa 1958; IBGE (2019), p. 13,
+    informa adoção em 1959. A equivalência dos atos históricos continua inconclusiva.}{
+    \textbf{Torres/Imbituba}: IBGE (2011), p. 8, gives 1958; IBGE (2019), p. 13,
+    gives adoption in 1959. Whether these refer to the same historical act remains unresolved.}
+
+    \item \tr{\textbf{Contagem}: \num{66882} RRNN é o bloco principal do REALT-2018.
+    O total nacional não é inferido dessa tabela. As \num{69590} RRNN e as mais de
+    \num{74000} observações referem-se ao relatório de 2011.}{
+    \textbf{Counts}: \num{66882} benchmarks describes the REALT-2018 principal block.
+    A national total is not inferred from that table. The \num{69590} benchmarks and
+    more than \num{74000} observations belong to the 2011 report.}
+
+    \item \tr{\textbf{Estimativas}: diferença entre data, taxa do NMM e subsidência
+    mantêm a ressalva de estudos. A projeção até 2026 supõe taxa constante.}{
+    \textbf{Estimates}: datum offsets, MSL trend and subsidence retain their study
+    qualifications. Projection to 2026 assumes a constant rate.}
+
+    \item \tr{\textbf{Exemplos ilustrativos}: série sintética, RRNN fictícias,
+    rede de quatro nós, resíduos GNSS e comprimentos de \num{230000}/\num{370000}\,km.
+    Os desenhos esquemáticos não são mapas.}{
+    \textbf{Illustrative examples}: synthetic series, fictitious benchmarks, four-node
+    network, GNSS residuals and \num{230000}/\num{370000}\,km lengths.
+    Schematic drawings are not maps.}
   \end{itemize}
 \end{frame}
 
