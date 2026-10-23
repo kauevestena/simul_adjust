@@ -226,4 +226,3 @@ python3 sgb_altimetria_numeros.py            # todas as aulas · all classes
 python3 sgb_altimetria_numeros.py --figuras  # macros TikZ das figuras · figure TikZ macros
 python3 -m unittest -v test_sgb_altimetria_numeros.py  # controles e exemplos · checks and examples
 ```
-

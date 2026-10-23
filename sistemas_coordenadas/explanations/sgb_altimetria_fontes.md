@@ -109,4 +109,3 @@ SHA-256, arquivos oficiais baixados em / official files downloaded on 2026-10-21
 | IBGE 2011 | acbbf12f8b40d7f3b7142d0c3b701ca190ec84847a5cdf69b4100efb9e68e469 |
 | IBGE 2019, 2ª ed. | 1c074d16f4f911d26ab5c646f70b1c77825e85e809779affe122ec965738a32b |
 | Siqueira et al. 2018 | 6af5e457117cd97d5f7265ff58a8008fee7adf73e79084cd8e98014f14e889f3 |
-
