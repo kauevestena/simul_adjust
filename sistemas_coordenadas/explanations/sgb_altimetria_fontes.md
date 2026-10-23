@@ -85,6 +85,20 @@ Na pasta / From sistemas_coordenadas/explanations:
 A revisão local usou pdfTeX/TeX Live 2022 e a implementação compatível siunitx v2. A regeneração final no GitHub Actions usa pdfTeX/TeX Live 2023 (Debian), Metropolis, babel-portuges e siunitx da distribuição. Ambos os ambientes compilaram as duas línguas. As dependências adicionais de revisão não são incluídas no repositório.
 Local review used pdfTeX/TeX Live 2022 and the compatible siunitx v2 implementation. Final regeneration in GitHub Actions uses pdfTeX/TeX Live 2023 (Debian), Metropolis, babel-portuges and the distribution siunitx package. Both environments compiled both languages. Additional reviewer-environment dependencies are not vendored.
 
+## Revisão de integração / Integration review (2026-10-23)
+
+Os quatro PDFs oficiais abaixo foram baixados novamente e seus SHA-256 coincidem com os registrados. Os trechos citados sustentam os critérios do Quadro VI, as contagens e frequências do bloco principal e as correções históricas, mantendo as ressalvas documentadas. A página do GT III, a apresentação SIRGAS de 2019 e a nota técnica IBGE de 2024 também foram conferidas nos pontos citados.
+
+The four official PDFs below were downloaded again and their SHA-256 values match the recorded checksums. The cited passages support the Table VI criteria, principal-block counts and frequencies, and historical corrections, with the documented qualifications retained. The WG III page, 2019 SIRGAS presentation and 2024 IBGE technical note were also checked at the cited locations.
+
+Os nove testes numéricos e os dois modos do script passaram novamente. As duas versões foram recompiladas com TeX Live 2023, incluindo os padrões de hifenização portugueses. A inspeção visual identificou uma colisão entre a variável TikZ `\c` e o comando de cedilha no texto português de 2015: “definição” saía como “definicorMarcão”. A variável foi renomeada e o PDF português regenerado; a única alteração de conteúdo ocorre na página PDF 137. A recompilação inglesa preserva o texto das 165 páginas, e mantém-se no repositório o PDF inglês validado no Actions. Todos os 330 slides finais foram renderizados e verificados quanto a texto não vazio e palavras fora da página, sem problemas. Permanecem os avisos TeX não fatais já documentados.
+
+The nine numerical tests and both script modes passed again. Both editions were rebuilt with TeX Live 2023, including Portuguese hyphenation patterns. Visual inspection found a collision between the TikZ variable `\c` and the cedilla command in the Portuguese 2015 label: “definição” rendered as “definicorMarcão”. The variable was renamed and the Portuguese PDF regenerated; its only content change is on PDF page 137. The English rebuild preserves the text of all 165 pages, and the Actions-validated English PDF is retained in the repository. All 330 final slides were rendered and checked for nonempty text and words outside the page, with no problems. The previously documented nonfatal TeX warnings remain.
+
+O build Actions citado no PR validou o commit `4dc3c353ca19b50cd0a1d5dbb347e38bffb80643`; seu passo final gerou os PDFs no commit `1ee5a55`. O commit posterior `1af2d1f` apenas documentou o ambiente e removeu o workflow temporário. A revisão de integração verifica diretamente os arquivos finais; não apresenta aquele build anterior como um check do novo head. Na revisão, `main` não tinha checks obrigatórios nem rulesets e os workflows permanentes de simuladores não abrangiam os arquivos desta correção.
+
+The Actions build cited in the PR validated commit `4dc3c353ca19b50cd0a1d5dbb347e38bffb80643`; its final step generated the PDFs in commit `1ee5a55`. The later `1af2d1f` commit only documented the environment and removed the temporary workflow. Integration review checks the final files directly; it does not describe that earlier build as a check of the new head. At review time, `main` had no required checks or rulesets, and permanent simulator workflows did not cover the files in this correction.
+
 ## Integridade dos PDFs consultados / Consulted-PDF integrity
 
 SHA-256, arquivos oficiais baixados em / official files downloaded on 2026-10-21:

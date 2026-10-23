@@ -4499,13 +4499,15 @@ simultaneous adjustment}}
   \begin{tikzpicture}[x=0.92cm,y=1cm,font=\scriptsize,
       ev/.style={caixa, text width=2.9cm, minimum height=1.9cm, font=\scriptsize}]
     \draw[thick, ->] (-1.2,0) -- (13.3,0);
-    \foreach \x/\a/\c/\t in {0.9/1997/corTempo/{\tr{o GT III nasce na assembleia da IAG, no Rio}{WG III is born at the IAG assembly, in Rio}},
+    % Keep \c available for Portuguese cedillas inside the timeline labels.
+    % Preserve \c para as cedilhas nos textos da linha do tempo.
+    \foreach \x/\a/\eventColor/\t in {0.9/1997/corTempo/{\tr{o GT III nasce na assembleia da IAG, no Rio}{WG III is born at the IAG assembly, in Rio}},
                             4.5/2000/corFrame/{\tr{campanha SIRGAS2000, com GPS em marégrafos}{SIRGAS2000 campaign, with GPS at tide gauges}},
                             8.1/2001/corSist/{\tr{o GT III se consolida, em Cartagena}{WG III is consolidated, in Cartagena}},
                             11.7/2015/corMar/{\tr{IHRS (IAG): definição do sistema global}{IHRS (IAG): global system definition}}} {
-      \fill[\c] (\x,0) circle (0.13);
-      \node[above=2pt, text=\c, font=\small] at (\x,0) {\textbf{\a}};
-      \node[ev, draw=\c, fill=\c!8, below=10pt] at (\x,0) {\t};
+      \fill[\eventColor] (\x,0) circle (0.13);
+      \node[above=2pt, text=\eventColor, font=\small] at (\x,0) {\textbf{\a}};
+      \node[ev, draw=\eventColor, fill=\eventColor!8, below=10pt] at (\x,0) {\t};
     }
   \end{tikzpicture}
   \bigskip
