@@ -1,0 +1,38 @@
+name: Channel Tunnel story checks
+on:
+  push:
+    paths:
+      - 'channel_tunnel_story/**'
+      - '.github/workflows/channel-tunnel-story.yml'
+  pull_request:
+    paths:
+      - 'channel_tunnel_story/**'
+      - '.github/workflows/channel-tunnel-story.yml'
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check learning model
+        run: node --test channel_tunnel_story/tests/model.test.mjs
+      - name: Check the lesson's source and localization structure
+        run: |
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          import assert from 'node:assert/strict';
+          const page=readFileSync('channel_tunnel_story/index.html','utf8');
+          assert.match(page,/const C=\[/);
+          assert.match(page,/const ui=/);
+          assert.match(page,/pt:\[/);
+          assert.match(page,/en:\[/);
+          assert.match(page,/id:"monitoring"/);
+          assert.match(page,/id:"breakthrough"/);
+          assert.match(page,/MapLibre/);
+          console.log('Bilingual story structure checked');
+          NODE
