@@ -1793,6 +1793,39 @@ Mapa interativo de estabelecimentos de saúde pública do Paraná com dados do C
 </a>
 </div>
 </article>
+<!-- DTM Lab (external repository) -->
+<article class="sim-card" data-card-id="dtm_lab" data-status="unfinished" data-category="geoinformatica" style="--card-accent: #a16207; --card-accent-glow: rgba(161, 98, 7, 0.25); --card-icon-bg: rgba(161, 98, 7, 0.12); --card-btn-bg: linear-gradient(135deg, #854d0e, #a16207);">
+<div class="card-top">
+<div class="card-icon-box">⛰️</div>
+<div style="display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;"><span class="card-category-badge">Nuvens de Pontos &amp; MDT</span><span class="badge-unfinished">🚧 Em desenvolvimento</span></div>
+</div>
+<h2 class="card-title">DTM Lab</h2>
+<div class="card-path">
+<svg fill="none" height="12" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="12"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" x2="21" y1="14" y2="3"></line></svg>
+dtm_lab/
+</div>
+<p class="card-description">
+Filtragem de solo e interpolação de MDT sobre uma nuvem LiDAR classificada (69 M de pontos, COPC): cada algoritmo é avaliado contra a classificação de referência.
+</p>
+<ul class="card-features">
+<li>8 filtros de solo (declividade, PMF, SMRF, TIN progressivo, robusta, CSF, MCC) e 5 interpoladores (TIN, IDW, vizinho natural, krigagem, spline)</li>
+<li>Erros tipo I/II, κ, RMSEz por zona e PEC-PCD; perfis, mapas de Δz e histórico de execuções</li>
+<li>Nuvem inteira processada com a PDAL e transmitida por requisições parciais no Potree</li>
+</ul>
+<div class="card-tags">
+<span class="tech-tag">Potree</span>
+<span class="tech-tag">COPC</span>
+<span class="tech-tag">PDAL</span>
+<span class="tech-tag">MDT</span>
+<span class="tech-tag">Sistema Externo</span>
+</div>
+<div class="card-actions">
+<a class="btn-launch" href="https://kauevestena.github.io/dtm_lab/" target="_blank" rel="noopener"><span class="btn-text">Abrir Simulador →</span><svg fill="none" height="16" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24" width="16"><line x1="5" x2="19" y1="12" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></a>
+<a class="btn-icon-ext" href="https://kauevestena.github.io/dtm_lab/" target="_blank" rel="noopener" title="Abrir em nova aba">
+<svg fill="none" height="16" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="16"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" x2="21" y1="14" y2="3"></line></svg>
+</a>
+</div>
+</article>
 <!-- 17. Mapillary Urban Vegetation -->
 <article class="sim-card" data-card-id="mapillary_urban_vegetation" data-category="geoinformatica" style="--card-accent: #10b981; --card-accent-glow: rgba(16, 185, 129, 0.25); --card-icon-bg: rgba(16, 185, 129, 0.12); --card-btn-bg: linear-gradient(135deg, #059669, #10b981);">
 <div class="card-top">
@@ -2589,6 +2622,44 @@ Análise geoespacial e mapeamento de cobertura de vegetação urbana obtida a pa
         "External System"
       ],
       "btn": "Open System →"
+    }
+  },
+  "dtm_lab": {
+    "pt-BR": {
+      "badge": "Nuvens de Pontos & MDT",
+      "title": "DTM Lab",
+      "desc": "Filtragem de solo e interpolação de MDT sobre uma nuvem LiDAR classificada (69 M de pontos, COPC): cada algoritmo é avaliado contra a classificação de referência.",
+      "features": [
+        "8 filtros de solo (declividade, PMF, SMRF, TIN progressivo, robusta, CSF, MCC) e 5 interpoladores (TIN, IDW, vizinho natural, krigagem, spline)",
+        "Erros tipo I/II, κ, RMSEz por zona e PEC-PCD; perfis, mapas de Δz e histórico de execuções",
+        "Nuvem inteira processada com a PDAL e transmitida por requisições parciais no Potree"
+      ],
+      "tags": [
+        "Potree",
+        "COPC",
+        "PDAL",
+        "MDT",
+        "Sistema Externo"
+      ],
+      "btn": "Abrir Simulador →"
+    },
+    "en": {
+      "badge": "Point Clouds & DTM",
+      "title": "DTM Lab",
+      "desc": "Ground filtering and DTM interpolation on a classified LiDAR cloud (69 M points, COPC): every algorithm is scored against the reference classification.",
+      "features": [
+        "8 ground filters (slope, PMF, SMRF, progressive TIN, robust, CSF, MCC) and 5 interpolators (TIN, IDW, natural neighbour, kriging, spline)",
+        "Type I/II errors, κ, RMSEz by zone and PEC-PCD; profiles, Δz maps and a run history",
+        "Whole cloud processed with PDAL and streamed by range requests in Potree"
+      ],
+      "tags": [
+        "Potree",
+        "COPC",
+        "PDAL",
+        "DTM",
+        "External System"
+      ],
+      "btn": "Launch Simulator →"
     }
   },
   "mapillary_urban_vegetation": {
