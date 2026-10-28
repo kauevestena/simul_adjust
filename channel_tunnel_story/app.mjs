@@ -120,7 +120,7 @@ function startMap() {
       map.addLayer({id:'route-line',type:'line',source:'route',paint:{'line-color':'#d25929','line-width':5,'line-opacity':0.95}});
       for(const [key,color] of [['uk','#f6c46a'],['fr','#6ae3d7']]){const marker=new maplibregl.Marker({color}).setLngLat(PORTALS[key]).addTo(map);marker.getElement().dataset.portal=key;marker.getElement().setAttribute('role','img');}
       map.addSource('terrain',{type:'raster-dem',tiles:['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],encoding:'terrarium',tileSize:256,maxzoom:13,attribution:'Elevation: <a href="https://registry.opendata.aws/terrain-tiles/">Terrain Tiles / AWS Open Data</a>'});
-      applyTerrain();localizeMap();
+      applyTerrain();localizeMap();if(active<0&&innerWidth<=850)map.fitBounds(new maplibregl.LngLatBounds().extend(PORTALS.uk).extend(PORTALS.fr),{padding:{top:25,bottom:62,left:15,right:50},maxZoom:8,pitch:40,bearing:-22,duration:0});
     });
     map.on('idle',()=>{if(map.getTerrain() && map.isSourceLoaded('terrain') && !terrainFailed){terrainLoaded=true;status('ready');}});
     map.on('error',e=>{
@@ -132,7 +132,7 @@ function startMap() {
   } catch(error) {console.warn('Map initialization failed',error);unavailable();}
 }
 async function setView(next) {
-  view=next;$('map').hidden=next!=='map';$('cutaway').hidden=next!=='section';$('mapTools').hidden=next!=='map';$('sectionTools').hidden=next!=='section';
+  view=next;document.documentElement.dataset.view=next;$('map').hidden=next!=='map';$('cutaway').hidden=next!=='section';$('mapTools').hidden=next!=='map';$('sectionTools').hidden=next!=='section';
   $('mapView').setAttribute('aria-pressed',String(next==='map'));$('sectionView').setAttribute('aria-pressed',String(next==='section'));
   $('mapFallback').hidden=next!=='map'||mapState!=='mapFailed';refreshViewText();
   if(next==='map'){setPlaying(false);map?.resize();return;}

@@ -11,14 +11,14 @@ npm ci --prefix channel_tunnel_story
 npm test --prefix channel_tunnel_story
 npx --prefix channel_tunnel_story playwright install --with-deps chromium firefox webkit
 npm run test:browser --prefix channel_tunnel_story
-STORY_BROWSER=firefox npm run test:browser --prefix channel_tunnel_story
+xvfb-run -a env STORY_BROWSER=firefox npm run test:browser --prefix channel_tunnel_story
 STORY_BROWSER=webkit npm run test:browser --prefix channel_tunnel_story
 npm run test:live --prefix channel_tunnel_story
 python -m http.server 8000
 # http://localhost:8000/channel_tunnel_story/?lang=en#chapter-control
 ```
 
-Browser tests use the real WebGL renderer and controlled terrain tiles for deterministic regressions; `test:live` separately requires successful real vector and elevation responses. Tests cover 1440, 390 and 320 px, all chapters, scroll/keyboard navigation, language, source links, axe WCAG A/AA checks, both 3D views, map failures and blocked storage. Screenshots go to ignored `test-results/`. CI also runs existing simulators' numerical/browser checks. For a deployed-site check:
+Browser tests use the real WebGL renderer and controlled terrain tiles for deterministic regressions; `test:live` separately requires successful real vector and elevation responses. Tests cover 1440, 390 and 320 px plus 844 × 390 landscape, all chapters, scroll/keyboard navigation, language, source links, axe WCAG A/AA checks, both 3D views, map failures and blocked storage. Screenshots go to ignored `test-results/`. CI also runs existing simulators' numerical/browser checks. For a deployed-site check:
 
 ```sh
 STORY_BASE_URL=https://kauevestena.github.io/simul_adjust STORY_LIVE_MAP=1 node channel_tunnel_story/tests/browser.cjs
@@ -42,7 +42,7 @@ História bilíngue inteiramente no navegador: sete capítulos, mapa com relevo,
 
 Sirva a **raiz do repositório**: o corte reutiliza o Three.js local do simulador de câmera. Não há build, chave de API ou backend. MapLibre é local; os tiles OpenFreeMap e DEM Terrarium precisam de internet. Texto, corte e cálculos funcionam sem mapa externo; falha de relevo mantém o mapa plano. No celular, o mapa é compacto e os exercícios ficam na coluna de leitura. A atribuição permanece acessível.
 
-Use os comandos acima (`?lang=pt` para português). Os testes usam renderização WebGL real e tiles controlados; `test:live` verifica os serviços externos separadamente. Há verificações em 1440, 390 e 320 px de rolagem, teclado, sete capítulos, idiomas, fontes, cálculos, acessibilidade automatizada, falhas de mapa e armazenamento bloqueado. Isso não substitui testes em aparelhos físicos ou uma avaliação manual completa com leitor de tela.
+Use os comandos acima (`?lang=pt` para português). Os testes usam renderização WebGL real e tiles controlados; `test:live` verifica os serviços externos separadamente. Há verificações em 1440, 390 e 320 px, além de 844 × 390 em paisagem de rolagem, teclado, sete capítulos, idiomas, fontes, cálculos, acessibilidade automatizada, falhas de mapa e armazenamento bloqueado. Isso não substitui testes em aparelhos físicos ou uma avaliação manual completa com leitor de tela.
 
 ### História e simulação
 

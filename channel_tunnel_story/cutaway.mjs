@@ -51,7 +51,20 @@ export class Cutaway {
     this.progress=Math.max(0,Math.min(1,p));const curve=this.curves[1];
     [this.progress*.48,1-this.progress*.48].forEach((t,i)=>{const mesh=this.tbms[i];mesh.position.copy(curve.getPoint(t));mesh.rotation.y=i?Math.PI:0;mesh.children[1].rotation.x=this.progress*70;});this.render();
   }
-  reset(){this.camera.position.set(9,8,-25);this.controls.target.set(0,-.7,-.7);this.controls.update();this.render();}
-  resize(){const w=this.host.clientWidth,h=this.host.clientHeight;if(!w||!h)return;this.camera.aspect=w/h;this.camera.updateProjectionMatrix();this.renderer.setSize(w,h);this.render();}
+  reset(){
+    this.controls.target.set(0,-.7,-.7);
+    const direction=new THREE.Vector3(.25,.24,-1).normalize();
+    const corners=[];for(const x of [-10.5,10.5])for(const y of [-3.8,2.4])for(const z of [-3.3,1.4])corners.push(new THREE.Vector3(x,y,z));
+    // Fit the full geological block in the current viewport, including short phone panels.
+    let low=6,high=65;
+    for(let i=0;i<20;i++){
+      const distance=(low+high)/2;this.camera.position.copy(this.controls.target).addScaledVector(direction,distance);this.camera.lookAt(this.controls.target);this.camera.updateMatrixWorld();
+      const fits=corners.every(p=>{const q=p.clone().project(this.camera);return Math.abs(q.x)<.9&&Math.abs(q.y)<.85&&q.z<1;});
+      if(fits)high=distance;else low=distance;
+    }
+    this.controls.minDistance=6;this.controls.maxDistance=80;
+    this.camera.position.copy(this.controls.target).addScaledVector(direction,high);this.controls.update();this.render();
+  }
+  resize(){const w=this.host.clientWidth,h=this.host.clientHeight;if(!w||!h)return;const changed=Math.abs(this.camera.aspect-w/h)>.1;this.camera.aspect=w/h;this.camera.updateProjectionMatrix();this.renderer.setSize(w,h);if(changed||!this.sized){this.sized=true;this.reset();}else this.render();}
   render(){this.renderer.render(this.scene,this.camera);}
 }
