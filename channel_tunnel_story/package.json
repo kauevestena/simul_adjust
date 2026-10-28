@@ -1,0 +1,12 @@
+{
+  "name": "channel-tunnel-story",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "test:browser": "node tests/browser.cjs",
+    "test:live": "STORY_LIVE_MAP=1 node tests/browser.cjs"
+  },
+  "devDependencies": {"playwright": "1.51.1", "axe-core": "4.10.3"},
+  "dependencies": {"maplibre-gl": "4.7.1"}
+}

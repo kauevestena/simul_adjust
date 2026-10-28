@@ -1,17 +1,14 @@
 name: Channel Tunnel story checks
 on:
   push:
-    paths:
-      - 'channel_tunnel_story/**'
-      - '.github/workflows/channel-tunnel-story.yml'
+    paths: ['channel_tunnel_story/**', 'index.html', 'camera_proj/vendor/**', '.github/workflows/channel-tunnel-story.yml']
   pull_request:
-    paths:
-      - 'channel_tunnel_story/**'
-      - '.github/workflows/channel-tunnel-story.yml'
+    paths: ['channel_tunnel_story/**', 'index.html', 'camera_proj/vendor/**', '.github/workflows/channel-tunnel-story.yml']
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  validate:
+  model-and-portal:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -19,20 +16,63 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Check learning model
-        run: node --test channel_tunnel_story/tests/model.test.mjs
-      - name: Check the lesson's source and localization structure
+      - name: Numerical models, bilingual content and portal JavaScript parsing
+        run: node --test channel_tunnel_story/tests/*.test.mjs
+      - name: Existing simulator numerical regression checks
         run: |
-          node --input-type=module <<'NODE'
-          import {readFileSync} from 'node:fs';
-          import assert from 'node:assert/strict';
-          const page=readFileSync('channel_tunnel_story/index.html','utf8');
-          assert.match(page,/const C=\[/);
-          assert.match(page,/const ui=/);
-          assert.match(page,/pt:\[/);
-          assert.match(page,/en:\[/);
-          assert.match(page,/id:"monitoring"/);
-          assert.match(page,/id:"breakthrough"/);
-          assert.match(page,/MapLibre/);
-          console.log('Bilingual story structure checked');
-          NODE
+          node --test camera_proj/tests/*.test.mjs erro_profundidade/tests/*.test.mjs
+          node intersecao_re_3D/test_adjust.js
+          node intersecao_re_3D/test_preproc.js
+          node ajusta_planos/test_adjust.js
+          node ajusta_planos/test_volume.js
+          node test.js
+  browsers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: channel_tunnel_story/package-lock.json
+      - run: npm ci --prefix channel_tunnel_story
+      - run: npx --prefix channel_tunnel_story playwright install --with-deps ${{ matrix.browser }}
+      - name: Desktop and phone layouts, keyboard, i18n, real WebGL, calculations, offline and axe
+        run: xvfb-run -a npm run test:browser --prefix channel_tunnel_story
+        env:
+          STORY_BROWSER: ${{ matrix.browser }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: story-${{ matrix.browser }}-screenshots
+          path: channel_tunnel_story/test-results/
+  live-map:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: channel_tunnel_story/package-lock.json
+      - run: npm ci --prefix channel_tunnel_story
+      - run: npx --prefix channel_tunnel_story playwright install --with-deps chromium
+      - name: Load real OpenFreeMap vector tiles and Terrarium elevations
+        run: npm run test:live --prefix channel_tunnel_story
+      - name: Existing camera and depth simulator browser regression
+        run: |
+          node camera_proj/tests/browser.cjs
+          node erro_profundidade/tests/browser.cjs
+        env:
+          NODE_PATH: ./channel_tunnel_story/node_modules
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: story-live-map-screenshots
+          path: channel_tunnel_story/test-results/
