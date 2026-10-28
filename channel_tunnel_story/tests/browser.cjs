@@ -34,12 +34,12 @@ async function axe(page) {
   await new Promise(r=>server.listen(0,'127.0.0.1',r));
   console.log('HTTP server ready');
   const base=(EXTERNAL_BASE||`http://127.0.0.1:${server.address().port}`).replace(/\/$/,'');
-  const browser=await({chromium,firefox,webkit}[engine]).launch({headless:true,...(process.env.STORY_PROXY?{proxy:{server:process.env.STORY_PROXY,bypass:'127.0.0.1,localhost'}}:{}),...(engine==='chromium'?{args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']}: {})});
+  const browser=await({chromium,firefox,webkit}[engine]).launch({headless:!(engine==='firefox'&&process.env.DISPLAY),...(engine==='firefox'?{firefoxUserPrefs:{'webgl.force-enabled':true,'webgl.disabled':false}}:{}),...(process.env.STORY_PROXY?{proxy:{server:process.env.STORY_PROXY,bypass:'127.0.0.1,localhost'}}:{}),...(engine==='chromium'?{args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']}: {})});
   console.log('Browser ready');fs.mkdirSync(SHOTS,{recursive:true});
   try {
-    for(const size of [{width:1440,height:1000},{width:390,height:844},{width:320,height:740}]) {
+    for(const size of [{width:1440,height:1000},{width:390,height:844},{width:320,height:740},{width:844,height:390}]) {
       const mobile=size.width<850;
-      const ctx=await browser.newContext({viewport:size,locale:'en-US',reducedMotion:'reduce',hasTouch:mobile,...(engine!=='firefox'?{isMobile:mobile}:{})});
+      const ctx=await browser.newContext({ignoreHTTPSErrors:process.env.STORY_IGNORE_HTTPS_ERRORS==='1',viewport:size,locale:'en-US',reducedMotion:'reduce',hasTouch:mobile,...(engine!=='firefox'?{isMobile:mobile}:{})});
       await fixtures(ctx);const page=await ctx.newPage(),errors=[],responses=[];
       page.on('pageerror',e=>{errors.push(e.message);console.error('pageerror:',e.message);});
       if(process.env.STORY_DEBUG)page.on('console',m=>console.log(m.type(),m.text()));
@@ -70,6 +70,7 @@ async function axe(page) {
       await page.check('#unstable');assert.match(await page.locator('#monitorResult').textContent(),/instável/);
       await page.click('#en');await noOverflow(page);await axe(page);
       await page.click('#sectionView');await page.waitForFunction(()=>!!window.__story.cutaway);
+      await page.locator('#cutaway canvas').focus();const beforeOrbit=await page.evaluate(()=>window.__story.cutaway.camera.position.x);await page.keyboard.press('ArrowLeft');assert.notEqual(await page.evaluate(()=>window.__story.cutaway.camera.position.x),beforeOrbit);await page.keyboard.press('Home');
       await input(page,'advance',60);assert.equal(await page.evaluate(()=>window.__story.cutaway.progress),.6);
       await page.click('#play');await page.waitForFunction(()=>window.__story.cutaway.progress>.6);await page.click('#play');assert.equal(await page.evaluate(()=>window.__story.playing),false);
       await page.screenshot({path:path.join(SHOTS,`${engine}-${size.width}-cutaway.png`)});await axe(page);
@@ -80,13 +81,14 @@ async function axe(page) {
     }
     if(!EXTERNAL_BASE){
       // Style failure, terrain failure and disabled storage must leave the lesson usable.
-      for(const fail of ['style','terrain','storage']){
+      for(const fail of ['style','terrain','storage','webgl']){
         const ctx=await browser.newContext({reducedMotion:'reduce'});await fixtures(ctx,fail);
+        if(fail==='webgl')await ctx.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args);};});
         if(fail==='storage')await ctx.addInitScript(()=>{Storage.prototype.getItem=()=>{throw new Error('Storage blocked');};Storage.prototype.setItem=()=>{throw new Error('Storage blocked');};});
         const page=await ctx.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
         await page.goto(base+'/channel_tunnel_story/?lang=pt#chapter-underground');
         await page.waitForFunction(()=>window.__story?.active===3);
-        if(fail!=='storage')await page.waitForFunction(s=>window.__story.mapState===s,fail==='style'?'mapFailed':'terrainFailed');
+        if(fail!=='storage')await page.waitForFunction(s=>window.__story.mapState===s,['style','webgl'].includes(fail)?'mapFailed':'terrainFailed');
         await page.click('#en');await input(page,'angle',0);assert.equal(await page.locator('#modelOutput').textContent(),'0.000 m');assert.deepEqual(errors,[]);await ctx.close();
       }
     }

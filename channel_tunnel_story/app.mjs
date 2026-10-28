@@ -51,6 +51,7 @@ function refreshViewText() {
   const t=ui[lang]; $('mapCaveat').textContent=view==='map'?t.mapCaveat:t.sectionCaveat;
   $('mapStatus').textContent=t[mapState]; $('mapFallback').textContent=t.mapFallback;
   $('play').textContent=t[playing?'pause':'play']; $('play').setAttribute('aria-pressed',String(playing));
+  if(cutaway)cutaway.renderer.domElement.setAttribute('aria-label',t.sectionKeys);
   $('activeChapter').textContent=active<0?'PT-BR / EN':`${active+1} / 7 · ${chapters[active][lang][0]}`;
 }
 function localizeMap() {
@@ -65,7 +66,7 @@ function setActive(i) {
   if(i===active) return; active=i;
   [...$('chapterNav').children].forEach((b,j)=>{if(i===j)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current');});
   refreshViewText(); if(i<0)return;
-  if(map && mapState!=='mapFailed') {const [lng,lat,zoom,pitch,bearing]=chapters[i].camera;map.flyTo({center:[lng,lat],zoom,pitch,bearing,duration:motion.matches?0:1200,essential:false});}
+  if(map && mapState!=='mapFailed') {const [lng,lat,zoom,pitch,bearing]=chapters[i].camera;map.flyTo({center:[lng,lat],zoom:zoom-(innerWidth<=850?1.2:0),pitch,bearing,duration:motion.matches?0:1200,essential:false});}
 }
 function navigateChapter(i) {
   const el=$('chapter-'+chapters[i].id); const url=new URL(location); url.hash=el.id; history.pushState(null,'',url);
@@ -109,7 +110,7 @@ function applyTerrain() {
 function startMap() {
   if(!window.maplibregl){unavailable();return;}
   try {
-    map=new maplibregl.Map({container:'map',style:'https://tiles.openfreemap.org/styles/positron',center:[1.47,51.01],zoom:9,pitch:52,bearing:-22,cooperativeGestures:true,attributionControl:false});
+    map=new maplibregl.Map({container:'map',style:'https://tiles.openfreemap.org/styles/positron',center:[1.47,51.01],zoom:innerWidth<=850?7.8:9,pitch:innerWidth<=850?40:52,bearing:-22,cooperativeGestures:true,attributionControl:false});
     map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),'top-right');
     map.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-right');localizeMap();
     const timeout=setTimeout(()=>{if(!map.isStyleLoaded())unavailable();},20000);
@@ -128,7 +129,7 @@ function startMap() {
     });
     map.on('webglcontextlost',unavailable);
     $('terrain').addEventListener('change',applyTerrain);
-  } catch {unavailable();}
+  } catch(error) {console.warn('Map initialization failed',error);unavailable();}
 }
 async function setView(next) {
   view=next;$('map').hidden=next!=='map';$('cutaway').hidden=next!=='section';$('mapTools').hidden=next!=='map';$('sectionTools').hidden=next!=='section';
@@ -136,7 +137,7 @@ async function setView(next) {
   $('mapFallback').hidden=next!=='map'||mapState!=='mapFailed';refreshViewText();
   if(next==='map'){setPlaying(false);map?.resize();return;}
   if(!cutaway)try {const {Cutaway}=await import('./cutaway.mjs');cutaway=new Cutaway($('cutaway'));cutaway.setProgress(Number($('advance').value)/100);} catch {$('cutaway').textContent=ui[lang].sectionFallback;$('play').disabled=true;}
-  cutaway?.resize();
+  cutaway?.resize();if(cutaway)cutaway.renderer.domElement.setAttribute('aria-label',ui[lang].sectionKeys);
 }
 function setPlaying(value) {playing=value;cancelAnimationFrame(animationFrame);lastFrame=0;refreshViewText();if(playing)animationFrame=requestAnimationFrame(animate);}
 function animate(time) {
