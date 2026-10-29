@@ -164,7 +164,17 @@ async function axe(page) {
       assert.equal(await page.evaluate(()=>window.__story.cutaway.mode),'overview');
       await input(page,'advance',60);
       await page.click('#play');
-      await page.waitForFunction(()=>window.__story.cutaway.progress>.6);
+      await page.waitForFunction(()=>window.__story.cutaway.progress>.6,null,{timeout:12000}).catch(async error=>{
+        console.error('Play diagnostics',await page.evaluate(()=>({
+          phase:window.__story.cutaway?.phase,mode:window.__story.cutaway?.mode,
+          view:window.__story.view,active:window.__story.active,
+          playing:window.__story.playing,advance:document.getElementById('advance')?.value,
+          progress:window.__story.cutaway?.progress,visible:!document.hidden,
+          playText:document.getElementById('play')?.textContent,
+          sceneToolsHidden:document.getElementById('sectionTools')?.hidden
+        })));
+        throw error;
+      });
       // Test the actual play-button handler atomically: if the animation reached
       // 100% meanwhile, a second external click would restart rather than pause.
       await page.evaluate(()=>{if(window.__story.playing)document.getElementById('play').click();});
