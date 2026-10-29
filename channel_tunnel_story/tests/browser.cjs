@@ -58,6 +58,17 @@ async function axe(page) {
       if(LIVE){assert.ok(responses.some(r=>/\.pbf|planet/.test(r.url)&&r.status===200),'live basemap tiles');assert.ok(responses.some(r=>r.url.includes('terrarium')&&r.status===200),'live DEM tiles');}
       await noOverflow(page);await page.screenshot({path:path.join(SHOTS,`${engine}-${size.width}-${LIVE?'live':'fixture'}-map.png`)});
       if(LIVE) {
+        // Regression: the live basemap must come back after the Three.js cutaway.
+        await page.click('#sectionView');
+        await page.waitForFunction(()=>window.__story.cutaway?.renderer?.domElement);
+        await page.click('#mapView');
+        await page.waitForFunction(()=>window.__story.view==='map' &&
+          !document.getElementById('map').hidden &&
+          window.__story.map?.getLayer('route-progress-line') &&
+          window.__story.map.getCanvas().width>0 &&
+          window.__story.map.getCanvas().height>0);
+        assert.equal(await page.locator('#map').isVisible(),true,'MapLibre is visible again');
+        await page.screenshot({path:path.join(SHOTS,`${engine}-${size.width}-live-return-map.png`)});
         assert.deepEqual(errors,[],'real map must load without uncaught browser errors');
         console.log(`${engine} ${size.width}px: live vector map and decoded terrain passed`);
         await ctx.close();continue;
@@ -128,6 +139,16 @@ async function axe(page) {
       await page.locator('#cutaway canvas').focus();const beforeOrbit=await page.evaluate(()=>window.__story.cutaway.camera.position.x);await page.keyboard.press('ArrowLeft');assert.notEqual(await page.evaluate(()=>window.__story.cutaway.camera.position.x),beforeOrbit);await page.keyboard.press('Home');
       const span=await page.evaluate(()=>{const c=window.__story.cutaway;return Math.abs(c.curves[1].getPoint(1).project(c.camera).x-c.curves[1].getPoint(0).project(c.camera).x);});assert.ok(span>.6&&span<2,'cutaway occupies the viewport without clipping');
       await input(page,'advance',60);assert.equal(await page.evaluate(()=>window.__story.cutaway.progress),.6);
+      assert.equal(await page.evaluate(()=>window.__story.cutaway.totalStations.length),8,'illustrative total stations are installed in gallery');
+      await page.click('#surveyCam');
+      assert.equal(await page.evaluate(()=>window.__story.cutaway.mode),'survey');
+      const closeup=await page.evaluate(()=> {
+        const c=window.__story.cutaway;
+        const v=c.totalStations.find(st=>st.visible);
+        return {visible:!!v,distance:c.camera.position.distanceTo(v.position),pressed:document.getElementById('surveyCam').getAttribute('aria-pressed')};
+      });
+      assert.ok(closeup.visible && closeup.distance<6,'gallery view is close to a visible total station');
+      assert.equal(closeup.pressed,'true');
       await page.click('#followCam');
       assert.equal(await page.evaluate(()=>window.__story.cutaway.mode),'follow');
       const cameraBefore=await page.evaluate(()=>window.__story.cutaway.camera.position.x);
@@ -143,7 +164,15 @@ async function axe(page) {
       await page.evaluate(()=>{if(window.__story.playing)document.getElementById('play').click();});
       assert.equal(await page.evaluate(()=>window.__story.playing),false);
       await page.screenshot({path:path.join(SHOTS,`${engine}-${size.width}-cutaway.png`)});await axe(page);
-      await page.click('#mapView');await page.uncheck('#terrain');await page.waitForFunction(()=>window.__story.map.getTerrain()===null);
+      await page.click('#mapView');
+      await page.waitForFunction(()=>window.__story.view==='map' &&
+        !document.getElementById('map').hidden &&
+        window.__story.map?.getLayer('route-progress-line') &&
+        window.__story.map.getCanvas().width>0 &&
+        window.__story.map.getCanvas().height>0);
+      assert.equal(await page.locator('#map').isVisible(),true,'MapLibre canvas reappears after 3D use');
+      assert.equal(await page.locator('#cutaway').isVisible(),false,'Three.js viewport is hidden');
+      await page.uncheck('#terrain');await page.waitForFunction(()=>window.__story.map.getTerrain()===null);
       await page.check('#terrain');await page.waitForFunction(()=>!!window.__story.map.getTerrain());
       await page.locator('#chapter-underground .sources-mini a').click();await page.waitForFunction(()=>location.hash==='#source-9');
       assert.deepEqual(errors,[]);await ctx.close();console.log(`${engine} ${size.width}px: story, map, cutaway, models, i18n, accessibility passed`);
