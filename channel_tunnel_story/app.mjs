@@ -116,7 +116,7 @@ function setActive(i,{fromScroll=false}={}) {
     cutaway?.setPhase(phaseForChapter(chapters[i].id));
     // Explicit chapter selection is a guided scene change; incidental scrolling
     // does not override the learner's chosen camera mode.
-    if(!fromScroll && cutaway && view==='section') {
+    if(cutaway && view==='section' && (!fromScroll || !manualView)) {
       const chapterMode=chapters[i].id==='underground'?'survey':
         chapters[i].id==='excavation'?'follow':'overview';
       cutaway.setCameraMode(chapterMode);
@@ -274,7 +274,17 @@ async function setView(next) {
     });
   }
   if(cutawayLoading)await cutawayLoading;
-  if(cutaway) {cutaway.setProgress(Number($('advance').value)/100);cutaway.resize();cutaway.setPhase(active>=0?phaseForChapter(chapters[active].id):'digging');cutaway.renderer.domElement.setAttribute('aria-label',ui[lang].sectionKeys);refreshSurveySequence();}
+  if(cutaway) {
+    cutaway.setProgress(Number($('advance').value)/100);
+    cutaway.resize();cutaway.setPhase(active>=0?phaseForChapter(chapters[active].id):'digging');
+    if(!manualView && active>=0) {
+      const stage=chapters[active].id;
+      const nextCamera=stage==='underground'?'survey':stage==='excavation'?'follow':'overview';
+      cutaway.setCameraMode(nextCamera);setCameraButtons(nextCamera);
+    }
+    cutaway.renderer.domElement.setAttribute('aria-label',ui[lang].sectionKeys);
+    refreshSurveySequence();
+  }
 }
 function setPlaying(value) {playing=value;cancelAnimationFrame(animationFrame);lastFrame=0;refreshViewText();if(playing)animationFrame=requestAnimationFrame(animate);}
 function animate(time) {
