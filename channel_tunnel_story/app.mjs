@@ -93,9 +93,11 @@ function updateRouteProgress(progress) {
   if(source) source.setData({type:'Feature',properties:{},geometry:{type:'LineString',coordinates:illustrativeRoute(mapProgress)}});
 }
 function phaseForChapter(id) {
+  if(id==='challenge')return 'challenge';
   if(id==='control')return 'control';
-  if(id==='geology')return 'heights';
+  if(id==='geology')return 'geology';
   if(id==='underground')return 'traverse';
+  if(id==='breakthrough')return 'breakthrough';
   if(id==='monitoring')return 'monitoring';
   return 'digging';
 }
@@ -112,10 +114,18 @@ function setActive(i,{fromScroll=false}={}) {
   updateRouteProgress(i<0?0:chapters[i].progress);
   if(i>=0){
     cutaway?.setPhase(phaseForChapter(chapters[i].id));
-    // Chapter navigation suggests a scene only until the reader manually chooses a view.
+    // Explicit chapter selection is a guided scene change; incidental scrolling
+    // does not override the learner's chosen camera mode.
+    if(!fromScroll && cutaway && view==='section') {
+      const chapterMode=chapters[i].id==='underground'?'survey':
+        chapters[i].id==='excavation'?'follow':'overview';
+      cutaway.setCameraMode(chapterMode);
+      setCameraButtons(chapterMode);
+    }
     if(!manualView) {
-      if(['control','underground','excavation','breakthrough'].includes(chapters[i].id)) void setView('section');
-      if(chapters[i].id==='geology'||chapters[i].id==='monitoring') void setView('map');
+      // Use the distinct 3D scene for every engineering chapter, including
+      // geology and post-construction monitoring, rather than silent map reuse.
+      void setView(chapters[i].id==='challenge'?'map':'section');
     }
   }
   [...$('chapterNav').children].forEach((b,j)=>{if(i===j)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current');});
