@@ -163,6 +163,13 @@ async function axe(page) {
       await page.click('#overviewCam');
       assert.equal(await page.evaluate(()=>window.__story.cutaway.mode),'overview');
       await input(page,'advance',60);
+      // A scroll-driven chapter switch must not erase an actively controlled
+      // excavation; explicit chapter-button navigation remains synchronized.
+      await page.evaluate(()=>window.dispatchEvent(new Event('wheel')));
+      await page.locator('#chapter-challenge').evaluate(el=>el.scrollIntoView({behavior:'instant'}));
+      await page.waitForFunction(()=>window.__story.active===0);
+      assert.equal(await page.evaluate(()=>window.__story.cutaway.progress),.6,
+        'manual excavation progress survives incidental story scrolling');
       await page.click('#play');
       await page.waitForFunction(()=>window.__story.cutaway.progress>.6,null,{timeout:12000}).catch(async error=>{
         console.error('Play diagnostics',await page.evaluate(()=>({
