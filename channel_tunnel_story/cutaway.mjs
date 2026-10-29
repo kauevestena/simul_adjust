@@ -175,7 +175,9 @@ export class Cutaway {
     this.phase=phase;
     const surface=phase==='control'||phase==='heights';
     this.gnssGroup.visible=surface;this.heightGroup.visible=phase==='heights'||phase==='control';
-    this.surveyGroup.visible=this.surveyRequested && (phase==='traverse'||phase==='digging'||phase==='monitoring');
+    // Never depict excavation during the earlier surface-control campaign.
+    this.tunnelGroup.visible=!surface;
+    this.surveyGroup.visible=this.surveyRequested && !surface;
     this.gyroStations.visible=this.gyroEnabled;
     this.tbms.forEach(m=>m.visible=!surface);
     this.render();
