@@ -187,6 +187,7 @@ async function axe(page) {
         'GNSS sits on visible terrain above the tunnel');
       assert.ok(surface.satelliteY>surface.receiverY+1 && surface.cameraY>surface.groundY,
         'surface satellite and camera are above ground');
+      if([1440,390].includes(size.width)) await page.screenshot({path:path.join(SHOTS,`${engine}-${size.width}-surface-GNSS.png`)});
       await input(page,'advance',3);
       const opacity3=await page.evaluate(()=>window.__story.cutaway.surfaceSignals[0].material.opacity);
       assert.ok(opacity3>surface.opacity,'GNSS signal brightness changes at intermediate progress');
@@ -199,6 +200,7 @@ async function axe(page) {
           lineCount:m.gnssPortalLink.geometry.drawRange.count};
       });
       assert.equal(portal8.phase,'portal');
+      if([1440,390].includes(size.width)) await page.screenshot({path:path.join(SHOTS,`${engine}-${size.width}-portal-transfer.png`)});
       assert.ok(portal8.lineCount>2,'portal control transfer path is being drawn');
       await input(page,'advance',11);
       const portal11=await page.evaluate(()=>{
