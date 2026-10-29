@@ -26,3 +26,20 @@ test('local page scripts and styles resolve, with an executable map implementati
   new Script(readFileSync(new URL('channel_tunnel_story/vendor/maplibre-gl.js',root),'utf8'));
   assert.match(script,/new maplibregl\.Map\(/);
 });
+
+
+test('experimental Channel Tunnel card is within the standard portal grid',()=>{
+  const html=readFileSync(new URL('index.html',root),'utf8');
+  const grid=html.indexOf('<main class="simulators-grid" id="simulatorsGrid">');
+  const gridEnd=html.indexOf('</main>',grid);
+  const card=html.indexOf('data-card-id="channel_tunnel_story"');
+  assert.ok(grid>=0 && card>grid && card<gridEnd,'card must be a child of the grid rather than a full-width sibling');
+  assert.equal(html.match(/data-card-id="channel_tunnel_story"/g)?.length,1);
+  const cardHtml=html.slice(html.lastIndexOf('<article ',card),html.indexOf('</article>',card));
+  assert.match(cardHtml,/class="sim-card"/);
+  assert.match(cardHtml,/data-status="experimental"/);
+  assert.match(cardHtml,/class="badge-experimental">🧪 Experimental/);
+  assert.doesNotMatch(cardHtml,/data-status="unfinished"/);
+  assert.match(html,/"pt-BR":\{"experimental":"🧪 Experimental"/);
+  assert.match(html,/"en":\{"experimental":"🧪 Experimental"/);
+});
