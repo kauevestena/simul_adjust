@@ -94,13 +94,20 @@ function setActive(i) {
   refreshViewText(); if(i<0)return;
   if(map && mapState!=='mapFailed') {const [lng,lat,zoom,pitch,bearing]=chapters[i].camera;map.flyTo({center:[lng,lat],zoom:zoom-(innerWidth<=850?1.2:0),pitch,bearing,duration:motion.matches?0:1200,essential:false});}
 }
+let navigationTarget=null, navigationTimer=0;
 function navigateChapter(i) {
-  const el=$('chapter-'+chapters[i].id); const url=new URL(location); url.hash=el.id; history.pushState(null,'',url);
-  setActive(i); el.focus({preventScroll:true}); el.scrollIntoView({behavior:motion.matches?'instant':'smooth',block:'start'});
+  // A deliberate chapter jump must not be overridden by an intermediate mobile
+  // scroll event while the sticky scene/camera are being updated.
+  navigationTarget=i;clearTimeout(navigationTimer);
+  const el=$('chapter-'+chapters[i].id);const url=new URL(location);url.hash=el.id;history.pushState(null,'',url);
+  setActive(i);el.focus({preventScroll:true});
+  el.scrollIntoView({behavior:motion.matches?'instant':'smooth',block:'start'});
+  navigationTimer=setTimeout(()=>{navigationTarget=null;syncScroll();},motion.matches?750:1650);
 }
 let scrollQueued=false;
 function syncScroll() {
   scrollQueued=false;
+  if(navigationTarget!==null)return;
   const stage=document.querySelector('.stage'), r=stage.getBoundingClientRect();
   const top=document.querySelector('.top').getBoundingClientRect().bottom;
   const overlay=getComputedStyle(stage).position==='sticky' && innerWidth<=850 ? r.bottom : top;
@@ -111,6 +118,8 @@ function syncScroll() {
 }
 addEventListener('scroll',()=>{if(!scrollQueued){scrollQueued=true;requestAnimationFrame(syncScroll);}},{passive:true});
 addEventListener('resize',syncScroll);
+// A user's own scroll gesture immediately regains control of the active chapter.
+for(const eventName of ['wheel','touchstart']) addEventListener(eventName,()=>{navigationTarget=null;clearTimeout(navigationTimer);},{passive:true});
 addEventListener('hashchange',()=>{const i=chapters.findIndex(c=>'#chapter-'+c.id===location.hash); if(i>=0)setActive(i);});
 function updateModels() {
   const t=ui[lang], angle=Number($('angle').value), distance=Number($('distance').value);
