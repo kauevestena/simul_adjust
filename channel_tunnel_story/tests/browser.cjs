@@ -203,7 +203,13 @@ async function axe(page) {
       assert.equal(portal8.phase,'portal');
       assert.equal(await page.evaluate(()=>window.__story.cutaway.gnssPortalLink.visible),true,
         'control transfer appears in the distinct portal stage');
-      if([1440,390].includes(size.width)) await page.screenshot({path:path.join(SHOTS,`${engine}-${size.width}-portal-transfer.png`)});
+      assert.ok(await page.evaluate(()=>window.__story.cutaway.portalTransferTube.geometry.drawRange.count>0),
+        'the visibly thick transfer path grows with progress');
+      assert.equal(await page.locator('#stageTransfer').getAttribute('data-active'),'true');
+      if([1440,390].includes(size.width)) {
+        await page.waitForTimeout(230); // allow the milestone highlight CSS transition to settle
+        await page.screenshot({path:path.join(SHOTS,`${engine}-${size.width}-portal-transfer.png`)});
+      }
       assert.ok(portal8.lineCount>2,'portal control transfer path is being drawn');
       await input(page,'advance',11);
       const portal11=await page.evaluate(()=>{
@@ -241,6 +247,8 @@ async function axe(page) {
       assert.notEqual(intermediateA.tipX,intermediateB.tipX,'optical beam advances continuously');
       assert.notEqual(intermediateA.cameraX,intermediateB.cameraX,'third-person camera advances continuously');
       assert.notEqual(intermediateA.faceX,intermediateB.faceX,'excavation face advances continuously');
+      assert.equal(await page.locator('#stageTraverse').getAttribute('data-active'),'true');
+      if([1440,390].includes(size.width)) await page.waitForTimeout(230);
       await page.screenshot({path:path.join(SHOTS,`${engine}-${size.width}-gnss-traverse-transition.png`)});
       await input(page,'advance',37);
       sequence=await page.evaluate(()=>{
