@@ -1,6 +1,7 @@
 name: Channel Tunnel story checks
 on:
   push:
+    branches: [main]
     paths: ['channel_tunnel_story/**', 'index.html', 'camera_proj/vendor/**', '.github/workflows/channel-tunnel-story.yml']
   pull_request:
     paths: ['channel_tunnel_story/**', 'index.html', 'camera_proj/vendor/**', '.github/workflows/channel-tunnel-story.yml']
