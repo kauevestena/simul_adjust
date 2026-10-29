@@ -78,13 +78,16 @@ function phaseForChapter(id) {
   if(id==='monitoring')return 'monitoring';
   return 'digging';
 }
-function setActive(i) {
-  if(i===active) return; active=i;
-  // Narrative progress is NOT actual excavated chainage or historical elapsed time.
-  // Synchronise when the chapter changes while retaining manual experiment controls.
-  setPlaying(false);
-  $('advance').value = String(Math.round((i<0?0:chapters[i].progress)*100));
-  updateAdvance();
+function setActive(i,{fromScroll=false}={}) {
+  if(i===active)return;active=i;
+  // A scroll resulting from interacting with the sticky 3D toolbar must not
+  // overwrite a manually chosen excavation progress or interrupt playback.
+  // Explicit chapter navigation still synchronizes the narrative and cutaway.
+  if(!fromScroll || !manualView){
+    setPlaying(false);
+    $('advance').value=String(Math.round((i<0?0:chapters[i].progress)*100));
+    updateAdvance();
+  }
   updateRouteProgress(i<0?0:chapters[i].progress);
   if(i>=0){
     cutaway?.setPhase(phaseForChapter(chapters[i].id));
@@ -118,7 +121,7 @@ function syncScroll() {
   const probe=overlay+(innerHeight-overlay)*0.3;
   let next=-1;
   chapters.forEach((c,i)=>{if($('chapter-'+c.id).getBoundingClientRect().top<=probe)next=i;});
-  setActive(next);
+  setActive(next,{fromScroll:true});
 }
 addEventListener('scroll',()=>{if(!scrollQueued){scrollQueued=true;requestAnimationFrame(syncScroll);}},{passive:true});
 addEventListener('resize',syncScroll);
