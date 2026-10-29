@@ -35,6 +35,9 @@ function setLanguage(next) {
   for (const [id,value] of Object.entries(t)) { const node=$(id); if(node && typeof value==='string' && !['mapStatus','mapCaveat','mapFallback','traverseResult','monitorResult','play'].includes(id)) node.textContent=value; }
   $('chapterNav').setAttribute('aria-label',t.navLabel); $('map').setAttribute('aria-label',t.mapLabel);
   document.querySelector('meta[name=description]').content=t.subtitle;
+  for(const [id,key] of [['bearingGraphic','bearingDiagramLabel'],['heightGraphic','heightDiagramLabel'],['traverseGraphic','traverseDiagramLabel'],['monitorGraphic','monitorDiagramLabel']]){
+    $(id).setAttribute('aria-label',t[key]);
+  }
   chapters.forEach((c,i)=>{
     const section=$('chapter-'+c.id), text=c[lang], button=$('chapterNav').children[i];
     button.setAttribute('aria-label',`${i+1}. ${text[1]}`); button.title=text[1];
