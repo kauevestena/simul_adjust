@@ -47,3 +47,17 @@ A numeração corresponde às fontes da página. A tabela distingue texto comple
 O artigo original de Korittke (1990) sustenta a explicação de poligonais, direções giroscópicas e refração. Os relatos do encontro permanecem separados: 361 mm transversais, 69 mm longitudinais e 58 mm verticais no resumo de 1991; 358 mm horizontais e 58 mm verticais na narrativa de sondagem da ICE. Não há base aqui para reconciliar datas/componentes ou interpretar desencontro como desvio-padrão.
 
 O CIRIA foi consultado integralmente no estudo de caso 13, pp. 340–345. A descrição de monitoramento é histórica, sem afirmar acesso a medições operacionais atuais. O corte 3D, a poligonal ajustada e as épocas de monitoramento são didáticos e explicitamente sintéticos. Os links, escopos de acesso e checksums acima permitem refazer a verificação. Uma reconstrução georreferenciada exige dados de engenharia e licença adequados.
+
+
+## 2026-10-29 source expansion: one grid, two height datums
+
+Curtis, C. J. (1992), *Calibration and Use of the Mekometer ME5000 in the Survey of the Channel Tunnel*, SLAC-403, pp. 67–70 (notably printed p. 68, PDF page 66). Full scan: https://inspirehep.net/files/3f7c5e0626838e09fc79c42a9df3277c
+
+The source explicitly identifies the 1986 cross-border **Channel Tunnel Grid 1986 (CTG86)** based on ground observations by Ordnance Survey and IGN. The incorporation of GPS in 1987 gave the **Réseau Tunnel sous la Manche 1987 (RTM87)**, reportedly of order 1 ppm; it served as the common engineering grid. This refutes any claim that the common network was **GNSS-only**. The spatial control shown in the scene is a *diagram of connectivity*, not the measured station layout.
+
+Curtis also reports the distinct vertical-datum difficulty. A 1988 study revised an earlier French/UK datum separation of 0.442 m to approximately 0.300 m, with stated standard error 0.080 m; the construction vertical datum **Nivellement Trans Manche 1988 (NTM88)** followed. The page's user-controlled datum shift is **synthetic**, not a rerun of those historical observations. The equation `H ≈ h − N` explains why ellipsoidal heights from GNSS are not orthometric heights by themselves; a physical vertical reference and its transformation are separately required.
+
+The 3D demonstration uses 6 surface stations, 3 schematic satellites, invented GPS baseline connections, a cartoon three-bore section, two TBM models and a synthetic underground traverse. Booming tunnel sections and lining as the slider changes are illustrative only. They must **not** be described as historical TBM chainage, physical geologic boundaries or actual survey networks. No photograph, plan or technical drawing was copied to make these meshes.
+
+### Português
+Curtis (1992, p. 68 impressa, página 66 do PDF) documenta a CTG86 com observações terrestres de OS e IGN, depois reforçada por GPS em 1987 para originar a RTM87 — grade comum de engenharia. **A rede não foi exclusivamente GNSS.** Em separado, a compatibilização dos referenciais de altitude resultou no NTM88, após revisão de uma diferença de datums para cerca de 0,300 m (erro-padrão 0,080 m). A expressão `H ≈ h − N` é conceitual; GNSS não determina sozinho alturas ortométricas. O corte em 3D, as estações, os satélites e os avanços são esquemáticos, não são observações históricas nem geometria construída.

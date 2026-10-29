@@ -44,6 +44,11 @@ export const refs = [
     "N. Korittke (1990), IWAA, pp. 315–331",
     "Influence of horizontal Refraction on the traverse Measurements in Tunnels with Small Diameters",
     "https://www.slac.stanford.edu/econf/C9009106/papers/023.PDF"
+  ],
+  [
+    "C. J. Curtis (1992), SLAC-403, pp. 67–70",
+    "Calibration and use of the ME5000 in the survey of the Channel Tunnel (CTG86, RTM87, NTM88)",
+    "https://inspirehep.net/files/3f7c5e0626838e09fc79c42a9df3277c"
   ]
 ];
 
@@ -69,13 +74,26 @@ export const ui = {
     "units": "desvio lateral",
     "lesson": "Ideia-chave",
     "surveyLabel": "Exibir rede topográfica sintética (estações e visadas)",
+    "heightTitle": "Dois países, uma referência de alturas",
+    "heightText": "GNSS mede altura elipsoidal h. A relação H ≈ h − N exige um modelo geoidal/quasegeoidal e uma referência vertical coerente. Ajuste abaixo um deslocamento didático entre datums locais; não são observações do Eurotúnel.",
+    "datumOffsetLabel": "Deslocamento de datum (m)",
+    "heightCaveat": "Exemplo sintético: h = 62 m, N = 36 m, H = 26 m. A diferença histórica revisada em 1988 foi cerca de 0,300 ± 0,080 m (Curtis, 1992), não calculada pelo controle.",
+    "launch3D": "▶ Explorar a obra em 3D",
+    "overviewCam": "Vista geral",
+    "followCam": "Seguir tuneladora",
+    "sceneDisclosure": "Sobre o modelo 3D (didático)",
+    "sceneExplainer": "Visualização didática: rede de superfície, controle de alturas, poligonais e avanço são esquemáticos. Escalas e posições não são levantamentos históricos.",
+    "bearingDiagramLabel": "Diagrama didático do desvio angular, com escala vertical exagerada",
+    "heightDiagramLabel": "Diagrama didático de compatibilização de referências verticais",
+    "traverseDiagramLabel": "Comparação esquemática da poligonal óptica e ajustada com observações giroscópicas",
+    "monitorDiagramLabel": "Diagrama de deslocamento sintético do alvo em relação às referências",
     "sectionKeys": "Corte 3D esquemático. Setas giram; mais/menos alteram o zoom; Home restaura. Use o controle de avanço para mover as tuneladoras representativas.",
     "skip": "Pular para a história",
     "heroHint": "Percorra sete capítulos. Troque a visualização para explorar um corte 3D esquemático.",
-    "jumpLab": "Ir aos três experimentos didáticos ↓",
+    "jumpLab": "Ir aos quatro experimentos didáticos ↓",
     "syntheticBadge": "Experimentos didáticos · observações sintéticas",
     "experimentsTitle": "De um ângulo a uma decisão",
-    "experimentIntro": "Os exercícios isolam conceitos geodésicos. As observações inventadas não são registros da obra do Eurotúnel.",
+    "experimentIntro": "Quatro atividades: referência vertical, erro de orientação, poligonal e monitoramento. As observações sintéticas não são registros da obra do Eurotúnel.",
     "mapView": "Mapa",
     "sectionView": "Corte 3D",
     "terrainLabel": "Relevo ×1,6",
@@ -137,13 +155,26 @@ export const ui = {
     "units": "lateral offset",
     "lesson": "Takeaway",
     "surveyLabel": "Show synthetic survey network (stations and sight lines)",
+    "heightTitle": "Two nations, one height reference",
+    "heightText": "GNSS measures ellipsoidal height h. The relationship H ≈ h − N requires a geoid/quasigeoid model and consistent vertical reference. Adjust an illustrative local-datum tie below; these are not Channel Tunnel observations.",
+    "datumOffsetLabel": "Datum offset (m)",
+    "heightCaveat": "Synthetic example: h = 62 m, N = 36 m, H = 26 m. A historical 1988 revision was about 0.300 ± 0.080 m (Curtis, 1992), not calculated by this control.",
+    "launch3D": "▶ Explore the works in 3D",
+    "overviewCam": "Overview",
+    "followCam": "Follow TBM",
+    "sceneDisclosure": "About this illustrative 3D model",
+    "sceneExplainer": "Teaching illustration: surface network, height control, traverses and excavation are schematic. Scales and positions do not reproduce historical survey data.",
+    "bearingDiagramLabel": "Teaching diagram of bearing error with exaggerated vertical scale",
+    "heightDiagramLabel": "Teaching diagram of reconciled vertical reference levels",
+    "traverseDiagramLabel": "Schematic optical traverse versus gyro-aided adjusted traverse",
+    "monitorDiagramLabel": "Synthetic target movement relative to reference points",
     "sectionKeys": "Schematic 3D cutaway. Arrow keys rotate; plus/minus zoom; Home resets. Use the progress slider to move the representative TBMs.",
     "skip": "Skip to story",
     "heroHint": "Scroll through seven chapters. Switch views to explore a schematic 3D cutaway.",
-    "jumpLab": "Go to the three learning experiments ↓",
+    "jumpLab": "Go to the four learning experiments ↓",
     "syntheticBadge": "Teaching experiments · synthetic observations",
     "experimentsTitle": "From an angle to a decision",
-    "experimentIntro": "These exercises isolate geodetic ideas. Their invented observations are not records of the Channel Tunnel works.",
+    "experimentIntro": "Four activities: vertical reference, bearing error, traverse adjustment and monitoring. The synthetic observations are not historical Channel Tunnel measurements.",
     "mapView": "Map",
     "sectionView": "Cutaway",
     "terrainLabel": "Terrain ×1.6",
@@ -227,19 +258,17 @@ export const chapters = [
       58,
       -42
     ],
-    "src": [
-      2
-    ],
+    "src": [2,10],
     "pt": [
       "Referência geodésica",
       "Uma rede comum para dois países",
-      "Em 1986, a Ordnance Survey recebeu da TML a tarefa de criar uma grade de projeto. O IGN observou o setor francês e calculou independentemente a rede completa. Em 1987, a rede recebeu observações GPS: a Nortech usou receptores TI 4100 de dupla frequência na ligação através do Canal; OS e IGN observaram em terra. O resumo de Calvert documenta esses papéis, mas não fornece todas as observações para reproduzir o ajustamento.",
+      "Em 1986, Ordnance Survey e IGN estabeleceram a grade específica CTG86, com observações terrestres; em 1987, levantamentos GPS da OS e IGN nas duas margens e linhas trans-Canal da Nortech reforçaram a rede e fundamentaram a RTM87, referência comum de projeto. GNSS não foi o único método. O componente vertical também precisou de compatibilização: uma reavaliação em 1988 fundamentou o datum NTM88, pois alturas elipsoidais GPS não são, isoladamente, alturas físicas. O modelo 3D usa estações inventadas, não a rede observada.",
       "Rede de apoio, datum, projeção e ajustamento por mínimos quadrados."
     ],
     "en": [
       "Geodetic framework",
       "One control network for two countries",
-      "In 1986, TML commissioned Ordnance Survey to establish a project grid. IGN observed the French sector and independently computed the whole network. GPS strengthened it in 1987: Nortech used dual-frequency TI 4100 receivers for the cross-Channel connection, with OS and IGN observing on land. Calvert’s abstract documents these roles, but does not supply all observations needed to reproduce the adjustment.",
+      "In 1986, Ordnance Survey and IGN established the project-specific CTG86 grid using terrestrial observations. GPS observations by OS and IGN on each shore and cross-Channel baselines by Nortech strengthened it in 1987, underpinning the common RTM87 construction grid. GNSS was not the only surveying technique. Vertical control required a separate datum reconciliation: a 1988 study supported NTM88, since GPS ellipsoidal heights are not physical heights by themselves. The 3D control stations are illustrative, not reconstructed measurements.",
       "Control network, datum, projection and least-squares adjustment."
     ]
   },

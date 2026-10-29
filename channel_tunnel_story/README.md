@@ -2,7 +2,7 @@
 
 ## English
 
-Bilingual, client-side story in the `simul_adjust` monorepo: seven chapters from planning to operation, a geographic map with terrain, a 3D cutaway with two representative TBMs, and three learning experiments. Language order: URL (`en`, `pt`, `pt-BR`), `monorepo_lang`, browser language. Language switching preserves focus and chapter nodes. Portal links preserve language.
+Bilingual, client-side story in the `simul_adjust` monorepo: seven chapters from planning to operation, a geographic map with terrain, a 3D cutaway with two representative TBMs, and four learning experiments (including a vertical-datum illustration). Language order: URL (`en`, `pt`, `pt-BR`), `monorepo_lang`, browser language. Language switching preserves focus and chapter nodes. Portal links preserve language.
 
 Serve the **repository root** (the cutaway reuses the existing camera simulator's locally licensed Three.js). No build, API key or backend is required. MapLibre is pinned and vendored locally; OpenFreeMap vector tiles and AWS Terrarium DEMs need internet. The story, cutaway and calculations work when external maps are unavailable. Terrain failure falls back to a flat map. On phones, the map stays compact above the story and the experiments appear in the reading column. Map attribution remains accessible.
 
@@ -39,7 +39,7 @@ No historical observation dataset, deformation feed, geological mesh or as-built
 
 ## Português
 
-História bilíngue inteiramente no navegador: sete capítulos, mapa com relevo, corte 3D com duas tuneladoras representativas e três experimentos. Ordem do idioma: URL, `monorepo_lang`, navegador. A troca preserva foco e elementos dos capítulos; os links para o portal conservam o idioma.
+História bilíngue inteiramente no navegador: sete capítulos, mapa com relevo, corte 3D com duas tuneladoras representativas e quatro experimentos (incluindo uma ligação de datums altimétricos). Ordem do idioma: URL, `monorepo_lang`, navegador. A troca preserva foco e elementos dos capítulos; os links para o portal conservam o idioma.
 
 Sirva a **raiz do repositório**: o corte reutiliza o Three.js local do simulador de câmera. Não há build, chave de API ou backend. MapLibre é local; os tiles OpenFreeMap e DEM Terrarium precisam de internet. Texto, corte e cálculos funcionam sem mapa externo; falha de relevo mantém o mapa plano. No celular, o mapa é compacto e os exercícios ficam na coluna de leitura. A atribuição permanece acessível.
 
@@ -54,3 +54,19 @@ O erro angular usa `d = L tan(Δα)`. A poligonal sintética tem seis lados de 3
 O monitoramento usa duas épocas inventadas, três referências e um alvo. Estima-se o deslocamento comum pelas referências e subtrai-se do alvo. Com σ = 1 mm em cada época, `σ(Δ corrigido) = √(8/3) mm` e o intervalo normal de 95% é `±1,96σ`. Uma referência instável invalida o modelo; o intervalo não é um limite operacional de segurança. Todos os dados são sintéticos, não séries históricas.
 
 Não há conjunto original de observações, modelo geológico georreferenciado ou eixo construído. Uma reconstrução defensável depende da obtenção de dados de engenharia com referência espacial e licença adequadas.
+
+
+### Guided 3D experience / Experiência 3D guiada
+
+- Scrolling/navigating to **control**, **underground traverses**, **excavation** or **breakthrough** opens the Three.js scene automatically. The **Map / Cutaway** buttons still work. The hero button offers a direct jump.
+- The *control* scene renders one connected illustrative cross-Channel network including surface GPS signals; it is not the surveyed 1987 point network. The earlier CTG86 relied on terrestrial observations; GPS strengthened RTM87. Ground and satellite observations are not conflated.
+- **Vertical reference** is shown separately via a datum-tie slider and `H ≈ h − N` teaching example. A historically reported 1988 datum revision supported NTM88; the displayed numeric slider is deliberately synthetic and is not an estimate from real data.
+- The *traverse* scene reveals invented optical sight lines, stations and gyro-theodolite check symbols; switching gyro support changes the numerical weighted adjustment and 2D diagram.
+- The *excavation* scene grows **three drawn, lined bores** from both shores. Only the service bore has the two representative TBM meshes. The scene stages are not historical time, geometry or excavation rates.
+- **Follow TBM** activates a third-person chase view; **Overview** restores orbit control. The progress slider and play/pause change the visible bore and machinery. The target-monitoring and bearing-error sliders also update local SVG illustrations (exaggerated for visibility).
+
+This is not a true boolean-subtracted 3D excavation mesh nor an as-built tunnel BIM model. Its surface-control diagram, lining, geometry, machine speeds, and proportions are interpretive educational graphics. A reconstruction would require licensed georeferenced alignments, geological data, control-network data and a documented survey frame.
+
+### Português
+
+Os capítulos de rede geodésica, poligonal, escavação e encontro ativam o corte 3D; os botões Mapa/Corte continuam disponíveis. A ligação de controle retrata uma rede de projeto única **com GPS em ambas as margens**, mas não exclusivamente com GPS: observações terrestres definiram a CTG86, reforçada pelo GPS para a RTM87. A compatibilização de altitudes é outra operação, vinculada à referência vertical NTM88; o slider mostra dados **hipotéticos**. A poligonal sintética apresenta estações e verificações giroscópicas. As galerias com revestimentos aparecem progressivamente e a opção **Seguir tuneladora** acompanha uma TBM em terceira pessoa. As curvas, proporções, velocidades e camadas são didáticas, não representam a obra como construída.

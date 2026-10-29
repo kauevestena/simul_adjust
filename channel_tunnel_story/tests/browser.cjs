@@ -37,7 +37,12 @@ async function axe(page) {
   const browser=await({chromium,firefox,webkit}[engine]).launch({headless:!(engine==='firefox'&&process.env.DISPLAY),...(engine==='firefox'?{firefoxUserPrefs:{'webgl.force-enabled':true,'webgl.disabled':false}}:{}),...(process.env.STORY_PROXY?{proxy:{server:process.env.STORY_PROXY,bypass:'127.0.0.1,localhost'}}:{}),...(engine==='chromium'?{args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']}: {})});
   console.log('Browser ready');fs.mkdirSync(SHOTS,{recursive:true});
   try {
-    for(const size of [{width:1440,height:1000},{width:390,height:844},{width:320,height:740},{width:844,height:390}]) {
+    // Live runs verify real map/DEM services at desktop and mobile sizes.
+    // The full 4-viewport application matrix is already covered independently
+    // with deterministic map fixtures in Chromium, Firefox and WebKit.
+    const viewports=LIVE ? [{width:1440,height:1000},{width:390,height:844}] :
+      [{width:1440,height:1000},{width:390,height:844},{width:320,height:740},{width:844,height:390}];
+    for(const size of viewports) {
       const mobile=size.width<850;
       const ctx=await browser.newContext({ignoreHTTPSErrors:process.env.STORY_IGNORE_HTTPS_ERRORS==='1',viewport:size,locale:'en-US',reducedMotion:'reduce',hasTouch:mobile,...(engine!=='firefox'?{isMobile:mobile}:{})});
       await fixtures(ctx);const page=await ctx.newPage(),errors=[],responses=[];
@@ -52,43 +57,99 @@ async function axe(page) {
       assert.ok(Number.isFinite(elevation),'terrain has decoded elevation');
       if(LIVE){assert.ok(responses.some(r=>/\.pbf|planet/.test(r.url)&&r.status===200),'live basemap tiles');assert.ok(responses.some(r=>r.url.includes('terrarium')&&r.status===200),'live DEM tiles');}
       await noOverflow(page);await page.screenshot({path:path.join(SHOTS,`${engine}-${size.width}-${LIVE?'live':'fixture'}-map.png`)});
+      if(LIVE) {
+        assert.deepEqual(errors,[],'real map must load without uncaught browser errors');
+        console.log(`${engine} ${size.width}px: live vector map and decoded terrain passed`);
+        await ctx.close();continue;
+      }
       // Scroll and keyboard-driven chapter navigation both track the camera and active heading.
       for(let i=0;i<7;i++){
         await page.locator('#chapterNav button').nth(i).focus();await page.keyboard.press('Enter');
         await page.waitForFunction(i=>window.__story.active===i,i);
         assert.ok(Math.abs(await page.evaluate(()=>window.__story.mapProgress)-[0,.12,.23,.45,.7,1,1][i])<1e-9,'chapter progress tracks schematic map');
-        assert.ok(Math.abs(await page.evaluate(()=>window.__story.cutaway?.progress ?? -1)-[0,.12,.23,.45,.7,1,1][i])<1e-9 || await page.evaluate(()=>!window.__story.cutaway),'cutaway remains aligned to active chapter');
+        await page.waitForFunction(expected=>!window.__story.cutaway || Math.abs(window.__story.cutaway.progress-expected)<1e-9,[0,.12,.23,.45,.7,1,1][i],{timeout:10000});
         assert.equal(await page.locator('#chapterNav button[aria-current=step]').count(),1);
         const visible=await page.locator('.chapter').nth(i).evaluate(el=>{const r=el.getBoundingClientRect(),stage=document.querySelector('.stage').getBoundingClientRect();const top=innerWidth<=850?stage.bottom:62;return r.top>=top-2&&r.top<innerHeight-20;});
         assert.ok(visible,'chapter heading not behind sticky map');
       }
-      await page.locator('#chapter-control').evaluate(e=>e.scrollIntoView({behavior:'instant'}));await page.waitForFunction(()=>window.__story.active===1);
+      // Simulate the scroll-intent signal (mouse wheel is unsupported by mobile
+      // WebKit); then scroll the document itself. This tests programmatic scroll
+      // tracking separately from explicit chapter-button navigation.
+      await page.evaluate(()=>window.dispatchEvent(new Event('wheel')));
+      await page.locator('#chapter-control').evaluate(e=>e.scrollIntoView({behavior:'instant',block:'start'}));
+      await page.waitForFunction(()=>window.__story.active===1,null,{timeout:12000}).catch(async e=>{
+        console.error('control scroll diagnostics',await page.evaluate(()=>({
+          active:window.__story?.active,href:location.href,scrollY,
+          stage:document.querySelector('.stage')?.getBoundingClientRect().toJSON(),
+          control:document.querySelector('#chapter-control')?.getBoundingClientRect().toJSON()
+        })));throw e;
+      });
       await page.click('#pt');assert.equal(await page.locator('html').getAttribute('lang'),'pt-BR');assert.match(await page.locator('#chapter-control').textContent(),/Nortech/);
       assert.equal(await page.evaluate(()=>localStorage.getItem('monorepo_lang')),'pt-BR');assert.match(await page.locator('#back').getAttribute('href'),/lang=pt/);
+      await input(page,'datumOffset',-0.50);
+      assert.match(await page.locator('#heightResult').textContent(),/25,50 m/);
+      const heightBefore=await page.locator('#frenchDatum').getAttribute('y1');
+      await input(page,'datumOffset',0.70);
+      assert.notEqual(await page.locator('#frenchDatum').getAttribute('y1'),heightBefore);
       await input(page,'angle',20);await page.selectOption('#distance','38');assert.equal(await page.locator('#modelOutput').textContent(),'3,685 m');
+      const bearingBefore=await page.locator('#bearingRay').getAttribute('y2');
       await input(page,'angle',-20);assert.equal(await page.locator('#modelOutput').textContent(),'-3,685 m');
+      assert.notEqual(await page.locator('#bearingRay').getAttribute('y2'),bearingBefore);
+      const opticalLine=await page.locator('#opticalTrack').getAttribute('points');
       const withGyro=await page.locator('#traverseResult').textContent();await page.uncheck('#gyro');assert.notEqual(await page.locator('#traverseResult').textContent(),withGyro);
+      await input(page,'bias',-7);
+      assert.notEqual(await page.locator('#opticalTrack').getAttribute('points'),opticalLine);
       await input(page,'movement',8);await input(page,'datumShift',20);assert.match(await page.locator('#monitorResult').textContent(),/8,3 ± 3,20/);
+      const targetBefore=await page.locator('#monitorTarget').getAttribute('cy');
       await page.check('#unstable');assert.match(await page.locator('#monitorResult').textContent(),/instável/);
+      assert.notEqual(await page.locator('#monitorTarget').getAttribute('cy'),targetBefore);
       await page.click('#en');await noOverflow(page);await axe(page);
-      await page.click('#sectionView');await page.waitForFunction(()=>!!window.__story.cutaway);
+      // Sliders scroll down to the laboratory. Explicitly return to control before checking GNSS stage.
+      await page.locator('#chapterNav button').nth(1).click();
+      await page.click('#sectionView');
+      await page.waitForFunction(()=>window.__story.cutaway?.phase==='control');
+      assert.equal(await page.evaluate(()=>window.__story.manualView),true);
       assert.equal(await page.evaluate(()=>window.__story.cutaway.surveyMarkers.length),13);
       assert.equal(await page.evaluate(()=>window.__story.cutaway.surveyLegs.length),12);
+      assert.equal(await page.evaluate(()=>window.__story.cutaway.gnssGroup.visible),true,'linked GPS network in surface-control chapter');
+      assert.equal(await page.evaluate(()=>window.__story.cutaway.surveyGroup.visible),false,'no underground traverse before tunnelling starts');
+      await page.locator('#chapterNav button').nth(3).click();
+      await page.waitForFunction(()=>window.__story.cutaway.phase==='traverse');
       assert.equal(await page.evaluate(()=>window.__story.cutaway.surveyGroup.visible),true);
+      assert.equal(await page.evaluate(()=>window.__story.cutaway.gnssGroup.visible),false);
+      await page.locator('#chapterNav button').nth(4).click();
+      await page.waitForFunction(()=>window.__story.cutaway.phase==='digging');
+      assert.equal(await page.evaluate(()=>window.__story.view),'section','manual 3D view persists across chapters');
+      assert.equal(await page.locator('#sectionTools').isVisible(),true,'camera controls remain visible');
+      assert.equal(await page.evaluate(()=>window.__story.cutaway.tunnelGroup.visible),true);
+      assert.ok(await page.evaluate(()=>window.__story.cutaway.driveMeshes.some(d=>d.holder.children.length>=2)),'excavated lining exists only in advanced segments');
       await page.uncheck('#survey');assert.equal(await page.evaluate(()=>window.__story.cutaway.surveyGroup.visible),false);
       await page.check('#survey');assert.equal(await page.evaluate(()=>window.__story.cutaway.surveyGroup.visible),true);
       await page.locator('#cutaway canvas').focus();const beforeOrbit=await page.evaluate(()=>window.__story.cutaway.camera.position.x);await page.keyboard.press('ArrowLeft');assert.notEqual(await page.evaluate(()=>window.__story.cutaway.camera.position.x),beforeOrbit);await page.keyboard.press('Home');
       const span=await page.evaluate(()=>{const c=window.__story.cutaway;return Math.abs(c.curves[1].getPoint(1).project(c.camera).x-c.curves[1].getPoint(0).project(c.camera).x);});assert.ok(span>.6&&span<2,'cutaway occupies the viewport without clipping');
       await input(page,'advance',60);assert.equal(await page.evaluate(()=>window.__story.cutaway.progress),.6);
-      await page.click('#play');await page.waitForFunction(()=>window.__story.cutaway.progress>.6);if(await page.evaluate(()=>window.__story.playing))await page.click('#play');assert.equal(await page.evaluate(()=>window.__story.playing),false);
+      await page.click('#followCam');
+      assert.equal(await page.evaluate(()=>window.__story.cutaway.mode),'follow');
+      const cameraBefore=await page.evaluate(()=>window.__story.cutaway.camera.position.x);
+      await input(page,'advance',72);
+      assert.notEqual(await page.evaluate(()=>window.__story.cutaway.camera.position.x),cameraBefore,'third-person chase camera follows digging');
+      await page.click('#overviewCam');
+      assert.equal(await page.evaluate(()=>window.__story.cutaway.mode),'overview');
+      await input(page,'advance',60);
+      await page.click('#play');
+      await page.waitForFunction(()=>window.__story.cutaway.progress>.6);
+      // Test the actual play-button handler atomically: if the animation reached
+      // 100% meanwhile, a second external click would restart rather than pause.
+      await page.evaluate(()=>{if(window.__story.playing)document.getElementById('play').click();});
+      assert.equal(await page.evaluate(()=>window.__story.playing),false);
       await page.screenshot({path:path.join(SHOTS,`${engine}-${size.width}-cutaway.png`)});await axe(page);
       await page.click('#mapView');await page.uncheck('#terrain');await page.waitForFunction(()=>window.__story.map.getTerrain()===null);
       await page.check('#terrain');await page.waitForFunction(()=>!!window.__story.map.getTerrain());
       await page.locator('#chapter-underground .sources-mini a').click();await page.waitForFunction(()=>location.hash==='#source-9');
       assert.deepEqual(errors,[]);await ctx.close();console.log(`${engine} ${size.width}px: story, map, cutaway, models, i18n, accessibility passed`);
     }
-    if(!EXTERNAL_BASE){
-      // Style failure, terrain failure and disabled storage must leave the lesson usable.
+    if(!EXTERNAL_BASE&&!LIVE){
+      // Deterministic browser suites cover style, terrain and storage failures.
       for(const fail of ['style','terrain','storage','webgl']){
         const ctx=await browser.newContext({reducedMotion:'reduce'});await fixtures(ctx,fail);
         if(fail==='webgl')await ctx.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args);};});

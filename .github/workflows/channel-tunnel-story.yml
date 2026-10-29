@@ -1,10 +1,16 @@
 name: Channel Tunnel story checks
 on:
   push:
+    branches: [main]
     paths: ['channel_tunnel_story/**', 'index.html', 'camera_proj/vendor/**', '.github/workflows/channel-tunnel-story.yml']
   pull_request:
     paths: ['channel_tunnel_story/**', 'index.html', 'camera_proj/vendor/**', '.github/workflows/channel-tunnel-story.yml']
   workflow_dispatch:
+# Superseded preview commits need not compete for software WebGL runners.
+# Use one group for push and PR checks from the same branch.
+concurrency:
+  group: channel-tunnel-story-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
