@@ -78,3 +78,18 @@ Os capítulos de rede geodésica, poligonal, escavação e encontro ativam o cor
 The **Map** button re-exposes the MapLibre container, waits for layout, resizes and repaints the WebGL canvas, and rebuilds the map after a lost context when necessary. The browser tests now cover switching from MapLibre to the Three.js scene *and back*.
 
 **Português.** O corte mostra agora estações totais estilizadas (tripé, luneta e corpo) em estações de poligonal sintéticas. A opção **Dentro da galeria** apresenta um interior ampliado da galeria de serviço, com anéis de revestimento, passarela, estações totais estilizadas e visadas. A escala interna é propositalmente independente do corte exterior. O modelo não reproduz o equipamento histórico e as coordenadas são didáticas. Os comandos **Vista geral** e **Seguir tuneladora** continuam disponíveis. A opção **Mapa** restaura o canvas MapLibre e recupera contextos WebGL perdidos, se necessário.
+
+
+## Development status / Estado de desenvolvimento
+
+**🚧 Em desenvolvimento / In development.** This is an intentionally unfinished **conceptual teaching visualization**, not a digital twin. The monorepo portal card and story header should always show this status (as well as the experimental designation).
+
+### GNSS to tunnel survey: staged demonstration (English)
+
+Open **Inside gallery** to restart the survey animation from the beginning. At 0–12% of the teaching timeline, a **GNSS receiver outside the portal** is connected to the portal reference. GNSS signals are never depicted as operating underground. At later slider positions, the reference is continued as an *optical traverse* through wall-mounted instruments, targets and sight lines.
+
+The enlarged interior contains **seven conceptual wall brackets**: compact total stations and reflector prisms (rather than large tripods). As the synthetic advance increases, the total station moves to what had been the forward-prism bracket, while a prism moves to the next bracket and another acts as a backsight. Supports remain in place; *instruments and prisms are changed between them*. Position, sequence timing, placement and dimensions are educational approximations, **not** as-built survey data or historical equipment specifications. Satellite receivers appear only outside the gallery.
+
+### Da rede GNSS para a poligonal subterrânea (Português)
+
+A opção **Dentro da galeria** reinicia a apresentação com a rede de controle **GNSS do lado de fora** e uma ligação didática ao portal (0–12% do avanço). Não há recepção GNSS representada dentro da rocha. Depois desse trecho, o controle é transferido a uma **poligonal óptica** com instrumentos e prismas instalados em **suportes fixados à parede**, em dimensão conceitualmente próxima à real. O instrumento passa a ocupar o suporte onde estava o prisma à vante, um novo prisma é montado adiante e o anterior pode servir como ré. São posições, movimentos e tempos sintéticos, não observações ou equipamentos específicos documentados da obra do Eurotúnel.
