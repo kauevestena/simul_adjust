@@ -126,7 +126,12 @@ async function axe(page) {
       await page.click('#overviewCam');
       assert.equal(await page.evaluate(()=>window.__story.cutaway.mode),'overview');
       await input(page,'advance',60);
-      await page.click('#play');await page.waitForFunction(()=>window.__story.cutaway.progress>.6);if(await page.evaluate(()=>window.__story.playing))await page.click('#play');assert.equal(await page.evaluate(()=>window.__story.playing),false);
+      await page.click('#play');
+      await page.waitForFunction(()=>window.__story.cutaway.progress>.6);
+      // Test the actual play-button handler atomically: if the animation reached
+      // 100% meanwhile, a second external click would restart rather than pause.
+      await page.evaluate(()=>{if(window.__story.playing)document.getElementById('play').click();});
+      assert.equal(await page.evaluate(()=>window.__story.playing),false);
       await page.screenshot({path:path.join(SHOTS,`${engine}-${size.width}-cutaway.png`)});await axe(page);
       await page.click('#mapView');await page.uncheck('#terrain');await page.waitForFunction(()=>window.__story.map.getTerrain()===null);
       await page.check('#terrain');await page.waitForFunction(()=>!!window.__story.map.getTerrain());
