@@ -24,3 +24,10 @@
 .sceneNotes summary:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 @media(max-width:850px){#sectionTools .sceneNotes{font-size:.65rem}#sectionTools .sceneNotes summary{min-height:22px}}
 @media(max-width:850px){#sectionTools .cam-controls{display:flex;gap:5px}#sectionTools .cam-controls button{font-size:.7rem;min-height:34px}}
+
+/* Distinguish this experimental teaching demonstration from finished simulators. */
+.development-badge{font-size:.74rem;font-weight:800;color:#ffd5ad;background:#503018;
+ border:1px solid #a86741;padding:4px 9px;border-radius:8px;text-align:center}
+#surveySequence{color:#b9e9ee;font-weight:600;line-height:1.35;font-size:.79rem}
+@media(max-width:850px){.development-badge{font-size:.65rem;padding:3px 5px}
+ #surveySequence{font-size:.67rem}}
