@@ -198,7 +198,7 @@ async function setView(next) {
     });
   }
   if(cutawayLoading)await cutawayLoading;
-  if(cutaway) {cutaway.resize();cutaway.setPhase(active>=0?phaseForChapter(chapters[active].id):'digging');cutaway.renderer.domElement.setAttribute('aria-label',ui[lang].sectionKeys);}
+  if(cutaway) {cutaway.setProgress(Number($('advance').value)/100);cutaway.resize();cutaway.setPhase(active>=0?phaseForChapter(chapters[active].id):'digging');cutaway.renderer.domElement.setAttribute('aria-label',ui[lang].sectionKeys);}
 }
 function setPlaying(value) {playing=value;cancelAnimationFrame(animationFrame);lastFrame=0;refreshViewText();if(playing)animationFrame=requestAnimationFrame(animate);}
 function animate(time) {
