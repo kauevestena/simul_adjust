@@ -31,7 +31,7 @@ export class Cutaway {
       mesh.position.z=-3.4;this.scene.add(mesh);this.rockLayers.push(mesh);
     }
     const sea=new THREE.Mesh(new THREE.PlaneGeometry(20,5.5),new THREE.MeshStandardMaterial({color:0x38a8ce,transparent:true,opacity:.25,depthWrite:false,side:THREE.DoubleSide}));
-    sea.rotation.x=-Math.PI/2;sea.position.y=2.4;sea.position.z=-.3;this.scene.add(sea);
+    sea.rotation.x=-Math.PI/2;sea.position.y=2.4;sea.position.z=-.3;this.scene.add(sea);this.sea=sea;
     // Three tunnels; service bore is the centre one. Their curves and spacing are schematic.
     this.curves=[-.35,.62,1.6].map(z=>new THREE.CatmullRomCurve3(
       Array.from({length:41},(_,i)=>{const x=-10+i*.5;return new THREE.Vector3(x,this.base(x),z);})
@@ -163,6 +163,51 @@ export class Cutaway {
       group.userData.dust=dust;
       this.scene.add(group);return group;
     });
+    // Enlarged service-gallery interior for the third-person close-up.
+    // This is a classroom vignette, NOT the project's excavated cross-section.
+    this.interiorGroup=new THREE.Group();
+    this.scene.add(this.interiorGroup);
+    const lining=new THREE.Mesh(new THREE.CylinderGeometry(1.8,1.8,16,32,2,true),
+      new THREE.MeshStandardMaterial({color:0x667e90,roughness:.92,side:THREE.BackSide}));
+    lining.rotation.z=Math.PI/2;this.interiorGroup.add(lining);
+    for(let x=-7.2;x<=7.2;x+=1.2){
+      const ring=new THREE.Mesh(new THREE.TorusGeometry(1.76,.034,8,32),
+        new THREE.MeshStandardMaterial({color:0xc6ccd0,metalness:.24,roughness:.7}));
+      ring.rotation.y=Math.PI/2;ring.position.x=x;this.interiorGroup.add(ring);
+    }
+    const floor=new THREE.Mesh(new THREE.BoxGeometry(15,.11,2.3),
+      new THREE.MeshStandardMaterial({color:0x53626d,roughness:.96}));
+    floor.position.y=-1.58;this.interiorGroup.add(floor);
+    const walkway=new THREE.Mesh(new THREE.BoxGeometry(15,.013,.10),
+      new THREE.MeshBasicMaterial({color:0xffd27b}));
+    walkway.position.set(0,-1.51,1.00);this.interiorGroup.add(walkway);
+    this.interiorStations=new THREE.Group();this.interiorGroup.add(this.interiorStations);
+    this.interiorInstruments=[];
+    for(const [index,x] of [1,2,3].map((id,i)=>[id,[-2.2,0.7,3.7][i]])){
+      const clone=this.totalStations[index].clone(true);
+      clone.position.set(x,-1.48,0);
+      clone.visible=true;clone.userData.isTotalStation=true;
+      this.interiorStations.add(clone);this.interiorInstruments.push(clone);
+      const target=new THREE.Mesh(new THREE.SphereGeometry(.045,8,8),
+        new THREE.MeshBasicMaterial({color:0x87f5f4}));
+      target.position.set(x+.25,-.82,0);this.interiorStations.add(target);
+    }
+    const optics=[[-2.2,.7],[.7,3.7]];
+    this.interiorSightLines=[];
+    for(const [a,b] of optics){
+      const sight=new THREE.Line(new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(a,-.82,0),new THREE.Vector3(b,-.82,0)
+      ]),new THREE.LineDashedMaterial({color:0x7af4ef,dashSize:.18,gapSize:.09}));
+      sight.computeLineDistances();this.interiorStations.add(sight);this.interiorSightLines.push(sight);
+    }
+    for(const x of [-5,-2,1,4,7]){
+      const lamp=new THREE.Mesh(new THREE.SphereGeometry(.10,12,8),
+        new THREE.MeshBasicMaterial({color:0xffe2ab}));
+      lamp.position.set(x,1.65,-.35);this.interiorGroup.add(lamp);
+    }
+    const insideLight=new THREE.PointLight(0xffe6b8,36,15);
+    insideLight.position.set(-1,1.1,.8);this.interiorGroup.add(insideLight);
+    this.interiorGroup.visible=false;
     this.mode='overview';this.phase='digging';this.progress=0;this.elapsed=0;this.surveyRequested=true;this.gyroEnabled=true;this.geoidOffset=0;
     this.renderer.domElement.addEventListener('keydown',event=>{
       if(event.key==='Home'){event.preventDefault();this.setCameraMode('overview');this.reset();return;}
@@ -213,13 +258,18 @@ export class Cutaway {
   }
   setPhase(phase){
     this.phase=phase;
-    const surface=phase==='control'||phase==='heights';
-    this.gnssGroup.visible=surface;this.heightGroup.visible=phase==='heights'||phase==='control';
+    const surface=phase==='control'||phase==='heights',inside=this.mode==='survey';
+    this.interiorGroup.visible=inside;
+    this.interiorStations.visible=this.surveyRequested;
+    this.rockLayers.forEach(layer=>{layer.visible=!inside;});
+    this.sea.visible=!inside;
+    this.gnssGroup.visible=surface&&!inside;
+    this.heightGroup.visible=(phase==='heights'||phase==='control')&&!inside;
     // Never depict excavation during the earlier surface-control campaign.
-    this.tunnelGroup.visible=!surface;
-    this.surveyGroup.visible=this.surveyRequested && !surface;
+    this.tunnelGroup.visible=!surface&&!inside;
+    this.surveyGroup.visible=this.surveyRequested && !surface&&!inside;
     this.gyroStations.visible=this.gyroEnabled;
-    this.tbms.forEach(m=>m.visible=!surface);
+    this.tbms.forEach(m=>m.visible=!surface&&!inside);
     if(this.mode==='overview')this.reset();
     if(this.mode==='survey')this.surveyCamera();
     this.render();
@@ -259,19 +309,18 @@ export class Cutaway {
   setCameraMode(mode) {
     this.mode=['overview','follow','survey'].includes(mode)?mode:'overview';
     this.controls.enabled=this.mode==='overview';
+    this.setPhase(this.phase);
     if(this.mode==='overview')this.reset();
     else if(this.mode==='survey')this.surveyCamera();
     else this.followCamera();
     this.render();
   }
   surveyCamera(){
-    // Inside-gallery, third-person surveying perspective. Illustrative scale.
-    const visible=this.totalStations.filter(station=>station.visible);
-    const station=visible.find(s=>s.userData.stationIndex===2)||visible[0]||this.totalStations[0];
-    const target=station.position.clone().add(new THREE.Vector3(0,.58,0));
-    this.camera.position.copy(target).add(new THREE.Vector3(-1.30,.68,2.05));
-    this.camera.lookAt(target.clone().add(new THREE.Vector3(.55,0,0)));
-    this.camera.updateMatrixWorld();
+    // An enlarged inside-gallery view, separate from the external geological scale.
+    const station=this.interiorInstruments[0];
+    const target=station.position.clone().add(new THREE.Vector3(.75,.61,0));
+    this.camera.position.set(-5.0,-.12,1.15);
+    this.camera.lookAt(target);this.camera.updateMatrixWorld();
   }
   followCamera(){
     // Third-person chase shot above / behind UK-side representative service-tunnel machine.
