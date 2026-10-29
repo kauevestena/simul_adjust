@@ -119,7 +119,9 @@ function syncScroll() {
 addEventListener('scroll',()=>{if(!scrollQueued){scrollQueued=true;requestAnimationFrame(syncScroll);}},{passive:true});
 addEventListener('resize',syncScroll);
 // A user's own scroll gesture immediately regains control of the active chapter.
-for(const eventName of ['wheel','touchstart']) addEventListener(eventName,()=>{navigationTarget=null;},{passive:true});
+// A tap on a scene control must NOT unlock navigation and cause a stray chapter
+// change. Only a genuine scroll gesture (touchmove/wheel) resumes scroll tracking.
+for(const eventName of ['wheel','touchmove']) addEventListener(eventName,()=>{navigationTarget=null;},{passive:true});
 addEventListener('keydown',e=>{
   if(['PageDown','PageUp','ArrowDown','ArrowUp',' ','Home','End'].includes(e.key)&&
      !/^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(e.target?.tagName||''))navigationTarget=null;
