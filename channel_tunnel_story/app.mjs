@@ -3,7 +3,7 @@ import {chapters, ui, refs} from './content.mjs';
 const $ = id => document.getElementById(id);
 const motion = matchMedia('(prefers-reduced-motion: reduce)');
 let lang, active = -1, map, cutaway, view = 'map', mapState = 'loading', terrainFailed = false, terrainLoaded = false;
-let playing = false, lastFrame = 0, animationFrame;
+let playing = false, lastFrame = 0, animationFrame, mapProgress = 0;
 const locale = () => lang === 'pt' ? 'pt-BR' : 'en';
 const f = (v, digits=3) => v.toLocaleString(locale(), {minimumFractionDigits:digits, maximumFractionDigits:digits});
 function initialLang() {
@@ -62,8 +62,19 @@ function localizeMap() {
   const attr=document.querySelector('.maplibregl-ctrl-attrib-button'); if(attr) attr.setAttribute('aria-label',lang==='pt'?'Abrir atribuição':'Toggle attribution');
   document.querySelectorAll('.maplibregl-cooperative-gesture-screen').forEach(e=>e.textContent=lang==='pt'?'Use dois dedos para mover o mapa; Ctrl + rolagem para zoom.':'Use two fingers to move the map; Ctrl + scroll to zoom.');
 }
+function updateRouteProgress(progress) {
+  mapProgress = Math.min(1, Math.max(0, progress));
+  const source = map?.getSource('route-progress');
+  if(source) source.setData({type:'Feature',properties:{},geometry:{type:'LineString',coordinates:illustrativeRoute(mapProgress)}});
+}
 function setActive(i) {
   if(i===active) return; active=i;
+  // Narrative progress is NOT actual excavated chainage or historical elapsed time.
+  // Synchronise when the chapter changes while retaining manual experiment controls.
+  setPlaying(false);
+  $('advance').value = String(Math.round((i<0?0:chapters[i].progress)*100));
+  updateAdvance();
+  updateRouteProgress(i<0?0:chapters[i].progress);
   [...$('chapterNav').children].forEach((b,j)=>{if(i===j)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current');});
   refreshViewText(); if(i<0)return;
   if(map && mapState!=='mapFailed') {const [lng,lat,zoom,pitch,bearing]=chapters[i].camera;map.flyTo({center:[lng,lat],zoom:zoom-(innerWidth<=850?1.2:0),pitch,bearing,duration:motion.matches?0:1200,essential:false});}
@@ -117,7 +128,10 @@ function startMap() {
     map.on('load',()=>{
       clearTimeout(timeout);$('mapFallback').hidden=true;
       map.addSource('route',{type:'geojson',data:{type:'Feature',properties:{},geometry:{type:'LineString',coordinates:illustrativeRoute(1)}}});
-      map.addLayer({id:'route-line',type:'line',source:'route',paint:{'line-color':'#d25929','line-width':5,'line-opacity':0.95}});
+      map.addLayer({id:'route-line',type:'line',source:'route',paint:{'line-color':'#ffcc82','line-width':3,'line-opacity':0.8,'line-dasharray':[2,2]}});
+      map.addSource('route-progress',{type:'geojson',data:{type:'Feature',properties:{},geometry:{type:'LineString',coordinates:illustrativeRoute(mapProgress)}}});
+      map.addLayer({id:'route-progress-line',type:'line',source:'route-progress',paint:{'line-color':'#d25929','line-width':6,'line-opacity':0.95}});
+      updateRouteProgress(active<0?0:chapters[active].progress);
       for(const [key,color] of [['uk','#f6c46a'],['fr','#6ae3d7']]){const marker=new maplibregl.Marker({color}).setLngLat(PORTALS[key]).addTo(map);marker.getElement().dataset.portal=key;marker.getElement().setAttribute('role','img');}
       map.addSource('terrain',{type:'raster-dem',tiles:['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],encoding:'terrarium',tileSize:256,maxzoom:13,attribution:'Elevation: <a href="https://registry.opendata.aws/terrain-tiles/">Terrain Tiles / AWS Open Data</a>'});
       applyTerrain();localizeMap();if(active<0&&innerWidth<=850)map.fitBounds(new maplibregl.LngLatBounds().extend(PORTALS.uk).extend(PORTALS.fr),{padding:{top:25,bottom:62,left:15,right:50},maxZoom:8,pitch:40,bearing:-22,duration:0});
@@ -157,4 +171,4 @@ setLanguage(initialLang());startMap();
 const deepLink=chapters.findIndex(c=>'#chapter-'+c.id===location.hash);
 if(deepLink>=0)requestAnimationFrame(()=>{setActive(deepLink);$('chapter-'+chapters[deepLink].id).scrollIntoView({behavior:'instant'});});
 // Read-only diagnostics used by real-browser tests, including deployed Pages verification.
-window.__story={get map(){return map;},get active(){return active;},get cutaway(){return cutaway;},get playing(){return playing;},get mapState(){return mapState;}};
+window.__story={get map(){return map;},get active(){return active;},get cutaway(){return cutaway;},get playing(){return playing;},get mapState(){return mapState;},get mapProgress(){return mapProgress;}};
