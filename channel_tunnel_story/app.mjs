@@ -63,10 +63,21 @@ function refreshSurveySequence(){
   const label=$('surveySequence'),state=cutaway?.surveySequence;
   if(!label)return;
   label.hidden=!(view==='section' && cutaway?.mode==='survey');
+  $('surveyStages').hidden=label.hidden;
   if(label.hidden||!state)return;
-  const next=state.phase==='gnss-transfer'?ui[lang].surveySequenceStart:
-    `${ui[lang].surveySequenceStep} · ${state.step+1}/6`;
-  if(label.textContent!==next)label.textContent=next;
+  const current=state.phase==='wall-traverse'?'traverse':
+    (state.subphase==='portal'?'transfer':'surface');
+  for(const item of document.querySelectorAll('#surveyStages [data-stage]')){
+    item.dataset.active=String(item.dataset.stage===current);
+  }
+  const next=current==='surface'?ui[lang].surveySequenceStart:
+    current==='transfer'?ui[lang].surveySequenceTransfer:
+    `${ui[lang].surveySequenceStep} · ${state.step+1}/6 · ${ui[lang].surveySequenceFraction} ${Math.round(state.stepProgress*100)}%`;
+  // Avoid live-region announcements every animation frame.
+  if(current==='traverse'){
+    label.dataset.phase=current;
+    label.textContent=next;
+  } else if(label.textContent!==next)label.textContent=next;
 }
 function localizeMap() {
   const labels=lang==='pt'?['Aproximar','Afastar','Restaurar norte']:['Zoom in','Zoom out','Reset bearing to north'];
@@ -82,9 +93,11 @@ function updateRouteProgress(progress) {
   if(source) source.setData({type:'Feature',properties:{},geometry:{type:'LineString',coordinates:illustrativeRoute(mapProgress)}});
 }
 function phaseForChapter(id) {
+  if(id==='challenge')return 'challenge';
   if(id==='control')return 'control';
-  if(id==='geology')return 'heights';
+  if(id==='geology')return 'geology';
   if(id==='underground')return 'traverse';
+  if(id==='breakthrough')return 'breakthrough';
   if(id==='monitoring')return 'monitoring';
   return 'digging';
 }
@@ -101,10 +114,18 @@ function setActive(i,{fromScroll=false}={}) {
   updateRouteProgress(i<0?0:chapters[i].progress);
   if(i>=0){
     cutaway?.setPhase(phaseForChapter(chapters[i].id));
-    // Chapter navigation suggests a scene only until the reader manually chooses a view.
+    // Explicit chapter selection is a guided scene change; incidental scrolling
+    // does not override the learner's chosen camera mode.
+    if(cutaway && view==='section' && (!fromScroll || !manualView)) {
+      const chapterMode=chapters[i].id==='underground'?'survey':
+        chapters[i].id==='excavation'?'follow':'overview';
+      cutaway.setCameraMode(chapterMode);
+      setCameraButtons(chapterMode);
+    }
     if(!manualView) {
-      if(['control','underground','excavation','breakthrough'].includes(chapters[i].id)) void setView('section');
-      if(chapters[i].id==='geology'||chapters[i].id==='monitoring') void setView('map');
+      // Use the distinct 3D scene for every engineering chapter, including
+      // geology and post-construction monitoring, rather than silent map reuse.
+      void setView(chapters[i].id==='challenge'?'map':'section');
     }
   }
   [...$('chapterNav').children].forEach((b,j)=>{if(i===j)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current');});
@@ -253,7 +274,17 @@ async function setView(next) {
     });
   }
   if(cutawayLoading)await cutawayLoading;
-  if(cutaway) {cutaway.setProgress(Number($('advance').value)/100);cutaway.resize();cutaway.setPhase(active>=0?phaseForChapter(chapters[active].id):'digging');cutaway.renderer.domElement.setAttribute('aria-label',ui[lang].sectionKeys);refreshSurveySequence();}
+  if(cutaway) {
+    cutaway.setProgress(Number($('advance').value)/100);
+    cutaway.resize();cutaway.setPhase(active>=0?phaseForChapter(chapters[active].id):'digging');
+    if(!manualView && active>=0) {
+      const stage=chapters[active].id;
+      const nextCamera=stage==='underground'?'survey':stage==='excavation'?'follow':'overview';
+      cutaway.setCameraMode(nextCamera);setCameraButtons(nextCamera);
+    }
+    cutaway.renderer.domElement.setAttribute('aria-label',ui[lang].sectionKeys);
+    refreshSurveySequence();
+  }
 }
 function setPlaying(value) {playing=value;cancelAnimationFrame(animationFrame);lastFrame=0;refreshViewText();if(playing)animationFrame=requestAnimationFrame(animate);}
 function animate(time) {

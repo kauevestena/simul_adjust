@@ -79,6 +79,17 @@ async function axe(page) {
         await page.locator('#chapterNav button').nth(i).focus();await page.keyboard.press('Enter');
         await page.waitForFunction(i=>window.__story.active===i,i);
         assert.ok(Math.abs(await page.evaluate(()=>window.__story.mapProgress)-[0,.12,.23,.45,.7,1,1][i])<1e-9,'chapter progress tracks schematic map');
+        if(i>0){
+          const phase=['challenge','control','geology','traverse','digging','breakthrough','monitoring'][i];
+          await page.waitForFunction(expected=>window.__story.cutaway?.phase===expected,phase,{timeout:12000});
+          if(i===1){
+            assert.equal(await page.evaluate(()=>window.__story.cutaway.gnssGroup.visible),true);
+            assert.equal(await page.evaluate(()=>window.__story.cutaway.gnssLand.length),2);
+          }
+          if(i===2)assert.equal(await page.evaluate(()=>window.__story.cutaway.rockLayers[0].material.emissive.getHex()!==0),true);
+          if(i===5)assert.equal(await page.evaluate(()=>window.__story.cutaway.breakthroughGroup.visible),true);
+          if(i===6)assert.equal(await page.evaluate(()=>window.__story.cutaway.monitorGroup.visible),true);
+        }
         await page.waitForFunction(expected=>!window.__story.cutaway || Math.abs(window.__story.cutaway.progress-expected)<1e-9,[0,.12,.23,.45,.7,1,1][i],{timeout:10000});
         assert.equal(await page.locator('#chapterNav button[aria-current=step]').count(),1);
         const visible=await page.locator('.chapter').nth(i).evaluate(el=>{const r=el.getBoundingClientRect(),stage=document.querySelector('.stage').getBoundingClientRect();const top=innerWidth<=850?stage.bottom:62;return r.top>=top-2&&r.top<innerHeight-20;});
@@ -127,7 +138,11 @@ async function axe(page) {
       assert.equal(await page.evaluate(()=>window.__story.cutaway.surveyGroup.visible),false,'no underground traverse before tunnelling starts');
       await page.locator('#chapterNav button').nth(3).click();
       await page.waitForFunction(()=>window.__story.cutaway.phase==='traverse');
-      assert.equal(await page.evaluate(()=>window.__story.cutaway.surveyGroup.visible),true);
+      assert.equal(await page.evaluate(()=>{
+        const scene=window.__story.cutaway;
+        return scene.surveyGroup.visible ||
+          (scene.interiorGroup.visible && scene.interiorStations.visible);
+      }),true,'underground traverse is visible in either overview or guided inside-gallery camera');
       assert.equal(await page.evaluate(()=>window.__story.cutaway.gnssGroup.visible),false);
       await page.locator('#chapterNav button').nth(4).click();
       await page.waitForFunction(()=>window.__story.cutaway.phase==='digging');
@@ -137,12 +152,19 @@ async function axe(page) {
       assert.ok(await page.evaluate(()=>window.__story.cutaway.driveMeshes.some(d=>d.holder.children.length>=2)),'excavated lining exists only in advanced segments');
       await page.uncheck('#survey');assert.equal(await page.evaluate(()=>window.__story.cutaway.surveyGroup.visible),false);
       await page.check('#survey');assert.equal(await page.evaluate(()=>window.__story.cutaway.surveyGroup.visible),true);
+      // The excavation chapter now intentionally selects the TBM follow shot.
+      // Switch to orbit mode before testing keyboard-driven orbit navigation.
+      await page.click('#overviewCam');
       await page.locator('#cutaway canvas').focus();const beforeOrbit=await page.evaluate(()=>window.__story.cutaway.camera.position.x);await page.keyboard.press('ArrowLeft');assert.notEqual(await page.evaluate(()=>window.__story.cutaway.camera.position.x),beforeOrbit);await page.keyboard.press('Home');
       const span=await page.evaluate(()=>{const c=window.__story.cutaway;return Math.abs(c.curves[1].getPoint(1).project(c.camera).x-c.curves[1].getPoint(0).project(c.camera).x);});assert.ok(span>.6&&span<2,'cutaway occupies the viewport without clipping');
       await input(page,'advance',60);assert.equal(await page.evaluate(()=>window.__story.cutaway.progress),.6);
       assert.equal(await page.evaluate(()=>window.__story.cutaway.totalStations.length),8,'illustrative total stations are installed in gallery');
       await page.click('#surveyCam');
       assert.equal(await page.evaluate(()=>window.__story.cutaway.mode),'survey');
+      if(size.width<=390&&size.height>=600){
+        const canvasHeight=await page.locator('#cutaway canvas').evaluate(el=>el.getBoundingClientRect().height);
+        assert.ok(canvasHeight>140,'mobile surveying scene must not collapse into an 80px strip');
+      }
       assert.equal(await page.evaluate(()=>window.__story.cutaway.progress),0,
         'gallery tour restarts outside at GNSS control');
       let sequence=await page.evaluate(()=>{
@@ -152,9 +174,57 @@ async function axe(page) {
           labels:document.getElementById('surveySequence').textContent};
       });
       assert.equal(sequence.state.phase,'gnss-transfer');
-      assert.ok(sequence.receiver&&sequence.transfer,'GNSS network is visible outside, linked through portal');
+      assert.equal(sequence.receiver,true,'outside GNSS receivers are visible on the raised terrain');
+      assert.equal(sequence.transfer,false,'underground control transfer should NOT start before surface GNSS observations');
       assert.equal(sequence.visibleBrackets,0,'no underground instrument is installed before transfer');
       assert.match(sequence.labels,/GNSS/);
+      // The GNSS is on a raised ground slab ABOVE the tunnel, not alongside
+      // the gallery floor. Its signal and camera visibly change between frames.
+      let surface=await page.evaluate(()=>{
+        const m=window.__story.cutaway;
+        return {receiverY:m.gnssReceivers[0].position.y,
+          groundY:m.surfaceTerrain.children[0].position.y,
+          satelliteY:m.surfaceSatellites[0].position.y,
+          tunnelY:m.curves[1].getPoint(0).y,
+          cameraY:m.camera.position.y,opacity:m.surfaceSignals[0].material.opacity};
+      });
+      assert.ok(surface.receiverY>surface.groundY+0.05 && surface.groundY>surface.tunnelY+2,
+        'GNSS sits on visible terrain above the tunnel');
+      assert.ok(surface.satelliteY>surface.receiverY+1 && surface.cameraY>surface.groundY,
+        'surface satellite and camera are above ground');
+      if([1440,390].includes(size.width)) await page.screenshot({path:path.join(SHOTS,`${engine}-${size.width}-surface-GNSS.png`)});
+      await input(page,'advance',3);
+      const opacity3=await page.evaluate(()=>window.__story.cutaway.surfaceSignals[0].material.opacity);
+      assert.ok(opacity3>surface.opacity,'GNSS signal brightness changes at intermediate progress');
+      await input(page,'advance',8);
+      const portal8=await page.evaluate(()=>{
+        const m=window.__story.cutaway;
+        return {phase:m.surveySequence.subphase,
+          markerY:m.transferMarker.position.y,
+          cameraY:m.camera.position.y,
+          lineCount:m.gnssPortalLink.geometry.drawRange.count};
+      });
+      assert.equal(portal8.phase,'portal');
+      assert.equal(await page.evaluate(()=>window.__story.cutaway.gnssPortalLink.visible),true,
+        'control transfer appears in the distinct portal stage');
+      assert.ok(await page.evaluate(()=>window.__story.cutaway.portalTransferTube.geometry.drawRange.count>0),
+        'the visibly thick transfer path grows with progress');
+      assert.equal(await page.locator('#stageTransfer').getAttribute('data-active'),'true');
+      if([1440,390].includes(size.width)) {
+        await page.waitForTimeout(230); // allow the milestone highlight CSS transition to settle
+        await page.screenshot({path:path.join(SHOTS,`${engine}-${size.width}-portal-transfer.png`)});
+      }
+      assert.ok(portal8.lineCount>2,'portal control transfer path is being drawn');
+      await input(page,'advance',11);
+      const portal11=await page.evaluate(()=>{
+        const m=window.__story.cutaway;
+        return {markerY:m.transferMarker.position.y,cameraY:m.camera.position.y,
+          lineCount:m.gnssPortalLink.geometry.drawRange.count};
+      });
+      assert.ok(portal11.markerY<portal8.markerY,'control descends towards the underground traverse');
+      assert.ok(portal11.cameraY<portal8.cameraY,'camera descends with transferred control');
+      assert.ok(portal11.lineCount>portal8.lineCount,'portal connection visibly extends');
+      assert.match(await page.locator('#surveySequence').textContent(),/portal/i);
       await input(page,'advance',18);
       sequence=await page.evaluate(()=>{
         const c=window.__story.cutaway;
@@ -166,6 +236,24 @@ async function axe(page) {
       assert.equal(sequence.state.prism,1);
       assert.deepEqual(sequence.roles.slice(0,2),['instrument','prism']);
       assert.equal(sequence.visible,2);
+      const intermediateA=await page.evaluate(()=>{
+        const m=window.__story.cutaway;
+        return {cameraX:m.camera.position.x,tipX:m.beamTip.position.x,
+          faceX:m.interiorFace.position.x,stepProgress:m.surveySequence.stepProgress};
+      });
+      await input(page,'advance',20);
+      const intermediateB=await page.evaluate(()=>{
+        const m=window.__story.cutaway;
+        return {cameraX:m.camera.position.x,tipX:m.beamTip.position.x,
+          faceX:m.interiorFace.position.x,stepProgress:m.surveySequence.stepProgress};
+      });
+      assert.ok(intermediateB.stepProgress>intermediateA.stepProgress);
+      assert.notEqual(intermediateA.tipX,intermediateB.tipX,'optical beam advances continuously');
+      assert.notEqual(intermediateA.cameraX,intermediateB.cameraX,'third-person camera advances continuously');
+      assert.notEqual(intermediateA.faceX,intermediateB.faceX,'excavation face advances continuously');
+      assert.equal(await page.locator('#stageTraverse').getAttribute('data-active'),'true');
+      if([1440,390].includes(size.width)) await page.waitForTimeout(230);
+      await page.screenshot({path:path.join(SHOTS,`${engine}-${size.width}-gnss-traverse-transition.png`)});
       await input(page,'advance',37);
       sequence=await page.evaluate(()=>{
         const c=window.__story.cutaway;

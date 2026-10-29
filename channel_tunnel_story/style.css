@@ -34,3 +34,22 @@
 
 @media(max-width:600px){.top{gap:5px;padding:5px 7px}.top #back{font-size:.72rem}
  .development-badge{font-size:.56rem;padding:2px 3px}.top .langs button{min-height:34px;padding:3px 6px}}
+
+/* Story progress uses three visibly distinct, accessible teaching scenes. */
+.survey-stages{display:flex;gap:4px;margin:6px 0 5px;flex-wrap:wrap}
+.survey-stages[hidden]{display:none!important}
+.survey-stages span{flex:1 1 70px;text-align:center;border:1px solid #4e6874;color:#c2d5df;
+ background:#172a36;border-radius:7px;font-size:.66rem;font-weight:750;padding:5px 2px;
+ opacity:.65;transition:background .18s,opacity .18s,border-color .18s}
+.survey-stages span[data-active="true"]{background:#256a67;color:#f0fffd;
+ border-color:#71f4e6;opacity:1;box-shadow:0 0 12px #54e6dc44}
+#surveySequence{min-height:1.3em}
+
+
+/* On portrait phones, the scene must be large enough to SHOW the instruments.
+   The old 350px stage left ~80px for the 3D canvas after all controls.
+   Reserve 155px for the reading area so sticky chapter links still work. */
+@media(max-width:600px) and (min-height:600px){
+  :root[data-view="section"]{--stage:min(75dvh,calc(100dvh - 155px))}
+  .chapter{padding:30px 0}
+}
