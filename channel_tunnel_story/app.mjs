@@ -3,7 +3,7 @@ import {chapters, ui, refs} from './content.mjs';
 const $ = id => document.getElementById(id);
 const motion = matchMedia('(prefers-reduced-motion: reduce)');
 let lang, active = -1, map, cutaway, view = 'map', mapState = 'loading', terrainFailed = false, terrainLoaded = false;
-let playing = false, lastFrame = 0, animationFrame, mapProgress = 0;
+let playing = false, lastFrame = 0, animationFrame, mapProgress = 0, cutawayLoading = null;
 const locale = () => lang === 'pt' ? 'pt-BR' : 'en';
 const f = (v, digits=3) => v.toLocaleString(locale(), {minimumFractionDigits:digits, maximumFractionDigits:digits});
 function initialLang() {
@@ -67,6 +67,13 @@ function updateRouteProgress(progress) {
   const source = map?.getSource('route-progress');
   if(source) source.setData({type:'Feature',properties:{},geometry:{type:'LineString',coordinates:illustrativeRoute(mapProgress)}});
 }
+function phaseForChapter(id) {
+  if(id==='control')return 'control';
+  if(id==='geology')return 'heights';
+  if(id==='underground')return 'traverse';
+  if(id==='monitoring')return 'monitoring';
+  return 'digging';
+}
 function setActive(i) {
   if(i===active) return; active=i;
   // Narrative progress is NOT actual excavated chainage or historical elapsed time.
@@ -75,6 +82,11 @@ function setActive(i) {
   $('advance').value = String(Math.round((i<0?0:chapters[i].progress)*100));
   updateAdvance();
   updateRouteProgress(i<0?0:chapters[i].progress);
+  if(i>=0){
+    cutaway?.setPhase(phaseForChapter(chapters[i].id));
+    if(['control','underground','excavation','breakthrough'].includes(chapters[i].id)) void setView('section');
+    if(chapters[i].id==='geology'||chapters[i].id==='monitoring') void setView('map');
+  }
   [...$('chapterNav').children].forEach((b,j)=>{if(i===j)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current');});
   refreshViewText(); if(i<0)return;
   if(map && mapState!=='mapFailed') {const [lng,lat,zoom,pitch,bearing]=chapters[i].camera;map.flyTo({center:[lng,lat],zoom:zoom-(innerWidth<=850?1.2:0),pitch,bearing,duration:motion.matches?0:1200,essential:false});}
@@ -101,15 +113,28 @@ function updateModels() {
   const t=ui[lang], angle=Number($('angle').value), distance=Number($('distance').value);
   $('angleValue').textContent=f(angle,1)+'″'; $('angle').setAttribute('aria-valuetext',f(angle,1)+' arcsec');
   $('modelOutput').textContent=f(lateralErrorMeters(distance,angle))+' m';
+  // The SVG exaggerates angular deviations for readability; the SI value above is correct.
+  const endY=Math.max(14,Math.min(124,70-angle*2.1*distance/20));
+  $('bearingRay').setAttribute('y2',String(endY));$('bearingDot').setAttribute('cy',String(endY));
+  const offset=Number($('datumOffset').value);
+  $('datumOffsetValue').textContent=f(offset,2)+' m';
+  $('heightResult').textContent='h = 62 m − N = 36 m → H = 26 m; '+
+    (lang==='pt'?'exemplo em referência comum: ':'common-frame teaching example: ')+f(26+offset,2)+' m.';
+  cutaway?.setGeoidOffset(offset);
   const bias=Number($('bias').value), optical=adjustTraverse(bias,false), adjusted=adjustTraverse(bias,$('gyro').checked);
   $('biasValue').textContent=f(bias,1)+'″';
   $('traverseRows').replaceChildren(...adjusted.y.map((y,i)=>{const row=document.createElement('tr');for(const value of ['P'+i,f(adjusted.x[i]/1000,0),f(optical.y[i]),f(y)]){const td=document.createElement('td');td.textContent=value;row.append(td);}return row;}));
   $('traverseResult').textContent=`${t.traverseResult}: ${f(adjusted.endpoint)} m / ${f(adjusted.sigma)} m / ${adjusted.dof}.`;
+  const graphScale=Math.max(.15,...[...optical.y,...adjusted.y].map(Math.abs));
+  const plot=ys=>ys.map((y,i)=>[18+i*47.3,70-48*y/graphScale].map(v=>v.toFixed(2)).join(',')).join(' ');
+  $('opticalTrack').setAttribute('points',plot(optical.y));
+  $('adjustedTrack').setAttribute('points',plot(adjusted.y));
+  cutaway?.setGyroEnabled($('gyro').checked);
   const movement=Number($('movement').value), datum=Number($('datumShift').value), m=monitoringExercise(movement,datum,$('unstable').checked);
   $('movementValue').textContent=f(movement,0)+' mm'; $('datumValue').textContent=f(datum,0)+' mm';
   $('monitorResult').textContent=`${t.monitorResult}: ${f(m.raw,1)} / ${f(m.datum,1)} / ${f(m.corrected,1)} ± ${f(m.limit95,2)} mm.${m.unstable?' '+t.unstableWarning:''}`;
 }
-for(const id of ['angle','distance','bias','gyro','movement','datumShift','unstable']) $(id).addEventListener('input',updateModels);
+for(const id of ['angle','distance','bias','gyro','movement','datumShift','unstable','datumOffset']) $(id).addEventListener('input',updateModels);
 $('pt').addEventListener('click',()=>setLanguage('pt')); $('en').addEventListener('click',()=>setLanguage('en'));
 function status(value) {mapState=value;refreshViewText();$('map').dataset.state=value;}
 function unavailable() {status('mapFailed');$('mapFallback').hidden=view!=='map';}
@@ -146,25 +171,52 @@ function startMap() {
   } catch(error) {console.warn('Map initialization failed',error);unavailable();}
 }
 async function setView(next) {
-  view=next;document.documentElement.dataset.view=next;$('map').hidden=next!=='map';$('cutaway').hidden=next!=='section';$('mapTools').hidden=next!=='map';$('sectionTools').hidden=next!=='section';
+  view=next;document.documentElement.dataset.view=next;
+  $('map').hidden=next!=='map';$('cutaway').hidden=next!=='section';
+  $('mapTools').hidden=next!=='map';$('sectionTools').hidden=next!=='section';
   $('mapView').setAttribute('aria-pressed',String(next==='map'));$('sectionView').setAttribute('aria-pressed',String(next==='section'));
   $('mapFallback').hidden=next!=='map'||mapState!=='mapFailed';refreshViewText();
   if(next==='map'){setPlaying(false);map?.resize();return;}
-  if(!cutaway)try {const {Cutaway}=await import('./cutaway.mjs');cutaway=new Cutaway($('cutaway'));cutaway.setProgress(Number($('advance').value)/100);cutaway.setSurveyVisible($('survey').checked);} catch {$('cutaway').textContent=ui[lang].sectionFallback;$('play').disabled=true;}
-  cutaway?.resize();if(cutaway)cutaway.renderer.domElement.setAttribute('aria-label',ui[lang].sectionKeys);
+  if(!cutawayLoading && !cutaway){
+    cutawayLoading=import('./cutaway.mjs').then(({Cutaway})=>{
+      cutaway=new Cutaway($('cutaway'));
+      cutaway.setProgress(Number($('advance').value)/100);
+      cutaway.setSurveyVisible($('survey').checked);
+      cutaway.setPhase(active>=0?phaseForChapter(chapters[active].id):'digging');
+      cutaway.setGyroEnabled($('gyro').checked);
+      cutaway.setGeoidOffset(Number($('datumOffset').value));
+      return cutaway;
+    }).catch(e=>{
+      console.warn('3D cutaway unavailable',e);
+      $('cutaway').textContent=ui[lang].sectionFallback;
+      $('play').disabled=true;$('followCam').disabled=true;
+      return null;
+    });
+  }
+  if(cutawayLoading)await cutawayLoading;
+  if(cutaway) {cutaway.resize();cutaway.setPhase(active>=0?phaseForChapter(chapters[active].id):'digging');cutaway.renderer.domElement.setAttribute('aria-label',ui[lang].sectionKeys);}
 }
 function setPlaying(value) {playing=value;cancelAnimationFrame(animationFrame);lastFrame=0;refreshViewText();if(playing)animationFrame=requestAnimationFrame(animate);}
 function animate(time) {
   if(!playing)return;
   const delta=lastFrame?Math.min(time-lastFrame,100):0;lastFrame=time;
   const value=Math.min(100,Number($('advance').value)+delta/180);
-  $('advance').value=String(value);updateAdvance();if(value>=100)setPlaying(false);else animationFrame=requestAnimationFrame(animate);
+  $('advance').value=String(value);updateAdvance();
+  cutaway?.tick(delta);
+  if(value>=100)setPlaying(false);else animationFrame=requestAnimationFrame(animate);
 }
 function updateAdvance() {$('advanceValue').textContent=Math.round(Number($('advance').value))+'%';cutaway?.setProgress(Number($('advance').value)/100);}
 $('mapView').addEventListener('click',()=>setView('map'));$('sectionView').addEventListener('click',()=>setView('section'));
 $('advance').step='any';$('advance').addEventListener('input',()=>{setPlaying(false);updateAdvance();});
 $('play').addEventListener('click',()=>{if(Number($('advance').value)>=100){$('advance').value='0';updateAdvance();}setPlaying(!playing);});
-$('resetView').addEventListener('click',()=>cutaway?.reset());
+$('resetView').addEventListener('click',()=>{cutaway?.setCameraMode('overview');setCameraButtons('overview');});
+function setCameraButtons(mode){
+  $('overviewCam').setAttribute('aria-pressed',String(mode==='overview'));
+  $('followCam').setAttribute('aria-pressed',String(mode==='follow'));
+}
+$('overviewCam').addEventListener('click',()=>{cutaway?.setCameraMode('overview');setCameraButtons('overview');});
+$('followCam').addEventListener('click',async()=>{await setView('section');cutaway?.setCameraMode('follow');setCameraButtons('follow');});
+$('launch3D').addEventListener('click',async()=>{navigateChapter(1);await setView('section');cutaway?.setCameraMode('overview');setCameraButtons('overview');});
 $('survey').addEventListener('change',()=>cutaway?.setSurveyVisible($('survey').checked));
 motion.addEventListener('change',()=>{if(motion.matches){map?.stop();setPlaying(false);}});
 addEventListener('visibilitychange',()=>{if(document.hidden)setPlaying(false);});
