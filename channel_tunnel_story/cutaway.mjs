@@ -227,8 +227,10 @@ export class Cutaway {
     this.controls.target.set(0,-.65,0);
     const direction=new THREE.Vector3(.18,.18,1).normalize();
     // In underground scenes, hidden GNSS satellites must not force excessive zoom-out on phones.
-    const upperY=(this.phase==='control'||this.phase==='heights')?6.7:3.2;
-    const bounds=[];for(const x of [-10.5,10.5])for(const y of [-4.2,upperY])for(const z of [-3.7,3])bounds.push(new THREE.Vector3(x,y,z));
+    const isSurface=this.phase==='control'||this.phase==='heights';
+    const upperY=isSurface?6.7:1.6,lowerY=isSurface?-4.2:-2.8;
+    // Underground camera prioritises the bores and TBM rather than the entire cliff block.
+    const bounds=[];for(const x of [-10.5,10.5])for(const y of [lowerY,upperY])for(const z of [-3.0,2.7])bounds.push(new THREE.Vector3(x,y,z));
     let lo=8,hi=92;
     this.camera.aspect=this.host.clientWidth&&this.host.clientHeight?this.host.clientWidth/this.host.clientHeight:1;
     this.camera.updateProjectionMatrix();
