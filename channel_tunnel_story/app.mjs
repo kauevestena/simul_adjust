@@ -63,10 +63,21 @@ function refreshSurveySequence(){
   const label=$('surveySequence'),state=cutaway?.surveySequence;
   if(!label)return;
   label.hidden=!(view==='section' && cutaway?.mode==='survey');
+  $('surveyStages').hidden=label.hidden;
   if(label.hidden||!state)return;
-  const next=state.phase==='gnss-transfer'?ui[lang].surveySequenceStart:
-    `${ui[lang].surveySequenceStep} · ${state.step+1}/6`;
-  if(label.textContent!==next)label.textContent=next;
+  const current=state.phase==='wall-traverse'?'traverse':
+    (state.subphase==='portal'?'transfer':'surface');
+  for(const item of document.querySelectorAll('#surveyStages [data-stage]')){
+    item.dataset.active=String(item.dataset.stage===current);
+  }
+  const next=current==='surface'?ui[lang].surveySequenceStart:
+    current==='transfer'?ui[lang].surveySequenceTransfer:
+    `${ui[lang].surveySequenceStep} · ${state.step+1}/6 · ${ui[lang].surveySequenceFraction} ${Math.round(state.stepProgress*100)}%`;
+  // Avoid live-region announcements every animation frame.
+  if(current==='traverse'){
+    label.dataset.phase=current;
+    label.textContent=next;
+  } else if(label.textContent!==next)label.textContent=next;
 }
 function localizeMap() {
   const labels=lang==='pt'?['Aproximar','Afastar','Restaurar norte']:['Zoom in','Zoom out','Reset bearing to north'];
