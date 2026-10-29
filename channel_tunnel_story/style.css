@@ -44,3 +44,12 @@
 .survey-stages span[data-active="true"]{background:#256a67;color:#f0fffd;
  border-color:#71f4e6;opacity:1;box-shadow:0 0 12px #54e6dc44}
 #surveySequence{min-height:1.3em}
+
+
+/* On portrait phones, the scene must be large enough to SHOW the instruments.
+   The old 350px stage left ~80px for the 3D canvas after all controls.
+   Reserve 155px for the reading area so sticky chapter links still work. */
+@media(max-width:600px) and (min-height:600px){
+  :root[data-view="section"]{--stage:min(75dvh,calc(100dvh - 155px))}
+  .chapter{padding:30px 0}
+}
