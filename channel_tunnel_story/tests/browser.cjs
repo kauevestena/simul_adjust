@@ -138,7 +138,11 @@ async function axe(page) {
       assert.equal(await page.evaluate(()=>window.__story.cutaway.surveyGroup.visible),false,'no underground traverse before tunnelling starts');
       await page.locator('#chapterNav button').nth(3).click();
       await page.waitForFunction(()=>window.__story.cutaway.phase==='traverse');
-      assert.equal(await page.evaluate(()=>window.__story.cutaway.surveyGroup.visible),true);
+      assert.equal(await page.evaluate(()=>{
+        const scene=window.__story.cutaway;
+        return scene.surveyGroup.visible ||
+          (scene.interiorGroup.visible && scene.interiorStations.visible);
+      }),true,'underground traverse is visible in either overview or guided inside-gallery camera');
       assert.equal(await page.evaluate(()=>window.__story.cutaway.gnssGroup.visible),false);
       await page.locator('#chapterNav button').nth(4).click();
       await page.waitForFunction(()=>window.__story.cutaway.phase==='digging');
