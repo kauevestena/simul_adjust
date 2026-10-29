@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="A bilingual, evidence-linked story of geodesy and the Channel Tunnel, with clearly identified teaching experiments.">
+<meta name="theme-color" content="#070f1b">
+<title>Beneath the Channel · simul_adjust</title>
+<link rel="stylesheet" href="./vendor/maplibre-gl.css">
+<link rel="stylesheet" href="./style.css">
+<script defer src="./vendor/maplibre-gl.js"></script>
+<script type="module" src="./app.mjs"></script>
+</head>
+<body>
+<a class="skip" href="#narrative" id="skip">Skip to story</a>
+<header class="top"><a id="back" href="../">← simul_adjust</a><div class="langs" role="group" aria-label="Language / Idioma"><button id="pt" type="button" aria-pressed="false">PT</button><button id="en" type="button" aria-pressed="true">EN</button></div></header>
+<noscript><p>This interactive story requires JavaScript. / Esta história interativa requer JavaScript. <a href="./README.md">Read the guide / Leia o guia</a> · <a href="./SOURCE_AUDIT.md">Sources / Fontes</a></p></noscript>
+<main class="layout">
+<div class="story" id="narrative" tabindex="-1">
+<section class="hero"><div class="eyebrow" id="overline"></div><h1 id="mainTitle"></h1><p class="intro" id="subtitle"></p><div class="stats"><div><b>50.45 km</b><span id="statTotal"></span></div><div><b>37.9 km</b><span id="statSea"></span></div><div><b>1994</b><span id="statOpen"></span></div></div><p class="footnote" id="heroHint"></p><a href="#experiments" id="jumpLab"></a></section>
+<nav id="chapterNav" aria-label="Chapters"></nav><div id="chapters"></div>
+<section class="experiments" id="experiments" tabindex="-1" aria-labelledby="experimentsTitle">
+<div class="eyebrow" id="syntheticBadge"></div><h2 id="experimentsTitle"></h2><p id="experimentIntro"></p>
+<section class="lab" aria-labelledby="labTitle"><h3 id="labTitle"></h3><p id="labText"></p>
+<div class="control"><label for="angle" id="angleLabel"></label><input type="range" min="-20" max="20" step="0.5" value="2" id="angle"><output class="value" id="angleValue" for="angle">2″</output></div>
+<div class="control"><label for="distance" id="distanceLabel"></label><select id="distance"><option value="10">10 km</option><option value="20" selected>20 km</option><option value="38">38 km</option></select></div>
+<p><span id="offsetLabel"></span>: <output id="modelOutput" aria-live="polite" for="angle distance"></output></p><div class="formula">d = L · tan(Δα)</div><p class="footnote" id="labCaveat"></p></section>
+<section class="lab" aria-labelledby="traverseTitle"><h3 id="traverseTitle"></h3><p id="traverseText"></p>
+<div class="control"><label for="bias" id="biasLabel"></label><input id="bias" type="range" min="-10" max="10" step="0.5" value="5"><output id="biasValue" for="bias"></output></div>
+<label class="check"><input type="checkbox" id="gyro" checked><span id="gyroLabel"></span></label>
+<div class="table-scroll" tabindex="0" role="region" aria-labelledby="traverseCaption"><table><caption id="traverseCaption"></caption><thead><tr><th id="thStation" scope="col"></th><th scope="col">x (km)</th><th id="thOptical" scope="col"></th><th id="thAdjusted" scope="col"></th></tr></thead><tbody id="traverseRows"></tbody></table></div>
+<p id="traverseResult" aria-live="polite"></p><p class="footnote" id="traverseCaveat"></p></section>
+<section class="lab" aria-labelledby="monitorTitle"><h3 id="monitorTitle"></h3><p id="monitorText"></p>
+<div class="control"><label for="movement" id="movementLabel"></label><input id="movement" type="range" min="-20" max="20" step="1" value="8"><output id="movementValue" for="movement"></output></div>
+<div class="control"><label for="datumShift" id="datumLabel"></label><input id="datumShift" type="range" min="-20" max="20" step="1" value="5"><output id="datumValue" for="datumShift"></output></div>
+<label class="check"><input type="checkbox" id="unstable"><span id="unstableLabel"></span></label>
+<p id="monitorResult" aria-live="polite"></p><p class="footnote" id="monitorCaveat"></p></section>
+</section>
+<section class="refs" id="references" tabindex="-1"><h2 id="referencesTitle"></h2><p id="sourcesContext"></p><a href="./SOURCE_AUDIT.md" id="auditLink"></a><ol id="sourcesList"></ol></section>
+</div>
+<aside class="stage" aria-labelledby="mapTitle">
+<div class="stageBar"><div><strong id="mapTitle"></strong><span id="activeChapter"></span></div><div class="viewButtons" role="group" aria-label="View / Visualização"><button id="mapView" aria-pressed="true" type="button"></button><button id="sectionView" aria-pressed="false" type="button"></button></div></div>
+<div class="viewport"><div id="map" role="region" aria-label="Geographic context map"></div><div id="cutaway" hidden></div><div id="mapFallback" role="status" hidden></div></div>
+<div class="stageFooter"><div id="mapTools"><label class="check"><input type="checkbox" id="terrain" checked><span id="terrainLabel"></span></label><span id="mapStatus" role="status"></span></div><div id="sectionTools" hidden><label class="check"><input id="survey" type="checkbox" checked><span id="surveyLabel"></span></label><div class="control"><button id="play" aria-pressed="false" type="button"></button><label for="advance" id="advanceLabel"></label><input id="advance" type="range" min="0" max="100" value="0"><output id="advanceValue" for="advance">0%</output><button id="resetView" type="button"></button></div><div id="rockLegend"></div></div><p id="mapCaveat"></p></div>
+</aside>
+</main>
+</body></html>
