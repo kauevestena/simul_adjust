@@ -79,6 +79,17 @@ async function axe(page) {
         await page.locator('#chapterNav button').nth(i).focus();await page.keyboard.press('Enter');
         await page.waitForFunction(i=>window.__story.active===i,i);
         assert.ok(Math.abs(await page.evaluate(()=>window.__story.mapProgress)-[0,.12,.23,.45,.7,1,1][i])<1e-9,'chapter progress tracks schematic map');
+        if(i>0){
+          const phase=['challenge','control','geology','traverse','digging','breakthrough','monitoring'][i];
+          await page.waitForFunction(expected=>window.__story.cutaway?.phase===expected,phase,{timeout:12000});
+          if(i===1){
+            assert.equal(await page.evaluate(()=>window.__story.cutaway.gnssGroup.visible),true);
+            assert.equal(await page.evaluate(()=>window.__story.cutaway.gnssLand.length),2);
+          }
+          if(i===2)assert.equal(await page.evaluate(()=>window.__story.cutaway.rockLayers[0].material.emissive.getHex()!==0),true);
+          if(i===5)assert.equal(await page.evaluate(()=>window.__story.cutaway.breakthroughGroup.visible),true);
+          if(i===6)assert.equal(await page.evaluate(()=>window.__story.cutaway.monitorGroup.visible),true);
+        }
         await page.waitForFunction(expected=>!window.__story.cutaway || Math.abs(window.__story.cutaway.progress-expected)<1e-9,[0,.12,.23,.45,.7,1,1][i],{timeout:10000});
         assert.equal(await page.locator('#chapterNav button[aria-current=step]').count(),1);
         const visible=await page.locator('.chapter').nth(i).evaluate(el=>{const r=el.getBoundingClientRect(),stage=document.querySelector('.stage').getBoundingClientRect();const top=innerWidth<=850?stage.bottom:62;return r.top>=top-2&&r.top<innerHeight-20;});
