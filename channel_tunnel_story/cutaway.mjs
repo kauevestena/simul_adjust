@@ -317,11 +317,13 @@ export class Cutaway {
     }
     const transferPoints=[
       new THREE.Vector3(-8.40,4.25,-.70),
-      new THREE.Vector3(-7.60,3.13,-.48),
-      new THREE.Vector3(-7.30,2.64,-.32),
-      new THREE.Vector3(-7.30,1.86,-.32),
-      new THREE.Vector3(-7.25,.75,.15),
-      new THREE.Vector3(-6.60,-.10,1.0),
+      new THREE.Vector3(-7.60,3.40,1.70),
+      new THREE.Vector3(-7.28,2.90,2.88),
+      // Keep the teaching transfer line on the *visible cut face* in front of
+      // the grass slab, rather than hiding it inside opaque terrain.
+      new THREE.Vector3(-7.28,1.55,2.88),
+      new THREE.Vector3(-7.10,.65,2.78),
+      new THREE.Vector3(-6.60,-.10,1.8),
       new THREE.Vector3(positions[0],-.09,1.32)
     ];
     this.portalTransferCurve=new THREE.CatmullRomCurve3(transferPoints);
@@ -330,8 +332,14 @@ export class Cutaway {
       new THREE.BufferGeometry().setFromPoints(transferSamples),
       new THREE.LineBasicMaterial({color:0xffcf62,transparent:true,opacity:.95}));
     this.interiorGroup.add(this.gnssPortalLink);
-    this.transferMarker=new THREE.Mesh(new THREE.SphereGeometry(.105,12,10),
+    this.portalTransferTube=new THREE.Mesh(
+      new THREE.TubeGeometry(this.portalTransferCurve,70,.052,8,false),
+      new THREE.MeshBasicMaterial({color:0xffd579,transparent:true,opacity:.88}));
+    this.portalTransferTube.geometry.setDrawRange(0,0);
+    this.interiorGroup.add(this.portalTransferTube);
+    this.transferMarker=new THREE.Mesh(new THREE.SphereGeometry(.125,12,10),
       new THREE.MeshBasicMaterial({color:0xffec9a}));
+    this.transferMarker.add(new THREE.PointLight(0xffdf86,2.5,2));
     this.interiorGroup.add(this.transferMarker);
     // A camera-visible excavation face and moving survey sight line communicate
     // progress at every slider position, not only at station boundaries.
@@ -446,6 +454,8 @@ export class Cutaway {
     });
     this.gnssPortalLink.visible=state.showPortalTransfer;
     this.gnssPortalLink.geometry.setDrawRange(0,Math.max(2,Math.ceil(71*state.transferProgress)));
+    this.portalTransferTube.visible=state.showPortalTransfer;
+    this.portalTransferTube.geometry.setDrawRange(0,Math.max(0,Math.floor(70*state.transferProgress)*8*6));
     this.transferMarker.visible=state.showPortalTransfer;
     this.transferMarker.position.copy(this.portalTransferCurve.getPoint(state.transferProgress));
     this.interiorInstruments.forEach((mount,i)=>{
@@ -529,15 +539,20 @@ export class Cutaway {
     // Scene 3: advance from instrument to forward prism at EACH input step.
     const state=this.surveySequence;
     const outside=new THREE.Vector3(-11.65,4.73,6.7);
-    const outsideLook=new THREE.Vector3(-8.65,2.65,0.0);
+    const outsideLook=new THREE.Vector3(-8.65,3.15,0.0);
+    const portalWide=new THREE.Vector3(-10.1,4.1,8.4);
+    const portalWideLook=new THREE.Vector3(-7.65,1.60,1.25);
     const inside=new THREE.Vector3(-6.65,.60,-1.15);
     const insideLook=new THREE.Vector3(-5.4,-.10,1.20);
     if(state.phase==='gnss-transfer'){
-      const t=state.subphase==='surface'?0:
-        state.transferProgress*state.transferProgress*(3-2*state.transferProgress);
-      this.camera.position.copy(outside).lerp(inside,t);
-      const look=outsideLook.clone().lerp(insideLook,t);
-      this.camera.lookAt(look);
+      const t=state.transferProgress;
+      const ease=v=>v*v*(3-2*v);
+      const opening=ease(Math.min(1,t/.50));
+      const descending=ease(Math.max(0,Math.min(1,(t-.50)/.50)));
+      const wide=outside.clone().lerp(portalWide,opening);
+      const wideLook=outsideLook.clone().lerp(portalWideLook,opening);
+      this.camera.position.copy(wide).lerp(inside,descending);
+      this.camera.lookAt(wideLook.lerp(insideLook,descending));
     }else{
       const mount=this.interiorInstruments[state.instrument];
       const x=mount.position.x, t=state.stepProgress;
