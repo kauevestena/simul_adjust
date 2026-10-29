@@ -83,7 +83,10 @@ async function axe(page) {
       await page.check('#unstable');assert.match(await page.locator('#monitorResult').textContent(),/instável/);
       assert.notEqual(await page.locator('#monitorTarget').getAttribute('cy'),targetBefore);
       await page.click('#en');await noOverflow(page);await axe(page);
-      await page.click('#sectionView');await page.waitForFunction(()=>!!window.__story.cutaway);
+      // Sliders scroll down to the laboratory. Explicitly return to control before checking GNSS stage.
+      await page.locator('#chapterNav button').nth(1).click();
+      await page.click('#sectionView');
+      await page.waitForFunction(()=>window.__story.cutaway?.phase==='control');
       assert.equal(await page.evaluate(()=>window.__story.cutaway.surveyMarkers.length),13);
       assert.equal(await page.evaluate(()=>window.__story.cutaway.surveyLegs.length),12);
       assert.equal(await page.evaluate(()=>window.__story.cutaway.gnssGroup.visible),true,'linked GPS network in surface-control chapter');
