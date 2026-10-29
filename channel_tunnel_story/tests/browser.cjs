@@ -62,10 +62,18 @@ async function axe(page) {
         const visible=await page.locator('.chapter').nth(i).evaluate(el=>{const r=el.getBoundingClientRect(),stage=document.querySelector('.stage').getBoundingClientRect();const top=innerWidth<=850?stage.bottom:62;return r.top>=top-2&&r.top<innerHeight-20;});
         assert.ok(visible,'chapter heading not behind sticky map');
       }
-      // A real scroll gesture releases the chapter-jump lock before manual scrolling.
-      await page.mouse.wheel(0,-200);
-      await page.locator('#chapter-control').evaluate(e=>e.scrollIntoView({behavior:'instant'}));
-      await page.waitForFunction(()=>window.__story.active===1);
+      // Simulate the scroll-intent signal (mouse wheel is unsupported by mobile
+      // WebKit); then scroll the document itself. This tests programmatic scroll
+      // tracking separately from explicit chapter-button navigation.
+      await page.evaluate(()=>window.dispatchEvent(new Event('wheel')));
+      await page.locator('#chapter-control').evaluate(e=>e.scrollIntoView({behavior:'instant',block:'start'}));
+      await page.waitForFunction(()=>window.__story.active===1,null,{timeout:12000}).catch(async e=>{
+        console.error('control scroll diagnostics',await page.evaluate(()=>({
+          active:window.__story?.active,href:location.href,scrollY,
+          stage:document.querySelector('.stage')?.getBoundingClientRect().toJSON(),
+          control:document.querySelector('#chapter-control')?.getBoundingClientRect().toJSON()
+        })));throw e;
+      });
       await page.click('#pt');assert.equal(await page.locator('html').getAttribute('lang'),'pt-BR');assert.match(await page.locator('#chapter-control').textContent(),/Nortech/);
       assert.equal(await page.evaluate(()=>localStorage.getItem('monorepo_lang')),'pt-BR');assert.match(await page.locator('#back').getAttribute('href'),/lang=pt/);
       await input(page,'datumOffset',-0.50);
