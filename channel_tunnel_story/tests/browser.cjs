@@ -155,6 +155,43 @@ async function axe(page) {
       assert.ok(sequence.receiver&&sequence.transfer,'GNSS network is visible outside, linked through portal');
       assert.equal(sequence.visibleBrackets,0,'no underground instrument is installed before transfer');
       assert.match(sequence.labels,/GNSS/);
+      // The GNSS is on a raised ground slab ABOVE the tunnel, not alongside
+      // the gallery floor. Its signal and camera visibly change between frames.
+      let surface=await page.evaluate(()=>{
+        const m=window.__story.cutaway;
+        return {receiverY:m.gnssReceivers[0].position.y,
+          groundY:m.surfaceTerrain.children[0].position.y,
+          satelliteY:m.surfaceSatellites[0].position.y,
+          tunnelY:m.curves[1].getPoint(0).y,
+          cameraY:m.camera.position.y,opacity:m.surfaceSignals[0].material.opacity};
+      });
+      assert.ok(surface.receiverY>surface.groundY+0.05 && surface.groundY>surface.tunnelY+2,
+        'GNSS sits on visible terrain above the tunnel');
+      assert.ok(surface.satelliteY>surface.receiverY+1 && surface.cameraY>surface.groundY,
+        'surface satellite and camera are above ground');
+      await input(page,'advance',3);
+      const opacity3=await page.evaluate(()=>window.__story.cutaway.surfaceSignals[0].material.opacity);
+      assert.ok(opacity3>surface.opacity,'GNSS signal brightness changes at intermediate progress');
+      await input(page,'advance',8);
+      const portal8=await page.evaluate(()=>{
+        const m=window.__story.cutaway;
+        return {phase:m.surveySequence.subphase,
+          markerY:m.transferMarker.position.y,
+          cameraY:m.camera.position.y,
+          lineCount:m.gnssPortalLink.geometry.drawRange.count};
+      });
+      assert.equal(portal8.phase,'portal');
+      assert.ok(portal8.lineCount>2,'portal control transfer path is being drawn');
+      await input(page,'advance',11);
+      const portal11=await page.evaluate(()=>{
+        const m=window.__story.cutaway;
+        return {markerY:m.transferMarker.position.y,cameraY:m.camera.position.y,
+          lineCount:m.gnssPortalLink.geometry.drawRange.count};
+      });
+      assert.ok(portal11.markerY<portal8.markerY,'control descends towards the underground traverse');
+      assert.ok(portal11.cameraY<portal8.cameraY,'camera descends with transferred control');
+      assert.ok(portal11.lineCount>portal8.lineCount,'portal connection visibly extends');
+      assert.match(await page.locator('#surveySequence').textContent(),/portal/i);
       await input(page,'advance',18);
       sequence=await page.evaluate(()=>{
         const c=window.__story.cutaway;
@@ -166,6 +203,22 @@ async function axe(page) {
       assert.equal(sequence.state.prism,1);
       assert.deepEqual(sequence.roles.slice(0,2),['instrument','prism']);
       assert.equal(sequence.visible,2);
+      const intermediateA=await page.evaluate(()=>{
+        const m=window.__story.cutaway;
+        return {cameraX:m.camera.position.x,tipX:m.beamTip.position.x,
+          faceX:m.interiorFace.position.x,stepProgress:m.surveySequence.stepProgress};
+      });
+      await input(page,'advance',20);
+      const intermediateB=await page.evaluate(()=>{
+        const m=window.__story.cutaway;
+        return {cameraX:m.camera.position.x,tipX:m.beamTip.position.x,
+          faceX:m.interiorFace.position.x,stepProgress:m.surveySequence.stepProgress};
+      });
+      assert.ok(intermediateB.stepProgress>intermediateA.stepProgress);
+      assert.notEqual(intermediateA.tipX,intermediateB.tipX,'optical beam advances continuously');
+      assert.notEqual(intermediateA.cameraX,intermediateB.cameraX,'third-person camera advances continuously');
+      assert.notEqual(intermediateA.faceX,intermediateB.faceX,'excavation face advances continuously');
+      await page.screenshot({path:path.join(SHOTS,`${engine}-${size.width}-gnss-traverse-transition.png`)});
       await input(page,'advance',37);
       sequence=await page.evaluate(()=>{
         const c=window.__story.cutaway;
