@@ -147,7 +147,7 @@ export class Cutaway {
       const progress=this.progress;
       const effective=drive.bore===1?progress:Math.max(0,(progress-.16)/.84);
       const extent=effective*.48;
-      if(Math.abs(extent-drive.last)<.005)return; // do not churn GPU geometry per frame
+      if(Math.abs(extent-drive.last)<.005)continue; // do not churn GPU geometry per frame
       drive.last=extent;
       for(const child of [...drive.holder.children]){drive.holder.remove(child);child.geometry?.dispose();child.material?.dispose();}
       if(extent<.005)continue;
