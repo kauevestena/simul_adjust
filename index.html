@@ -1084,6 +1084,27 @@
     .sim-card[data-card-id="channel_tunnel_story"] .card-category-badge {
       white-space: normal;
     }
+    .sim-card[data-card-id="channel_tunnel_story"] .card-badges {
+      flex-direction: row;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      max-width: 76%;
+    }
+    .badge-development {
+      display: inline-flex;
+      font-size: .69rem;
+      font-weight: 800;
+      line-height: 1.25;
+      padding: 4px 8px;
+      border: 1px solid #b96a44;
+      border-radius: var(--radius-sm);
+      background: rgba(185,106,68,.16);
+      color: #ffc59d;
+    }
+    [data-theme="light"] .badge-development {
+      color: #8b3b17;
+      background: #fff2e7;
+    }
     .badge-experimental {
       display: inline-flex;
       align-items: center;
@@ -1280,7 +1301,7 @@
 
 <main class="simulators-grid" id="simulatorsGrid">
 <article class="sim-card" data-card-id="channel_tunnel_story" data-status="experimental" data-category="geodesia-3d" style="--card-accent:#6ae3d7;--card-accent-glow:rgba(106,227,215,.20);--card-icon-bg:rgba(106,227,215,.12);--card-btn-bg:linear-gradient(135deg,#075c67,#087f86)">
-<div class="card-top"><div class="card-icon-box">🚇</div><div class="card-badges"><span class="card-category-badge">História da Geodésia · PT-BR / EN</span><span class="badge-experimental">🧪 Experimental</span></div></div>
+<div class="card-top"><div class="card-icon-box">🚇</div><div class="card-badges"><span class="card-category-badge">História da Geodésia · PT-BR / EN</span><span class="badge-experimental">🧪 Experimental</span><span class="badge-development">🚧 Em desenvolvimento</span></div></div>
 <h2 class="card-title">Eurotúnel: A Geodésia Sob o Canal da Mancha</h2><div class="card-path">channel_tunnel_story/</div>
 <p class="card-description">História interativa da rede geodésica, locação subterrânea, encontro das tuneladoras e monitoramento.</p>
 <ul class="card-features"><li>7 capítulos com mapa 3D e fontes históricas</li><li>Poligonais, giroteodolitos e referência comum</li><li>Experimento de propagação de erro angular</li></ul>
@@ -2008,8 +2029,8 @@ Análise geoespacial e mapeamento de cobertura de vegetação urbana obtida a pa
 };
   const cardTranslations = {
 "channel_tunnel_story": {
- "pt-BR":{"experimental":"🧪 Experimental","badge":"História da Geodésia · PT-BR / EN","title":"Eurotúnel: A Geodésia Sob o Canal da Mancha","desc":"História interativa da rede geodésica, locação subterrânea, encontro das tuneladoras e monitoramento.","features":["7 capítulos com mapa 3D e fontes históricas","Poligonais, giroteodolitos e referência comum","Experimento de propagação de erro angular"],"tags":["MapLibre","Geodésia","PT-BR / EN"],"btn":"Explorar história →"},
- "en":{"experimental":"🧪 Experimental","badge":"History of Geodesy · PT-BR / EN","title":"Channel Tunnel: Geodesy Beneath the Channel","desc":"An interactive history of geodetic control, underground setting-out, breakthrough and structural monitoring.","features":["7 chapters with a 3D map and historical sources","Traverses, gyro-theodolites and shared reference frames","Bearing-error propagation experiment"],"tags":["MapLibre","Geodesy","PT-BR / EN"],"btn":"Explore story →"}
+ "pt-BR":{"experimental":"🧪 Experimental","development":"🚧 Em desenvolvimento","badge":"História da Geodésia · PT-BR / EN","title":"Eurotúnel: A Geodésia Sob o Canal da Mancha","desc":"História interativa da rede geodésica, locação subterrânea, encontro das tuneladoras e monitoramento.","features":["7 capítulos com mapa 3D e fontes históricas","Poligonais, giroteodolitos e referência comum","Experimento de propagação de erro angular"],"tags":["MapLibre","Geodésia","PT-BR / EN"],"btn":"Explorar história →"},
+ "en":{"experimental":"🧪 Experimental","development":"🚧 In development","badge":"History of Geodesy · PT-BR / EN","title":"Channel Tunnel: Geodesy Beneath the Channel","desc":"An interactive history of geodetic control, underground setting-out, breakthrough and structural monitoring.","features":["7 chapters with a 3D map and historical sources","Traverses, gyro-theodolites and shared reference frames","Bearing-error propagation experiment"],"tags":["MapLibre","Geodesy","PT-BR / EN"],"btn":"Explore story →"}
 },
 
 "transform_lab": {"pt-BR": {"badge": "Ajustamento · PT-BR / EN", "title": "Transform Lab: Transformação 3D entre Referenciais", "desc": "Transforme uma folha A4 impressa (cm) nas medições de uma estação total sem prisma (m) por 3 rotações, 3 translações e escala, pelos métodos combinado e paramétrico, com detecção de erros grosseiros e o plano da folha.", "features": ["Quatro parametrizações da rotação e injunções de distância", "Data snooping, τ de Pope, regra kσ e RANSAC; plano da folha para ver o erro da estação", "Teoria em forma matricial e escalar e comparação de soluções"], "tags": ["Mínimos Quadrados", "Gauss–Helmert", "PT-BR / EN"], "btn": "Abrir Simulador →"}, "en": {"badge": "Adjustment · PT-BR / EN", "title": "Transform Lab: 3D Transformation between Frames", "desc": "Transform a printed A4 sheet (cm) into reflectorless total-station measurements (m) with 3 rotations, 3 translations and scale, using the combined and parametric methods, with gross-error detection and the plane of the sheet.", "features": ["Four rotation parametrizations and distance constraints", "Data snooping, Pope’s τ, the kσ rule and RANSAC; the sheet plane shows the station error", "Theory in matrix and scalar form and solution comparison"], "tags": ["Least Squares", "Gauss–Helmert", "PT-BR / EN"], "btn": "Open Simulator →"}},
@@ -2907,6 +2928,8 @@ Análise geoespacial e mapeamento de cobertura de vegetação urbana obtida a pa
       if (unfBadge) {
         unfBadge.textContent = t.badgeUnfinished;
       }
+      const developmentBadge = card.querySelector('.badge-development');
+      if (developmentBadge && data.development) developmentBadge.textContent = data.development;
       const experimentalBadge = card.querySelector('.badge-experimental');
       if (experimentalBadge && data.experimental) {
         experimentalBadge.textContent = data.experimental;
