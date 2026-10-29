@@ -28,6 +28,7 @@ STORY_BASE_URL=https://kauevestena.github.io/simul_adjust STORY_LIVE_MAP=1 node 
 
 See [SOURCE_AUDIT.md](SOURCE_AUDIT.md) for claim-level evidence, original publication dates, access limitations and the conflicting breakthrough accounts.
 
+- **Story progression:** the solid orange segment indicates the current chapter's illustrative progression along a straight chord; the dashed line shows its full extent. It is **not** observed TBM position, historical time, or measured chainage. The 3D cutaway's two representative TBMs follow the same chapter cue, and users can manipulate their progress manually.
 - **Map:** approximate portals and a straight geographic chord. No as-built axis, control stations or geological boundaries are inferred from this line. Terrain is surface elevation, not a reconstruction of bathymetry or bore depth; 1.6× exaggeration is disclosed.
 - **3D cutaway:** actual rotatable meshes, but invented layer boundaries, tunnel curves and deliberately unequal scales. Lithological ordering is contextual; geometry is not digitised from engineering drawings. The two animated machines stand for opposing drives, not the actual eleven machines. Progress is not historical date, speed or chainage.
 - **Bearing experiment:** `d = L tan(Δα)`, with km converted to m and arcseconds to radians. Signed errors are allowed. It does not reproduce any historical breakthrough offset.
@@ -46,7 +47,7 @@ Use os comandos acima (`?lang=pt` para português). Os testes usam renderizaçã
 
 ### História e simulação
 
-A [auditoria de fontes](SOURCE_AUDIT.md) registra evidências e limitações. A corda entre portais não é o eixo construído. Relevo superficial com exagero 1,6× não informa profundidade do túnel. O corte tem malhas 3D reais, mas limites geológicos, curvas e escalas inventados; o avanço das duas máquinas não representa cronologia ou produção real.
+A [auditoria de fontes](SOURCE_AUDIT.md) registra evidências e limitações. A linha tracejada indica a corda inteira entre portais aproximados; o segmento laranja mostra apenas um avanço ilustrativo sincronizado ao capítulo, não a quilometragem ou data real de escavação. O controle do corte 3D permite avançar manualmente. A corda entre portais não é o eixo construído. Relevo superficial com exagero 1,6× não informa profundidade do túnel. O corte tem malhas 3D reais, mas limites geológicos, curvas e escalas inventados; o avanço das duas máquinas não representa cronologia ou produção real.
 
 O erro angular usa `d = L tan(Δα)`. A poligonal sintética tem seis lados de 3 km e ajusta apenas coordenadas transversais linearizadas, com ponto inicial fixo; usa σ óptico = 2″ e σ giroscópico = 0,8″. As observações giroscópicas nos lados 2, 4, 6 elevam a redundância de 0 para 3. A covariância é a priori, `(AᵀPA)⁻¹`; um viés não modelado não desaparece por reduzir a incerteza formal. Os valores fixos do ruído estão listados na seção inglesa e no código.
 
