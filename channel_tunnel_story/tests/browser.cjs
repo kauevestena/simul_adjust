@@ -104,6 +104,18 @@ async function axe(page) {
     const ctx=await browser.newContext();await fixtures(ctx);const page=await ctx.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
     await page.goto(base+'/?lang=en');
     assert.match(await page.locator('[data-card-id="channel_tunnel_story"] .card-title').textContent(),/Channel Tunnel/);
+    const storyCard=page.locator('#simulatorsGrid > .sim-card[data-card-id="channel_tunnel_story"]');
+    const otherCard=page.locator('#simulatorsGrid > .sim-card[data-card-id="transform_lab"]');
+    assert.equal(await storyCard.count(),1,'Channel Tunnel card is a direct grid child');
+    assert.equal(await storyCard.getAttribute('data-status'),'experimental');
+    assert.match(await storyCard.locator('.badge-experimental').textContent(),/Experimental/);
+    const width=await storyCard.evaluate(el=>el.getBoundingClientRect().width);
+    const otherWidth=await otherCard.evaluate(el=>el.getBoundingClientRect().width);
+    assert.ok(Math.abs(width-otherWidth)<2,'Channel Tunnel card uses the same grid width as its peers');
+    await page.click('.lang-btn[data-lang="pt-BR"]');
+    assert.match(await storyCard.locator('.badge-experimental').textContent(),/Experimental/);
+    await page.click('.lang-btn[data-lang="en"]');
+
     assert.match(await page.locator('[data-card-id="transform_lab"] .btn-launch').getAttribute('href'),/lang=en/);
     await page.click('[data-card-id="channel_tunnel_story"] .btn-launch');await page.waitForURL(/channel_tunnel_story/);assert.match(page.url(),/lang=en/);
     await page.click('#back');await page.waitForURL(/\?lang=en$/);assert.deepEqual(errors,[]);await ctx.close();

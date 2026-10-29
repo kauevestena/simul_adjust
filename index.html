@@ -1072,6 +1072,38 @@
       margin-left: 6px;
     }
 
+    /* Experimental is a visible maturity label, not the unfinished filter status. */
+    .sim-card[data-card-id="channel_tunnel_story"] .card-badges {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+      min-width: 0;
+      text-align: right;
+    }
+    .sim-card[data-card-id="channel_tunnel_story"] .card-category-badge {
+      white-space: normal;
+    }
+    .badge-experimental {
+      display: inline-flex;
+      align-items: center;
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 0.035em;
+      text-transform: uppercase;
+      line-height: 1.25;
+      padding: 4px 8px;
+      border-radius: var(--radius-sm);
+      background: rgba(245, 158, 11, 0.16);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.5);
+    }
+    [data-theme="light"] .badge-experimental {
+      background: #fef3c7;
+      border-color: #d97706;
+      color: #92400e;
+    }
+
     /* Footer Enhancements & UTFPR Logo */
     .footer-brand {
       display: flex;
@@ -1244,15 +1276,16 @@
   </div>
 </header>
 <!-- Simulators Grid -->
-<article class="sim-card" data-card-id="channel_tunnel_story" data-category="geodesia-3d" style="--card-accent:#6ae3d7;--card-accent-glow:rgba(106,227,215,.20);--card-icon-bg:rgba(106,227,215,.12);--card-btn-bg:linear-gradient(135deg,#075c67,#087f86)">
-<div class="card-top"><div class="card-icon-box">🚇</div><span class="card-category-badge">História da Geodésia · PT-BR / EN</span></div>
+
+
+<main class="simulators-grid" id="simulatorsGrid">
+<article class="sim-card" data-card-id="channel_tunnel_story" data-status="experimental" data-category="geodesia-3d" style="--card-accent:#6ae3d7;--card-accent-glow:rgba(106,227,215,.20);--card-icon-bg:rgba(106,227,215,.12);--card-btn-bg:linear-gradient(135deg,#075c67,#087f86)">
+<div class="card-top"><div class="card-icon-box">🚇</div><div class="card-badges"><span class="card-category-badge">História da Geodésia · PT-BR / EN</span><span class="badge-experimental">🧪 Experimental</span></div></div>
 <h2 class="card-title">Eurotúnel: A Geodésia Sob o Canal da Mancha</h2><div class="card-path">channel_tunnel_story/</div>
 <p class="card-description">História interativa da rede geodésica, locação subterrânea, encontro das tuneladoras e monitoramento.</p>
 <ul class="card-features"><li>7 capítulos com mapa 3D e fontes históricas</li><li>Poligonais, giroteodolitos e referência comum</li><li>Experimento de propagação de erro angular</li></ul>
 <div class="card-tags"><span class="tech-tag">MapLibre</span><span class="tech-tag">Geodésia</span><span class="tech-tag">PT-BR / EN</span></div>
 <div class="card-actions"><a class="btn-launch" href="channel_tunnel_story/"><span class="btn-text">Explorar história →</span></a><a class="btn-icon-ext" href="channel_tunnel_story/" rel="noopener" target="_blank" title="Abrir em nova aba">↗</a></div></article>
-
-<main class="simulators-grid" id="simulatorsGrid">
 <article class="sim-card" data-card-id="transform_lab" data-category="ajustamento" style="--card-accent: #6366f1; --card-accent-glow: rgba(99, 102, 241, 0.2); --card-icon-bg: rgba(99, 102, 241, 0.12); --card-btn-bg: linear-gradient(135deg, #4338ca, #6366f1);">
 <div class="card-top"><div class="card-icon-box">🧭</div><span class="card-category-badge">Ajustamento · PT-BR / EN</span></div>
 <h2 class="card-title">Transform Lab: Transformação 3D entre Referenciais</h2>
@@ -1975,8 +2008,8 @@ Análise geoespacial e mapeamento de cobertura de vegetação urbana obtida a pa
 };
   const cardTranslations = {
 "channel_tunnel_story": {
- "pt-BR":{"badge":"História da Geodésia · PT-BR / EN","title":"Eurotúnel: A Geodésia Sob o Canal da Mancha","desc":"História interativa da rede geodésica, locação subterrânea, encontro das tuneladoras e monitoramento.","features":["7 capítulos com mapa 3D e fontes históricas","Poligonais, giroteodolitos e referência comum","Experimento de propagação de erro angular"],"tags":["MapLibre","Geodésia","PT-BR / EN"],"btn":"Explorar história →"},
- "en":{"badge":"History of Geodesy · PT-BR / EN","title":"Channel Tunnel: Geodesy Beneath the Channel","desc":"An interactive history of geodetic control, underground setting-out, breakthrough and structural monitoring.","features":["7 chapters with a 3D map and historical sources","Traverses, gyro-theodolites and shared reference frames","Bearing-error propagation experiment"],"tags":["MapLibre","Geodesy","PT-BR / EN"],"btn":"Explore story →"}
+ "pt-BR":{"experimental":"🧪 Experimental","badge":"História da Geodésia · PT-BR / EN","title":"Eurotúnel: A Geodésia Sob o Canal da Mancha","desc":"História interativa da rede geodésica, locação subterrânea, encontro das tuneladoras e monitoramento.","features":["7 capítulos com mapa 3D e fontes históricas","Poligonais, giroteodolitos e referência comum","Experimento de propagação de erro angular"],"tags":["MapLibre","Geodésia","PT-BR / EN"],"btn":"Explorar história →"},
+ "en":{"experimental":"🧪 Experimental","badge":"History of Geodesy · PT-BR / EN","title":"Channel Tunnel: Geodesy Beneath the Channel","desc":"An interactive history of geodetic control, underground setting-out, breakthrough and structural monitoring.","features":["7 chapters with a 3D map and historical sources","Traverses, gyro-theodolites and shared reference frames","Bearing-error propagation experiment"],"tags":["MapLibre","Geodesy","PT-BR / EN"],"btn":"Explore story →"}
 },
 
 "transform_lab": {"pt-BR": {"badge": "Ajustamento · PT-BR / EN", "title": "Transform Lab: Transformação 3D entre Referenciais", "desc": "Transforme uma folha A4 impressa (cm) nas medições de uma estação total sem prisma (m) por 3 rotações, 3 translações e escala, pelos métodos combinado e paramétrico, com detecção de erros grosseiros e o plano da folha.", "features": ["Quatro parametrizações da rotação e injunções de distância", "Data snooping, τ de Pope, regra kσ e RANSAC; plano da folha para ver o erro da estação", "Teoria em forma matricial e escalar e comparação de soluções"], "tags": ["Mínimos Quadrados", "Gauss–Helmert", "PT-BR / EN"], "btn": "Abrir Simulador →"}, "en": {"badge": "Adjustment · PT-BR / EN", "title": "Transform Lab: 3D Transformation between Frames", "desc": "Transform a printed A4 sheet (cm) into reflectorless total-station measurements (m) with 3 rotations, 3 translations and scale, using the combined and parametric methods, with gross-error detection and the plane of the sheet.", "features": ["Four rotation parametrizations and distance constraints", "Data snooping, Pope’s τ, the kσ rule and RANSAC; the sheet plane shows the station error", "Theory in matrix and scalar form and solution comparison"], "tags": ["Least Squares", "Gauss–Helmert", "PT-BR / EN"], "btn": "Open Simulator →"}},
@@ -2873,6 +2906,10 @@ Análise geoespacial e mapeamento de cobertura de vegetação urbana obtida a pa
       const unfBadge = card.querySelector('.badge-unfinished');
       if (unfBadge) {
         unfBadge.textContent = t.badgeUnfinished;
+      }
+      const experimentalBadge = card.querySelector('.badge-experimental');
+      if (experimentalBadge && data.experimental) {
+        experimentalBadge.textContent = data.experimental;
       }
 
       const title = card.querySelector('.card-title');
