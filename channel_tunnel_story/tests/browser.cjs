@@ -161,6 +161,10 @@ async function axe(page) {
       assert.equal(await page.evaluate(()=>window.__story.cutaway.totalStations.length),8,'illustrative total stations are installed in gallery');
       await page.click('#surveyCam');
       assert.equal(await page.evaluate(()=>window.__story.cutaway.mode),'survey');
+      if(size.width<=390&&size.height>=600){
+        const canvasHeight=await page.locator('#cutaway canvas').evaluate(el=>el.getBoundingClientRect().height);
+        assert.ok(canvasHeight>140,'mobile surveying scene must not collapse into an 80px strip');
+      }
       assert.equal(await page.evaluate(()=>window.__story.cutaway.progress),0,
         'gallery tour restarts outside at GNSS control');
       let sequence=await page.evaluate(()=>{
