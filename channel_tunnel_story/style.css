@@ -31,3 +31,6 @@
 #surveySequence{color:#b9e9ee;font-weight:600;line-height:1.35;font-size:.79rem}
 @media(max-width:850px){.development-badge{font-size:.65rem;padding:3px 5px}
  #surveySequence{font-size:.67rem}}
+
+@media(max-width:600px){.top{gap:5px;padding:5px 7px}.top #back{font-size:.72rem}
+ .development-badge{font-size:.56rem;padding:2px 3px}.top .langs button{min-height:34px;padding:3px 6px}}
