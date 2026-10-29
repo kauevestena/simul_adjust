@@ -34,3 +34,25 @@ test('positions are bounded, deterministic and never exceed the available bracke
   }
   assert.equal(surveySequenceAt(1).prism,WALL_STATION_COUNT-1);
 });
+
+
+test('surface GNSS and portal descent have continuous, distinct phases',()=>{
+  const a=surveySequenceAt(.02),b=surveySequenceAt(.04);
+  assert.equal(a.phase,'gnss-transfer');
+  assert.equal(a.subphase,'surface');
+  assert.ok(b.surfaceProgress>a.surfaceProgress);
+  const c=surveySequenceAt(.07),d=surveySequenceAt(.105);
+  assert.equal(c.subphase,'portal');
+  assert.equal(d.subphase,'portal');
+  assert.ok(d.transferProgress>c.transferProgress);
+  assert.equal(c.showPortalTransfer,true);
+  assert.equal(surveySequenceAt(.04).showPortalTransfer,false);
+});
+test('every progress movement within a traverse leg changes its fractional state',()=>{
+  const a=surveySequenceAt(.18),b=surveySequenceAt(.20);
+  assert.equal(a.instrument,b.instrument);
+  assert.ok(b.stepProgress>a.stepProgress,'camera and sight-line markers must move between mounts');
+  const x=surveySequenceAt(.37),y=surveySequenceAt(.38);
+  assert.equal(x.instrument,y.instrument);
+  assert.ok(y.stepProgress>x.stepProgress);
+});
