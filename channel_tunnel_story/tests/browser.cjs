@@ -112,9 +112,9 @@ async function axe(page) {
     const width=await storyCard.evaluate(el=>el.getBoundingClientRect().width);
     const otherWidth=await otherCard.evaluate(el=>el.getBoundingClientRect().width);
     assert.ok(Math.abs(width-otherWidth)<2,'Channel Tunnel card uses the same grid width as its peers');
-    await page.click('#pt');
+    await page.click('.lang-btn[data-lang="pt-BR"]');
     assert.match(await storyCard.locator('.badge-experimental').textContent(),/Experimental/);
-    await page.click('#en');
+    await page.click('.lang-btn[data-lang="en"]');
 
     assert.match(await page.locator('[data-card-id="transform_lab"] .btn-launch').getAttribute('href'),/lang=en/);
     await page.click('[data-card-id="channel_tunnel_story"] .btn-launch');await page.waitForURL(/channel_tunnel_story/);assert.match(page.url(),/lang=en/);
