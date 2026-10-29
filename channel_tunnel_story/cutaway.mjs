@@ -141,11 +141,26 @@ export class Cutaway {
     // One connected, illustrative 3D project control diagram spanning both shores.
     this.gnssGroup=new THREE.Group();this.scene.add(this.gnssGroup);
     this.gnssStations=[];
-    const controls=[[-9,3.0,-.25],[-7.2,3.5,-.6],[-5.7,2.95,-.1],[5.7,2.95,-.1],[7.2,3.5,-.6],[9,3.0,-.25]];
+    // Distinct elevated ground on each shore: GPS/GNSS is visibly OUTSIDE.
+    this.gnssLand=[];
+    for(const side of [-1,1]){
+      const earth=new THREE.Mesh(new THREE.BoxGeometry(5.2,.45,3.0),
+        new THREE.MeshStandardMaterial({color:0x638753,roughness:1}));
+      earth.position.set(side*8,2.64,-.15);
+      this.gnssGroup.add(earth);this.gnssLand.push(earth);
+    }
+    const controls=[[-9,3.04,-.25],[-7.2,3.04,-.6],[-5.7,3.04,-.1],
+      [5.7,3.04,-.1],[7.2,3.04,-.6],[9,3.04,-.25]];
     const pts=controls.map(p=>new THREE.Vector3(...p));
     pts.forEach((p,i)=>{
       const mesh=new THREE.Mesh(new THREE.SphereGeometry(.17,16,10),new THREE.MeshStandardMaterial({color:i<3?0xffc570:0x6ae3d7,emissive:i<3?0x3b2700:0x0b3836}));
       mesh.position.copy(p);this.gnssGroup.add(mesh);this.gnssStations.push(mesh);
+      const support=new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,.27,10),
+        new THREE.MeshStandardMaterial({color:0x5d7078,metalness:.4}));
+      support.position.set(p.x,2.92,p.z);this.gnssGroup.add(support);
+      const antenna=new THREE.Mesh(new THREE.CylinderGeometry(.15,.15,.045,18),
+        new THREE.MeshStandardMaterial({color:0xc2f5f3}));
+      antenna.position.set(p.x,3.23,p.z);this.gnssGroup.add(antenna);
     });
     for(const [i,j] of [[0,1],[1,2],[3,4],[4,5],[2,3],[1,4],[0,5]]){
       this.gnssGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([pts[i],pts[j]]),new THREE.LineBasicMaterial({color:0x76e9e1,transparent:true,opacity:.70})));
@@ -167,6 +182,28 @@ export class Cutaway {
       const plane=new THREE.Mesh(new THREE.PlaneGeometry(4,.032),new THREE.MeshBasicMaterial({color,side:THREE.DoubleSide,transparent:true,opacity:.95}));
       plane.position.set(x,2.0,1.9);this.heightGroup.add(plane);this.heightPlanes.push(plane);
     }
+    // Distinct stage symbols: breakthrough alignment and monitoring targets.
+    this.breakthroughGroup=new THREE.Group();this.scene.add(this.breakthroughGroup);
+    const meeting=this.curves[1].getPoint(.5);
+    const breakthroughHalo=new THREE.Mesh(new THREE.TorusGeometry(.59,.075,12,32),
+      new THREE.MeshBasicMaterial({color:0xffe6a0}));
+    breakthroughHalo.rotation.y=Math.PI/2;breakthroughHalo.position.copy(meeting);
+    this.breakthroughGroup.add(breakthroughHalo);
+    const beacon=new THREE.PointLight(0xffcc74,12,4);beacon.position.copy(meeting);
+    this.breakthroughGroup.add(beacon);this.breakthroughGroup.visible=false;
+    this.monitorGroup=new THREE.Group();this.scene.add(this.monitorGroup);
+    for(const t of [.28,.48,.72]){
+      const p=this.curves[1].getPoint(t);
+      const pin=new THREE.Mesh(new THREE.SphereGeometry(.13,12,10),
+        new THREE.MeshStandardMaterial({color:0xff5d72,emissive:0x551825}));
+      pin.position.copy(p).add(new THREE.Vector3(0,.42,.10));this.monitorGroup.add(pin);
+      const ref=new THREE.Line(new THREE.BufferGeometry().setFromPoints([
+        p.clone().add(new THREE.Vector3(0,.42,.10)),
+        p.clone().add(new THREE.Vector3(0,1.13,.10))
+      ]),new THREE.LineBasicMaterial({color:0xffd5a0}));
+      this.monitorGroup.add(ref);
+    }
+    this.monitorGroup.visible=false;
     this.tbms=[0xffb652,0x6ae3d7].map((color,i)=>{
       const group=new THREE.Group();
       const body=new THREE.Mesh(new THREE.CylinderGeometry(.29,.29,.78,24),new THREE.MeshStandardMaterial({color,metalness:.65,roughness:.32}));
@@ -373,15 +410,20 @@ export class Cutaway {
     const surface=phase==='control'||phase==='heights',inside=this.mode==='survey';
     this.interiorGroup.visible=inside;
     this.interiorStations.visible=this.surveyRequested;
-    this.rockLayers.forEach(layer=>{layer.visible=!inside;});
+    this.rockLayers.forEach(layer=>{
+      layer.visible=!inside;
+      layer.material.emissive.setHex(phase==='geology'?0x37270d:0x000000);
+    });
     this.sea.visible=!inside;
     this.gnssGroup.visible=surface&&!inside;
-    this.heightGroup.visible=(phase==='heights'||phase==='control')&&!inside;
-    // Never depict excavation during the earlier surface-control campaign.
+    this.heightGroup.visible=(phase==='heights')&&!inside;
+    this.breakthroughGroup.visible=phase==='breakthrough'&&!inside;
+    this.monitorGroup.visible=phase==='monitoring'&&!inside;
     this.tunnelGroup.visible=!surface&&!inside;
     this.surveyGroup.visible=this.surveyRequested && !surface&&!inside;
-    this.gyroStations.visible=this.gyroEnabled;
-    this.tbms.forEach(m=>m.visible=!surface&&!inside);
+    this.gyroStations.visible=this.gyroEnabled && phase==='traverse';
+    this.tbms.forEach(m=>m.visible=!surface&&!inside&&
+      !['challenge','geology','monitoring'].includes(phase));
     if(this.mode==='overview')this.reset();
     if(this.mode==='survey')this.surveyCamera();
     this.render();
