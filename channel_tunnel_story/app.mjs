@@ -57,6 +57,16 @@ function refreshViewText() {
   $('play').textContent=t[playing?'pause':'play']; $('play').setAttribute('aria-pressed',String(playing));
   if(cutaway)cutaway.renderer.domElement.setAttribute('aria-label',t.sectionKeys);
   $('activeChapter').textContent=active<0?'PT-BR / EN':`${active+1} / 7 · ${chapters[active][lang][0]}`;
+  refreshSurveySequence();
+}
+function refreshSurveySequence(){
+  const label=$('surveySequence'),state=cutaway?.surveySequence;
+  if(!label)return;
+  label.hidden=!(view==='section' && cutaway?.mode==='survey');
+  if(label.hidden||!state)return;
+  const next=state.phase==='gnss-transfer'?ui[lang].surveySequenceStart:
+    `${ui[lang].surveySequenceStep} · ${state.step+1}/6`;
+  if(label.textContent!==next)label.textContent=next;
 }
 function localizeMap() {
   const labels=lang==='pt'?['Aproximar','Afastar','Restaurar norte']:['Zoom in','Zoom out','Reset bearing to north'];
@@ -243,7 +253,7 @@ async function setView(next) {
     });
   }
   if(cutawayLoading)await cutawayLoading;
-  if(cutaway) {cutaway.setProgress(Number($('advance').value)/100);cutaway.resize();cutaway.setPhase(active>=0?phaseForChapter(chapters[active].id):'digging');cutaway.renderer.domElement.setAttribute('aria-label',ui[lang].sectionKeys);}
+  if(cutaway) {cutaway.setProgress(Number($('advance').value)/100);cutaway.resize();cutaway.setPhase(active>=0?phaseForChapter(chapters[active].id):'digging');cutaway.renderer.domElement.setAttribute('aria-label',ui[lang].sectionKeys);refreshSurveySequence();}
 }
 function setPlaying(value) {playing=value;cancelAnimationFrame(animationFrame);lastFrame=0;refreshViewText();if(playing)animationFrame=requestAnimationFrame(animate);}
 function animate(time) {
@@ -254,7 +264,11 @@ function animate(time) {
   cutaway?.tick(delta);
   if(value>=100)setPlaying(false);else animationFrame=requestAnimationFrame(animate);
 }
-function updateAdvance() {$('advanceValue').textContent=Math.round(Number($('advance').value))+'%';cutaway?.setProgress(Number($('advance').value)/100);}
+function updateAdvance() {
+  $('advanceValue').textContent=Math.round(Number($('advance').value))+'%';
+  cutaway?.setProgress(Number($('advance').value)/100);
+  refreshSurveySequence();
+}
 $('mapView').addEventListener('click',()=>{manualView=true;void setView('map');});
 $('sectionView').addEventListener('click',()=>{manualView=true;void setView('section');});
 $('advance').step='any';$('advance').addEventListener('input',()=>{setPlaying(false);updateAdvance();});
@@ -264,11 +278,15 @@ function setCameraButtons(mode){
   $('overviewCam').setAttribute('aria-pressed',String(mode==='overview'));
   $('followCam').setAttribute('aria-pressed',String(mode==='follow'));
   $('surveyCam').setAttribute('aria-pressed',String(mode==='survey'));
+  refreshSurveySequence();
 }
 $('overviewCam').addEventListener('click',()=>{cutaway?.setCameraMode('overview');setCameraButtons('overview');});
 $('surveyCam').addEventListener('click',async()=>{
   manualView=true;await setView('section');
+  // Each deliberate entry starts outside, at the GNSS-to-portal transfer.
+  setPlaying(false);$('advance').value='0';updateAdvance();
   cutaway?.setCameraMode('survey');setCameraButtons('survey');
+  refreshSurveySequence();
 });
 $('followCam').addEventListener('click',async()=>{manualView=true;await setView('section');cutaway?.setCameraMode('follow');setCameraButtons('follow');});
 $('launch3D').addEventListener('click',async()=>{navigateChapter(1);manualView=true;await setView('section');cutaway?.setCameraMode('overview');setCameraButtons('overview');});
