@@ -10,7 +10,7 @@ test('rock narrows continuously and symmetrically as the two faces approach',()=
   const stages=[0,.1,.4,.6,.88,.995,1].map(p=>remainingRockAt(p));
   for(let i=1;i<stages.length;i++){
     assert.ok(stages[i].width<stages[i-1].width,'no stagnant central gap between progress steps');
-    assert.equal(stages[i].left,-stages[i].right);
+    assert.ok(Math.abs(stages[i].left+stages[i].right)<1e-9,'the remaining rock is centred between both fronts');
   }
   assert.equal(remainingRockAt(.4).width,12);
   assert.ok(remainingRockAt(.995).width>0);
