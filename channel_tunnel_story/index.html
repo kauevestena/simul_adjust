@@ -16,19 +16,38 @@
 <noscript><p>This interactive story requires JavaScript. / Esta história interativa requer JavaScript. <a href="./README.md">Read the guide / Leia o guia</a> · <a href="./SOURCE_AUDIT.md">Sources / Fontes</a></p></noscript>
 <main class="layout">
 <div class="story" id="narrative" tabindex="-1">
-<section class="hero"><div class="eyebrow" id="overline"></div><h1 id="mainTitle"></h1><p class="intro" id="subtitle"></p><div class="stats"><div><b>50.45 km</b><span id="statTotal"></span></div><div><b>37.9 km</b><span id="statSea"></span></div><div><b>1994</b><span id="statOpen"></span></div></div><p class="footnote" id="heroHint"></p><a href="#experiments" id="jumpLab"></a></section>
+<section class="hero"><div class="eyebrow" id="overline"></div><h1 id="mainTitle"></h1><p class="intro" id="subtitle"></p><div class="stats"><div><b>50.45 km</b><span id="statTotal"></span></div><div><b>37.9 km</b><span id="statSea"></span></div><div><b>1994</b><span id="statOpen"></span></div></div><p class="footnote" id="heroHint"></p><a href="#experiments" id="jumpLab"></a><button type="button" id="launch3D" class="launch-3d"></button></section>
 <nav id="chapterNav" aria-label="Chapters"></nav><div id="chapters"></div>
 <section class="experiments" id="experiments" tabindex="-1" aria-labelledby="experimentsTitle">
 <div class="eyebrow" id="syntheticBadge"></div><h2 id="experimentsTitle"></h2><p id="experimentIntro"></p>
+<section class="lab" id="heightLab" aria-labelledby="heightTitle">
+<h3 id="heightTitle"></h3><p id="heightText"></p>
+<div class="control"><label for="datumOffset" id="datumOffsetLabel"></label><input id="datumOffset" type="range" min="-1" max="1" step="0.05" value="0.30"><output id="datumOffsetValue" for="datumOffset"></output></div>
+<p class="formula" id="heightFormula">H = h − N</p><p id="heightResult" aria-live="polite"></p>
+<p class="footnote" id="heightCaveat"></p>
+</section>
 <section class="lab" aria-labelledby="labTitle"><h3 id="labTitle"></h3><p id="labText"></p>
 <div class="control"><label for="angle" id="angleLabel"></label><input type="range" min="-20" max="20" step="0.5" value="2" id="angle"><output class="value" id="angleValue" for="angle">2″</output></div>
 <div class="control"><label for="distance" id="distanceLabel"></label><select id="distance"><option value="10">10 km</option><option value="20" selected>20 km</option><option value="38">38 km</option></select></div>
-<p><span id="offsetLabel"></span>: <output id="modelOutput" aria-live="polite" for="angle distance"></output></p><div class="formula">d = L · tan(Δα)</div><p class="footnote" id="labCaveat"></p></section>
+<p><span id="offsetLabel"></span>: <output id="modelOutput" aria-live="polite" for="angle distance"></output></p>
+<svg class="lab-graphic" id="bearingGraphic" viewBox="0 0 320 132" role="img" aria-label="Schematic orientation error; exaggerated display scale">
+<line x1="18" y1="70" x2="302" y2="70" stroke="#71899d" stroke-width="2" stroke-dasharray="6 5"/>
+<line id="bearingRay" x1="18" y1="70" x2="302" y2="70" stroke="#6ae3d7" stroke-width="4"/>
+<circle id="bearingDot" cx="302" cy="70" r="6" fill="#ffc570"/>
+<text x="16" y="116" fill="#bbced9" font-size="11">0 km</text><text x="250" y="116" fill="#bbced9" font-size="11">L</text>
+</svg><div class="formula">d = L · tan(Δα)</div><p class="footnote" id="labCaveat"></p></section>
 <section class="lab" aria-labelledby="traverseTitle"><h3 id="traverseTitle"></h3><p id="traverseText"></p>
 <div class="control"><label for="bias" id="biasLabel"></label><input id="bias" type="range" min="-10" max="10" step="0.5" value="5"><output id="biasValue" for="bias"></output></div>
 <label class="check"><input type="checkbox" id="gyro" checked><span id="gyroLabel"></span></label>
 <div class="table-scroll" tabindex="0" role="region" aria-labelledby="traverseCaption"><table><caption id="traverseCaption"></caption><thead><tr><th id="thStation" scope="col"></th><th scope="col">x (km)</th><th id="thOptical" scope="col"></th><th id="thAdjusted" scope="col"></th></tr></thead><tbody id="traverseRows"></tbody></table></div>
-<p id="traverseResult" aria-live="polite"></p><p class="footnote" id="traverseCaveat"></p></section>
+<p id="traverseResult" aria-live="polite"></p>
+<svg class="lab-graphic" id="traverseGraphic" viewBox="0 0 320 140" role="img" aria-label="Comparison of optical traverse and gyro-adjusted traverse; exaggerated differences">
+<line x1="18" y1="70" x2="302" y2="70" stroke="#9eb3c2" stroke-dasharray="5 6"/>
+<polyline id="opticalTrack" fill="none" stroke="#ffc570" stroke-width="3" points="18,70 302,70"/>
+<polyline id="adjustedTrack" fill="none" stroke="#6ae3d7" stroke-width="3" points="18,70 302,70"/>
+<text x="16" y="126" fill="#ffc570" font-size="11">Optical / Óptica</text>
+<text x="172" y="126" fill="#6ae3d7" font-size="11">Gyro / Giro</text>
+</svg><p class="footnote" id="traverseCaveat"></p></section>
 <section class="lab" aria-labelledby="monitorTitle"><h3 id="monitorTitle"></h3><p id="monitorText"></p>
 <div class="control"><label for="movement" id="movementLabel"></label><input id="movement" type="range" min="-20" max="20" step="1" value="8"><output id="movementValue" for="movement"></output></div>
 <div class="control"><label for="datumShift" id="datumLabel"></label><input id="datumShift" type="range" min="-20" max="20" step="1" value="5"><output id="datumValue" for="datumShift"></output></div>
@@ -40,7 +59,7 @@
 <aside class="stage" aria-labelledby="mapTitle">
 <div class="stageBar"><div><strong id="mapTitle"></strong><span id="activeChapter"></span></div><div class="viewButtons" role="group" aria-label="View / Visualização"><button id="mapView" aria-pressed="true" type="button"></button><button id="sectionView" aria-pressed="false" type="button"></button></div></div>
 <div class="viewport"><div id="map" role="region" aria-label="Geographic context map"></div><div id="cutaway" hidden></div><div id="mapFallback" role="status" hidden></div></div>
-<div class="stageFooter"><div id="mapTools"><label class="check"><input type="checkbox" id="terrain" checked><span id="terrainLabel"></span></label><span id="mapStatus" role="status"></span></div><div id="sectionTools" hidden><label class="check"><input id="survey" type="checkbox" checked><span id="surveyLabel"></span></label><div class="control"><button id="play" aria-pressed="false" type="button"></button><label for="advance" id="advanceLabel"></label><input id="advance" type="range" min="0" max="100" value="0"><output id="advanceValue" for="advance">0%</output><button id="resetView" type="button"></button></div><div id="rockLegend"></div></div><p id="mapCaveat"></p></div>
+<div class="stageFooter"><div id="mapTools"><label class="check"><input type="checkbox" id="terrain" checked><span id="terrainLabel"></span></label><span id="mapStatus" role="status"></span></div><div id="sectionTools" hidden><div class="control cam-controls"><button id="overviewCam" type="button" aria-pressed="true"></button><button id="followCam" type="button" aria-pressed="false"></button></div><label class="check"><input id="survey" type="checkbox" checked><span id="surveyLabel"></span></label><div class="control"><button id="play" aria-pressed="false" type="button"></button><label for="advance" id="advanceLabel"></label><input id="advance" type="range" min="0" max="100" value="0"><output id="advanceValue" for="advance">0%</output><button id="resetView" type="button"></button></div><div id="rockLegend"></div><p class="footnote" id="sceneExplainer"></p></div><p id="mapCaveat"></p></div>
 </aside>
 </main>
 </body></html>
