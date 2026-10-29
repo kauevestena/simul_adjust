@@ -120,6 +120,8 @@ function updateModels() {
   $('datumOffsetValue').textContent=f(offset,2)+' m';
   $('heightResult').textContent='h = 62 m − N = 36 m → H = 26 m; '+
     (lang==='pt'?'exemplo em referência comum: ':'common-frame teaching example: ')+f(26+offset,2)+' m.';
+  $('frenchDatum').setAttribute('y1',String(62-offset*24));
+  $('frenchDatum').setAttribute('y2',String(62-offset*24));
   cutaway?.setGeoidOffset(offset);
   const bias=Number($('bias').value), optical=adjustTraverse(bias,false), adjusted=adjustTraverse(bias,$('gyro').checked);
   $('biasValue').textContent=f(bias,1)+'″';
@@ -133,6 +135,8 @@ function updateModels() {
   const movement=Number($('movement').value), datum=Number($('datumShift').value), m=monitoringExercise(movement,datum,$('unstable').checked);
   $('movementValue').textContent=f(movement,0)+' mm'; $('datumValue').textContent=f(datum,0)+' mm';
   $('monitorResult').textContent=`${t.monitorResult}: ${f(m.raw,1)} / ${f(m.datum,1)} / ${f(m.corrected,1)} ± ${f(m.limit95,2)} mm.${m.unstable?' '+t.unstableWarning:''}`;
+  $('monitorTarget').setAttribute('cy',String(Math.max(16,Math.min(98,47-m.corrected*2.1))));
+  $('monitorTarget').setAttribute('fill',m.unstable?'#fa8d8d':'#ffc570');
 }
 for(const id of ['angle','distance','bias','gyro','movement','datumShift','unstable','datumOffset']) $(id).addEventListener('input',updateModels);
 $('pt').addEventListener('click',()=>setLanguage('pt')); $('en').addEventListener('click',()=>setLanguage('en'));
