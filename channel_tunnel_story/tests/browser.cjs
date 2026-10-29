@@ -157,7 +157,34 @@ async function axe(page) {
       await page.click('#overviewCam');
       await page.locator('#cutaway canvas').focus();const beforeOrbit=await page.evaluate(()=>window.__story.cutaway.camera.position.x);await page.keyboard.press('ArrowLeft');assert.notEqual(await page.evaluate(()=>window.__story.cutaway.camera.position.x),beforeOrbit);await page.keyboard.press('Home');
       const span=await page.evaluate(()=>{const c=window.__story.cutaway;return Math.abs(c.curves[1].getPoint(1).project(c.camera).x-c.curves[1].getPoint(0).project(c.camera).x);});assert.ok(span>.6&&span<2,'cutaway occupies the viewport without clipping');
-      await input(page,'advance',60);assert.equal(await page.evaluate(()=>window.__story.cutaway.progress),.6);
+      // No more empty ocean-colored gap between the opposing tunnel faces.
+      // The unexcavated rock shrinks continuously to zero at breakthrough.
+      await input(page,'advance',20);
+      const rock20=await page.evaluate(()=>{
+        const c=window.__story.cutaway;
+        return {visible:c.unexcavatedRock.visible,width:c.remainingRockState.width,
+          strata:c.rockStrata.length,inclusions:c.rockInclusions.length};
+      });
+      assert.equal(rock20.visible,true);
+      assert.equal(rock20.strata,4);
+      assert.ok(rock20.inclusions>50,'textured rock inclusions appear on the cut face');
+      if(size.width===1440)await page.screenshot({path:path.join(SHOTS,`${engine}-rock-unexcavated-20.png`)});
+      await input(page,'advance',60);
+      assert.equal(await page.evaluate(()=>window.__story.cutaway.progress),.6);
+      const rock60=await page.evaluate(()=>{
+        const c=window.__story.cutaway;
+        return {visible:c.unexcavatedRock.visible,width:c.remainingRockState.width,
+          scale:c.rockStrata[0].scale.x};
+      });
+      assert.equal(rock60.visible,true);
+      assert.ok(rock60.width<rock20.width,'the central rock mass contracts as tunnels advance');
+      assert.ok(Math.abs(rock60.scale-rock60.width)<1e-8,'the visible strata match the remaining rock');
+      if(size.width===1440)await page.screenshot({path:path.join(SHOTS,`${engine}-rock-unexcavated-60.png`)});
+      await input(page,'advance',100);
+      assert.equal(await page.evaluate(()=>window.__story.cutaway.remainingRockState.width),0);
+      assert.equal(await page.evaluate(()=>window.__story.cutaway.unexcavatedRock.visible),false,
+        'no unexplained barrier or air gap remains at breakthrough');
+      await input(page,'advance',60);
       assert.equal(await page.evaluate(()=>window.__story.cutaway.totalStations.length),8,'illustrative total stations are installed in gallery');
       await page.click('#surveyCam');
       assert.equal(await page.evaluate(()=>window.__story.cutaway.mode),'survey');
