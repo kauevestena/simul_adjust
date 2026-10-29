@@ -58,6 +58,17 @@ async function axe(page) {
       if(LIVE){assert.ok(responses.some(r=>/\.pbf|planet/.test(r.url)&&r.status===200),'live basemap tiles');assert.ok(responses.some(r=>r.url.includes('terrarium')&&r.status===200),'live DEM tiles');}
       await noOverflow(page);await page.screenshot({path:path.join(SHOTS,`${engine}-${size.width}-${LIVE?'live':'fixture'}-map.png`)});
       if(LIVE) {
+        // Regression: the live basemap must come back after the Three.js cutaway.
+        await page.click('#sectionView');
+        await page.waitForFunction(()=>window.__story.cutaway?.renderer?.domElement);
+        await page.click('#mapView');
+        await page.waitForFunction(()=>window.__story.view==='map' &&
+          !document.getElementById('map').hidden &&
+          window.__story.map?.getLayer('route-progress-line') &&
+          window.__story.map.getCanvas().width>0 &&
+          window.__story.map.getCanvas().height>0);
+        assert.equal(await page.locator('#map').isVisible(),true,'MapLibre is visible again');
+        await page.screenshot({path:path.join(SHOTS,`${engine}-${size.width}-live-return-map.png`)});
         assert.deepEqual(errors,[],'real map must load without uncaught browser errors');
         console.log(`${engine} ${size.width}px: live vector map and decoded terrain passed`);
         await ctx.close();continue;
@@ -128,6 +139,22 @@ async function axe(page) {
       await page.locator('#cutaway canvas').focus();const beforeOrbit=await page.evaluate(()=>window.__story.cutaway.camera.position.x);await page.keyboard.press('ArrowLeft');assert.notEqual(await page.evaluate(()=>window.__story.cutaway.camera.position.x),beforeOrbit);await page.keyboard.press('Home');
       const span=await page.evaluate(()=>{const c=window.__story.cutaway;return Math.abs(c.curves[1].getPoint(1).project(c.camera).x-c.curves[1].getPoint(0).project(c.camera).x);});assert.ok(span>.6&&span<2,'cutaway occupies the viewport without clipping');
       await input(page,'advance',60);assert.equal(await page.evaluate(()=>window.__story.cutaway.progress),.6);
+      assert.equal(await page.evaluate(()=>window.__story.cutaway.totalStations.length),8,'illustrative total stations are installed in gallery');
+      await page.click('#surveyCam');
+      assert.equal(await page.evaluate(()=>window.__story.cutaway.mode),'survey');
+      const closeup=await page.evaluate(()=> {
+        const c=window.__story.cutaway;
+        const v=c.interiorInstruments[0];
+        return {visible:c.interiorGroup.visible,stations:c.interiorInstruments.length,
+          lines:c.interiorSightLines.length,distance:c.camera.position.distanceTo(v.position),
+          lining:c.interiorGroup.children.length,
+          pressed:document.getElementById('surveyCam').getAttribute('aria-pressed')};
+      });
+      assert.ok(closeup.visible && closeup.distance<6,'gallery view is inside the enlarged lined tunnel');
+      assert.equal(closeup.stations,3,'interior has three stylized total stations');
+      assert.equal(closeup.lines,2,'interior has optical sight lines');
+      assert.ok(closeup.lining>10,'interior lining rings are modeled');
+      assert.equal(closeup.pressed,'true');
       await page.click('#followCam');
       assert.equal(await page.evaluate(()=>window.__story.cutaway.mode),'follow');
       const cameraBefore=await page.evaluate(()=>window.__story.cutaway.camera.position.x);
@@ -136,14 +163,39 @@ async function axe(page) {
       await page.click('#overviewCam');
       assert.equal(await page.evaluate(()=>window.__story.cutaway.mode),'overview');
       await input(page,'advance',60);
+      // A scroll-driven chapter switch must not erase an actively controlled
+      // excavation; explicit chapter-button navigation remains synchronized.
+      await page.evaluate(()=>window.dispatchEvent(new Event('wheel')));
+      await page.locator('#chapter-challenge').evaluate(el=>el.scrollIntoView({behavior:'instant'}));
+      await page.waitForFunction(()=>window.__story.active===0);
+      assert.equal(await page.evaluate(()=>window.__story.cutaway.progress),.6,
+        'manual excavation progress survives incidental story scrolling');
       await page.click('#play');
-      await page.waitForFunction(()=>window.__story.cutaway.progress>.6);
+      await page.waitForFunction(()=>window.__story.cutaway.progress>.6,null,{timeout:12000}).catch(async error=>{
+        console.error('Play diagnostics',await page.evaluate(()=>({
+          phase:window.__story.cutaway?.phase,mode:window.__story.cutaway?.mode,
+          view:window.__story.view,active:window.__story.active,
+          playing:window.__story.playing,advance:document.getElementById('advance')?.value,
+          progress:window.__story.cutaway?.progress,visible:!document.hidden,
+          playText:document.getElementById('play')?.textContent,
+          sceneToolsHidden:document.getElementById('sectionTools')?.hidden
+        })));
+        throw error;
+      });
       // Test the actual play-button handler atomically: if the animation reached
       // 100% meanwhile, a second external click would restart rather than pause.
       await page.evaluate(()=>{if(window.__story.playing)document.getElementById('play').click();});
       assert.equal(await page.evaluate(()=>window.__story.playing),false);
       await page.screenshot({path:path.join(SHOTS,`${engine}-${size.width}-cutaway.png`)});await axe(page);
-      await page.click('#mapView');await page.uncheck('#terrain');await page.waitForFunction(()=>window.__story.map.getTerrain()===null);
+      await page.click('#mapView');
+      await page.waitForFunction(()=>window.__story.view==='map' &&
+        !document.getElementById('map').hidden &&
+        window.__story.map?.getLayer('route-progress-line') &&
+        window.__story.map.getCanvas().width>0 &&
+        window.__story.map.getCanvas().height>0);
+      assert.equal(await page.locator('#map').isVisible(),true,'MapLibre canvas reappears after 3D use');
+      assert.equal(await page.locator('#cutaway').isVisible(),false,'Three.js viewport is hidden');
+      await page.uncheck('#terrain');await page.waitForFunction(()=>window.__story.map.getTerrain()===null);
       await page.check('#terrain');await page.waitForFunction(()=>!!window.__story.map.getTerrain());
       await page.locator('#chapter-underground .sources-mini a').click();await page.waitForFunction(()=>location.hash==='#source-9');
       assert.deepEqual(errors,[]);await ctx.close();console.log(`${engine} ${size.width}px: story, map, cutaway, models, i18n, accessibility passed`);

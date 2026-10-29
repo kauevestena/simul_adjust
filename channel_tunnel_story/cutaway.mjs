@@ -31,7 +31,7 @@ export class Cutaway {
       mesh.position.z=-3.4;this.scene.add(mesh);this.rockLayers.push(mesh);
     }
     const sea=new THREE.Mesh(new THREE.PlaneGeometry(20,5.5),new THREE.MeshStandardMaterial({color:0x38a8ce,transparent:true,opacity:.25,depthWrite:false,side:THREE.DoubleSide}));
-    sea.rotation.x=-Math.PI/2;sea.position.y=2.4;sea.position.z=-.3;this.scene.add(sea);
+    sea.rotation.x=-Math.PI/2;sea.position.y=2.4;sea.position.z=-.3;this.scene.add(sea);this.sea=sea;
     // Three tunnels; service bore is the centre one. Their curves and spacing are schematic.
     this.curves=[-.35,.62,1.6].map(z=>new THREE.CatmullRomCurve3(
       Array.from({length:41},(_,i)=>{const x=-10+i*.5;return new THREE.Vector3(x,this.base(x),z);})
@@ -60,6 +60,46 @@ export class Cutaway {
         this.surveyLegs.push(sight);this.surveyGroup.add(sight);
       }
     });
+
+    // Schematic instrument setups, not a reconstruction of the historical survey.
+    // Place them against the service-bore traverse and scale them for teaching visibility.
+    this.totalStations=[];
+    for(const stationIndex of [1,2,3,4,8,9,10,11]){
+      const instrument=new THREE.Group();
+      const p=stations[stationIndex];instrument.position.copy(p);
+      const dark=new THREE.MeshStandardMaterial({color:0x273b4a,metalness:.5,roughness:.4});
+      const yellow=new THREE.MeshStandardMaterial({color:0xffd06d,metalness:.35,roughness:.4});
+      const glass=new THREE.MeshStandardMaterial({color:0x84e9ee,metalness:.45,roughness:.22});
+      const vertical=new THREE.Vector3(0,1,0);
+      const makeLeg=(x,z)=>{
+        const from=new THREE.Vector3(0,.41,0),to=new THREE.Vector3(x,.035,z);
+        const direction=to.clone().sub(from);
+        const rod=new THREE.Mesh(new THREE.CylinderGeometry(.021,.028,direction.length(),8),dark);
+        rod.position.copy(from).add(to).multiplyScalar(.5);
+        rod.quaternion.setFromUnitVectors(vertical,direction.normalize());
+        instrument.add(rod);
+      };
+      for(let k=0;k<3;k++){const a=k*Math.PI*2/3;makeLeg(.24*Math.cos(a),.24*Math.sin(a));}
+      const pedestal=new THREE.Mesh(new THREE.CylinderGeometry(.09,.12,.08,12),yellow);
+      pedestal.position.y=.43;instrument.add(pedestal);
+      const housing=new THREE.Mesh(new THREE.BoxGeometry(.22,.23,.16),yellow);
+      housing.position.y=.60;instrument.add(housing);
+      const telescope=new THREE.Mesh(new THREE.CylinderGeometry(.066,.066,.36,16),dark);
+      telescope.rotation.z=Math.PI/2;telescope.position.set(.015,.66,0);
+      instrument.add(telescope);
+      for(const x of [-.18,.18]){
+        const lens=new THREE.Mesh(new THREE.CircleGeometry(.051,16),glass);
+        lens.rotation.y=x<0?-Math.PI/2:Math.PI/2;lens.position.set(x,.66,0);
+        instrument.add(lens);
+      }
+      const display=new THREE.Mesh(new THREE.BoxGeometry(.16,.08,.025),dark);
+      display.position.set(0,.52,.105);instrument.add(display);
+      const reticle=new THREE.Mesh(new THREE.BoxGeometry(.06,.026,.027),glass);
+      reticle.position.set(0,.52,.127);instrument.add(reticle);
+      instrument.userData.stationIndex=stationIndex;
+      instrument.userData.isTotalStation=true;
+      this.surveyGroup.add(instrument);this.totalStations.push(instrument);
+    }
     this.gyroStations=new THREE.Group();this.surveyGroup.add(this.gyroStations);
     for(const i of [2,4,8,10]){
       const p=stations[i];
@@ -123,6 +163,51 @@ export class Cutaway {
       group.userData.dust=dust;
       this.scene.add(group);return group;
     });
+    // Enlarged service-gallery interior for the third-person close-up.
+    // This is a classroom vignette, NOT the project's excavated cross-section.
+    this.interiorGroup=new THREE.Group();
+    this.scene.add(this.interiorGroup);
+    const lining=new THREE.Mesh(new THREE.CylinderGeometry(1.8,1.8,16,32,2,true),
+      new THREE.MeshStandardMaterial({color:0x667e90,roughness:.92,side:THREE.BackSide}));
+    lining.rotation.z=Math.PI/2;this.interiorGroup.add(lining);
+    for(let x=-7.2;x<=7.2;x+=1.2){
+      const ring=new THREE.Mesh(new THREE.TorusGeometry(1.76,.034,8,32),
+        new THREE.MeshStandardMaterial({color:0xc6ccd0,metalness:.24,roughness:.7}));
+      ring.rotation.y=Math.PI/2;ring.position.x=x;this.interiorGroup.add(ring);
+    }
+    const floor=new THREE.Mesh(new THREE.BoxGeometry(15,.11,2.3),
+      new THREE.MeshStandardMaterial({color:0x53626d,roughness:.96}));
+    floor.position.y=-1.58;this.interiorGroup.add(floor);
+    const walkway=new THREE.Mesh(new THREE.BoxGeometry(15,.013,.10),
+      new THREE.MeshBasicMaterial({color:0xffd27b}));
+    walkway.position.set(0,-1.51,1.00);this.interiorGroup.add(walkway);
+    this.interiorStations=new THREE.Group();this.interiorGroup.add(this.interiorStations);
+    this.interiorInstruments=[];
+    for(const [index,x] of [1,2,3].map((id,i)=>[id,[-2.2,0.7,3.7][i]])){
+      const clone=this.totalStations[index].clone(true);
+      clone.position.set(x,-1.48,0);
+      clone.visible=true;clone.userData.isTotalStation=true;
+      this.interiorStations.add(clone);this.interiorInstruments.push(clone);
+      const target=new THREE.Mesh(new THREE.SphereGeometry(.045,8,8),
+        new THREE.MeshBasicMaterial({color:0x87f5f4}));
+      target.position.set(x+.25,-.82,0);this.interiorStations.add(target);
+    }
+    const optics=[[-2.2,.7],[.7,3.7]];
+    this.interiorSightLines=[];
+    for(const [a,b] of optics){
+      const sight=new THREE.Line(new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(a,-.82,0),new THREE.Vector3(b,-.82,0)
+      ]),new THREE.LineDashedMaterial({color:0x7af4ef,dashSize:.18,gapSize:.09}));
+      sight.computeLineDistances();this.interiorStations.add(sight);this.interiorSightLines.push(sight);
+    }
+    for(const x of [-5,-2,1,4,7]){
+      const lamp=new THREE.Mesh(new THREE.SphereGeometry(.10,12,8),
+        new THREE.MeshBasicMaterial({color:0xffe2ab}));
+      lamp.position.set(x,1.65,-.35);this.interiorGroup.add(lamp);
+    }
+    const insideLight=new THREE.PointLight(0xffe6b8,36,15);
+    insideLight.position.set(-1,1.1,.8);this.interiorGroup.add(insideLight);
+    this.interiorGroup.visible=false;
     this.mode='overview';this.phase='digging';this.progress=0;this.elapsed=0;this.surveyRequested=true;this.gyroEnabled=true;this.geoidOffset=0;
     this.renderer.domElement.addEventListener('keydown',event=>{
       if(event.key==='Home'){event.preventDefault();this.setCameraMode('overview');this.reset();return;}
@@ -173,14 +258,20 @@ export class Cutaway {
   }
   setPhase(phase){
     this.phase=phase;
-    const surface=phase==='control'||phase==='heights';
-    this.gnssGroup.visible=surface;this.heightGroup.visible=phase==='heights'||phase==='control';
+    const surface=phase==='control'||phase==='heights',inside=this.mode==='survey';
+    this.interiorGroup.visible=inside;
+    this.interiorStations.visible=this.surveyRequested;
+    this.rockLayers.forEach(layer=>{layer.visible=!inside;});
+    this.sea.visible=!inside;
+    this.gnssGroup.visible=surface&&!inside;
+    this.heightGroup.visible=(phase==='heights'||phase==='control')&&!inside;
     // Never depict excavation during the earlier surface-control campaign.
-    this.tunnelGroup.visible=!surface;
-    this.surveyGroup.visible=this.surveyRequested && !surface;
+    this.tunnelGroup.visible=!surface&&!inside;
+    this.surveyGroup.visible=this.surveyRequested && !surface&&!inside;
     this.gyroStations.visible=this.gyroEnabled;
-    this.tbms.forEach(m=>m.visible=!surface);
+    this.tbms.forEach(m=>m.visible=!surface&&!inside);
     if(this.mode==='overview')this.reset();
+    if(this.mode==='survey')this.surveyCamera();
     this.render();
   }
   setGeoidOffset(value) {
@@ -199,7 +290,9 @@ export class Cutaway {
     const reach=this.progress*.48;
     this.surveyMarkers.forEach((m,i)=>{const t=i/12;m.visible=this.progress>=1||t<=reach+1e-7||t>=1-reach-1e-7;});
     this.surveyLegs.forEach((l,i)=>{l.visible=this.surveyMarkers[i].visible&&this.surveyMarkers[i+1].visible;});
+    this.totalStations.forEach(station=>{station.visible=this.surveyMarkers[station.userData.stationIndex].visible;});
     if(this.mode==='follow')this.followCamera();
+    if(this.mode==='survey')this.surveyCamera();
     this.render();
   }
   tick(dt) {
@@ -210,12 +303,24 @@ export class Cutaway {
     }
     for(const [i,s] of this.satellites.entries()){s.rotation.y+=dt*.0003;s.position.y=6.2+.12*Math.sin(this.elapsed*.001+i);}
     if(this.mode==='follow')this.followCamera();
+    if(this.mode==='survey')this.surveyCamera();
     this.render();
   }
   setCameraMode(mode) {
-    this.mode=mode==='follow'?'follow':'overview';this.controls.enabled=this.mode==='overview';
-    if(this.mode==='overview')this.reset();else this.followCamera();
+    this.mode=['overview','follow','survey'].includes(mode)?mode:'overview';
+    this.controls.enabled=this.mode==='overview';
+    this.setPhase(this.phase);
+    if(this.mode==='overview')this.reset();
+    else if(this.mode==='survey')this.surveyCamera();
+    else this.followCamera();
     this.render();
+  }
+  surveyCamera(){
+    // An enlarged inside-gallery view, separate from the external geological scale.
+    const station=this.interiorInstruments[0];
+    const target=station.position.clone().add(new THREE.Vector3(.75,.61,0));
+    this.camera.position.set(-5.0,-.12,1.15);
+    this.camera.lookAt(target);this.camera.updateMatrixWorld();
   }
   followCamera(){
     // Third-person chase shot above / behind UK-side representative service-tunnel machine.
@@ -243,7 +348,7 @@ export class Cutaway {
     const w=this.host.clientWidth,h=this.host.clientHeight;if(!w||!h)return;
     const change=Math.abs(this.camera.aspect-w/h)>.12;
     this.camera.aspect=w/h;this.camera.updateProjectionMatrix();this.renderer.setSize(w,h);
-    if(this.mode==='follow')this.followCamera();else if(change||!this.sized){this.sized=true;this.reset();}
+    if(this.mode==='follow')this.followCamera();else if(this.mode==='survey')this.surveyCamera();else if(change||!this.sized){this.sized=true;this.reset();}
     this.render();
   }
   render(){this.renderer.render(this.scene,this.camera);}

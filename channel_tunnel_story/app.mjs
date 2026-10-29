@@ -4,6 +4,7 @@ const $ = id => document.getElementById(id);
 const motion = matchMedia('(prefers-reduced-motion: reduce)');
 let lang, active = -1, map, cutaway, view = 'map', mapState = 'loading', terrainFailed = false, terrainLoaded = false;
 let playing = false, lastFrame = 0, animationFrame, mapProgress = 0, cutawayLoading = null, manualView = false;
+let mapContextLost = false;
 const locale = () => lang === 'pt' ? 'pt-BR' : 'en';
 const f = (v, digits=3) => v.toLocaleString(locale(), {minimumFractionDigits:digits, maximumFractionDigits:digits});
 function initialLang() {
@@ -77,13 +78,16 @@ function phaseForChapter(id) {
   if(id==='monitoring')return 'monitoring';
   return 'digging';
 }
-function setActive(i) {
-  if(i===active) return; active=i;
-  // Narrative progress is NOT actual excavated chainage or historical elapsed time.
-  // Synchronise when the chapter changes while retaining manual experiment controls.
-  setPlaying(false);
-  $('advance').value = String(Math.round((i<0?0:chapters[i].progress)*100));
-  updateAdvance();
+function setActive(i,{fromScroll=false}={}) {
+  if(i===active)return;active=i;
+  // A scroll resulting from interacting with the sticky 3D toolbar must not
+  // overwrite a manually chosen excavation progress or interrupt playback.
+  // Explicit chapter navigation still synchronizes the narrative and cutaway.
+  if(!fromScroll || !manualView){
+    setPlaying(false);
+    $('advance').value=String(Math.round((i<0?0:chapters[i].progress)*100));
+    updateAdvance();
+  }
   updateRouteProgress(i<0?0:chapters[i].progress);
   if(i>=0){
     cutaway?.setPhase(phaseForChapter(chapters[i].id));
@@ -117,7 +121,7 @@ function syncScroll() {
   const probe=overlay+(innerHeight-overlay)*0.3;
   let next=-1;
   chapters.forEach((c,i)=>{if($('chapter-'+c.id).getBoundingClientRect().top<=probe)next=i;});
-  setActive(next);
+  setActive(next,{fromScroll:true});
 }
 addEventListener('scroll',()=>{if(!scrollQueued){scrollQueued=true;requestAnimationFrame(syncScroll);}},{passive:true});
 addEventListener('resize',syncScroll);
@@ -177,6 +181,9 @@ function applyTerrain() {
 function startMap() {
   if(!window.maplibregl){unavailable();return;}
   try {
+    if(map){try{map.remove();}catch(e){console.warn('Map cleanup',e);}map=null;}
+    mapContextLost=false;terrainFailed=false;terrainLoaded=false;
+    status('loading');$('mapFallback').hidden=true;
     map=new maplibregl.Map({container:'map',style:'https://tiles.openfreemap.org/styles/positron',center:[1.47,51.01],zoom:innerWidth<=850?7.8:9,pitch:innerWidth<=850?40:52,bearing:-22,cooperativeGestures:true,attributionControl:false});
     map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),'top-right');
     map.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-right');localizeMap();
@@ -197,17 +204,28 @@ function startMap() {
       if(e.sourceId==='terrain' || e.error?.message?.includes('elevation-tiles-prod')) {terrainFailed=true;applyTerrain();}
       else if(!map.isStyleLoaded())unavailable();
     });
-    map.on('webglcontextlost',unavailable);
-    $('terrain').addEventListener('change',applyTerrain);
+    map.on('webglcontextlost',()=>{mapContextLost=true;unavailable();});
+    map.on('webglcontextrestored',()=>{mapContextLost=false;if(view==='map'){map.resize();map.triggerRepaint();}});
   } catch(error) {console.warn('Map initialization failed',error);unavailable();}
 }
+$('terrain').addEventListener('change',applyTerrain);
 async function setView(next) {
   view=next;document.documentElement.dataset.view=next;
   $('map').hidden=next!=='map';$('cutaway').hidden=next!=='section';
   $('mapTools').hidden=next!=='map';$('sectionTools').hidden=next!=='section';
   $('mapView').setAttribute('aria-pressed',String(next==='map'));$('sectionView').setAttribute('aria-pressed',String(next==='section'));
   $('mapFallback').hidden=next!=='map'||mapState!=='mapFailed';refreshViewText();
-  if(next==='map'){setPlaying(false);map?.resize();return;}
+  if(next==='map'){
+    setPlaying(false);
+    // The previously hidden map needs a layout frame before its WebGL canvas is resized.
+    await new Promise(resolve=>requestAnimationFrame(resolve));
+    if(view!=='map')return;
+    if(mapContextLost||!map){startMap();return;}
+    map.resize();map.triggerRepaint();
+    if(mapState==='mapFailed' && !map.isStyleLoaded()) startMap();
+    else $('mapFallback').hidden=true;
+    return;
+  }
   if(!cutawayLoading && !cutaway){
     cutawayLoading=import('./cutaway.mjs').then(({Cutaway})=>{
       cutaway=new Cutaway($('cutaway'));
@@ -220,7 +238,7 @@ async function setView(next) {
     }).catch(e=>{
       console.warn('3D cutaway unavailable',e);
       $('cutaway').textContent=ui[lang].sectionFallback;
-      $('play').disabled=true;$('followCam').disabled=true;
+      $('play').disabled=true;$('followCam').disabled=true;$('surveyCam').disabled=true;
       return null;
     });
   }
@@ -245,8 +263,13 @@ $('resetView').addEventListener('click',()=>{cutaway?.setCameraMode('overview');
 function setCameraButtons(mode){
   $('overviewCam').setAttribute('aria-pressed',String(mode==='overview'));
   $('followCam').setAttribute('aria-pressed',String(mode==='follow'));
+  $('surveyCam').setAttribute('aria-pressed',String(mode==='survey'));
 }
 $('overviewCam').addEventListener('click',()=>{cutaway?.setCameraMode('overview');setCameraButtons('overview');});
+$('surveyCam').addEventListener('click',async()=>{
+  manualView=true;await setView('section');
+  cutaway?.setCameraMode('survey');setCameraButtons('survey');
+});
 $('followCam').addEventListener('click',async()=>{manualView=true;await setView('section');cutaway?.setCameraMode('follow');setCameraButtons('follow');});
 $('launch3D').addEventListener('click',async()=>{navigateChapter(1);manualView=true;await setView('section');cutaway?.setCameraMode('overview');setCameraButtons('overview');});
 $('survey').addEventListener('change',()=>cutaway?.setSurveyVisible($('survey').checked));
@@ -256,4 +279,4 @@ setLanguage(initialLang());startMap();
 const deepLink=chapters.findIndex(c=>'#chapter-'+c.id===location.hash);
 if(deepLink>=0)requestAnimationFrame(()=>{setActive(deepLink);$('chapter-'+chapters[deepLink].id).scrollIntoView({behavior:'instant'});});
 // Read-only diagnostics used by real-browser tests, including deployed Pages verification.
-window.__story={get map(){return map;},get active(){return active;},get cutaway(){return cutaway;},get playing(){return playing;},get mapState(){return mapState;},get mapProgress(){return mapProgress;},get manualView(){return manualView;},get view(){return view;}};
+window.__story={get map(){return map;},get active(){return active;},get cutaway(){return cutaway;},get playing(){return playing;},get mapState(){return mapState;},get mapProgress(){return mapProgress;},get manualView(){return manualView;},get view(){return view;},get mapContextLost(){return mapContextLost;}};
