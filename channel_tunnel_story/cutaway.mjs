@@ -60,6 +60,46 @@ export class Cutaway {
         this.surveyLegs.push(sight);this.surveyGroup.add(sight);
       }
     });
+
+    // Schematic instrument setups, not a reconstruction of the historical survey.
+    // Place them against the service-bore traverse and scale them for teaching visibility.
+    this.totalStations=[];
+    for(const stationIndex of [1,2,3,4,8,9,10,11]){
+      const instrument=new THREE.Group();
+      const p=stations[stationIndex];instrument.position.copy(p);
+      const dark=new THREE.MeshStandardMaterial({color:0x273b4a,metalness:.5,roughness:.4});
+      const yellow=new THREE.MeshStandardMaterial({color:0xffd06d,metalness:.35,roughness:.4});
+      const glass=new THREE.MeshStandardMaterial({color:0x84e9ee,metalness:.45,roughness:.22});
+      const vertical=new THREE.Vector3(0,1,0);
+      const makeLeg=(x,z)=>{
+        const from=new THREE.Vector3(0,.41,0),to=new THREE.Vector3(x,.035,z);
+        const direction=to.clone().sub(from);
+        const rod=new THREE.Mesh(new THREE.CylinderGeometry(.021,.028,direction.length(),8),dark);
+        rod.position.copy(from).add(to).multiplyScalar(.5);
+        rod.quaternion.setFromUnitVectors(vertical,direction.normalize());
+        instrument.add(rod);
+      };
+      for(let k=0;k<3;k++){const a=k*Math.PI*2/3;makeLeg(.24*Math.cos(a),.24*Math.sin(a));}
+      const pedestal=new THREE.Mesh(new THREE.CylinderGeometry(.09,.12,.08,12),yellow);
+      pedestal.position.y=.43;instrument.add(pedestal);
+      const housing=new THREE.Mesh(new THREE.BoxGeometry(.22,.23,.16),yellow);
+      housing.position.y=.60;instrument.add(housing);
+      const telescope=new THREE.Mesh(new THREE.CylinderGeometry(.066,.066,.36,16),dark);
+      telescope.rotation.z=Math.PI/2;telescope.position.set(.015,.66,0);
+      instrument.add(telescope);
+      for(const x of [-.18,.18]){
+        const lens=new THREE.Mesh(new THREE.CircleGeometry(.051,16),glass);
+        lens.rotation.y=x<0?-Math.PI/2:Math.PI/2;lens.position.set(x,.66,0);
+        instrument.add(lens);
+      }
+      const display=new THREE.Mesh(new THREE.BoxGeometry(.16,.08,.025),dark);
+      display.position.set(0,.52,.105);instrument.add(display);
+      const reticle=new THREE.Mesh(new THREE.BoxGeometry(.06,.026,.027),glass);
+      reticle.position.set(0,.52,.127);instrument.add(reticle);
+      instrument.userData.stationIndex=stationIndex;
+      instrument.userData.isTotalStation=true;
+      this.surveyGroup.add(instrument);this.totalStations.push(instrument);
+    }
     this.gyroStations=new THREE.Group();this.surveyGroup.add(this.gyroStations);
     for(const i of [2,4,8,10]){
       const p=stations[i];
@@ -181,6 +221,7 @@ export class Cutaway {
     this.gyroStations.visible=this.gyroEnabled;
     this.tbms.forEach(m=>m.visible=!surface);
     if(this.mode==='overview')this.reset();
+    if(this.mode==='survey')this.surveyCamera();
     this.render();
   }
   setGeoidOffset(value) {
@@ -199,7 +240,9 @@ export class Cutaway {
     const reach=this.progress*.48;
     this.surveyMarkers.forEach((m,i)=>{const t=i/12;m.visible=this.progress>=1||t<=reach+1e-7||t>=1-reach-1e-7;});
     this.surveyLegs.forEach((l,i)=>{l.visible=this.surveyMarkers[i].visible&&this.surveyMarkers[i+1].visible;});
+    this.totalStations.forEach(station=>{station.visible=this.surveyMarkers[station.userData.stationIndex].visible;});
     if(this.mode==='follow')this.followCamera();
+    if(this.mode==='survey')this.surveyCamera();
     this.render();
   }
   tick(dt) {
@@ -210,12 +253,25 @@ export class Cutaway {
     }
     for(const [i,s] of this.satellites.entries()){s.rotation.y+=dt*.0003;s.position.y=6.2+.12*Math.sin(this.elapsed*.001+i);}
     if(this.mode==='follow')this.followCamera();
+    if(this.mode==='survey')this.surveyCamera();
     this.render();
   }
   setCameraMode(mode) {
-    this.mode=mode==='follow'?'follow':'overview';this.controls.enabled=this.mode==='overview';
-    if(this.mode==='overview')this.reset();else this.followCamera();
+    this.mode=['overview','follow','survey'].includes(mode)?mode:'overview';
+    this.controls.enabled=this.mode==='overview';
+    if(this.mode==='overview')this.reset();
+    else if(this.mode==='survey')this.surveyCamera();
+    else this.followCamera();
     this.render();
+  }
+  surveyCamera(){
+    // Inside-gallery, third-person surveying perspective. Illustrative scale.
+    const visible=this.totalStations.filter(station=>station.visible);
+    const station=visible.find(s=>s.userData.stationIndex===2)||visible[0]||this.totalStations[0];
+    const target=station.position.clone().add(new THREE.Vector3(0,.58,0));
+    this.camera.position.copy(target).add(new THREE.Vector3(-1.30,.68,2.05));
+    this.camera.lookAt(target.clone().add(new THREE.Vector3(.55,0,0)));
+    this.camera.updateMatrixWorld();
   }
   followCamera(){
     // Third-person chase shot above / behind UK-side representative service-tunnel machine.
@@ -243,7 +299,7 @@ export class Cutaway {
     const w=this.host.clientWidth,h=this.host.clientHeight;if(!w||!h)return;
     const change=Math.abs(this.camera.aspect-w/h)>.12;
     this.camera.aspect=w/h;this.camera.updateProjectionMatrix();this.renderer.setSize(w,h);
-    if(this.mode==='follow')this.followCamera();else if(change||!this.sized){this.sized=true;this.reset();}
+    if(this.mode==='follow')this.followCamera();else if(this.mode==='survey')this.surveyCamera();else if(change||!this.sized){this.sized=true;this.reset();}
     this.render();
   }
   render(){this.renderer.render(this.scene,this.camera);}
