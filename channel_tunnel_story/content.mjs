@@ -252,13 +252,13 @@ export const chapters = [
     "pt": [
       "Referência geodésica",
       "Uma rede comum para dois países",
-      "Em 1986, Ordnance Survey e IGN estabeleceram a grade específica CTG86, com observações terrestres; em 1987, levantamentos GPS de ambas as margens e linhas trans-Canal reforçaram a rede e fundamentaram a RTM87, referência comum de projeto. GNSS não foi o único método. O componente vertical também precisou de compatibilização: uma reavaliação em 1988 fundamentou o datum NTM88, pois alturas elipsoidais GPS não são, isoladamente, alturas físicas. O modelo 3D usa estações inventadas, não a rede observada.",
+      "Em 1986, Ordnance Survey e IGN estabeleceram a grade específica CTG86, com observações terrestres; em 1987, levantamentos GPS da OS e IGN nas duas margens e linhas trans-Canal da Nortech reforçaram a rede e fundamentaram a RTM87, referência comum de projeto. GNSS não foi o único método. O componente vertical também precisou de compatibilização: uma reavaliação em 1988 fundamentou o datum NTM88, pois alturas elipsoidais GPS não são, isoladamente, alturas físicas. O modelo 3D usa estações inventadas, não a rede observada.",
       "Rede de apoio, datum, projeção e ajustamento por mínimos quadrados."
     ],
     "en": [
       "Geodetic framework",
       "One control network for two countries",
-      "In 1986, Ordnance Survey and IGN established the project-specific CTG86 grid using terrestrial observations. GPS from both shores and cross-Channel baselines strengthened it in 1987, underpinning the common RTM87 construction grid. GNSS was not the only surveying technique. Vertical control required a separate datum reconciliation: a 1988 study supported NTM88, since GPS ellipsoidal heights are not physical heights by themselves. The 3D control stations are illustrative, not reconstructed measurements.",
+      "In 1986, Ordnance Survey and IGN established the project-specific CTG86 grid using terrestrial observations. GPS observations by OS and IGN on each shore and cross-Channel baselines by Nortech strengthened it in 1987, underpinning the common RTM87 construction grid. GNSS was not the only surveying technique. Vertical control required a separate datum reconciliation: a 1988 study supported NTM88, since GPS ellipsoidal heights are not physical heights by themselves. The 3D control stations are illustrative, not reconstructed measurements.",
       "Control network, datum, projection and least-squares adjustment."
     ]
   },
