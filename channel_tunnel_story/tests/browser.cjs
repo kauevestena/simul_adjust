@@ -56,6 +56,8 @@ async function axe(page) {
       for(let i=0;i<7;i++){
         await page.locator('#chapterNav button').nth(i).focus();await page.keyboard.press('Enter');
         await page.waitForFunction(i=>window.__story.active===i,i);
+        assert.ok(Math.abs(await page.evaluate(()=>window.__story.mapProgress)-[0,.12,.23,.45,.7,1,1][i])<1e-9,'chapter progress tracks schematic map');
+        assert.ok(Math.abs(await page.evaluate(()=>window.__story.cutaway?.progress ?? -1)-[0,.12,.23,.45,.7,1,1][i])<1e-9 || await page.evaluate(()=>!window.__story.cutaway),'cutaway remains aligned to active chapter');
         assert.equal(await page.locator('#chapterNav button[aria-current=step]').count(),1);
         const visible=await page.locator('.chapter').nth(i).evaluate(el=>{const r=el.getBoundingClientRect(),stage=document.querySelector('.stage').getBoundingClientRect();const top=innerWidth<=850?stage.bottom:62;return r.top>=top-2&&r.top<innerHeight-20;});
         assert.ok(visible,'chapter heading not behind sticky map');
