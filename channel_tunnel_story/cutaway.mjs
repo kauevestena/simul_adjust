@@ -40,9 +40,10 @@ function mountedSurveyUnit() {
   const stand=new THREE.Mesh(new THREE.CylinderGeometry(.013,.013,.17,10),metal);
   stand.position.y=.09;prism.add(stand);
   const bezel=new THREE.Mesh(new THREE.TorusGeometry(.065,.019,8,18),optics);
-  bezel.position.y=.19;prism.add(bezel);
+  bezel.position.y=.19;bezel.rotation.y=Math.PI/2;prism.add(bezel);
   const reflector=new THREE.Mesh(new THREE.CircleGeometry(.055,18),glass);
-  reflector.position.set(0,.19,.006);prism.add(reflector);
+  reflector.rotation.y=Math.PI/2;
+  reflector.position.set(.008,.19,0);prism.add(reflector);
   for(let k=0;k<3;k++){
     const vane=new THREE.Mesh(new THREE.BoxGeometry(.012,.085,.01),metal);
     vane.position.y=.19;vane.rotation.z=k*Math.PI/3;prism.add(vane);
