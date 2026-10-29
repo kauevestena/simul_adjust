@@ -17,5 +17,10 @@
 .cam-controls{margin-bottom:4px}
 .cam-controls button{flex:1;min-width:95px;padding:5px 8px;font-size:.8rem}
 #heightLab{border-color:#bd9867}
-#sectionTools #sceneExplainer{font-size:.7rem;line-height:1.35;max-height:none;overflow:visible}
+#sectionTools #sceneExplainer{font-size:.7rem;line-height:1.4;max-height:none;overflow:visible}
+.sceneNotes{font-size:.72rem;color:#d9e7ea}
+.sceneNotes summary{cursor:pointer;min-height:24px;display:list-item;list-style-position:inside;padding:3px 0}
+.sceneNotes[open]{max-height:110px;overflow:auto;overscroll-behavior:contain}
+.sceneNotes summary:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+@media(max-width:850px){#sectionTools .sceneNotes{font-size:.65rem}#sectionTools .sceneNotes summary{min-height:22px}}
 @media(max-width:850px){#sectionTools .cam-controls{display:flex;gap:5px}#sectionTools .cam-controls button{font-size:.7rem;min-height:34px}}
