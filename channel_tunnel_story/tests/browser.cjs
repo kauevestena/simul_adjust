@@ -144,10 +144,16 @@ async function axe(page) {
       assert.equal(await page.evaluate(()=>window.__story.cutaway.mode),'survey');
       const closeup=await page.evaluate(()=> {
         const c=window.__story.cutaway;
-        const v=c.totalStations.find(st=>st.visible);
-        return {visible:!!v,distance:c.camera.position.distanceTo(v.position),pressed:document.getElementById('surveyCam').getAttribute('aria-pressed')};
+        const v=c.interiorInstruments[0];
+        return {visible:c.interiorGroup.visible,stations:c.interiorInstruments.length,
+          lines:c.interiorSightLines.length,distance:c.camera.position.distanceTo(v.position),
+          lining:c.interiorGroup.children.length,
+          pressed:document.getElementById('surveyCam').getAttribute('aria-pressed')};
       });
-      assert.ok(closeup.visible && closeup.distance<6,'gallery view is close to a visible total station');
+      assert.ok(closeup.visible && closeup.distance<6,'gallery view is inside the enlarged lined tunnel');
+      assert.equal(closeup.stations,3,'interior has three stylized total stations');
+      assert.equal(closeup.lines,2,'interior has optical sight lines');
+      assert.ok(closeup.lining>10,'interior lining rings are modeled');
       assert.equal(closeup.pressed,'true');
       await page.click('#followCam');
       assert.equal(await page.evaluate(()=>window.__story.cutaway.mode),'follow');
