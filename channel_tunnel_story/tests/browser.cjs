@@ -152,6 +152,9 @@ async function axe(page) {
       assert.ok(await page.evaluate(()=>window.__story.cutaway.driveMeshes.some(d=>d.holder.children.length>=2)),'excavated lining exists only in advanced segments');
       await page.uncheck('#survey');assert.equal(await page.evaluate(()=>window.__story.cutaway.surveyGroup.visible),false);
       await page.check('#survey');assert.equal(await page.evaluate(()=>window.__story.cutaway.surveyGroup.visible),true);
+      // The excavation chapter now intentionally selects the TBM follow shot.
+      // Switch to orbit mode before testing keyboard-driven orbit navigation.
+      await page.click('#overviewCam');
       await page.locator('#cutaway canvas').focus();const beforeOrbit=await page.evaluate(()=>window.__story.cutaway.camera.position.x);await page.keyboard.press('ArrowLeft');assert.notEqual(await page.evaluate(()=>window.__story.cutaway.camera.position.x),beforeOrbit);await page.keyboard.press('Home');
       const span=await page.evaluate(()=>{const c=window.__story.cutaway;return Math.abs(c.curves[1].getPoint(1).project(c.camera).x-c.curves[1].getPoint(0).project(c.camera).x);});assert.ok(span>.6&&span<2,'cutaway occupies the viewport without clipping');
       await input(page,'advance',60);assert.equal(await page.evaluate(()=>window.__story.cutaway.progress),.6);
