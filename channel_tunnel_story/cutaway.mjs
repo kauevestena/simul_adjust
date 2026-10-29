@@ -231,30 +231,85 @@ export class Cutaway {
     }
     // The satellite antenna remains OUTSIDE the portal; the underground network
     // receives transferred orientation/coordinates, never GNSS in the rock.
+    // The first camera shot is a SURFACE diorama. The grass is above the
+    // tunnel crown (tunnel y=0, radius 1.8; terrain top y=3.0) rather than a
+    // pad next to the tunnel floor. This is a didactic section, not a survey.
     this.portalGNSS=new THREE.Group();this.interiorGroup.add(this.portalGNSS);
-    const pedestalMat=new THREE.MeshStandardMaterial({color:0x526f7b,metalness:.4,roughness:.6});
-    const antennaMat=new THREE.MeshStandardMaterial({color:0xa8eff1,metalness:.2,roughness:.2});
-    const pad=new THREE.Mesh(new THREE.BoxGeometry(2.8,.15,2),pedestalMat);
-    pad.position.set(-8.7,-1.52,.0);this.portalGNSS.add(pad);
+    const rockMat=new THREE.MeshStandardMaterial({color:0x997a5a,roughness:1});
+    const turfMat=new THREE.MeshStandardMaterial({color:0x568b55,roughness:.95});
+    const stoneMat=new THREE.MeshStandardMaterial({color:0x5e747e,metalness:.35,roughness:.65});
+    const antennaMat=new THREE.MeshStandardMaterial({color:0xb5f5f0,metalness:.25,roughness:.25});
+    this.surfaceTerrain=new THREE.Group();this.portalGNSS.add(this.surfaceTerrain);
+    const ground=new THREE.Mesh(new THREE.BoxGeometry(5.0,.26,4.3),turfMat);
+    ground.position.set(-9.0,2.88,0.4);this.surfaceTerrain.add(ground);
+    const rockCut=new THREE.Mesh(new THREE.BoxGeometry(3.6,1.13,2.2),rockMat);
+    rockCut.position.set(-8.7,2.15,-.45);this.surfaceTerrain.add(rockCut);
+    // Open section at the entrance; vertical height separation stays clear.
+    const portalRim=new THREE.Mesh(new THREE.TorusGeometry(1.72,.12,10,36),
+      new THREE.MeshStandardMaterial({color:0xdbdad1,roughness:.7}));
+    portalRim.rotation.y=Math.PI/2;portalRim.position.set(-7.95,0,0);
+    this.portalGNSS.add(portalRim);
+    const stationMark=new THREE.Mesh(new THREE.CylinderGeometry(.26,.30,.08,20),stoneMat);
+    stationMark.position.set(-9.45,3.065,.8);this.portalGNSS.add(stationMark);
     this.gnssReceivers=[];
-    for(const [x,z] of [[-9.2,.55],[-8.35,-.55]]){
-      const antenna=new THREE.Group();antenna.position.set(x,-1.43,z);
-      const mast=new THREE.Mesh(new THREE.CylinderGeometry(.025,.029,1.25,10),pedestalMat);
-      mast.position.y=.625;antenna.add(mast);
-      const dish=new THREE.Mesh(new THREE.CylinderGeometry(.16,.16,.048,24),antennaMat);
-      dish.position.y=1.28;antenna.add(dish);
-      const cap=new THREE.Mesh(new THREE.CylinderGeometry(.11,.15,.07,22),pedestalMat);
-      cap.position.y=1.32;antenna.add(cap);
+    const stationPositions=[[-9.50,.85],[-8.40,-.70]];
+    for(const [x,z] of stationPositions){
+      const antenna=new THREE.Group();antenna.position.set(x,3.02,z);
+      const mast=new THREE.Mesh(new THREE.CylinderGeometry(.026,.03,1.22,10),stoneMat);
+      mast.position.y=.61;antenna.add(mast);
+      const dish=new THREE.Mesh(new THREE.CylinderGeometry(.17,.17,.055,24),antennaMat);
+      dish.position.y=1.24;antenna.add(dish);
+      const cap=new THREE.Mesh(new THREE.CylinderGeometry(.12,.17,.075,22),stoneMat);
+      cap.position.y=1.285;antenna.add(cap);
       this.portalGNSS.add(antenna);this.gnssReceivers.push(antenna);
     }
-    const portalPoint=new THREE.Vector3(-7.38,-.20,1.33);
-    const receiverPoint=new THREE.Vector3(-8.35,-.10,-.55);
+    // The satellite icons and rays are wholly above the visible ground.
+    this.surfaceSatellites=[];
+    this.surfaceSignals=[];
+    for(const [x,z] of [[-10.6,-.8],[-8.8,1.6],[-7.5,-1.2]]){
+      const sat=new THREE.Mesh(new THREE.OctahedronGeometry(.22,0),
+        new THREE.MeshBasicMaterial({color:0xccf8ff}));
+      sat.position.set(x,6.15,z);this.portalGNSS.add(sat);
+      this.surfaceSatellites.push(sat);
+      for(const receiver of this.gnssReceivers){
+        const ray=new THREE.Line(new THREE.BufferGeometry().setFromPoints([
+          sat.position,receiver.position.clone().add(new THREE.Vector3(0,1.24,0))
+        ]),new THREE.LineBasicMaterial({color:0x8feaf7,transparent:true,opacity:.58}));
+        this.portalGNSS.add(ray);this.surfaceSignals.push(ray);
+      }
+    }
+    const transferPoints=[
+      new THREE.Vector3(-8.40,4.25,-.70),
+      new THREE.Vector3(-7.60,3.13,-.48),
+      new THREE.Vector3(-7.30,2.64,-.32),
+      new THREE.Vector3(-7.30,1.86,-.32),
+      new THREE.Vector3(-7.25,.75,.15),
+      new THREE.Vector3(-6.60,-.10,1.0),
+      new THREE.Vector3(positions[0],-.09,1.32)
+    ];
+    this.portalTransferCurve=new THREE.CatmullRomCurve3(transferPoints);
+    const transferSamples=this.portalTransferCurve.getPoints(70);
     this.gnssPortalLink=new THREE.Line(
-      new THREE.BufferGeometry().setFromPoints([receiverPoint,portalPoint,
-        new THREE.Vector3(positions[0],-.09,1.32)]),
-      new THREE.LineDashedMaterial({color:0xffd77a,dashSize:.18,gapSize:.08}));
-    this.gnssPortalLink.computeLineDistances();
+      new THREE.BufferGeometry().setFromPoints(transferSamples),
+      new THREE.LineBasicMaterial({color:0xffcf62,transparent:true,opacity:.95}));
     this.interiorGroup.add(this.gnssPortalLink);
+    this.transferMarker=new THREE.Mesh(new THREE.SphereGeometry(.105,12,10),
+      new THREE.MeshBasicMaterial({color:0xffec9a}));
+    this.interiorGroup.add(this.transferMarker);
+    // A camera-visible excavation face and moving survey sight line communicate
+    // progress at every slider position, not only at station boundaries.
+    this.activeTraverseBeam=new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]),
+      new THREE.LineBasicMaterial({color:0x70fff4,transparent:true,opacity:.97}));
+    this.interiorStations.add(this.activeTraverseBeam);
+    this.beamTip=new THREE.Mesh(new THREE.SphereGeometry(.075,10,8),
+      new THREE.MeshBasicMaterial({color:0xa7fffa}));
+    this.interiorStations.add(this.beamTip);
+    this.interiorFace=new THREE.Mesh(new THREE.CircleGeometry(1.73,32),
+      new THREE.MeshStandardMaterial({color:0x776355,roughness:1,side:THREE.DoubleSide}));
+    this.interiorFace.rotation.y=Math.PI/2;
+    this.interiorGroup.add(this.interiorFace);
+    this.interiorRings=this.interiorGroup.children.filter(o=>o.geometry?.type==='TorusGeometry');
     this.surveySequence=surveySequenceAt(0);
     this.updateInteriorSurvey(0);
     for(const x of [-5,-2,1,4,7]){
@@ -340,8 +395,17 @@ export class Cutaway {
   updateInteriorSurvey(p){
     const state=surveySequenceAt(p);
     this.surveySequence=state;
+    // Both receivers remain above the terrain; their signals become more
+    // prominent as the first part of the animated surface GNSS stage advances.
     this.portalGNSS.visible=state.showOutsideGNSS;
+    this.surfaceSignals.forEach(ray=>{ray.material.opacity=.18+.60*state.surfaceProgress;});
+    this.surfaceSatellites.forEach((sat,i)=>{
+      sat.scale.setScalar(.8+.35*state.surfaceProgress);
+    });
     this.gnssPortalLink.visible=state.showPortalTransfer;
+    this.gnssPortalLink.geometry.setDrawRange(0,Math.max(2,Math.ceil(71*state.transferProgress)));
+    this.transferMarker.visible=state.showPortalTransfer;
+    this.transferMarker.position.copy(this.portalTransferCurve.getPoint(state.transferProgress));
     this.interiorInstruments.forEach((mount,i)=>{
       mount.visible=this.surveyRequested && i<state.reached;
       const role=i===state.instrument?'instrument':
@@ -351,8 +415,34 @@ export class Cutaway {
       mount.userData.prism.visible=role==='prism';
     });
     this.interiorSightLines.forEach((sight,i)=>{
+      // Completed traverse legs stay visible; the current leg is drawn
+      // continuously by activeTraverseBeam below.
       sight.visible=this.surveyRequested && state.phase==='wall-traverse' &&
-        ((i===state.instrument)||(state.backsight>=0 && i===state.backsight));
+        i<state.step;
+    });
+    this.activeTraverseBeam.visible=this.surveyRequested&&state.phase==='wall-traverse';
+    this.beamTip.visible=this.activeTraverseBeam.visible;
+    if(this.activeTraverseBeam.visible){
+      const from=this.interiorInstruments[state.instrument].position.clone().add(
+        new THREE.Vector3(0,-.04,-.14));
+      const to=this.interiorInstruments[state.prism].position.clone().add(
+        new THREE.Vector3(0,-.04,-.14));
+      const tip=from.clone().lerp(to,state.stepProgress);
+      const attr=this.activeTraverseBeam.geometry.getAttribute('position');
+      attr.setXYZ(0,from.x,from.y,from.z);attr.setXYZ(1,tip.x,tip.y,tip.z);
+      attr.needsUpdate=true;
+      this.beamTip.position.copy(tip);
+    }
+    this.interiorFace.visible=state.phase==='wall-traverse'&&this.progress<.98;
+    if(this.interiorFace.visible){
+      this.interiorFace.position.x=Math.min(7.65,Math.max(-5.9,
+        this.interiorInstruments[state.instrument].position.x+2.55+
+        state.stepProgress*.85));
+    }
+    // The visible lining rings grow with the conceptual excavation front.
+    this.interiorRings.forEach(ring=>{
+      ring.visible=state.phase==='gnss-transfer' ||
+        ring.position.x<=this.interiorFace.position.x;
     });
   }
   setProgress(p) {
@@ -392,17 +482,27 @@ export class Cutaway {
     this.render();
   }
   surveyCamera(){
-    // Follow the transfer from outside GNSS through successive wall-mounted
-    // instrument/prism pairs. The units are approximately 0.2 m at gallery scale.
+    // Scene 1: clearly ABOVE ground with aerial GNSS signals.
+    // Scene 2: smoothly descend the portal section.
+    // Scene 3: advance from instrument to forward prism at EACH input step.
     const state=this.surveySequence;
+    const outside=new THREE.Vector3(-11.65,4.73,6.7);
+    const outsideLook=new THREE.Vector3(-8.65,2.65,0.0);
+    const inside=new THREE.Vector3(-6.65,.60,-1.15);
+    const insideLook=new THREE.Vector3(-5.4,-.10,1.20);
     if(state.phase==='gnss-transfer'){
-      this.camera.position.set(-9.9,.25,2.0);
-      this.camera.lookAt(new THREE.Vector3(-7.5,-.12,.6));
+      const t=state.subphase==='surface'?0:
+        state.transferProgress*state.transferProgress*(3-2*state.transferProgress);
+      this.camera.position.copy(outside).lerp(inside,t);
+      const look=outsideLook.clone().lerp(insideLook,t);
+      this.camera.lookAt(look);
     }else{
       const mount=this.interiorInstruments[state.instrument];
-      const x=mount.position.x;
-      this.camera.position.set(x-.84,.23,-.43);
-      this.camera.lookAt(new THREE.Vector3(x+.21,-.06,1.30));
+      const x=mount.position.x, t=state.stepProgress;
+      // A shift of >0.5 scene units within each station step prevents the
+      // previous "many slider positions look identical" failure.
+      this.camera.position.set(x-1.25+t*.65,.40,-1.15);
+      this.camera.lookAt(new THREE.Vector3(x+.15+t*.76,-.03,1.28));
     }
     this.camera.updateMatrixWorld();
   }
