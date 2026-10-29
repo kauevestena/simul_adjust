@@ -70,3 +70,11 @@ This is not a true boolean-subtracted 3D excavation mesh nor an as-built tunnel 
 ### Português
 
 Os capítulos de rede geodésica, poligonal, escavação e encontro ativam o corte 3D; os botões Mapa/Corte continuam disponíveis. A ligação de controle retrata uma rede de projeto única **com GPS em ambas as margens**, mas não exclusivamente com GPS: observações terrestres definiram a CTG86, reforçada pelo GPS para a RTM87. A compatibilização de altitudes é outra operação, vinculada à referência vertical NTM88; o slider mostra dados **hipotéticos**. A poligonal sintética apresenta estações e verificações giroscópicas. As galerias com revestimentos aparecem progressivamente e a opção **Seguir tuneladora** acompanha uma TBM em terceira pessoa. As curvas, proporções, velocidades e camadas são didáticas, não representam a obra como construída.
+
+### 3D survey gallery / Galeria com instrumentos topográficos (2026-10-29)
+
+**English.** The service-tunnel animation now shows illustrative total-station setups (tripod, telescope, instrument body) at synthetic traverse positions. Select **Inside gallery** to take a close, third-person view of an instrument and its sight line. This is a teaching visualization, not a replica of 1980s field equipment, and no instrument coordinates are historical. **Overview** and **Follow TBM** remain available.
+
+The **Map** button re-exposes the MapLibre container, waits for layout, resizes and repaints the WebGL canvas, and rebuilds the map after a lost context when necessary. The browser tests now cover switching from MapLibre to the Three.js scene *and back*.
+
+**Português.** O corte mostra agora estações totais estilizadas (tripé, luneta e corpo) em estações de poligonal sintéticas. A opção **Dentro da galeria** aproxima a câmera para visualizar um aparelho e a linha de visada. O modelo não reproduz o equipamento histórico e as coordenadas são didáticas. Os comandos **Vista geral** e **Seguir tuneladora** continuam disponíveis. A opção **Mapa** restaura o canvas MapLibre e recupera contextos WebGL perdidos, se necessário.
