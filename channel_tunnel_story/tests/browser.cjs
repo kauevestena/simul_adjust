@@ -72,10 +72,15 @@ async function axe(page) {
       await page.check('#unstable');assert.match(await page.locator('#monitorResult').textContent(),/instável/);
       await page.click('#en');await noOverflow(page);await axe(page);
       await page.click('#sectionView');await page.waitForFunction(()=>!!window.__story.cutaway);
+      assert.equal(await page.evaluate(()=>window.__story.cutaway.surveyMarkers.length),13);
+      assert.equal(await page.evaluate(()=>window.__story.cutaway.surveyLegs.length),12);
+      assert.equal(await page.evaluate(()=>window.__story.cutaway.surveyGroup.visible),true);
+      await page.uncheck('#survey');assert.equal(await page.evaluate(()=>window.__story.cutaway.surveyGroup.visible),false);
+      await page.check('#survey');assert.equal(await page.evaluate(()=>window.__story.cutaway.surveyGroup.visible),true);
       await page.locator('#cutaway canvas').focus();const beforeOrbit=await page.evaluate(()=>window.__story.cutaway.camera.position.x);await page.keyboard.press('ArrowLeft');assert.notEqual(await page.evaluate(()=>window.__story.cutaway.camera.position.x),beforeOrbit);await page.keyboard.press('Home');
       const span=await page.evaluate(()=>{const c=window.__story.cutaway;return Math.abs(c.curves[1].getPoint(1).project(c.camera).x-c.curves[1].getPoint(0).project(c.camera).x);});assert.ok(span>.6&&span<2,'cutaway occupies the viewport without clipping');
       await input(page,'advance',60);assert.equal(await page.evaluate(()=>window.__story.cutaway.progress),.6);
-      await page.click('#play');await page.waitForFunction(()=>window.__story.cutaway.progress>.6);await page.click('#play');assert.equal(await page.evaluate(()=>window.__story.playing),false);
+      await page.click('#play');await page.waitForFunction(()=>window.__story.cutaway.progress>.6);if(await page.evaluate(()=>window.__story.playing))await page.click('#play');assert.equal(await page.evaluate(()=>window.__story.playing),false);
       await page.screenshot({path:path.join(SHOTS,`${engine}-${size.width}-cutaway.png`)});await axe(page);
       await page.click('#mapView');await page.uncheck('#terrain');await page.waitForFunction(()=>window.__story.map.getTerrain()===null);
       await page.check('#terrain');await page.waitForFunction(()=>!!window.__story.map.getTerrain());
