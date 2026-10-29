@@ -150,7 +150,7 @@ async function setView(next) {
   $('mapView').setAttribute('aria-pressed',String(next==='map'));$('sectionView').setAttribute('aria-pressed',String(next==='section'));
   $('mapFallback').hidden=next!=='map'||mapState!=='mapFailed';refreshViewText();
   if(next==='map'){setPlaying(false);map?.resize();return;}
-  if(!cutaway)try {const {Cutaway}=await import('./cutaway.mjs');cutaway=new Cutaway($('cutaway'));cutaway.setProgress(Number($('advance').value)/100);} catch {$('cutaway').textContent=ui[lang].sectionFallback;$('play').disabled=true;}
+  if(!cutaway)try {const {Cutaway}=await import('./cutaway.mjs');cutaway=new Cutaway($('cutaway'));cutaway.setProgress(Number($('advance').value)/100);cutaway.setSurveyVisible($('survey').checked);} catch {$('cutaway').textContent=ui[lang].sectionFallback;$('play').disabled=true;}
   cutaway?.resize();if(cutaway)cutaway.renderer.domElement.setAttribute('aria-label',ui[lang].sectionKeys);
 }
 function setPlaying(value) {playing=value;cancelAnimationFrame(animationFrame);lastFrame=0;refreshViewText();if(playing)animationFrame=requestAnimationFrame(animate);}
@@ -165,6 +165,7 @@ $('mapView').addEventListener('click',()=>setView('map'));$('sectionView').addEv
 $('advance').step='any';$('advance').addEventListener('input',()=>{setPlaying(false);updateAdvance();});
 $('play').addEventListener('click',()=>{if(Number($('advance').value)>=100){$('advance').value='0';updateAdvance();}setPlaying(!playing);});
 $('resetView').addEventListener('click',()=>cutaway?.reset());
+$('survey').addEventListener('change',()=>cutaway?.setSurveyVisible($('survey').checked));
 motion.addEventListener('change',()=>{if(motion.matches){map?.stop();setPlaying(false);}});
 addEventListener('visibilitychange',()=>{if(document.hidden)setPlaying(false);});
 setLanguage(initialLang());startMap();
