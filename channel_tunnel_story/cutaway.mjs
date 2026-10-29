@@ -1,5 +1,57 @@
 import * as THREE from '../camera_proj/vendor/three.module.min.js';
 import {OrbitControls} from '../camera_proj/vendor/OrbitControls.js';
+import {surveySequenceAt} from './survey_sequence.mjs';
+
+// One conceptual gallery has a ~3.6 m diameter. These ~0.2 m instrument bodies
+// occupy small wall brackets. They are NOT enlarged tripods or historical models.
+function mountedSurveyUnit() {
+  const group=new THREE.Group();
+  const metal=new THREE.MeshStandardMaterial({color:0x5e7887,metalness:.75,roughness:.36});
+  const housing=new THREE.MeshStandardMaterial({color:0xffc66a,metalness:.3,roughness:.46});
+  const optics=new THREE.MeshStandardMaterial({color:0x1d3342,metalness:.55,roughness:.24});
+  const glass=new THREE.MeshStandardMaterial({color:0x97eff4,emissive:0x0a424a,metalness:.35,roughness:.16});
+  const addBox=(parent,size,position,material)=>{
+    const mesh=new THREE.Mesh(new THREE.BoxGeometry(...size),material);
+    mesh.position.set(...position);parent.add(mesh);return mesh;
+  };
+  // Bolted wall plate, diagonal brace, cantilevered instrument shelf.
+  addBox(group,[.31,.31,.035],[0,-.12,.235],metal);
+  addBox(group,[.36,.038,.43],[0,-.21,-.005],metal);
+  const brace=new THREE.Mesh(new THREE.CylinderGeometry(.018,.018,.35,9),metal);
+  brace.position.set(0,-.32,.08);brace.rotation.x=-.66;group.add(brace);
+  for(const x of [-.11,.11])for(const y of [-.22,-.02]){
+    const bolt=new THREE.Mesh(new THREE.CylinderGeometry(.014,.014,.012,8),optics);
+    bolt.rotation.x=Math.PI/2;bolt.position.set(x,y,.258);group.add(bolt);
+  }
+  const instrument=new THREE.Group();instrument.position.set(0,-.165,-.11);
+  addBox(instrument,[.17,.16,.13],[0,.11,0],housing);
+  const body=new THREE.Mesh(new THREE.CylinderGeometry(.042,.042,.21,14),optics);
+  body.rotation.z=Math.PI/2;body.position.y=.18;instrument.add(body);
+  for(const x of [-.115,.115]){
+    const lens=new THREE.Mesh(new THREE.CircleGeometry(.033,14),glass);
+    lens.rotation.y=x<0?-Math.PI/2:Math.PI/2;lens.position.set(x,.18,0);instrument.add(lens);
+  }
+  const tribrach=new THREE.Mesh(new THREE.CylinderGeometry(.055,.065,.033,12),optics);
+  tribrach.position.y=.018;instrument.add(tribrach);
+  const screen=addBox(instrument,[.10,.056,.014],[0,.07,.072],optics);
+  screen.userData.isDisplay=true;
+  group.add(instrument);
+  const prism=new THREE.Group();prism.position.set(0,-.13,-.11);
+  const stand=new THREE.Mesh(new THREE.CylinderGeometry(.013,.013,.17,10),metal);
+  stand.position.y=.09;prism.add(stand);
+  const bezel=new THREE.Mesh(new THREE.TorusGeometry(.065,.019,8,18),optics);
+  bezel.position.y=.19;prism.add(bezel);
+  const reflector=new THREE.Mesh(new THREE.CircleGeometry(.055,18),glass);
+  reflector.position.set(0,.19,.006);prism.add(reflector);
+  for(let k=0;k<3;k++){
+    const vane=new THREE.Mesh(new THREE.BoxGeometry(.012,.085,.01),metal);
+    vane.position.y=.19;vane.rotation.z=k*Math.PI/3;prism.add(vane);
+  }
+  group.add(prism);
+  group.userData={isWallStation:true,role:'none',instrument,prism};
+  instrument.visible=false;prism.visible=false;
+  return group;
+}
 
 // Schematic teaching scene. NO surveyed positions, as-built geometry, or observed TBM trajectory.
 // The 1986 project grid / 1987 GPS campaign preceded optical/gyro control underground.
@@ -63,43 +115,19 @@ export class Cutaway {
 
     // Schematic instrument setups, not a reconstruction of the historical survey.
     // Place them against the service-bore traverse and scale them for teaching visibility.
+    // Smaller schematic brackets in the external cutaway (not tripods).
     this.totalStations=[];
     for(const stationIndex of [1,2,3,4,8,9,10,11]){
-      const instrument=new THREE.Group();
-      const p=stations[stationIndex];instrument.position.copy(p);
-      const dark=new THREE.MeshStandardMaterial({color:0x273b4a,metalness:.5,roughness:.4});
-      const yellow=new THREE.MeshStandardMaterial({color:0xffd06d,metalness:.35,roughness:.4});
-      const glass=new THREE.MeshStandardMaterial({color:0x84e9ee,metalness:.45,roughness:.22});
-      const vertical=new THREE.Vector3(0,1,0);
-      const makeLeg=(x,z)=>{
-        const from=new THREE.Vector3(0,.41,0),to=new THREE.Vector3(x,.035,z);
-        const direction=to.clone().sub(from);
-        const rod=new THREE.Mesh(new THREE.CylinderGeometry(.021,.028,direction.length(),8),dark);
-        rod.position.copy(from).add(to).multiplyScalar(.5);
-        rod.quaternion.setFromUnitVectors(vertical,direction.normalize());
-        instrument.add(rod);
-      };
-      for(let k=0;k<3;k++){const a=k*Math.PI*2/3;makeLeg(.24*Math.cos(a),.24*Math.sin(a));}
-      const pedestal=new THREE.Mesh(new THREE.CylinderGeometry(.09,.12,.08,12),yellow);
-      pedestal.position.y=.43;instrument.add(pedestal);
-      const housing=new THREE.Mesh(new THREE.BoxGeometry(.22,.23,.16),yellow);
-      housing.position.y=.60;instrument.add(housing);
-      const telescope=new THREE.Mesh(new THREE.CylinderGeometry(.066,.066,.36,16),dark);
-      telescope.rotation.z=Math.PI/2;telescope.position.set(.015,.66,0);
-      instrument.add(telescope);
-      for(const x of [-.18,.18]){
-        const lens=new THREE.Mesh(new THREE.CircleGeometry(.051,16),glass);
-        lens.rotation.y=x<0?-Math.PI/2:Math.PI/2;lens.position.set(x,.66,0);
-        instrument.add(lens);
-      }
-      const display=new THREE.Mesh(new THREE.BoxGeometry(.16,.08,.025),dark);
-      display.position.set(0,.52,.105);instrument.add(display);
-      const reticle=new THREE.Mesh(new THREE.BoxGeometry(.06,.026,.027),glass);
-      reticle.position.set(0,.52,.127);instrument.add(reticle);
-      instrument.userData.stationIndex=stationIndex;
-      instrument.userData.isTotalStation=true;
-      this.surveyGroup.add(instrument);this.totalStations.push(instrument);
+      const bracket=mountedSurveyUnit();
+      bracket.scale.setScalar(.32);
+      bracket.position.copy(stations[stationIndex]).add(new THREE.Vector3(0,-.07,.30));
+      bracket.userData.stationIndex=stationIndex;
+      bracket.userData.isTotalStation=true;
+      bracket.userData.role='instrument';
+      bracket.userData.instrument.visible=true;
+      this.surveyGroup.add(bracket);this.totalStations.push(bracket);
     }
+
     this.gyroStations=new THREE.Group();this.surveyGroup.add(this.gyroStations);
     for(const i of [2,4,8,10]){
       const p=stations[i];
@@ -183,23 +211,51 @@ export class Cutaway {
     walkway.position.set(0,-1.51,1.00);this.interiorGroup.add(walkway);
     this.interiorStations=new THREE.Group();this.interiorGroup.add(this.interiorStations);
     this.interiorInstruments=[];
-    for(const [index,x] of [1,2,3].map((id,i)=>[id,[-2.2,0.7,3.7][i]])){
-      const clone=this.totalStations[index].clone(true);
-      clone.position.set(x,-1.48,0);
-      clone.visible=true;clone.userData.isTotalStation=true;
-      this.interiorStations.add(clone);this.interiorInstruments.push(clone);
-      const target=new THREE.Mesh(new THREE.SphereGeometry(.045,8,8),
-        new THREE.MeshBasicMaterial({color:0x87f5f4}));
-      target.position.set(x+.25,-.82,0);this.interiorStations.add(target);
+    const positions=[-5.65,-3.75,-1.85,.05,1.95,3.85,5.75];
+    for(const x of positions){
+      const bracket=mountedSurveyUnit();
+      bracket.position.set(x,-.05,1.47);
+      bracket.userData.positionAlongGallery=x;
+      this.interiorStations.add(bracket);
+      this.interiorInstruments.push(bracket);
     }
-    const optics=[[-2.2,.7],[.7,3.7]];
     this.interiorSightLines=[];
-    for(const [a,b] of optics){
+    for(let i=0;i<positions.length-1;i++){
       const sight=new THREE.Line(new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(a,-.82,0),new THREE.Vector3(b,-.82,0)
-      ]),new THREE.LineDashedMaterial({color:0x7af4ef,dashSize:.18,gapSize:.09}));
-      sight.computeLineDistances();this.interiorStations.add(sight);this.interiorSightLines.push(sight);
+        new THREE.Vector3(positions[i],-.09,1.32),
+        new THREE.Vector3(positions[i+1],-.09,1.32)
+      ]),new THREE.LineDashedMaterial({color:0x6fece5,dashSize:.14,gapSize:.09}));
+      sight.computeLineDistances();sight.visible=false;
+      this.interiorStations.add(sight);this.interiorSightLines.push(sight);
     }
+    // The satellite antenna remains OUTSIDE the portal; the underground network
+    // receives transferred orientation/coordinates, never GNSS in the rock.
+    this.portalGNSS=new THREE.Group();this.interiorGroup.add(this.portalGNSS);
+    const pedestalMat=new THREE.MeshStandardMaterial({color:0x526f7b,metalness:.4,roughness:.6});
+    const antennaMat=new THREE.MeshStandardMaterial({color:0xa8eff1,metalness:.2,roughness:.2});
+    const pad=new THREE.Mesh(new THREE.BoxGeometry(2.8,.15,2),pedestalMat);
+    pad.position.set(-8.7,-1.52,.0);this.portalGNSS.add(pad);
+    this.gnssReceivers=[];
+    for(const [x,z] of [[-9.2,.55],[-8.35,-.55]]){
+      const antenna=new THREE.Group();antenna.position.set(x,-1.43,z);
+      const mast=new THREE.Mesh(new THREE.CylinderGeometry(.025,.029,1.25,10),pedestalMat);
+      mast.position.y=.625;antenna.add(mast);
+      const dish=new THREE.Mesh(new THREE.CylinderGeometry(.16,.16,.048,24),antennaMat);
+      dish.position.y=1.28;antenna.add(dish);
+      const cap=new THREE.Mesh(new THREE.CylinderGeometry(.11,.15,.07,22),pedestalMat);
+      cap.position.y=1.32;antenna.add(cap);
+      this.portalGNSS.add(antenna);this.gnssReceivers.push(antenna);
+    }
+    const portalPoint=new THREE.Vector3(-7.38,-.20,1.33);
+    const receiverPoint=new THREE.Vector3(-8.35,-.10,-.55);
+    this.gnssPortalLink=new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints([receiverPoint,portalPoint,
+        new THREE.Vector3(positions[0],-.09,1.32)]),
+      new THREE.LineDashedMaterial({color:0xffd77a,dashSize:.18,gapSize:.08}));
+    this.gnssPortalLink.computeLineDistances();
+    this.interiorGroup.add(this.gnssPortalLink);
+    this.surveySequence=surveySequenceAt(0);
+    this.updateInteriorSurvey(0);
     for(const x of [-5,-2,1,4,7]){
       const lamp=new THREE.Mesh(new THREE.SphereGeometry(.10,12,8),
         new THREE.MeshBasicMaterial({color:0xffe2ab}));
@@ -280,6 +336,24 @@ export class Cutaway {
   }
   setGyroEnabled(v){this.gyroEnabled=!!v;this.gyroStations.visible=this.gyroEnabled;this.render();}
   setSurveyVisible(show){this.surveyRequested=Boolean(show);this.setPhase(this.phase);}
+  updateInteriorSurvey(p){
+    const state=surveySequenceAt(p);
+    this.surveySequence=state;
+    this.portalGNSS.visible=state.showOutsideGNSS;
+    this.gnssPortalLink.visible=state.showPortalTransfer;
+    this.interiorInstruments.forEach((mount,i)=>{
+      mount.visible=this.surveyRequested && i<state.reached;
+      const role=i===state.instrument?'instrument':
+        (i===state.prism||i===state.backsight?'prism':'none');
+      mount.userData.role=role;
+      mount.userData.instrument.visible=role==='instrument';
+      mount.userData.prism.visible=role==='prism';
+    });
+    this.interiorSightLines.forEach((sight,i)=>{
+      sight.visible=this.surveyRequested && state.phase==='wall-traverse' &&
+        ((i===state.instrument)||(state.backsight>=0 && i===state.backsight));
+    });
+  }
   setProgress(p) {
     this.progress=Math.max(0,Math.min(1,Number.isFinite(p)?p:0));
     const curve=this.curves[1];
@@ -291,6 +365,7 @@ export class Cutaway {
     this.surveyMarkers.forEach((m,i)=>{const t=i/12;m.visible=this.progress>=1||t<=reach+1e-7||t>=1-reach-1e-7;});
     this.surveyLegs.forEach((l,i)=>{l.visible=this.surveyMarkers[i].visible&&this.surveyMarkers[i+1].visible;});
     this.totalStations.forEach(station=>{station.visible=this.surveyMarkers[station.userData.stationIndex].visible;});
+    this.updateInteriorSurvey(this.progress);
     if(this.mode==='follow')this.followCamera();
     if(this.mode==='survey')this.surveyCamera();
     this.render();
@@ -316,11 +391,19 @@ export class Cutaway {
     this.render();
   }
   surveyCamera(){
-    // An enlarged inside-gallery view, separate from the external geological scale.
-    const station=this.interiorInstruments[0];
-    const target=station.position.clone().add(new THREE.Vector3(.75,.61,0));
-    this.camera.position.set(-5.0,-.12,1.15);
-    this.camera.lookAt(target);this.camera.updateMatrixWorld();
+    // Follow the transfer from outside GNSS through successive wall-mounted
+    // instrument/prism pairs. The units are approximately 0.2 m at gallery scale.
+    const state=this.surveySequence;
+    if(state.phase==='gnss-transfer'){
+      this.camera.position.set(-9.9,.25,2.0);
+      this.camera.lookAt(new THREE.Vector3(-7.5,-.12,.6));
+    }else{
+      const mount=this.interiorInstruments[state.instrument];
+      const x=mount.position.x;
+      this.camera.position.set(x-.84,.23,-.43);
+      this.camera.lookAt(new THREE.Vector3(x+.21,-.06,1.30));
+    }
+    this.camera.updateMatrixWorld();
   }
   followCamera(){
     // Third-person chase shot above / behind UK-side representative service-tunnel machine.
