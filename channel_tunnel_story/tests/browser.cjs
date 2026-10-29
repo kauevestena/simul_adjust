@@ -98,6 +98,7 @@ async function axe(page) {
       await page.locator('#chapterNav button').nth(1).click();
       await page.click('#sectionView');
       await page.waitForFunction(()=>window.__story.cutaway?.phase==='control');
+      assert.equal(await page.evaluate(()=>window.__story.manualView),true);
       assert.equal(await page.evaluate(()=>window.__story.cutaway.surveyMarkers.length),13);
       assert.equal(await page.evaluate(()=>window.__story.cutaway.surveyLegs.length),12);
       assert.equal(await page.evaluate(()=>window.__story.cutaway.gnssGroup.visible),true,'linked GPS network in surface-control chapter');
@@ -108,6 +109,8 @@ async function axe(page) {
       assert.equal(await page.evaluate(()=>window.__story.cutaway.gnssGroup.visible),false);
       await page.locator('#chapterNav button').nth(4).click();
       await page.waitForFunction(()=>window.__story.cutaway.phase==='digging');
+      assert.equal(await page.evaluate(()=>window.__story.view),'section','manual 3D view persists across chapters');
+      assert.equal(await page.locator('#sectionTools').isVisible(),true,'camera controls remain visible');
       assert.equal(await page.evaluate(()=>window.__story.cutaway.tunnelGroup.visible),true);
       assert.ok(await page.evaluate(()=>window.__story.cutaway.driveMeshes.some(d=>d.holder.children.length>=2)),'excavated lining exists only in advanced segments');
       await page.uncheck('#survey');assert.equal(await page.evaluate(()=>window.__story.cutaway.surveyGroup.visible),false);
