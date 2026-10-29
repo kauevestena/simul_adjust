@@ -73,7 +73,7 @@ Os capítulos de rede geodésica, poligonal, escavação e encontro ativam o cor
 
 ### 3D survey gallery / Galeria com instrumentos topográficos (2026-10-29)
 
-**English.** The service-tunnel animation now shows illustrative total-station setups (tripod, telescope, instrument body) at synthetic traverse positions. Select **Inside gallery** for a magnified, immersive service-gallery interior with lining rings, a walkway, stylized total stations and sight lines. Its scale is intentionally independent from the exterior cutaway. This is a teaching visualization, not a replica of 1980s field equipment, and no instrument coordinates are historical. **Overview** and **Follow TBM** remain available.
+**English.** The service-tunnel animation now shows illustrative compact instruments and prisms on brackets fixed to gallery walls at synthetic traverse positions. Select **Inside gallery** for a magnified, immersive service-gallery interior with lining rings, a walkway, stylized total stations and sight lines. Its scale is intentionally independent from the exterior cutaway. This is a teaching visualization, not a replica of 1980s field equipment, and no instrument coordinates are historical. **Overview** and **Follow TBM** remain available.
 
 The **Map** button re-exposes the MapLibre container, waits for layout, resizes and repaints the WebGL canvas, and rebuilds the map after a lost context when necessary. The browser tests now cover switching from MapLibre to the Three.js scene *and back*.
 
