@@ -39,6 +39,11 @@ test('experimental Channel Tunnel card is within the standard portal grid',()=>{
   assert.match(cardHtml,/class="sim-card"/);
   assert.match(cardHtml,/data-status="experimental"/);
   assert.match(cardHtml,/class="badge-experimental">🧪 Experimental/);
+  assert.match(cardHtml,/class="badge-development">🚧 Em desenvolvimento/);
+  assert.match(html,/"development":"🚧 Em desenvolvimento"/);
+  assert.match(html,/"development":"🚧 In development"/);
+  const storyPage=readFileSync(new URL('channel_tunnel_story/index.html',root),'utf8');
+  assert.match(storyPage,/id="developmentBadge"/);
   assert.doesNotMatch(cardHtml,/data-status="unfinished"/);
   assert.match(html,/"pt-BR":\{"experimental":"🧪 Experimental"/);
   assert.match(html,/"en":\{"experimental":"🧪 Experimental"/);

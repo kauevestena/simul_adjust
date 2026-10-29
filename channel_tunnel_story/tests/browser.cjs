@@ -51,7 +51,8 @@ async function axe(page) {
       page.on('response',r=>{if(/openfreemap|elevation-tiles-prod/.test(r.url()))responses.push({url:r.url(),status:r.status()});});
       console.log('Opening story at',size.width);await page.goto(base+'/channel_tunnel_story/?lang=en');console.log('Document loaded');if(process.env.STORY_DEBUG)console.log(await page.evaluate(()=>({state:window.__story?.mapState,terrain:window.__story?.map?.getTerrain(),sources:window.__story?.map?.getStyle()?.sources})));
       await page.waitForFunction(()=>window.__story && window.__story.mapState==='ready',null,{timeout:60000}).catch(async e=>{await page.screenshot({path:path.join(SHOTS,'failure-map.png')});console.error(await page.evaluate(()=>({state:window.__story?.mapState,status:document.getElementById('mapStatus').textContent,loaded:window.__story?.map?.isStyleLoaded(),terrain:window.__story?.map?.getTerrain()})),errors);throw e;});
-      assert.equal(await page.locator('.chapter').count(),7);assert.equal(await page.locator('html').getAttribute('lang'),'en');
+      assert.equal(await page.locator('.chapter').count(),7);
+      assert.match(await page.locator('#developmentBadge').textContent(),/In development/);assert.equal(await page.locator('html').getAttribute('lang'),'en');
       assert.equal(await page.evaluate(()=>window.__story.map.getTerrain().exaggeration),1.6);
       const elevation=await page.evaluate(()=>window.__story.map.queryTerrainElevation([1.16,51.1]));
       assert.ok(Number.isFinite(elevation),'terrain has decoded elevation');
@@ -142,19 +143,45 @@ async function axe(page) {
       assert.equal(await page.evaluate(()=>window.__story.cutaway.totalStations.length),8,'illustrative total stations are installed in gallery');
       await page.click('#surveyCam');
       assert.equal(await page.evaluate(()=>window.__story.cutaway.mode),'survey');
-      const closeup=await page.evaluate(()=> {
+      assert.equal(await page.evaluate(()=>window.__story.cutaway.progress),0,
+        'gallery tour restarts outside at GNSS control');
+      let sequence=await page.evaluate(()=>{
         const c=window.__story.cutaway;
-        const v=c.interiorInstruments[0];
-        return {visible:c.interiorGroup.visible,stations:c.interiorInstruments.length,
-          lines:c.interiorSightLines.length,distance:c.camera.position.distanceTo(v.position),
-          lining:c.interiorGroup.children.length,
-          pressed:document.getElementById('surveyCam').getAttribute('aria-pressed')};
+        return {state:c.surveySequence,receiver:c.portalGNSS.visible,
+          transfer:c.gnssPortalLink.visible,visibleBrackets:c.interiorInstruments.filter(x=>x.visible).length,
+          labels:document.getElementById('surveySequence').textContent};
       });
-      assert.ok(closeup.visible && closeup.distance<6,'gallery view is inside the enlarged lined tunnel');
-      assert.equal(closeup.stations,3,'interior has three stylized total stations');
-      assert.equal(closeup.lines,2,'interior has optical sight lines');
-      assert.ok(closeup.lining>10,'interior lining rings are modeled');
-      assert.equal(closeup.pressed,'true');
+      assert.equal(sequence.state.phase,'gnss-transfer');
+      assert.ok(sequence.receiver&&sequence.transfer,'GNSS network is visible outside, linked through portal');
+      assert.equal(sequence.visibleBrackets,0,'no underground instrument is installed before transfer');
+      assert.match(sequence.labels,/GNSS/);
+      await input(page,'advance',18);
+      sequence=await page.evaluate(()=>{
+        const c=window.__story.cutaway;
+        return {state:c.surveySequence,roles:c.interiorInstruments.map(m=>m.userData.role),
+          size:c.interiorInstruments[0].userData.instrument.children.length,
+          visible:c.interiorInstruments.filter(m=>m.visible).length};
+      });
+      assert.equal(sequence.state.instrument,0);
+      assert.equal(sequence.state.prism,1);
+      assert.deepEqual(sequence.roles.slice(0,2),['instrument','prism']);
+      assert.equal(sequence.visible,2);
+      await input(page,'advance',37);
+      sequence=await page.evaluate(()=>{
+        const c=window.__story.cutaway;
+        return {state:c.surveySequence,roles:c.interiorInstruments.map(m=>m.userData.role),
+          stations:c.interiorInstruments.length,lines:c.interiorSightLines.length,
+          camera:c.camera.position.x,lining:c.interiorGroup.children.length};
+      });
+      assert.equal(sequence.state.instrument,1,'prior prism mount now holds total station');
+      assert.equal(sequence.state.prism,2,'prism is moved ahead');
+      assert.equal(sequence.state.backsight,0,'previous instrument mount carries backsight prism');
+      assert.deepEqual(sequence.roles.slice(0,3),['prism','instrument','prism']);
+      assert.equal(sequence.stations,7,'seven illustrative wall brackets');
+      assert.equal(sequence.lines,6,'six potential optical sight lines');
+      assert.ok(sequence.lining>10,'gallery lining rings are modeled');
+      assert.equal(await page.locator('#surveyCam').getAttribute('aria-pressed'),'true');
+      await input(page,'advance',60);
       await page.click('#followCam');
       assert.equal(await page.evaluate(()=>window.__story.cutaway.mode),'follow');
       const cameraBefore=await page.evaluate(()=>window.__story.cutaway.camera.position.x);
