@@ -1,6 +1,7 @@
 import * as THREE from '../camera_proj/vendor/three.module.min.js';
 import {OrbitControls} from '../camera_proj/vendor/OrbitControls.js';
 import {surveySequenceAt} from './survey_sequence.mjs';
+import {driveExtentAt,remainingRockAt} from './excavation_extent.mjs';
 
 // One conceptual gallery has a ~3.6 m diameter. These ~0.2 m instrument bodies
 // occupy small wall brackets. They are NOT enlarged tripods or historical models.
@@ -101,6 +102,52 @@ export class Cutaway {
         this.driveMeshes.push({holder,bore,side,last:-1});
       }
     }
+    // A cross-section of UNEXCAVATED ground closes the old empty space between
+    // the advancing UK/French galleries. The layers are conceptual, not a
+    // stratigraphic reconstruction or an as-built geological model.
+    this.unexcavatedRock=new THREE.Group();
+    this.scene.add(this.unexcavatedRock);
+    this.rockStrata=[];
+    const strata=[
+      {y:-2.76,h:.78,color:0x687681}, // lower bluish chalk/rock
+      {y:-1.92,h:.91,color:0x978578}, // consolidated rock
+      {y:-1.03,h:.89,color:0xc0a77f}, // sedimentary ground
+      {y:-.18,h:.81,color:0xdbc6a0}  // light chalk / soil
+    ];
+    for(const band of strata){
+      const layer=new THREE.Mesh(
+        new THREE.BoxGeometry(1,band.h,3.7),
+        new THREE.MeshStandardMaterial({color:band.color,roughness:1,metalness:0,flatShading:true}));
+      layer.position.set(0,band.y,.70);
+      this.unexcavatedRock.add(layer);this.rockStrata.push(layer);
+    }
+    // Inclusions on the outward-facing section distinguish rock from a blank
+    // rectangular fill; keep positions fixed as the fronts move, rather than
+    // stretching every pebble during excavation.
+    this.rockInclusions=[];
+    const stoneColors=[0x5c6770,0xa18d77,0xd6c5a3,0x897869,0xb3a08a];
+    for(let i=0;i<86;i++){
+      const x=-9.75+(i+.37)*19.5/86;
+      const y=-3.06+((i*37)%83)/83*3.13;
+      const z=2.565+.035*(i%5);
+      const radius=.055+(i%6)*.019;
+      const rock=new THREE.Mesh(
+        new THREE.IcosahedronGeometry(radius,i%4===0?1:0),
+        new THREE.MeshStandardMaterial({
+          color:stoneColors[(i*7)%stoneColors.length],
+          roughness:1,flatShading:true}));
+      rock.position.set(x,y,z);
+      rock.rotation.set(i*.37,i*.59,i*.23);
+      rock.scale.set(1.5,.62,1.0);
+      this.unexcavatedRock.add(rock);this.rockInclusions.push(rock);
+    }
+    this.rockFrontCaps=[-1,1].map(side=>{
+      const cap=new THREE.Mesh(new THREE.BoxGeometry(.12,3.4,3.71),
+        new THREE.MeshStandardMaterial({color:0x786b5d,roughness:1,flatShading:true}));
+      cap.position.set(side*10,-1.46,.7);
+      this.unexcavatedRock.add(cap);return cap;
+    });
+    this.remainingRockState=remainingRockAt(0);
     // Optical / gyro survey stations advance behind the service tunnel excavation.
     this.surveyGroup=new THREE.Group();this.scene.add(this.surveyGroup);
     this.surveyMarkers=[];this.surveyLegs=[];
@@ -383,12 +430,32 @@ export class Cutaway {
     this.observer=new ResizeObserver(()=>this.resize());this.observer.observe(host);
     this.reset();this.setProgress(0);this.setPhase('digging');
   }
+  // Keep rock visibly solid between the advancing TBM faces; nothing remains
+  // at 100% breakthrough. Update transforms, not expensive geometry, per frame.
+  updateUnexcavatedRock() {
+    const state=remainingRockAt(this.progress);
+    this.remainingRockState=state;
+    const visible=!state.closed && this.mode!=='survey' &&
+      !['control','heights','challenge'].includes(this.phase);
+    this.unexcavatedRock.visible=visible;
+    if(!visible)return;
+    for(const layer of this.rockStrata){
+      layer.position.x=state.center;
+      layer.scale.x=Math.max(state.width,.0001);
+    }
+    for(const pebble of this.rockInclusions){
+      pebble.visible=pebble.position.x>=state.left+.12 &&
+        pebble.position.x<=state.right-.12;
+    }
+    for(const [i,cap] of this.rockFrontCaps.entries()){
+      cap.visible=state.width>.14;
+      cap.position.x=(i===0?state.left:state.right)+(i===0?.06:-.06);
+    }
+  }
   // Growing lined galleries expose the construction progression in actual 3D, from both shores.
   rebuildDrives() {
     for(const drive of this.driveMeshes){
-      const progress=this.progress;
-      const effective=drive.bore===1?progress:Math.max(0,(progress-.16)/.84);
-      const extent=effective*.48;
+      const extent=driveExtentAt(this.progress,drive.bore);
       if(Math.abs(extent-drive.last)<.005)continue; // do not churn GPU geometry per frame
       drive.last=extent;
       for(const child of [...drive.holder.children]){drive.holder.remove(child);child.geometry?.dispose();child.material?.dispose();}
@@ -431,7 +498,8 @@ export class Cutaway {
     this.surveyGroup.visible=this.surveyRequested && !surface&&!inside;
     this.gyroStations.visible=this.gyroEnabled && phase==='traverse';
     this.tbms.forEach(m=>m.visible=!surface&&!inside&&
-      !['challenge','geology','monitoring'].includes(phase));
+      !['challenge','geology','monitoring'].includes(phase) && this.progress<.997);
+    this.updateUnexcavatedRock();
     if(this.mode==='overview')this.reset();
     if(this.mode==='survey')this.surveyCamera();
     this.render();
@@ -500,15 +568,19 @@ export class Cutaway {
   setProgress(p) {
     this.progress=Math.max(0,Math.min(1,Number.isFinite(p)?p:0));
     const curve=this.curves[1];
-    [this.progress*.48,1-this.progress*.48].forEach((t,i)=>{
+    [driveExtentAt(this.progress,1),1-driveExtentAt(this.progress,1)].forEach((t,i)=>{
       const tbm=this.tbms[i];tbm.position.copy(curve.getPoint(t));tbm.rotation.y=i?Math.PI:0;
     });
     this.rebuildDrives();
-    const reach=this.progress*.48;
+    this.updateUnexcavatedRock();
+    const reach=driveExtentAt(this.progress,1);
     this.surveyMarkers.forEach((m,i)=>{const t=i/12;m.visible=this.progress>=1||t<=reach+1e-7||t>=1-reach-1e-7;});
     this.surveyLegs.forEach((l,i)=>{l.visible=this.surveyMarkers[i].visible&&this.surveyMarkers[i+1].visible;});
     this.totalStations.forEach(station=>{station.visible=this.surveyMarkers[station.userData.stationIndex].visible;});
     this.updateInteriorSurvey(this.progress);
+    this.tbms.forEach(m=>{m.visible=this.mode!=='survey' &&
+      !['challenge','geology','monitoring','control','heights'].includes(this.phase) &&
+      this.progress<.997;});
     if(this.mode==='follow')this.followCamera();
     if(this.mode==='survey')this.surveyCamera();
     this.render();
