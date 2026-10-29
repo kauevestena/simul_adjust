@@ -17,5 +17,5 @@
 .cam-controls{margin-bottom:4px}
 .cam-controls button{flex:1;min-width:95px;padding:5px 8px;font-size:.8rem}
 #heightLab{border-color:#bd9867}
-#sectionTools #sceneExplainer{font-size:.7rem;line-height:1.35;max-height:3em;overflow:auto}
+#sectionTools #sceneExplainer{font-size:.7rem;line-height:1.35;max-height:none;overflow:visible}
 @media(max-width:850px){#sectionTools .cam-controls{display:flex;gap:5px}#sectionTools .cam-controls button{font-size:.7rem;min-height:34px}}
