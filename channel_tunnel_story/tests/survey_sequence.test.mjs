@@ -8,7 +8,7 @@ test('the teaching sequence starts with surface GNSS and portal transfer',()=>{
   assert.equal(start.instrument,-1);
   assert.equal(start.reached,0);
   assert.equal(start.showOutsideGNSS,true);
-  assert.equal(start.showPortalTransfer,true);
+  assert.equal(start.showPortalTransfer,false,'portal transfer begins only after surface GNSS has been established');
 });
 test('an instrument occupies the current bracket, a prism the forward bracket',()=>{
   const a=surveySequenceAt(.18);
