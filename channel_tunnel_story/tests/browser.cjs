@@ -170,7 +170,8 @@ async function axe(page) {
           labels:document.getElementById('surveySequence').textContent};
       });
       assert.equal(sequence.state.phase,'gnss-transfer');
-      assert.ok(sequence.receiver&&sequence.transfer,'GNSS network is visible outside, linked through portal');
+      assert.equal(sequence.receiver,true,'outside GNSS receivers are visible on the raised terrain');
+      assert.equal(sequence.transfer,false,'underground control transfer should NOT start before surface GNSS observations');
       assert.equal(sequence.visibleBrackets,0,'no underground instrument is installed before transfer');
       assert.match(sequence.labels,/GNSS/);
       // The GNSS is on a raised ground slab ABOVE the tunnel, not alongside
@@ -200,6 +201,8 @@ async function axe(page) {
           lineCount:m.gnssPortalLink.geometry.drawRange.count};
       });
       assert.equal(portal8.phase,'portal');
+      assert.equal(await page.evaluate(()=>window.__story.cutaway.gnssPortalLink.visible),true,
+        'control transfer appears in the distinct portal stage');
       if([1440,390].includes(size.width)) await page.screenshot({path:path.join(SHOTS,`${engine}-${size.width}-portal-transfer.png`)});
       assert.ok(portal8.lineCount>2,'portal control transfer path is being drawn');
       await input(page,'advance',11);
