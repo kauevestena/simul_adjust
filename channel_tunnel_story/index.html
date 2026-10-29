@@ -24,6 +24,14 @@
 <h3 id="heightTitle"></h3><p id="heightText"></p>
 <div class="control"><label for="datumOffset" id="datumOffsetLabel"></label><input id="datumOffset" type="range" min="-1" max="1" step="0.05" value="0.30"><output id="datumOffsetValue" for="datumOffset"></output></div>
 <p class="formula" id="heightFormula">H = h − N</p><p id="heightResult" aria-live="polite"></p>
+<svg class="lab-graphic" id="heightGraphic" viewBox="0 0 320 126" role="img" aria-label="Diagram of height references on both shores">
+<text x="19" y="23" fill="#ffc570" font-size="12">UK</text>
+<text x="259" y="23" fill="#6ae3d7" font-size="12">FR</text>
+<line x1="18" y1="71" x2="302" y2="71" stroke="#8da7b1" stroke-width="1.5" stroke-dasharray="4 5"/>
+<line x1="18" y1="62" x2="143" y2="62" stroke="#ffc570" stroke-width="4"/>
+<line id="frenchDatum" x1="177" y1="62" x2="302" y2="62" stroke="#6ae3d7" stroke-width="4"/>
+<text x="18" y="105" fill="#d7e6ea" font-size="10">H = h − N + datum tie / ajuste</text>
+</svg>
 <p class="footnote" id="heightCaveat"></p>
 </section>
 <section class="lab" aria-labelledby="labTitle"><h3 id="labTitle"></h3><p id="labText"></p>
@@ -52,7 +60,13 @@
 <div class="control"><label for="movement" id="movementLabel"></label><input id="movement" type="range" min="-20" max="20" step="1" value="8"><output id="movementValue" for="movement"></output></div>
 <div class="control"><label for="datumShift" id="datumLabel"></label><input id="datumShift" type="range" min="-20" max="20" step="1" value="5"><output id="datumValue" for="datumShift"></output></div>
 <label class="check"><input type="checkbox" id="unstable"><span id="unstableLabel"></span></label>
-<p id="monitorResult" aria-live="polite"></p><p class="footnote" id="monitorCaveat"></p></section>
+<p id="monitorResult" aria-live="polite"></p>
+<svg class="lab-graphic" id="monitorGraphic" viewBox="0 0 320 118" role="img" aria-label="Synthetic target movement relative to stable reference points">
+<line x1="18" y1="47" x2="302" y2="47" stroke="#9eb3c2" stroke-dasharray="5 5"/>
+<circle cx="42" cy="47" r="5" fill="#6ae3d7"/><circle cx="95" cy="47" r="5" fill="#6ae3d7"/><circle cx="148" cy="47" r="5" fill="#6ae3d7"/>
+<circle id="monitorTarget" cx="263" cy="47" r="8" fill="#ffc570"/>
+<text x="21" y="90" fill="#6ae3d7" font-size="11">A · B · C</text><text x="235" y="90" fill="#ffc570" font-size="11">M</text>
+</svg><p class="footnote" id="monitorCaveat"></p></section>
 </section>
 <section class="refs" id="references" tabindex="-1"><h2 id="referencesTitle"></h2><p id="sourcesContext"></p><a href="./SOURCE_AUDIT.md" id="auditLink"></a><ol id="sourcesList"></ol></section>
 </div>
