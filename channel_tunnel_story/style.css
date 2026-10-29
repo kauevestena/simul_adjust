@@ -15,7 +15,7 @@
 .launch-3d{align-self:flex-start;margin:18px 0 4px;background:#1a5360;border:1px solid #6ae3d7;color:#e8fffd;font-weight:800}
 .launch-3d:hover{background:#236878}
 .cam-controls{margin-bottom:4px}
-.cam-controls button{flex:1;min-width:95px;padding:5px 8px;font-size:.8rem}
+.cam-controls button{flex:1 1 90px;min-width:70px;padding:5px 8px;font-size:.8rem}.cam-controls{flex-wrap:wrap}
 #heightLab{border-color:#bd9867}
 #sectionTools #sceneExplainer{font-size:.7rem;line-height:1.4;max-height:none;overflow:visible}
 .sceneNotes{font-size:.72rem;color:#d9e7ea}
