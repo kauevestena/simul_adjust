@@ -3,7 +3,7 @@ import {chapters, ui, refs} from './content.mjs';
 const $ = id => document.getElementById(id);
 const motion = matchMedia('(prefers-reduced-motion: reduce)');
 let lang, active = -1, map, cutaway, view = 'map', mapState = 'loading', terrainFailed = false, terrainLoaded = false;
-let playing = false, lastFrame = 0, animationFrame, mapProgress = 0, cutawayLoading = null;
+let playing = false, lastFrame = 0, animationFrame, mapProgress = 0, cutawayLoading = null, manualView = false;
 const locale = () => lang === 'pt' ? 'pt-BR' : 'en';
 const f = (v, digits=3) => v.toLocaleString(locale(), {minimumFractionDigits:digits, maximumFractionDigits:digits});
 function initialLang() {
@@ -87,8 +87,11 @@ function setActive(i) {
   updateRouteProgress(i<0?0:chapters[i].progress);
   if(i>=0){
     cutaway?.setPhase(phaseForChapter(chapters[i].id));
-    if(['control','underground','excavation','breakthrough'].includes(chapters[i].id)) void setView('section');
-    if(chapters[i].id==='geology'||chapters[i].id==='monitoring') void setView('map');
+    // Chapter navigation suggests a scene only until the reader manually chooses a view.
+    if(!manualView) {
+      if(['control','underground','excavation','breakthrough'].includes(chapters[i].id)) void setView('section');
+      if(chapters[i].id==='geology'||chapters[i].id==='monitoring') void setView('map');
+    }
   }
   [...$('chapterNav').children].forEach((b,j)=>{if(i===j)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current');});
   refreshViewText(); if(i<0)return;
@@ -121,7 +124,12 @@ addEventListener('resize',syncScroll);
 // A user's own scroll gesture immediately regains control of the active chapter.
 // A tap on a scene control must NOT unlock navigation and cause a stray chapter
 // change. Only a genuine scroll gesture (touchmove/wheel) resumes scroll tracking.
-for(const eventName of ['wheel','touchmove']) addEventListener(eventName,()=>{navigationTarget=null;},{passive:true});
+for(const eventName of ['wheel','touchmove']) addEventListener(eventName,e=>{
+  // A gesture over sticky scene controls is not necessarily narrative scrolling.
+  // Keep the chosen chapter and manual view stable while manipulating the scene.
+  if(e.target instanceof Element && e.target.closest('.stage'))return;
+  navigationTarget=null;
+},{passive:true});
 addEventListener('keydown',e=>{
   if(['PageDown','PageUp','ArrowDown','ArrowUp',' ','Home','End'].includes(e.key)&&
      !/^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(e.target?.tagName||''))navigationTarget=null;
@@ -229,7 +237,8 @@ function animate(time) {
   if(value>=100)setPlaying(false);else animationFrame=requestAnimationFrame(animate);
 }
 function updateAdvance() {$('advanceValue').textContent=Math.round(Number($('advance').value))+'%';cutaway?.setProgress(Number($('advance').value)/100);}
-$('mapView').addEventListener('click',()=>setView('map'));$('sectionView').addEventListener('click',()=>setView('section'));
+$('mapView').addEventListener('click',()=>{manualView=true;void setView('map');});
+$('sectionView').addEventListener('click',()=>{manualView=true;void setView('section');});
 $('advance').step='any';$('advance').addEventListener('input',()=>{setPlaying(false);updateAdvance();});
 $('play').addEventListener('click',()=>{if(Number($('advance').value)>=100){$('advance').value='0';updateAdvance();}setPlaying(!playing);});
 $('resetView').addEventListener('click',()=>{cutaway?.setCameraMode('overview');setCameraButtons('overview');});
@@ -238,8 +247,8 @@ function setCameraButtons(mode){
   $('followCam').setAttribute('aria-pressed',String(mode==='follow'));
 }
 $('overviewCam').addEventListener('click',()=>{cutaway?.setCameraMode('overview');setCameraButtons('overview');});
-$('followCam').addEventListener('click',async()=>{await setView('section');cutaway?.setCameraMode('follow');setCameraButtons('follow');});
-$('launch3D').addEventListener('click',async()=>{navigateChapter(1);await setView('section');cutaway?.setCameraMode('overview');setCameraButtons('overview');});
+$('followCam').addEventListener('click',async()=>{manualView=true;await setView('section');cutaway?.setCameraMode('follow');setCameraButtons('follow');});
+$('launch3D').addEventListener('click',async()=>{navigateChapter(1);manualView=true;await setView('section');cutaway?.setCameraMode('overview');setCameraButtons('overview');});
 $('survey').addEventListener('change',()=>cutaway?.setSurveyVisible($('survey').checked));
 motion.addEventListener('change',()=>{if(motion.matches){map?.stop();setPlaying(false);}});
 addEventListener('visibilitychange',()=>{if(document.hidden)setPlaying(false);});
@@ -247,4 +256,4 @@ setLanguage(initialLang());startMap();
 const deepLink=chapters.findIndex(c=>'#chapter-'+c.id===location.hash);
 if(deepLink>=0)requestAnimationFrame(()=>{setActive(deepLink);$('chapter-'+chapters[deepLink].id).scrollIntoView({behavior:'instant'});});
 // Read-only diagnostics used by real-browser tests, including deployed Pages verification.
-window.__story={get map(){return map;},get active(){return active;},get cutaway(){return cutaway;},get playing(){return playing;},get mapState(){return mapState;},get mapProgress(){return mapProgress;}};
+window.__story={get map(){return map;},get active(){return active;},get cutaway(){return cutaway;},get playing(){return playing;},get mapState(){return mapState;},get mapProgress(){return mapProgress;},get manualView(){return manualView;},get view(){return view;}};
