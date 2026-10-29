@@ -37,7 +37,12 @@ async function axe(page) {
   const browser=await({chromium,firefox,webkit}[engine]).launch({headless:!(engine==='firefox'&&process.env.DISPLAY),...(engine==='firefox'?{firefoxUserPrefs:{'webgl.force-enabled':true,'webgl.disabled':false}}:{}),...(process.env.STORY_PROXY?{proxy:{server:process.env.STORY_PROXY,bypass:'127.0.0.1,localhost'}}:{}),...(engine==='chromium'?{args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']}: {})});
   console.log('Browser ready');fs.mkdirSync(SHOTS,{recursive:true});
   try {
-    for(const size of [{width:1440,height:1000},{width:390,height:844},{width:320,height:740},{width:844,height:390}]) {
+    // Live runs verify real map/DEM services at desktop and mobile sizes.
+    // The full 4-viewport application matrix is already covered independently
+    // with deterministic map fixtures in Chromium, Firefox and WebKit.
+    const viewports=LIVE ? [{width:1440,height:1000},{width:390,height:844}] :
+      [{width:1440,height:1000},{width:390,height:844},{width:320,height:740},{width:844,height:390}];
+    for(const size of viewports) {
       const mobile=size.width<850;
       const ctx=await browser.newContext({ignoreHTTPSErrors:process.env.STORY_IGNORE_HTTPS_ERRORS==='1',viewport:size,locale:'en-US',reducedMotion:'reduce',hasTouch:mobile,...(engine!=='firefox'?{isMobile:mobile}:{})});
       await fixtures(ctx);const page=await ctx.newPage(),errors=[],responses=[];
@@ -52,6 +57,11 @@ async function axe(page) {
       assert.ok(Number.isFinite(elevation),'terrain has decoded elevation');
       if(LIVE){assert.ok(responses.some(r=>/\.pbf|planet/.test(r.url)&&r.status===200),'live basemap tiles');assert.ok(responses.some(r=>r.url.includes('terrarium')&&r.status===200),'live DEM tiles');}
       await noOverflow(page);await page.screenshot({path:path.join(SHOTS,`${engine}-${size.width}-${LIVE?'live':'fixture'}-map.png`)});
+      if(LIVE) {
+        assert.deepEqual(errors,[],'real map must load without uncaught browser errors');
+        console.log(`${engine} ${size.width}px: live vector map and decoded terrain passed`);
+        await ctx.close();continue;
+      }
       // Scroll and keyboard-driven chapter navigation both track the camera and active heading.
       for(let i=0;i<7;i++){
         await page.locator('#chapterNav button').nth(i).focus();await page.keyboard.press('Enter');
@@ -138,8 +148,8 @@ async function axe(page) {
       await page.locator('#chapter-underground .sources-mini a').click();await page.waitForFunction(()=>location.hash==='#source-9');
       assert.deepEqual(errors,[]);await ctx.close();console.log(`${engine} ${size.width}px: story, map, cutaway, models, i18n, accessibility passed`);
     }
-    if(!EXTERNAL_BASE){
-      // Style failure, terrain failure and disabled storage must leave the lesson usable.
+    if(!EXTERNAL_BASE&&!LIVE){
+      // Deterministic browser suites cover style, terrain and storage failures.
       for(const fail of ['style','terrain','storage','webgl']){
         const ctx=await browser.newContext({reducedMotion:'reduce'});await fixtures(ctx,fail);
         if(fail==='webgl')await ctx.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/i.test(type)?null:original.call(this,type,...args);};});
