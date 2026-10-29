@@ -29,6 +29,26 @@ export class Cutaway {
       const curve=new THREE.CatmullRomCurve3(points);this.curves.push(curve);
       const tube=new THREE.Mesh(new THREE.TubeGeometry(curve,120,z===-1.95?.12:.19,12,false),new THREE.MeshStandardMaterial({color:0x728ba0,roughness:.6}));this.scene.add(tube);
     }
+    // Synthetic underground control, separate from the historical network.
+    // Points are evenly spaced in an invented local coordinate model.
+    // A small visible offset from the bore makes the stations legible in the cutaway.
+    this.surveyGroup=new THREE.Group();
+    this.surveyMarkers=[];this.surveyLegs=[];
+    const stations=Array.from({length:13},(_,i)=>{
+      const point=this.curves[1].getPoint(i/12);
+      return point.add(new THREE.Vector3(0,0,.40));
+    });
+    stations.forEach((point,i)=>{
+      const marker=new THREE.Mesh(new THREE.SphereGeometry(.105,12,10),
+        new THREE.MeshStandardMaterial({color:i<6?0xffc570:i>6?0x6ae3d7:0xffffff,emissive:0x11262b}));
+      marker.position.copy(point);this.surveyMarkers.push(marker);this.surveyGroup.add(marker);
+    });
+    for(let i=0;i<stations.length-1;i++){
+      const segment=new THREE.Line(new THREE.BufferGeometry().setFromPoints([stations[i],stations[i+1]]),
+        new THREE.LineBasicMaterial({color:i<6?0xffc570:0x6ae3d7}));
+      this.surveyLegs.push(segment);this.surveyGroup.add(segment);
+    }
+    this.scene.add(this.surveyGroup);
     this.tbms=[0xffb652,0x6ae3d7].map(color=>{
       const group=new THREE.Group();const body=new THREE.Mesh(new THREE.CylinderGeometry(.27,.27,.75,20),new THREE.MeshStandardMaterial({color}));body.rotation.z=Math.PI/2;group.add(body);
       const head=new THREE.Mesh(new THREE.CylinderGeometry(.33,.33,.08,20),new THREE.MeshStandardMaterial({color:0xf2f6f7,wireframe:true}));head.rotation.z=Math.PI/2;head.position.x=.39;group.add(head);this.scene.add(group);return group;
@@ -49,7 +69,19 @@ export class Cutaway {
   }
   setProgress(p) {
     this.progress=Math.max(0,Math.min(1,p));const curve=this.curves[1];
-    [this.progress*.48,1-this.progress*.48].forEach((t,i)=>{const mesh=this.tbms[i];mesh.position.copy(curve.getPoint(t));mesh.rotation.y=i?Math.PI:0;mesh.children[1].rotation.x=this.progress*70;});this.render();
+    [this.progress*.48,1-this.progress*.48].forEach((t,i)=>{const mesh=this.tbms[i];mesh.position.copy(curve.getPoint(t));mesh.rotation.y=i?Math.PI:0;mesh.children[1].rotation.x=this.progress*70;});
+    const reach=this.progress*.48;
+    this.surveyMarkers.forEach((marker,i)=>{
+      const t=i/12;marker.visible=this.progress>=1 || t<=reach+1e-7 || t>=1-reach-1e-7;
+    });
+    this.surveyLegs.forEach((leg,i)=>{
+      leg.visible=this.surveyMarkers[i].visible&&this.surveyMarkers[i+1].visible;
+    });
+    this.render();
+  }
+  setSurveyVisible(show) {
+    this.surveyGroup.visible=Boolean(show);
+    this.render();
   }
   reset(){
     this.controls.target.set(0,-.7,-.7);
