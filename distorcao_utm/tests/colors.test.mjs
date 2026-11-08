@@ -19,6 +19,11 @@ test('signed metrics: blue below zero, red above, gray-ish neutral at zero', () 
   const [rn, , bn] = s.color(-300), [rp, , bp] = s.color(100), z = s.color(0);
   assert.ok(bn > rn && rp > bp);
   assert.ok(Math.max(...z) - Math.min(...z) < 12);
+  // a small negative tail stays faint next to a large positive side
+  const tail = makeScale('dz', -0.0026, 0.195, 'data');
+  const L = c => rgbToOklab(c)[0];
+  assert.ok(Math.abs(L(tail.color(-0.0026)) - L(tail.color(0))) < 0.03);
+  assert.ok(L(tail.color(0.195)) - L(tail.color(0)) > 0.3);
   const z0 = makeScale('dz', -0.1, 0.5, 'zero');
   assert.equal(z0.min, -0.5); assert.equal(z0.max, 0.5);
   assert.equal(makeScale('ppm', -235, -209, 'data').kind, 'negative');

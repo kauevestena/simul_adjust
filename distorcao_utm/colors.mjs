@@ -74,7 +74,9 @@ export function makeScale(metric, min, max, mode = 'data') {
   if (mode === 'zero') { const m = Math.max(Math.abs(min), Math.abs(max)) || 1; lo = -m; hi = m; }
   if (!(hi > lo)) { hi = lo + (Math.abs(lo) || 1) * 1e-6; }
   if (lo < 0 && hi > 0) {
-    return { kind: 'diverging', min: lo, max: hi, color: v => (v < 0 ? pick(LUTS.negative, v / lo) : pick(LUTS.positive, v / hi)) };
+    // both arms share one magnitude scale, so a small negative tail is not shown as strongly as a large positive side
+    const m = Math.max(-lo, hi);
+    return { kind: 'diverging', min: lo, max: hi, color: v => (v < 0 ? pick(LUTS.negative, -v / m) : pick(LUTS.positive, v / m)) };
   }
   // one-sided data in 'data' mode: stretch the arm from the smallest to the largest magnitude
   const arm = hi <= 0 ? LUTS.negative : LUTS.positive;
