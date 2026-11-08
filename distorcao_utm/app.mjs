@@ -5,17 +5,18 @@ import { makeScale, unitFor, CLASS_COLORS } from './colors.mjs';
 import { SplitViewer } from './viewer.mjs';
 import { DistortionChart, drawColorbar } from './chart.mjs';
 import { t, bootLanguage, onLanguage, getLanguage } from './i18n.mjs';
+import { SCENARIOS, scenarioById, DEFAULT_SCENARIO } from './scenarios.mjs';
+import { assessSystematic } from './systematic.mjs';
 
 const $ = id => document.getElementById(id);
 const lowEnd = (navigator.deviceMemory && navigator.deviceMemory <= 4) || matchMedia('(pointer: coarse)').matches;
 const maxPoints = lowEnd ? M.MAX_POINTS_LOW : M.MAX_POINTS;
 const DISPLAY_LIMITS = { exaggeration: [1, 10000], pointSize: [1, 8] };
-const PARAM_KEYS = ['lat', 'lon', 'h0', 'spanWE', 'spanNS', 'grid', 'sizeMin', 'sizeMax', 'buildingDensity', 'terrainDensity'];
 
 let params = M.normalizeParams({});
-const display = { metric: 'ppm', range: 'data', exaggeration: 100, pointSize: 2, outline: true };
+const display = { metric: 'ppm', range: 'data', exaggeration: 100, pointSize: 2, outline: true, tolerance: 0.02 };
 const geoid = createGeoidLoader();
-const state = { job: 0, busy: false, result: null, scale: null, unit: null, geoidStatus: 'idle', geoidError: '', workerUsed: false, error: '', frameNext: true, lastSpan: null };
+const state = { job: 0, busy: false, result: null, scale: null, unit: null, geoidStatus: 'idle', geoidError: '', workerUsed: false, error: '', lastSpan: null, scenario: DEFAULT_SCENARIO, baseScenario: DEFAULT_SCENARIO, assessment: null };
 
 // ---------------------------------------------------------------- formatting (locale aware)
 function format(v, digits = 2, fixed) {
@@ -62,6 +63,7 @@ function setValue(key, raw) {
   if (key === 'sizeMax' && params.sizeMin > v) params.sizeMin = v;
   params = M.normalizeParams(params);
   document.querySelectorAll('.field[data-key]').forEach(showValue);
+  markCustom();
   updateEstimate();
   schedule();
 }
@@ -77,17 +79,108 @@ function bindFields() {
     num.addEventListener('change', () => { setValue(key, num.value); showValue(field); });
     showValue(field);
   });
-  $('reseed').addEventListener('click', () => { params = { ...params, seed: 1 + Math.floor(Math.random() * 2 ** 31) }; schedule(0); });
-  $('zone').addEventListener('change', e => { params = { ...params, zone: e.target.value }; schedule(0); });
+  $('reseed').addEventListener('click', () => { params = { ...params, seed: 1 + Math.floor(Math.random() * 2 ** 31) }; markCustom(); schedule(0); });
+  $('zone').addEventListener('change', e => { params = { ...params, zone: e.target.value }; markCustom(); schedule(0); });
   $('geoid').addEventListener('change', e => {
     params = { ...params, geoid: e.target.checked };
     syncMetricOptions();
+    markCustom();
     schedule(0);
+  });
+  $('scenario').addEventListener('change', e => { if (e.target.value !== 'custom') applyScenario(e.target.value); });
+  $('tolerance').addEventListener('change', e => {
+    const cm = Math.min(100, Math.max(0.1, Number(e.target.value) || 2));
+    display.tolerance = cm / 100;
+    e.target.value = String(cm);
+    renderSystematic();
   });
   $('metric').addEventListener('change', e => { display.metric = e.target.value; recolor(); });
   $('range').addEventListener('change', e => { display.range = e.target.value; recolor(); });
   $('outline').addEventListener('change', e => { display.outline = e.target.checked; viewer.setOutline(e.target.checked); });
   $('reset-view').addEventListener('click', () => viewer.frame(params.spanWE, params.spanNS));
+}
+
+// ---------------------------------------------------------------- scenarios
+function scenarioOptions() {
+  const sel = $('scenario'), lang = getLanguage() === 'en' ? 1 : 0;
+  sel.innerHTML = '';
+  for (const group of ['tolerable', 'critical']) {
+    const og = document.createElement('optgroup');
+    og.label = t(group === 'tolerable' ? 'groupTolerable' : 'groupCritical');
+    for (const sc of SCENARIOS.filter(x => x.group === group)) {
+      const o = document.createElement('option');
+      o.value = sc.id; o.textContent = sc.title[lang];
+      og.append(o);
+    }
+    sel.append(og);
+  }
+  const custom = document.createElement('option');
+  custom.value = 'custom'; custom.textContent = t('custom');
+  sel.append(custom);
+  sel.value = state.scenario;
+}
+
+/** Load a scenario: parameters (others back to defaults), display settings and tolerance. */
+function applyScenario(id) {
+  const sc = scenarioById(id);
+  if (!sc) return;
+  state.scenario = state.baseScenario = id;
+  params = M.normalizeParams({ ...M.DEFAULTS, ...sc.params });
+  Object.assign(display, { metric: 'ppm', range: 'data', exaggeration: 100, ...sc.display, tolerance: sc.tolerance });
+  $('zone').value = params.zone;
+  $('geoid').checked = params.geoid;
+  $('metric').value = display.metric;
+  $('range').value = display.range;
+  $('tolerance').value = String(+(display.tolerance * 100).toFixed(2));
+  $('scenario').value = id;
+  syncMetricOptions();
+  document.querySelectorAll('.field[data-key]').forEach(showValue);
+  viewer.setExaggeration(display.exaggeration);
+  state.lastSpan = null; // reframe the views
+  const url = new URL(location.href); url.searchParams.set('scenario', id); history.replaceState(null, '', url);
+  updateEstimate(); renderScenario(); renderCaptions(); recolor();
+  schedule(0);
+}
+
+function markCustom() {
+  if (state.scenario === 'custom') return;
+  state.scenario = 'custom';
+  $('scenario').value = 'custom';
+  const url = new URL(location.href); url.searchParams.delete('scenario'); history.replaceState(null, '', url);
+  renderScenario();
+}
+
+function renderScenario() {
+  const lang = getLanguage() === 'en' ? 1 : 0;
+  const base = scenarioById(state.baseScenario);
+  if (state.scenario === 'custom') {
+    $('scenario-title').textContent = t('customTitle');
+    $('scenario-text').textContent = t('customText', { base: base ? base.title[lang] : '—' });
+  } else {
+    $('scenario-title').textContent = base.title[lang];
+    $('scenario-text').textContent = base.text[lang];
+  }
+}
+
+const ICON = { negligible: '✓', tolerable: '!', exceeds: '✕' };
+const chip = (lvl, label) => `<span class="chip ${lvl}"><span class="ico" aria-hidden="true">${ICON[lvl]}</span>${label}</span>`;
+function renderSystematic() {
+  const out = state.result;
+  if (!out) return;
+  const a = assessSystematic(out, display.tolerance);
+  state.assessment = a;
+  const len = v => { const u = unitFor('d', Math.abs(v)); return `${format(v * u.factor)} ${u.unit}`; };
+  $('verdict').innerHTML = chip(a.overall, `${t('verdictLabel')}: ${t(`overall_${a.overall}`)}`);
+  const which = { WE: t('edgeWE'), SN: t('edgeSN'), H: t('edgeH') }[a.edge.which];
+  const vSub = a.vertical.geoid != null ? t('tileVerticalGeoid', { g: len(a.vertical.geoid) }) : t('tileVerticalSub');
+  const tiles = [
+    [t('tileScale'), `${format(a.scale.ppm, 1, 1)} ppm`, t('tileScaleSub', { mm: format(a.scale.per100m * 1000, 1, 1) }), null],
+    [t('tileEdge'), len(a.edge.value), t('tileEdgeSub', { id: a.edge.id + 1, size: format(a.edge.size, 1, 1), which }), a.edge.level],
+    [t('tileHorizontal'), len(a.horizontal.value), t('tileHorizontalSub'), a.horizontal.level],
+    [t('tileVertical'), len(a.vertical.value), vSub, a.vertical.level],
+  ];
+  $('tiles').innerHTML = tiles.map(([label, value, sub, lvl]) =>
+    `<div class="tile"><span class="t-label">${label}</span><span class="t-value">${value}</span><span class="t-sub">${sub}</span>${lvl ? chip(lvl, t(`level_${lvl}`)) : ''}</div>`).join('');
 }
 
 /** The geoid-only metric exists only with the geoid on. */
@@ -181,6 +274,7 @@ function onResult({ job, out, error }) {
   recolor();
   renderCaptions();
   renderStats();
+  renderSystematic();
   state.ready = true;
 }
 
@@ -274,22 +368,17 @@ if (!viewer.ok) {
   Object.assign(viewer, { setData() {}, updateRightColors() {}, setExaggeration() {}, setPointSize() {}, setOutline() {}, frame() {} });
 }
 const chart = new DistortionChart($('chart'), { readout: $('readout'), t: k => t(k), format });
-$('zone').value = params.zone;
-syncMetricOptions();
-$('metric').value = display.metric;
-$('range').value = display.range;
 bootLanguage();
+scenarioOptions();
 bindFields();
+applyScenario(scenarioById(new URLSearchParams(location.search).get('scenario')) ? new URLSearchParams(location.search).get('scenario') : DEFAULT_SCENARIO);
 onLanguage(() => {
   document.querySelectorAll('.field[data-key]').forEach(f => f.querySelector('input[type=range]').setAttribute('aria-label', f.querySelector('label').textContent));
+  scenarioOptions(); renderScenario();
   updateEstimate(); renderGeoidStatus(); renderCaptions(); renderError();
-  if (state.result) { chart.draw(); chart.renderReadout(); recolor(); }
+  if (state.result) { chart.draw(); chart.renderReadout(); recolor(); renderSystematic(); }
 });
-updateEstimate();
 renderGeoidStatus();
-renderCaptions();
-recolor();
-run();
 
 /** Test hook: a snapshot of the app state (no large arrays). */
 export function getState() {
@@ -302,5 +391,7 @@ export function getState() {
     scale: state.scale && { kind: state.scale.kind, min: state.scale.min, max: state.scale.max }, unit: state.unit,
     exaggerationUniform: viewer.rightMat?.uniforms.uExag.value, drawCount: viewer.drawCount || 0, webgl: viewer.ok,
     camera: viewer.cameraState?.(),
+    scenario: state.scenario, baseScenario: state.baseScenario, tolerance: display.tolerance,
+    assessment: state.assessment && { overall: state.assessment.overall, edge: state.assessment.edge.level, horizontal: state.assessment.horizontal.level, vertical: state.assessment.vertical.level, ppm: state.assessment.scale.ppm },
   };
 }

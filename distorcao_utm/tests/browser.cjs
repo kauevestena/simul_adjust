@@ -73,14 +73,14 @@ async function main() {
   assert.equal(s.display.metric, 'ppm'); assert.equal(s.exaggerationUniform, 100);
   assert.deepEqual(s.geoidTiles, [], 'no geoid tile is fetched while the geoid is off');
   assert.equal(await page.locator('#metric option[value="dg"]').isDisabled(), true);
-  assert.match(await page.locator('#cap-right').textContent(), /h elipsoidal · distorção ×100/);
+  assert.match(await page.locator('#cap-right').textContent(), /h elipsoidal · erro sistemático ×100/);
   assert.equal(await page.locator('#cubes tbody tr').count() >= 2, true);
   console.log(`default scene: ${s.counts.total} points in ${s.timing.total.toFixed(0)} ms (worker)`);
   await shot('default-pt');
 
   // 2. chart hover readout
   const box = await page.locator('#chart').boundingBox();
-  await page.mouse.move(box.x + box.width * 0.3, box.y + box.height * 0.4);
+  await page.locator('#chart').hover({ position: { x: box.width * 0.3, y: box.height * 0.4 } });
   assert.match(await page.locator('#readout').textContent(), /Cursor/);
 
   // 3. metrics and colour scales
@@ -126,7 +126,7 @@ async function main() {
   assert.match(await page.locator('a.portal').getAttribute('href'), /\?lang=en$/);
   assert.match(page.url(), /lang=en/);
   assert.equal(await page.evaluate(() => localStorage.getItem('monorepo_lang')), 'en');
-  assert.match(await page.locator('#cap-right').textContent(), /ellipsoidal h · distortion ×1,000/);
+  assert.match(await page.locator('#cap-right').textContent(), /ellipsoidal h · systematic error ×1,000/);
   assert.match(await page.locator('#stats').textContent(), /Meridian convergence/);
   await setField('exaggeration', 100);
 
@@ -145,14 +145,49 @@ async function main() {
   assert.ok(longest < 2500, `main thread blocked for ${longest} ms`);
   await shot('budget-en');
 
-  // 8. portal round trip keeps the language
+  // 8. scenarios: tolerable and critical systematic error, tolerance-based verdicts
+  before = await jobNow();
+  await page.selectOption('#scenario', 'rio');
+  s = await idle(page, { after: before });
+  assert.equal(s.scenario, 'rio'); assert.equal(s.tolerance, 0.02);
+  assert.equal(s.assessment.overall, 'negligible');
+  assert.match(page.url(), /scenario=rio/);
+  assert.match(await page.locator('#scenario-title').textContent(), /Rio de Janeiro/);
+  assert.match(await page.locator('#verdict').textContent(), /Verdict: negligible/);
+  assert.equal(await page.locator('#tiles .tile').count(), 4);
+  const tolJob = s.job;
+  await page.fill('#tolerance', '0.5'); await page.dispatchEvent('#tolerance', 'change');
+  s = await state();
+  assert.equal(s.job, tolJob, 'a tolerance change only re-judges');
+  assert.equal(s.assessment.overall, 'exceeds');
+  before = s.job;
+  await setField('h0', 2000);
+  s = await idle(page, { after: before });
+  assert.equal(s.scenario, 'custom'); assert.equal(s.baseScenario, 'rio');
+  assert.doesNotMatch(page.url(), /scenario=/);
+  assert.match(await page.locator('#scenario-title').textContent(), /Custom configuration/);
+  await page.goto(`${base}/distorcao_utm/?lang=en&scenario=manaus`);
+  s = await idle();
+  assert.equal(s.scenario, 'manaus'); assert.equal(s.context.zone, 20);
+  assert.ok(Math.abs(s.assessment.ppm - 946) < 3, String(s.assessment.ppm));
+  assert.equal(s.assessment.overall, 'exceeds');
+  assert.equal(await page.locator('#scenario').inputValue(), 'manaus');
+  before = s.job;
+  await page.selectOption('#scenario', 'kathmandu');
+  s = await idle(page, { after: before, timeout: 120000 });
+  assert.equal(s.display.metric, 'dg'); assert.ok(s.context.useGeoid);
+  assert.ok(s.geoidTiles.includes('r06c26.bin'), s.geoidTiles.join());
+  assert.match(await page.locator('#tiles').textContent(), /geoid part/);
+  await shot('scenario-kathmandu-en');
+
+  // 9. portal round trip keeps the language
   await page.goto(`${base}/?lang=en`);
   await page.locator('[data-card-id="distorcao_utm"] .btn-launch').click();
   await idle();
   assert.equal(await page.title(), 'distorcao_utm · UTM & Geoid Distortions in Point Clouds');
   assert.match(await page.locator('a.portal').getAttribute('href'), /\?lang=en$/);
 
-  // 9. phone layout: stacked views, no horizontal overflow, smaller budget on touch devices
+  // 10. phone layout: stacked views, no horizontal overflow, smaller budget on touch devices
   const phone = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
   const m = await phone.newPage();
   m.on('pageerror', e => errors.push(e.message));
@@ -166,7 +201,7 @@ async function main() {
 
   assert.deepEqual(errors, [], 'no JS, WebGL or resource errors');
   assert.deepEqual(external, [], 'runtime is self-contained');
-  console.log('Browser checks passed: worker pipeline, WebGL split view, metrics and scales, exaggeration uniform, geoid tiles on demand, i18n, point budget, portal round trip and phone layout.');
+  console.log('Browser checks passed: worker pipeline, WebGL split view, metrics and scales, exaggeration uniform, geoid tiles on demand, i18n, point budget, scenarios and verdicts, portal round trip and phone layout.');
 }
 
 main()

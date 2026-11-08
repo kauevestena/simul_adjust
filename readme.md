@@ -66,14 +66,19 @@ orthometric height with the EGM2008 geoid (5′ tiles fetched on demand), and th
 Cartesian. A grid of cubic buildings on flat terrain following the ellipsoid is shown side by side in
 ENU (rigid, undistorted) and in UTM (coloured by the local distortion, with adjustable exaggeration),
 with a 2D distortion map, the UTM-measured cube edges and up to 2 million points computed in a Web
-Worker. See its [documentation](distorcao_utm/README.md).
+Worker. Everything is framed as **systematic error**: 11 ready-made scenarios (tolerable cases such as
+Rio de Janeiro and Nairobi; critical ones such as Manaus on a zone boundary, El Alto, the Federal
+District and Kathmandu's steep geoid) are judged against a tolerance. See its [documentation](distorcao_utm/README.md).
 
 Simulador bilíngue da distorção geométrica que uma nuvem de pontos capturada em ECEF sofre ao ser
 convertida para UTM (E, N) com altitude elipsoidal, ou ortométrica com o geoide EGM2008 (tiles de 5′
 baixados sob demanda), e tratada como cartesiana. Uma grade de edificações cúbicas sobre terreno plano
 que acompanha o elipsoide é mostrada lado a lado em ENU (rígido, sem distorção) e em UTM (colorida
 pela distorção local, com exagero ajustável), com mapa 2D da distorção, as arestas dos cubos medidas
-em UTM e até 2 milhões de pontos calculados num Web Worker. Veja a [documentação](distorcao_utm/README.md).
+em UTM e até 2 milhões de pontos calculados num Web Worker. Tudo é tratado como **erro sistemático**: 11
+cenários prontos (casos toleráveis como Rio de Janeiro e Nairóbi; críticos como Manaus na borda de fuso,
+El Alto, o Distrito Federal e o geoide íngreme de Katmandu) são julgados contra uma tolerância. Veja a
+[documentação](distorcao_utm/README.md).
 
 ### DTM Lab / Laboratório de MDT
 

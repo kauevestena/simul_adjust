@@ -22,6 +22,7 @@ test('both languages hold every key used by the page and the code', () => {
   for (const m of html.matchAll(/<option value="(\w+)" data-t="metric_\w+"/g)) {
     assert.ok(words[`metric_${m[1]}`] && words[`metricHelp_${m[1]}`], `metric ${m[1]}`);
   }
+  for (const lvl of ['negligible', 'tolerable', 'exceeds']) assert.ok(words[`level_${lvl}`] && words[`overall_${lvl}`], lvl);
   for (const file of ['app.mjs', 'chart.mjs', 'viewer.mjs']) {
     const source = readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
     for (const m of source.matchAll(/\bt\('([^']+)'/g)) assert.ok(words[m[1]], `${file}: ${m[1]}`);

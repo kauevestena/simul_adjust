@@ -18,18 +18,50 @@ meridiano central, setas de deslocamento e leitura sob o cursor) e um resumo com
 de escala, convergência meridiana, ondulação geoidal e as arestas dos cubos medidas em UTM. Os
 cubos deixam de ser cubos: as arestas horizontais mudam de (k·ρ/(ρ+h) − 1)·a e as verticais não.
 
+### Distorção é erro sistemático
+A distorção que o UTM e o geoide introduzem na geometria da nuvem é um **erro sistemático**. Ele é
+determinístico (sai das fórmulas do fator de escala, do fator de elevação, da curvatura e da
+ondulação geoidal), tem sinal e padrão espacial definidos e não diminui com mais pontos,
+repetições ou ajustamento por mínimos quadrados. Cresce com a extensão: proporcionalmente à
+distância na escala (ppm = mm/km) e com o quadrado da distância na curvatura (d²/2R). Só se elimina
+por modelagem: trabalhar em ENU ou num sistema topográfico local, aplicar o fator combinado, usar uma
+projeção de baixa distorção, não misturar fusos e manter as alturas coerentes.
+
+O painel **Erro sistemático desta configuração** mede quatro componentes: o erro de escala no
+centro, o maior erro numa aresta de cubo, o maior erro horizontal de posição e o maior erro vertical
+de posição. Cada um é comparado com uma tolerância T: desprezível até T/3, tolerável até T, excede
+acima de T. Mudar T só refaz o veredito, sem recalcular a nuvem.
+
+### Cenários prontos
+O seletor de cenários (também `?scenario=<id>` na URL) carrega local, área, tolerância, métrica e
+exagero. Os números citados nos textos são verificados contra o modelo em `tests/scenarios.test.mjs`.
+
+| id | Cenário | Lição | Erro de escala | Veredito (T) |
+|---|---|---|---:|---|
+| `rio` | Rio de Janeiro, 250 m | perto da linha k = 1, ao nível do mar | +32 ppm | desprezível (2 cm) |
+| `nairobi` | Nairóbi, 300 m | a altitude compensa o fator de escala (ideia das LDP) | +63 ppm | tolerável (2 cm) |
+| `mapping` | Pato Branco, planta 1:1000 | o mesmo erro é tolerável para outra finalidade | −213 ppm | tolerável (20 cm) |
+| `pato` | Pato Branco, 2 km (padrão) | caso típico: os dois efeitos somam | −213 ppm | excede (2 cm) |
+| `poa` | Porto Alegre, 1 km | sobre o meridiano central, só k₀ já dá −400 ppm | −396 ppm | excede (2 cm) |
+| `elalto` | El Alto, 4100 m | a redução ao elipsoide domina em altitude | −952 ppm | excede (2 cm) |
+| `manaus` | Manaus, 2 km | na borda entre os fusos 20 e 21 | +946 ppm | excede (2 cm) |
+| `df` | Distrito Federal, 100 × 60 km | área que cruza o limite de fusos | +531 ppm (+190 a +940) | excede (2 cm) |
+| `wrongzone` | Pato Branco no fuso 21 | fuso vizinho forçado | +1755 ppm | excede (2 cm) |
+| `corridor` | corredor de 100 km | acúmulo ao longo de obra linear e curvatura achatada (≈ 200 m) | −213 ppm (−390 a +20) | excede (2 cm) |
+| `kathmandu` | Katmandu, 4 km, geoide | gradiente do geoide (≈ 26 cm/km) inclina a nuvem ≈ 70 cm | −275 ppm | excede (2 cm) |
+
 ### Como usar
 Sirva a raiz do repositório com `python3 -m http.server 8000` e abra
 `http://localhost:8000/distorcao_utm/?lang=pt-BR`. Não há instalação nem CDN.
 
-Parâmetros: latitude/longitude do centro, altitude elipsoidal (padrão 1000 m), extensões O–L e
+Parâmetros (além dos cenários): latitude/longitude do centro, altitude elipsoidal (padrão 1000 m), extensões O–L e
 S–N (100 m a 100 km), grade n × n de edificações e faixa de tamanhos (com sorteio), densidade de
 pontos das fachadas/telhados e do terreno, fuso UTM (automático ou vizinho), geoide, métrica
 mostrada, escala de cores, exagero, tamanho do ponto e contorno verdadeiro dos cubos.
 
-Métricas: **distorção linear local** em ppm (= mm/km; padrão), **deslocamento horizontal**,
-**deslocamento vertical** (curvatura achatada + geoide), **efeito do geoide na altura**
-−(N − N₀) e **deslocamento 3D**. Os deslocamentos são medidos em relação à nuvem ENU girada da
+Métricas (todas componentes do erro sistemático): **erro de escala local** em ppm (= mm/km; padrão),
+**erro horizontal de posição**, **erro vertical de posição** (curvatura achatada + geoide), **efeito do
+geoide na altura** −(N − N₀) e **erro 3D de posição**. Os erros de posição são medidos em relação à nuvem ENU girada da
 convergência meridiana e transladada para o centro, de modo que o movimento rígido não conta
 como distorção.
 
@@ -89,18 +121,42 @@ meridian, displacement arrows and a hover readout) and a summary with the zone, 
 meridian convergence, geoid undulation and the cube edges measured in UTM. The cubes stop being
 cubes: horizontal edges change by (k·ρ/(ρ+h) − 1)·a and vertical ones do not.
 
+### Distortion is systematic error
+The distortion that UTM and the geoid introduce into the geometry of the cloud is a **systematic
+error**. It is deterministic (it follows from the formulas of the scale factor, elevation factor,
+curvature and geoid undulation), has a definite sign and spatial pattern, and does not shrink with
+more points, repetitions or least-squares adjustment. It grows with extent: proportionally to distance
+for scale (ppm = mm/km) and with the square of distance for curvature (d²/2R). It is removed only by
+modelling: work in ENU or a local topographic frame, apply the combined factor, use a low-distortion
+projection, never mix zones, and keep heights consistent.
+
+The **Systematic error of this configuration** panel measures four components: the scale error at the
+centre, the largest error on a cube edge, the largest horizontal position error and the largest
+vertical position error. Each is compared with a tolerance T: negligible up to T/3, tolerable up to T,
+exceeding above T. Changing T only re-judges, without recomputing the cloud.
+
+### Ready-made scenarios
+The scenario selector (also `?scenario=<id>` in the URL) loads site, area, tolerance, metric and
+exaggeration. The numbers quoted in the texts are checked against the model in
+`tests/scenarios.test.mjs`. The scenarios are the same as in the table above: Rio de Janeiro (near the
+k = 1 line, negligible), Nairobi (altitude offsets the scale factor, tolerable), 1:1000 mapping (the
+same error, tolerable for a coarser purpose), and the critical ones: the Pato Branco default, Porto
+Alegre on the central meridian, El Alto at 4100 m, Manaus on the zone 20/21 boundary, the Federal
+District crossing a zone boundary, Pato Branco forced into zone 21, a 100 km corridor, and Kathmandu's
+steep geoid.
+
 ### How to use
 Serve the repository root with `python3 -m http.server 8000` and open
 `http://localhost:8000/distorcao_utm/?lang=en`. No installation or CDN is needed.
 
-Parameters: centre latitude/longitude, ellipsoidal height (default 1000 m), W–E and S–N spans
+Parameters (besides the scenarios): centre latitude/longitude, ellipsoidal height (default 1000 m), W–E and S–N spans
 (100 m to 100 km), n × n building grid and size range (with shuffle), point density of
 walls/roofs and of the terrain, UTM zone (automatic or a neighbour), geoid, displayed metric,
 colour scale, exaggeration, point size and the true outline of the cubes.
 
-Metrics: **local linear distortion** in ppm (= mm/km; default), **horizontal displacement**,
-**vertical displacement** (flattened curvature + geoid), **geoid effect on height** −(N − N₀)
-and **3D displacement**. Displacements are measured against the ENU cloud rotated by the
+Metrics (all components of the systematic error): **local scale error** in ppm (= mm/km; default),
+**horizontal position error**, **vertical position error** (flattened curvature + geoid), **geoid effect
+on height** −(N − N₀) and **3D position error**. Position errors are measured against the ENU cloud rotated by the
 meridian convergence and translated to the centre, so the rigid motion is not counted as
 distortion.
 
@@ -133,6 +189,8 @@ layout. The oracles are generated by `tests/generate_pyproj_fixture.py` and
 | File | Role / Função |
 |---|---|
 | `model.mjs` | ECEF ↔ geodetic, UTM (Krüger n⁶), scene, budget, metrics, 2D grid / geodésia, cena, métricas |
+| `scenarios.mjs` | Ready-made scenarios with bilingual explanations / cenários prontos com explicações |
+| `systematic.mjs` | Systematic-error assessment against a tolerance / avaliação do erro sistemático |
 | `geoid.mjs` | EGM2008 tiles: decode, mosaic, bicubic sampling, loader / tiles do geoide |
 | `worker.mjs` | Web Worker running `simulate()` / executa o cálculo fora da thread principal |
 | `viewer.mjs` | Split Three.js view, shared camera, exaggeration shader / vistas 3D |

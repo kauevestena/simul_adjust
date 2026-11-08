@@ -83,6 +83,23 @@
       </div>
       <p class="hint" data-t="views3d"></p>
 
+      <section class="card systematic" id="systematic" aria-labelledby="scenario-title">
+        <div class="sys-text">
+          <div class="field select scenario-pick"><label for="scenario" data-t="scenario"></label><select id="scenario"></select></div>
+          <h2 id="scenario-title"></h2>
+          <p id="scenario-text"></p>
+          <p class="note" data-t="systematicDef"></p>
+        </div>
+        <div class="sys-panel">
+          <div class="sys-head">
+            <h3 data-t="sysTitle"></h3>
+            <span class="verdict" id="verdict" aria-live="polite"></span>
+          </div>
+          <div class="field tol"><label for="tolerance" data-t="tolerance"></label><input type="number" id="tolerance" min="0.1" max="100" step="0.1"></div>
+          <div class="tiles" id="tiles"></div>
+        </div>
+      </section>
+
       <div class="lower">
         <figure class="card chart-card">
           <figcaption><h2 data-t="chartTitle"></h2> <span id="chart-metric"></span></figcaption>

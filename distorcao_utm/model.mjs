@@ -364,14 +364,14 @@ export function transformCloud(cloud, ctx) {
   const enu = new Float32Array(3 * N), disp = new Float32Array(3 * N), ppm = new Float32Array(N);
   const dg = ctx.useGeoid ? new Float32Array(N) : null;   // geoid part of the vertical displacement
   const o = {};
-  let ppmMin = Infinity, ppmMax = -Infinity, dMax = 0, dzMin = Infinity, dzMax = -Infinity, dhMax = 0;
+  let ppmMin = Infinity, ppmMax = -Infinity, dMax = 0, dzMin = Infinity, dzMax = -Infinity, dhMax = 0, dgMaxAbs = dg ? 0 : NaN;
   for (let i = 0; i < N; i++) {
     transformPoint(ctx, cloud.X[i], cloud.Y[i], cloud.Z[i], o);
     const j = 3 * i;
     enu[j] = o.e; enu[j + 1] = o.n; enu[j + 2] = o.u;
     disp[j] = o.dx; disp[j + 1] = o.dy; disp[j + 2] = o.dz;
     ppm[i] = o.ppm;
-    if (dg) dg[i] = -(o.geoidN - ctx.geoidN0);
+    if (dg) { dg[i] = -(o.geoidN - ctx.geoidN0); if (Math.abs(dg[i]) > dgMaxAbs) dgMaxAbs = Math.abs(dg[i]); }
     if (o.ppm < ppmMin) ppmMin = o.ppm;
     if (o.ppm > ppmMax) ppmMax = o.ppm;
     const dh = Math.hypot(o.dx, o.dy), d3 = Math.hypot(dh, o.dz);
@@ -380,7 +380,7 @@ export function transformCloud(cloud, ctx) {
     if (o.dz < dzMin) dzMin = o.dz;
     if (o.dz > dzMax) dzMax = o.dz;
   }
-  return { enu, disp, ppm, dg, stats: { ppmMin, ppmMax, dhMax, dzMin, dzMax, d3Max: dMax } };
+  return { enu, disp, ppm, dg, stats: { ppmMin, ppmMax, dhMax, dzMin, dzMax, d3Max: dMax, dgMaxAbs } };
 }
 
 /** UTM-measured dimensions of each cube (from its corners) against its true edge length. */
