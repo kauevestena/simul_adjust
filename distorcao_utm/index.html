@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>distorcao_utm · Distorções UTM e do Geoide em Nuvens de Pontos</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <a class="portal" href="../" data-t="portal">← Portal</a>
+    <div class="heading">
+      <h1 data-t="title">Distorções UTM e do Geoide em Nuvens de Pontos</h1>
+      <p class="subtitle" data-t="subtitle"></p>
+    </div>
+    <div class="lang" role="group" data-label="langGroup" aria-label="Idioma">
+      <button type="button" data-lang="pt-BR" aria-pressed="true">PT</button>
+      <button type="button" data-lang="en" aria-pressed="false">EN</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="controls" data-label="controls" aria-label="Parâmetros">
+      <form id="form" autocomplete="off" onsubmit="return false">
+        <fieldset>
+          <legend data-t="secCentre"></legend>
+          <div class="field" data-key="lat"><label for="lat-n" data-t="lat"></label><input type="range" id="lat-r" min="-80" max="84" step="0.001"><input type="number" id="lat-n" min="-80" max="84" step="0.001"></div>
+          <div class="field" data-key="lon"><label for="lon-n" data-t="lon"></label><input type="range" id="lon-r" min="-180" max="180" step="0.001"><input type="number" id="lon-n" min="-180" max="180" step="0.001"></div>
+          <div class="field" data-key="h0"><label for="h0-n" data-t="h0"></label><input type="range" id="h0-r" min="-500" max="9000" step="10"><input type="number" id="h0-n" min="-500" max="9000" step="1"></div>
+        </fieldset>
+        <fieldset>
+          <legend data-t="secArea"></legend>
+          <div class="field" data-key="spanWE" data-log="1"><label for="spanWE-n" data-t="spanWE"></label><input type="range" id="spanWE-r" min="0" max="1000" step="1"><input type="number" id="spanWE-n" min="100" max="100000" step="1"></div>
+          <div class="field" data-key="spanNS" data-log="1"><label for="spanNS-n" data-t="spanNS"></label><input type="range" id="spanNS-r" min="0" max="1000" step="1"><input type="number" id="spanNS-n" min="100" max="100000" step="1"></div>
+        </fieldset>
+        <fieldset>
+          <legend data-t="secBuildings"></legend>
+          <div class="field" data-key="grid"><label for="grid-n" data-t="grid"></label><input type="range" id="grid-r" min="1" max="12" step="1"><input type="number" id="grid-n" min="1" max="12" step="1"></div>
+          <div class="field" data-key="sizeMin"><label for="sizeMin-n" data-t="sizeMin"></label><input type="range" id="sizeMin-r" min="5" max="300" step="1"><input type="number" id="sizeMin-n" min="5" max="300" step="0.1"></div>
+          <div class="field" data-key="sizeMax"><label for="sizeMax-n" data-t="sizeMax"></label><input type="range" id="sizeMax-r" min="5" max="300" step="1"><input type="number" id="sizeMax-n" min="5" max="300" step="0.1"></div>
+          <p class="note" id="size-note" hidden></p>
+          <button type="button" id="reseed" class="secondary" data-t="reseed"></button>
+        </fieldset>
+        <fieldset>
+          <legend data-t="secDensity"></legend>
+          <div class="field" data-key="buildingDensity" data-log="1"><label for="buildingDensity-n" data-t="buildingDensity"></label><input type="range" id="buildingDensity-r" min="0" max="1000" step="1"><input type="number" id="buildingDensity-n" min="0.01" max="25" step="any"></div>
+          <div class="field" data-key="terrainDensity" data-log="1"><label for="terrainDensity-n" data-t="terrainDensity"></label><input type="range" id="terrainDensity-r" min="0" max="1000" step="1"><input type="number" id="terrainDensity-n" min="0.0001" max="4" step="any"></div>
+          <div class="budget"><meter id="budget-meter" min="0" max="1" low="0.75" high="0.98" optimum="0.3" value="0"></meter><p id="budget-text" aria-live="polite"></p><p class="note" id="budget-note" hidden></p></div>
+        </fieldset>
+        <fieldset>
+          <legend data-t="secProjection"></legend>
+          <div class="field select"><label for="zone" data-t="zone"></label>
+            <select id="zone"><option value="auto" data-t="zoneAuto"></option><option value="west" data-t="zoneWest"></option><option value="east" data-t="zoneEast"></option></select></div>
+          <label class="check"><input type="checkbox" id="geoid"> <span data-t="geoid"></span></label>
+          <p class="note" id="geoid-status" aria-live="polite"></p>
+        </fieldset>
+        <fieldset>
+          <legend data-t="secDisplay"></legend>
+          <div class="field select"><label for="metric" data-t="metric"></label>
+            <select id="metric"><option value="ppm" data-t="metric_ppm"></option><option value="dh" data-t="metric_dh"></option><option value="dz" data-t="metric_dz"></option><option value="dg" data-t="metric_dg"></option><option value="d3" data-t="metric_d3"></option></select></div>
+          <p class="note" id="metric-help"></p>
+          <div class="field select"><label for="range" data-t="range"></label>
+            <select id="range"><option value="data" data-t="rangeData"></option><option value="zero" data-t="rangeZero"></option></select></div>
+          <div class="field" data-key="exaggeration" data-log="1"><label for="exaggeration-n" data-t="exaggeration"></label><input type="range" id="exaggeration-r" min="0" max="1000" step="1"><input type="number" id="exaggeration-n" min="1" max="10000" step="any"></div>
+          <p class="note" data-t="exaggerationHint"></p>
+          <div class="field" data-key="pointSize"><label for="pointSize-n" data-t="pointSize"></label><input type="range" id="pointSize-r" min="1" max="8" step="0.5"><input type="number" id="pointSize-n" min="1" max="8" step="0.5"></div>
+          <label class="check"><input type="checkbox" id="outline" checked> <span data-t="outline"></span></label>
+          <button type="button" id="reset-view" class="secondary" data-t="resetView"></button>
+        </fieldset>
+      </form>
+    </aside>
+
+    <section class="content">
+      <div class="split" id="split" data-label="views3d">
+        <span class="view-cap left" data-t="viewLeft"></span>
+        <span class="view-cap right" id="cap-right"></span>
+        <span class="axis-label" data-view="0" data-axis="x">e</span><span class="axis-label" data-view="0" data-axis="y">n</span><span class="axis-label" data-view="0" data-axis="z">u</span>
+        <span class="axis-label" data-view="1" data-axis="x">E</span><span class="axis-label" data-view="1" data-axis="y">N</span><span class="axis-label" data-view="1" data-axis="z" id="axis-h">h</span>
+        <div class="legend-left" data-t="legendLeft"></div>
+        <div class="bar3d"><canvas id="bar3d" width="86" height="210"></canvas></div>
+        <div class="busy" id="busy" hidden><span class="spinner" aria-hidden="true"></span><span data-t="busy"></span></div>
+        <p class="fail" id="webgl-fail" data-t="webglFail" hidden></p>
+      </div>
+      <p class="hint" data-t="views3d"></p>
+
+      <div class="lower">
+        <figure class="card chart-card">
+          <figcaption><h2 data-t="chartTitle"></h2> <span id="chart-metric"></span></figcaption>
+          <canvas id="chart" role="img" data-label="chartLabel"></canvas>
+          <dl class="readout" id="readout" aria-live="polite"></dl>
+          <p class="note" data-t="chartNote"></p>
+          <p class="note" id="arrows-note" data-t="arrowsNote" hidden></p>
+        </figure>
+        <section class="card stats">
+          <h2 data-t="statsTitle"></h2>
+          <dl id="stats"></dl>
+          <h3 data-t="cubesTitle"></h3>
+          <p class="note" data-t="cubesNote"></p>
+          <div class="table-wrap"><table id="cubes"><thead><tr><th data-t="cubeWhich"></th><th data-t="cubeTrue"></th><th data-t="cubeWE"></th><th data-t="cubeSN"></th><th data-t="cubeH"></th></tr></thead><tbody></tbody></table></div>
+          <p class="error" id="error" role="alert" hidden></p>
+        </section>
+      </div>
+
+      <details class="card theory">
+        <summary data-t="theoryTitle"></summary>
+        <div data-t-html="theoryBody"></div>
+      </details>
+    </section>
+  </main>
+  <noscript>Este simulador requer JavaScript. / This simulator requires JavaScript.</noscript>
+  <script type="module" src="app.mjs"></script>
+</body>
+</html>

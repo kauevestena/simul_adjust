@@ -1,0 +1,26 @@
+{
+ "model": "EGM2008",
+ "grid": "5' (1/12 deg), point registered",
+ "source": "GeographicLib egm2008-5.pgm (https://geographiclib.sourceforge.io/C++/doc/geoid.html)",
+ "sourceArchive": "egm2008-5.tar.bz2",
+ "sourceSha256": "9a57c14330ac609132d324906822a9da9de265ad9b9087779793eb7080852970",
+ "license": "EGM2008 by the U.S. National Geospatial-Intelligence Agency (public domain); grid packaging by C. F. F. Karney (GeographicLib, MIT)",
+ "offset": -108.0,
+ "scale": 0.003,
+ "perDegree": 12,
+ "tileDegrees": 10,
+ "nodes": 123,
+ "marginBefore": 1,
+ "rows": 18,
+ "cols": 36,
+ "origin": "tile rRRcCC: north edge lat = 90 - 10*RR, west edge lon = -180 + 10*CC; node (i, j) at lat = north - (i - 1)/12, lon = west + (j - 1)/12",
+ "encoding": "gzip of int16 little-endian residuals of a planar predictor: r00 = v00 - 32768; first row r0j = v0j - v0(j-1); first column ri0 = vi0 - v(i-1)0; elsewhere rij = vij - vi(j-1) - v(i-1)j + v(i-1)(j-1); N = offset + scale * v",
+ "pgmMeta": {
+  "Description": "WGS84 EGM2008, 5-minute grid",
+  "MaxBilinearError": "0.478",
+  "RMSBilinearError": "0.012",
+  "MaxCubicError": "0.294",
+  "RMSCubicError": "0.005"
+ },
+ "totalBytes": 7511624
+}

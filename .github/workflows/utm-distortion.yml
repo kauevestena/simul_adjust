@@ -1,0 +1,37 @@
+name: UTM distortion simulator tests
+on:
+  push:
+    paths:
+      - "distorcao_utm/**"
+      - ".github/workflows/utm-distortion.yml"
+      - "index.html"
+      - "camera_proj/vendor/**"
+      - "camera_proj/package*.json"
+      - "network_preanalysis/network/coordinates.mjs"
+  pull_request:
+    paths:
+      - "distorcao_utm/**"
+      - ".github/workflows/utm-distortion.yml"
+      - "index.html"
+      - "camera_proj/vendor/**"
+      - "camera_proj/package*.json"
+      - "network_preanalysis/network/coordinates.mjs"
+permissions:
+  contents: read
+jobs:
+  distorcao-utm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: camera_proj/package-lock.json
+      - run: node --test distorcao_utm/tests/*.test.mjs
+      - run: npm ci --prefix camera_proj
+      - run: npx --prefix camera_proj playwright install --with-deps chromium
+      - run: node distorcao_utm/tests/browser.cjs
+        env:
+          NODE_PATH: ./camera_proj/node_modules

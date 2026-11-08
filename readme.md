@@ -58,6 +58,23 @@ folha para mostrar o erro da estação, vistas 2D/3D, histograma dos resíduos, 
 em forma matricial e escalar) e de comparação. Como no `ajusta_planos`, só ajusta quando ▶ é pressionado. Veja a
 [documentação em português](transform_lab/README.pt-BR.md).
 
+### UTM & Geoid Distortions / Distorções UTM e do Geoide
+
+[`distorcao_utm/`](distorcao_utm/) is a bilingual PT-BR/EN simulator of the geometric distortion a
+point cloud captured in ECEF suffers when it is converted to UTM (E, N) plus ellipsoidal height, or
+orthometric height with the EGM2008 geoid (5′ tiles fetched on demand), and then treated as
+Cartesian. A grid of cubic buildings on flat terrain following the ellipsoid is shown side by side in
+ENU (rigid, undistorted) and in UTM (coloured by the local distortion, with adjustable exaggeration),
+with a 2D distortion map, the UTM-measured cube edges and up to 2 million points computed in a Web
+Worker. See its [documentation](distorcao_utm/README.md).
+
+Simulador bilíngue da distorção geométrica que uma nuvem de pontos capturada em ECEF sofre ao ser
+convertida para UTM (E, N) com altitude elipsoidal, ou ortométrica com o geoide EGM2008 (tiles de 5′
+baixados sob demanda), e tratada como cartesiana. Uma grade de edificações cúbicas sobre terreno plano
+que acompanha o elipsoide é mostrada lado a lado em ENU (rígido, sem distorção) e em UTM (colorida
+pela distorção local, com exagero ajustável), com mapa 2D da distorção, as arestas dos cubos medidas
+em UTM e até 2 milhões de pontos calculados num Web Worker. Veja a [documentação](distorcao_utm/README.md).
+
 ### DTM Lab / Laboratório de MDT
 
 [`dtm_lab`](https://github.com/kauevestena/dtm_lab) lives in its own repository, which follows this monorepo's `AGENTS.md`, because its
