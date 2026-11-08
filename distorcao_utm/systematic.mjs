@@ -15,8 +15,8 @@ const worst = levels => levels.reduce((a, b) => (LEVELS.indexOf(b) > LEVELS.inde
 
 /**
  * out: result of model.simulate(); tolerance in metres.
- * Returns the scale error at the centre (ppm = mm/km, mm per 100 m), and three judged errors:
- * the largest error on a cube edge, the largest horizontal and the largest vertical position error.
+ * Returns the scale error at the centre (ppm = mm/km, mm per 100 m), and four judged errors:
+ * the largest error on a cube edge, the largest horizontal, vertical and scalar 3D position error.
  */
 export function assessSystematic(out, tolerance) {
   const T = Math.max(1e-4, tolerance);
@@ -33,11 +33,13 @@ export function assessSystematic(out, tolerance) {
     edge: { ...edge, level: level(edge.value, T) },
     horizontal: { value: s.dhMax, level: level(s.dhMax, T) },
     vertical: { value: vertical, geoid: geoidPart, level: level(vertical, T) },
+    // point clouds are 3D products: the scalar 3D error |d| of the whole cloud
+    total3d: { value: s.d3Max, level: level(s.d3Max, T) },
   };
   return {
     tolerance: T,
     scale: { ppm: out.context.ppm0, per100m: out.context.ppm0 * 1e-4 },
     ...judged,
-    overall: worst([judged.edge.level, judged.horizontal.level, judged.vertical.level]),
+    overall: worst([judged.edge.level, judged.horizontal.level, judged.vertical.level, judged.total3d.level]),
   };
 }

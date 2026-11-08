@@ -83,6 +83,19 @@ async function main() {
   await page.locator('#chart').hover({ position: { x: box.width * 0.3, y: box.height * 0.4 } });
   assert.match(await page.locator('#readout').textContent(), /Cursor/);
 
+  // 2b. the 2D view can also show the scalar 3D error of the whole cloud (second, synchronized panel)
+  let st = await state();
+  assert.deepEqual(st.chart.panels, ['ppm']);
+  await page.check('#show3d');
+  st = await state();
+  assert.deepEqual(st.chart.panels, ['ppm', 'd3cloud']);
+  assert.equal(st.chart.layout.panels, 2);
+  assert.equal(await page.locator('#panel3d-note').isVisible(), true);
+  assert.match(await page.locator('#readout').textContent(), /Erro 3D escalar da nuvem/);
+  await shot('two-panels-pt');
+  await page.uncheck('#show3d');
+  assert.deepEqual((await state()).chart.panels, ['ppm']);
+
   // 3. metrics and colour scales
   await page.selectOption('#metric', 'dh');
   s = await state();
@@ -154,7 +167,8 @@ async function main() {
   assert.match(page.url(), /scenario=rio/);
   assert.match(await page.locator('#scenario-title').textContent(), /Rio de Janeiro/);
   assert.match(await page.locator('#verdict').textContent(), /Verdict: negligible/);
-  assert.equal(await page.locator('#tiles .tile').count(), 4);
+  assert.equal(await page.locator('#tiles .tile').count(), 5);
+  assert.equal(s.assessment.total3d, 'negligible');
   const tolJob = s.job;
   await page.fill('#tolerance', '0.5'); await page.dispatchEvent('#tolerance', 'change');
   s = await state();

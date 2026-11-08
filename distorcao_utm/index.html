@@ -102,11 +102,14 @@
 
       <div class="lower">
         <figure class="card chart-card">
-          <figcaption><h2 data-t="chartTitle"></h2> <span id="chart-metric"></span></figcaption>
+          <figcaption><h2 data-t="chartTitle"></h2> <span id="chart-metric"></span>
+            <label class="check show3d"><input type="checkbox" id="show3d"> <span data-t="show3d"></span></label>
+          </figcaption>
           <canvas id="chart" role="img" data-label="chartLabel"></canvas>
           <dl class="readout" id="readout" aria-live="polite"></dl>
           <p class="note" data-t="chartNote"></p>
           <p class="note" id="arrows-note" data-t="arrowsNote" hidden></p>
+          <p class="note" id="panel3d-note" data-t="panel3dNote" hidden></p>
         </figure>
         <section class="card stats">
           <h2 data-t="statsTitle"></h2>

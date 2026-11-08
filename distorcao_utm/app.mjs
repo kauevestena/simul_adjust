@@ -14,7 +14,7 @@ const maxPoints = lowEnd ? M.MAX_POINTS_LOW : M.MAX_POINTS;
 const DISPLAY_LIMITS = { exaggeration: [1, 10000], pointSize: [1, 8] };
 
 let params = M.normalizeParams({});
-const display = { metric: 'ppm', range: 'data', exaggeration: 100, pointSize: 2, outline: true, tolerance: 0.02 };
+const display = { metric: 'ppm', range: 'data', exaggeration: 100, pointSize: 2, outline: true, tolerance: 0.02, show3d: false };
 const geoid = createGeoidLoader();
 const state = { job: 0, busy: false, result: null, scale: null, unit: null, geoidStatus: 'idle', geoidError: '', workerUsed: false, error: '', lastSpan: null, scenario: DEFAULT_SCENARIO, baseScenario: DEFAULT_SCENARIO, assessment: null };
 
@@ -97,6 +97,7 @@ function bindFields() {
   $('metric').addEventListener('change', e => { display.metric = e.target.value; recolor(); });
   $('range').addEventListener('change', e => { display.range = e.target.value; recolor(); });
   $('outline').addEventListener('change', e => { display.outline = e.target.checked; viewer.setOutline(e.target.checked); });
+  $('show3d').addEventListener('change', e => { display.show3d = e.target.checked; recolor(); });
   $('reset-view').addEventListener('click', () => viewer.frame(params.spanWE, params.spanNS));
 }
 
@@ -178,6 +179,7 @@ function renderSystematic() {
     [t('tileEdge'), len(a.edge.value), t('tileEdgeSub', { id: a.edge.id + 1, size: format(a.edge.size, 1, 1), which }), a.edge.level],
     [t('tileHorizontal'), len(a.horizontal.value), t('tileHorizontalSub'), a.horizontal.level],
     [t('tileVertical'), len(a.vertical.value), vSub, a.vertical.level],
+    [t('tile3d'), len(a.total3d.value), t('tile3dSub'), a.total3d.level],
   ];
   $('tiles').innerHTML = tiles.map(([label, value, sub, lvl]) =>
     `<div class="tile"><span class="t-label">${label}</span><span class="t-value">${value}</span><span class="t-sub">${sub}</span>${lvl ? chip(lvl, t(`level_${lvl}`)) : ''}</div>`).join('');
@@ -313,6 +315,15 @@ function recolor() {
   for (let i = 0; i < n; i++) { const c = scale.color(value(i)); colors[3 * i] = c[0]; colors[3 * i + 1] = c[1]; colors[3 * i + 2] = c[2]; }
   viewer.updateRightColors(colors);
   chart.setScale(metric, scale, unit);
+  // optional second panel: scalar 3D error |d| of the whole cloud (point clouds are 3D products)
+  $('panel3d-note').hidden = !display.show3d;
+  if (display.show3d) {
+    let lo3 = Infinity, hi3 = -Infinity;
+    for (const v of out.grid.fields.d3cloud) { if (v < lo3) lo3 = v; if (v > hi3) hi3 = v; }
+    chart.setSecond({ scale: makeScale('d3', lo3, hi3, display.range), unit: unitFor('d3', hi3) });
+  } else {
+    chart.setSecond(null);
+  }
   $('chart-metric').textContent = `${t(`metric_${metric}`)} (${unit.unit})`;
   drawColorbar($('bar3d'), scale, { factor: unit.factor, unit: unit.unit, levels: chart.cache?.levels || [], format });
   renderStats();
@@ -392,6 +403,7 @@ export function getState() {
     exaggerationUniform: viewer.rightMat?.uniforms.uExag.value, drawCount: viewer.drawCount || 0, webgl: viewer.ok,
     camera: viewer.cameraState?.(),
     scenario: state.scenario, baseScenario: state.baseScenario, tolerance: display.tolerance,
-    assessment: state.assessment && { overall: state.assessment.overall, edge: state.assessment.edge.level, horizontal: state.assessment.horizontal.level, vertical: state.assessment.vertical.level, ppm: state.assessment.scale.ppm },
+    assessment: state.assessment && { overall: state.assessment.overall, edge: state.assessment.edge.level, horizontal: state.assessment.horizontal.level, vertical: state.assessment.vertical.level, total3d: state.assessment.total3d.level, d3: state.assessment.total3d.value, ppm: state.assessment.scale.ppm },
+    chart: { panels: chart.active.map(p => p.field), layout: chart.layoutInfo },
   };
 }

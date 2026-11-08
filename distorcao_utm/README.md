@@ -27,10 +27,16 @@ distância na escala (ppm = mm/km) e com o quadrado da distância na curvatura (
 por modelagem: trabalhar em ENU ou num sistema topográfico local, aplicar o fator combinado, usar uma
 projeção de baixa distorção, não misturar fusos e manter as alturas coerentes.
 
-O painel **Erro sistemático desta configuração** mede quatro componentes: o erro de escala no
-centro, o maior erro numa aresta de cubo, o maior erro horizontal de posição e o maior erro vertical
-de posição. Cada um é comparado com uma tolerância T: desprezível até T/3, tolerável até T, excede
+O painel **Erro sistemático desta configuração** mede cinco componentes: o erro de escala no
+centro, o maior erro numa aresta de cubo e os maiores erros de posição horizontal, vertical e 3D
+(|d| = √(dE² + dN² + dU²), porque uma nuvem de pontos é um produto 3D). Cada um é comparado com uma tolerância T: desprezível até T/3, tolerável até T, excede
 acima de T. Mudar T só refaz o veredito, sem recalcular a nuvem.
+
+A caixa **Mostrar também o erro 3D escalar da nuvem** acrescenta ao mapa 2D um segundo painel,
+sincronizado, com |d| de todos os pontos da nuvem (terreno, fachadas e telhados), o maior valor em
+torno de cada nó. Os telhados somam ≈ a·s/R ao erro horizontal: no ENU cada edifício a uma distância s
+se inclina para fora (a vertical aponta para o centro da Terra), no UTM todas as verticais são
+paralelas (1,6 cm para 100 m de altura a 1 km do centro).
 
 ### Cenários prontos
 O seletor de cenários (também `?scenario=<id>` na URL) carrega local, área, tolerância, métrica e
@@ -130,10 +136,16 @@ for scale (ppm = mm/km) and with the square of distance for curvature (d²/2R). 
 modelling: work in ENU or a local topographic frame, apply the combined factor, use a low-distortion
 projection, never mix zones, and keep heights consistent.
 
-The **Systematic error of this configuration** panel measures four components: the scale error at the
-centre, the largest error on a cube edge, the largest horizontal position error and the largest
-vertical position error. Each is compared with a tolerance T: negligible up to T/3, tolerable up to T,
+The **Systematic error of this configuration** panel measures five components: the scale error at the
+centre, the largest error on a cube edge and the largest horizontal, vertical and 3D position errors
+(|d| = √(dE² + dN² + dU²), because a point cloud is a 3D product). Each is compared with a tolerance T: negligible up to T/3, tolerable up to T,
 exceeding above T. Changing T only re-judges, without recomputing the cloud.
+
+The **Also show the scalar 3D error of the cloud** box adds a second, synchronized panel to the 2D
+map with |d| of every cloud point (terrain, walls and roofs), the largest value around each node.
+Roofs add ≈ a·s/R to the horizontal error: in ENU every building at distance s leans outward (its
+vertical points to the Earth centre), while in UTM all verticals are parallel (1.6 cm for a 100 m
+building 1 km from the centre).
 
 ### Ready-made scenarios
 The scenario selector (also `?scenario=<id>` in the URL) loads site, area, tolerance, metric and

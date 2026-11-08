@@ -427,6 +427,27 @@ export function distortionGrid(p, ctx, size = 121) {
   return { nx, ny, spanWE: p.spanWE, spanNS: p.spanNS, fields };
 }
 
+/**
+ * Scalar 3D error of the whole cloud (terrain, walls and roofs) rasterized on the 2D grid:
+ * fields.d3cloud[node] = max(|d| of the terrain at the node, max |d| of the cloud points nearest to it).
+ * Roofs add a truly 3D term: in ENU every vertical points to the Earth's centre (a building at
+ * distance s leans outward by s/R), while UTM stands all verticals parallel, so a roof at height a
+ * carries an extra ≈ a·s/R of horizontal error.
+ */
+export function cloudErrorField(grid, enu, disp) {
+  const { nx, ny, spanWE, spanNS, fields } = grid;
+  const out = Float32Array.from(fields.d3);
+  const fx = (nx - 1) / spanWE, fy = (ny - 1) / spanNS;
+  for (let i = 0, n = enu.length / 3; i < n; i++) {
+    const ix = Math.round((enu[3 * i] + spanWE / 2) * fx), iy = Math.round((enu[3 * i + 1] + spanNS / 2) * fy);
+    if (ix < 0 || iy < 0 || ix >= nx || iy >= ny) continue;
+    const d = Math.hypot(disp[3 * i], disp[3 * i + 1], disp[3 * i + 2]), k = iy * nx + ix;
+    if (d > out[k]) out[k] = d;
+  }
+  fields.d3cloud = out;
+  return out;
+}
+
 /** Geographic bounding box of the area (degrees, lon unwrapped around the centre). */
 export function areaBounds(p, margin = 0.02) {
   const O = llhToEcef({ lat: p.lat, lon: p.lon, h: p.h0 }), R0 = enuRotation({ lat: p.lat, lon: p.lon });
@@ -454,6 +475,7 @@ export function simulate(params, { geoidPatch = null, maxPoints = MAX_POINTS, gr
   const t2 = typeof performance !== 'undefined' ? performance.now() : Date.now();
   const report = buildingReport(cloud.buildings, ctx);
   const grid = distortionGrid(cloud.params, ctx, gridSize);
+  cloudErrorField(grid, tr.enu, tr.disp);
   const t3 = typeof performance !== 'undefined' ? performance.now() : Date.now();
   const { geoidPatch: _omit, O, R0, ...context } = ctx;
   return {

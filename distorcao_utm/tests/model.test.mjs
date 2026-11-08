@@ -156,3 +156,24 @@ test('toDms formats signed angles', () => {
   assert.equal(M.toDms(0.7386863381), '0° 44′ 19.27″');
   assert.equal(M.toDms(-1.5, 0), '−1° 30′ 00″');
 });
+
+test('scalar 3D error of the cloud: never below the terrain value; roofs add ≈ a·s/R (lean of the verticals)', () => {
+  const out = M.simulate({}, { gridSize: 61 });
+  const { d3, d3cloud } = out.grid.fields;
+  assert.equal(d3cloud.length, d3.length);
+  let excess = 0;
+  for (let i = 0; i < d3.length; i++) { assert.ok(d3cloud[i] >= d3[i]); excess = Math.max(excess, d3cloud[i] - d3[i]); }
+  assert.ok(excess > 0.005, `roofs/walls raise the 3D error somewhere (${excess})`);
+  assert.ok(Math.max(...d3cloud) >= out.stats.d3Max - 1e-6, 'the map holds at least the cloud maximum');
+  // base vs roof centre of the farthest cube (same normal, so the same E, N in UTM):
+  // the roof carries a·s/R more horizontal error than the base
+  const cloud = M.generateCloud({});
+  const ctx = M.projectionContext(cloud.params);
+  const b = cloud.buildings.reduce((x, y) => (Math.hypot(y.e, y.n) > Math.hypot(x.e, x.n) ? y : x));
+  const top = [0, 1, 2].map(i => b.origin[i] + b.size * b.R[2][i]);
+  const base = M.transformPoint(ctx, ...b.origin, {}), roof = M.transformPoint(ctx, ...top, {});
+  assert.ok(Math.hypot(roof.E - base.E, roof.N - base.N) < 1e-6, 'a plumb roof keeps its base E, N');
+  const lean = Math.hypot(roof.dx - base.dx, roof.dy - base.dy);
+  const expected = b.size * Math.hypot(b.e, b.n) / 6.37e6;
+  assert.ok(Math.abs(lean / expected - 1) < 0.01, `${lean} vs ${expected}`);
+});

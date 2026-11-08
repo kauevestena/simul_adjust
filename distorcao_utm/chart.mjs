@@ -1,12 +1,13 @@
-// 2D distortion map (canvas): heatmap on the (e, n) grid at terrain level, marching-squares
-// isolines, building footprints, the central meridian, optional displacement arrows, a
-// colourbar and a hover readout. Text uses text tokens; colour only encodes the metric.
+// 2D systematic-error map (canvas): one or two synchronized panels (small multiples) on the (e, n)
+// grid. Panel 1 is the selected metric; optional panel 2 is the scalar 3D error |d| of the whole
+// cloud (terrain, walls and roofs). Each panel has a heatmap, marching-squares isolines, building
+// footprints, the central meridian and its own colourbar; hover shows a crosshair in both panels.
+// Text uses text tokens; colour only encodes the data.
 import { niceTicks } from './colors.mjs';
 
 const INK = { primary: '#f0efec', secondary: '#c3c2b7', muted: '#8f8e86', grid: 'rgba(240,239,236,0.14)', iso: 'rgba(250,250,245,0.5)' };
 const FONT = '12px system-ui, -apple-system, "Segoe UI", sans-serif';
-
-export const metricValue = (fields, metric, i) => fields[metric][i];
+const BOLD = '600 12px system-ui, -apple-system, "Segoe UI", sans-serif';
 
 function fmt(v, digits = 2) {
   if (!Number.isFinite(v)) return '—';
@@ -24,26 +25,29 @@ export function drawColorbar(canvas, scale, { factor = 1, unit = '', ticks, leve
   const g = canvas.getContext('2d');
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
   g.clearRect(0, 0, w, h);
-  const top = 16, bottom = h - 8, barW = 12, x0 = 4;
-  const lo = scale.min * factor, hi = scale.max * factor;
+  barInto(g, scale, { x: 4, top: 16, bottom: h - 8, factor, unit, ticks, levels, format, unitY: 7 });
+}
+
+function barInto(g, scale, { x, top, bottom, factor, unit, ticks, levels = [], format = fmt, unitY }) {
+  const barW = 12, lo = scale.min * factor, hi = scale.max * factor;
   for (let y = top; y < bottom; y++) {
     const v = hi - (y - top) / (bottom - top) * (hi - lo);
     const [r, gg, b] = scale.color(v / factor);
     g.fillStyle = `rgb(${r},${gg},${b})`;
-    g.fillRect(x0, y, barW, 1.5);
+    g.fillRect(x, y, barW, 1.5);
   }
-  g.font = FONT; g.textBaseline = 'middle';
+  g.font = FONT; g.textBaseline = 'middle'; g.textAlign = 'left';
   g.fillStyle = INK.secondary;
-  g.fillText(unit, x0, 7);
+  g.fillText(unit, x, unitY);
   const yOf = v => top + (hi - v) / (hi - lo || 1) * (bottom - top);
   g.strokeStyle = INK.iso; g.lineWidth = 1;
-  for (const v of levels) { const y = yOf(v); g.beginPath(); g.moveTo(x0, y); g.lineTo(x0 + barW, y); g.stroke(); }
+  for (const v of levels) { const y = yOf(v); if (y >= top && y <= bottom) { g.beginPath(); g.moveTo(x, y); g.lineTo(x + barW, y); g.stroke(); } }
   g.fillStyle = INK.primary;
-  for (const v of ticks || niceTicks(lo, hi, 4)) {
+  for (const v of ticks || niceTicks(lo, hi, Math.max(3, Math.round((bottom - top) / 45)))) {
     const y = yOf(v);
     if (y < top - 1 || y > bottom + 1) continue;
-    g.fillRect(x0 + barW, y - 0.5, 4, 1);
-    g.fillText(format(v), x0 + barW + 7, y);
+    g.fillRect(x + barW, y - 0.5, 4, 1);
+    g.fillText(format(v), x + barW + 7, y);
   }
 }
 
@@ -72,11 +76,12 @@ export function isoSegments(values, nx, ny, level) {
 export class DistortionChart {
   constructor(canvas, { readout, onHover, t = k => k, format = fmt } = {}) {
     this.canvas = canvas;
-    this.format = (...a) => format(...a);
     this.readout = readout;
     this.onHover = onHover;
     this.t = t;
+    this.format = (...a) => format(...a);
     this.hover = null;
+    this.panels = [null, null];   // { field, scale, unit, title, cache }
     canvas.addEventListener('pointermove', e => this.pointer(e));
     canvas.addEventListener('pointerleave', () => { this.hover = null; this.draw(); this.renderReadout(); });
     new ResizeObserver(() => this.draw()).observe(canvas);
@@ -84,42 +89,62 @@ export class DistortionChart {
 
   setData({ grid, buildings, context, params }) {
     Object.assign(this, { grid, buildings, context, params });
-    this.cache = null;
+    this.panels.forEach(p => { if (p) p.cache = null; });
+    this.cmLine = null;
     this.draw();
     this.renderReadout();
   }
 
+  /** Panel 1: the selected metric. */
   setScale(metric, scale, unit) {
-    Object.assign(this, { metric, scale, unit });
-    this.cache = null;
+    this.metric = metric;
+    this.panels[0] = { field: metric, scale, unit, title: this.t(`metric_${metric}`) };
     this.draw();
     this.renderReadout();
   }
 
-  layout() {
-    const w = this.canvas.clientWidth, h = this.canvas.clientHeight;
-    const m = { l: 54, r: 92, t: 14, b: 40 };
-    const aw = w - m.l - m.r, ah = h - m.t - m.b;
-    const { spanWE, spanNS } = this.grid;
-    const s = Math.min(aw / spanWE, ah / spanNS);
-    const pw = spanWE * s, ph = spanNS * s;
-    const x0 = m.l + (aw - pw) / 2, y0 = m.t + (ah - ph) / 2;
-    return { w, h, x0, y0, pw, ph, s, cb: { x: x0 + pw + 14, y: m.t, h: ah } };
+  /** Panel 2: scalar 3D error of the whole cloud ({ scale, unit }), or null to hide it. */
+  setSecond(spec) {
+    this.panels[1] = spec ? { field: 'd3cloud', ...spec, title: this.t('panel3dTitle') } : null;
+    this.canvas.classList.toggle('two', Boolean(spec));
+    this.draw();
+    this.renderReadout();
   }
 
-  toPx(L, e, n) { return [L.x0 + (e + this.grid.spanWE / 2) * L.s, L.y0 + (this.grid.spanNS / 2 - n) * L.s]; }
+  get active() { return this.panels.filter(Boolean); }
+  /** Isoline levels of panel 1 (shared with the 3D-view colourbar). */
+  get cache() { return this.panels[0]?.cache; }
 
-  buildCache() {
-    const { grid, metric, scale, unit } = this;
-    const { nx, ny, fields } = grid;
+  /** Panel rectangles (CSS px): side by side when wide enough, stacked otherwise. */
+  layout() {
+    const w = this.canvas.clientWidth, h = this.canvas.clientHeight, n = this.active.length;
+    const side = n === 2 && w >= 760;
+    const cells = n === 2
+      ? (side ? [[0, 0, w / 2, h], [w / 2, 0, w / 2, h]] : [[0, 0, w, h / 2], [0, h / 2, w, h / 2]])
+      : [[0, 0, w, h]];
+    const { spanWE, spanNS } = this.grid;
+    const rects = cells.map(([cx, cy, cw, chh]) => {
+      const m = { l: 54, r: 92, t: n === 2 ? 26 : 14, b: 40 };
+      const aw = cw - m.l - m.r, ah = chh - m.t - m.b;
+      const s = Math.max(1e-9, Math.min(aw / spanWE, ah / spanNS));
+      const pw = spanWE * s, ph = spanNS * s;
+      const x0 = cx + m.l + (aw - pw) / 2, y0 = cy + m.t + (ah - ph) / 2;
+      return { cx, cy, x0, y0, pw, ph, s, cb: { x: x0 + pw + 14, top: cy + m.t + 18, bottom: cy + m.t + ah, unitY: cy + m.t + 6 } };
+    });
+    return { w, h, side, rects };
+  }
+
+  buildCache(panel) {
+    const { nx, ny, fields } = this.grid;
+    const src = fields[panel.field];
     const img = makeCanvas(nx, ny);
     const g = img.getContext('2d');
     const data = g.createImageData(nx, ny);
     const values = new Float32Array(nx * ny);
     for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
-      const k = j * nx + i, v = metricValue(fields, metric, k);
-      values[k] = v * unit.factor;
-      const [r, gg, b] = scale.color(v);
+      const k = j * nx + i, v = src[k];
+      values[k] = v * panel.unit.factor;
+      const [r, gg, b] = panel.scale.color(v);
       const p = 4 * ((ny - 1 - j) * nx + i);
       data.data[p] = r; data.data[p + 1] = gg; data.data[p + 2] = b; data.data[p + 3] = 255;
     }
@@ -127,88 +152,99 @@ export class DistortionChart {
     let lo = Infinity, hi = -Infinity;
     for (const v of values) { if (v < lo) lo = v; if (v > hi) hi = v; }
     const levels = hi > lo ? niceTicks(lo, hi, 7).filter(v => v > lo && v < hi) : [];
-    const iso = levels.map(level => ({ level, segs: isoSegments(values, nx, ny, level) }));
-    // central meridian crossing (lon - cm changes sign along a row)
-    const cm = [];
+    panel.cache = { img, levels, iso: levels.map(level => isoSegments(values, nx, ny, level)) };
+  }
+
+  /** Central meridian crossing (lon − cm changes sign along a row), in grid index space. */
+  centralMeridian() {
+    if (this.cmLine) return this.cmLine;
+    const { nx, ny, fields } = this.grid, cm = [];
     if (this.context) for (let j = 0; j < ny; j++) for (let i = 0; i < nx - 1; i++) {
       const a = fields.lon[j * nx + i] - this.context.cm, b = fields.lon[j * nx + i + 1] - this.context.cm;
       if (a <= 0 && b > 0) cm.push([i + a / (a - b), j]);
     }
-    this.cache = { img, levels, iso, cm, values };
+    return (this.cmLine = cm);
   }
 
   draw() {
     const c = this.canvas;
-    if (!this.grid || !this.scale || !c.clientWidth) return;
-    if (!this.cache) this.buildCache();
+    if (!this.grid || !this.panels[0] || !c.clientWidth) return;
+    // two panels: side by side on wide canvases (shorter), stacked on narrow ones (taller)
+    const want = this.active.length === 2 ? (c.clientWidth >= 760 ? '420px' : '700px') : '';
+    if (c.style.height !== want) c.style.height = want;
+    for (const p of this.active) if (!p.cache) this.buildCache(p);
     const dpr = Math.min(globalThis.devicePixelRatio || 1, 2);
     const L = this.layout();
     c.width = Math.round(L.w * dpr); c.height = Math.round(L.h * dpr);
     const g = c.getContext('2d');
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     g.clearRect(0, 0, L.w, L.h);
+    this.active.forEach((p, idx) => this.drawPanel(g, p, L.rects[idx], idx));
+    this.layoutInfo = { side: L.side, panels: this.active.length };
+  }
+
+  drawPanel(g, panel, R, idx) {
     const { nx, ny, spanWE, spanNS } = this.grid;
+    const gx = i => R.x0 + i / (nx - 1) * R.pw, gy = j => R.y0 + R.ph - j / (ny - 1) * R.ph;
+    if (this.active.length > 1) {
+      g.font = BOLD; g.fillStyle = INK.primary; g.textAlign = 'left'; g.textBaseline = 'top';
+      g.fillText(`${panel.title} (${panel.unit.unit})`, R.x0, R.cy + 4);
+    }
     g.imageSmoothingEnabled = true;
-    g.drawImage(this.cache.img, L.x0, L.y0, L.pw, L.ph);
-    const gx = i => L.x0 + i / (nx - 1) * L.pw, gy = j => L.y0 + L.ph - j / (ny - 1) * L.ph;
-    // isolines
+    g.drawImage(panel.cache.img, R.x0, R.y0, R.pw, R.ph);
     g.strokeStyle = INK.iso; g.lineWidth = 1;
     g.beginPath();
-    for (const { segs } of this.cache.iso) for (const [a, b, cc, d] of segs) { g.moveTo(gx(a), gy(b)); g.lineTo(gx(cc), gy(d)); }
+    for (const segs of panel.cache.iso) for (const [a, b, cc, d] of segs) { g.moveTo(gx(a), gy(b)); g.lineTo(gx(cc), gy(d)); }
     g.stroke();
     // building footprints (true size)
     g.strokeStyle = 'rgba(17,21,23,0.85)'; g.lineWidth = 1.5;
     for (const b of this.buildings || []) {
-      const [x, y] = this.toPx(L, b.e - b.size / 2, b.n + b.size / 2);
-      g.strokeRect(x, y, Math.max(1, b.size * L.s), Math.max(1, b.size * L.s));
+      const x = R.x0 + (b.e - b.size / 2 + spanWE / 2) * R.s, y = R.y0 + (spanNS / 2 - b.n - b.size / 2) * R.s;
+      g.strokeRect(x, y, Math.max(1, b.size * R.s), Math.max(1, b.size * R.s));
     }
-    // central meridian
-    if (this.cache.cm.length > 1) {
+    const cm = this.centralMeridian();
+    if (cm.length > 1) {
       g.save(); g.setLineDash([6, 4]); g.strokeStyle = INK.primary; g.lineWidth = 1.5;
       g.beginPath();
-      this.cache.cm.forEach(([i, j], k) => (k ? g.lineTo(gx(i), gy(j)) : g.moveTo(gx(i), gy(j))));
+      cm.forEach(([i, j], k) => (k ? g.lineTo(gx(i), gy(j)) : g.moveTo(gx(i), gy(j))));
       g.stroke(); g.restore();
-      const [i, j] = this.cache.cm[this.cache.cm.length - 1];
-      g.font = FONT; g.fillStyle = INK.primary; g.textBaseline = 'top';
+      const [i, j] = cm[cm.length - 1];
+      g.font = FONT; g.fillStyle = INK.primary; g.textBaseline = 'top'; g.textAlign = 'left';
       g.fillText(this.t('cmShort'), gx(i) + 4, gy(j) + 2);
     }
-    // displacement arrows (horizontal metric)
-    if (this.metric === 'dh') this.drawArrows(g, L);
-    // frame + axes
-    g.strokeStyle = INK.grid; g.lineWidth = 1; g.strokeRect(L.x0, L.y0, L.pw, L.ph);
+    if (idx === 0 && panel.field === 'dh') this.drawArrows(g, R);
+    // frame and axes
+    g.strokeStyle = INK.grid; g.lineWidth = 1; g.strokeRect(R.x0, R.y0, R.pw, R.ph);
     const km = Math.max(spanWE, spanNS) >= 2000, f = km ? 1e-3 : 1;
     g.font = FONT; g.fillStyle = INK.secondary;
     g.textAlign = 'center'; g.textBaseline = 'top';
-    for (const v of niceTicks(-spanWE / 2 * f, spanWE / 2 * f, Math.max(2, Math.round(L.pw / 80)))) {
-      const x = L.x0 + (v / f + spanWE / 2) * L.s;
-      g.fillRect(x, L.y0 + L.ph, 1, 4);
-      g.fillText(this.format(v, 1), x, L.y0 + L.ph + 6);
+    for (const v of niceTicks(-spanWE / 2 * f, spanWE / 2 * f, Math.max(2, Math.round(R.pw / 80)))) {
+      const x = R.x0 + (v / f + spanWE / 2) * R.s;
+      g.fillRect(x, R.y0 + R.ph, 1, 4);
+      g.fillText(this.format(v, 1), x, R.y0 + R.ph + 6);
     }
-    g.fillText(`${this.t('axisE')} (${km ? 'km' : 'm'})`, L.x0 + L.pw / 2, L.y0 + L.ph + 22);
+    g.fillText(`${this.t('axisE')} (${km ? 'km' : 'm'})`, R.x0 + R.pw / 2, R.y0 + R.ph + 22);
     g.textAlign = 'right'; g.textBaseline = 'middle';
-    for (const v of niceTicks(-spanNS / 2 * f, spanNS / 2 * f, Math.max(2, Math.round(L.ph / 60)))) {
-      const y = L.y0 + (spanNS / 2 - v / f) * L.s;
-      g.fillRect(L.x0 - 4, y, 4, 1);
-      g.fillText(this.format(v, 1), L.x0 - 7, y);
+    for (const v of niceTicks(-spanNS / 2 * f, spanNS / 2 * f, Math.max(2, Math.round(R.ph / 60)))) {
+      const y = R.y0 + (spanNS / 2 - v / f) * R.s;
+      g.fillRect(R.x0 - 4, y, 4, 1);
+      g.fillText(this.format(v, 1), R.x0 - 7, y);
     }
-    g.save(); g.translate(14, L.y0 + L.ph / 2); g.rotate(-Math.PI / 2); g.textAlign = 'center';
+    g.save(); g.translate(R.cx + 14, R.y0 + R.ph / 2); g.rotate(-Math.PI / 2); g.textAlign = 'center';
     g.fillText(`${this.t('axisN')} (${km ? 'km' : 'm'})`, 0, 0); g.restore();
-    g.textAlign = 'left';
-    // colourbar
-    this.drawBar(g, L);
-    // hover crosshair
+    barInto(g, panel.scale, { x: R.cb.x, top: R.cb.top, bottom: R.cb.bottom, factor: panel.unit.factor, unit: panel.unit.unit, levels: panel.cache.levels, format: this.format, unitY: R.cb.unitY });
     if (this.hover) {
-      const [x, y] = [gx(this.hover.i), gy(this.hover.j)];
+      const x = gx(this.hover.i), y = gy(this.hover.j);
       g.strokeStyle = INK.primary; g.lineWidth = 1;
-      g.beginPath(); g.moveTo(x, L.y0); g.lineTo(x, L.y0 + L.ph); g.moveTo(L.x0, y); g.lineTo(L.x0 + L.pw, y); g.stroke();
+      g.beginPath(); g.moveTo(x, R.y0); g.lineTo(x, R.y0 + R.ph); g.moveTo(R.x0, y); g.lineTo(R.x0 + R.pw, y); g.stroke();
       g.fillStyle = '#111517'; g.beginPath(); g.arc(x, y, 4, 0, 2 * Math.PI); g.fill();
       g.strokeStyle = INK.primary; g.lineWidth = 2; g.stroke();
     }
   }
 
-  drawArrows(g, L) {
+  drawArrows(g, R) {
     const { nx, ny, fields } = this.grid;
-    const n = 9, cell = Math.min(L.pw, L.ph) / n;
+    const n = 9, cell = Math.min(R.pw, R.ph) / n;
     let max = 0;
     for (let k = 0; k < fields.dh.length; k++) max = Math.max(max, fields.dh[k]);
     if (!(max > 0)) return;
@@ -218,7 +254,7 @@ export class DistortionChart {
       const len = fields.dh[k] / max * cell * 0.8;
       if (len < 6) continue;
       const ang = Math.atan2(fields.dy[k], fields.dx[k]);
-      const x = L.x0 + i / (nx - 1) * L.pw, y = L.y0 + L.ph - j / (ny - 1) * L.ph;
+      const x = R.x0 + i / (nx - 1) * R.pw, y = R.y0 + R.ph - j / (ny - 1) * R.ph;
       const x2 = x + len * Math.cos(ang), y2 = y - len * Math.sin(ang);
       g.beginPath(); g.moveTo(x, y); g.lineTo(x2, y2); g.stroke();
       g.beginPath(); g.moveTo(x2, y2);
@@ -228,38 +264,17 @@ export class DistortionChart {
     }
   }
 
-  drawBar(g, L) {
-    const { scale, unit } = this, x0 = L.cb.x, top = L.cb.y + 18, bottom = L.cb.y + L.cb.h, barW = 12;
-    const lo = scale.min * unit.factor, hi = scale.max * unit.factor;
-    for (let y = top; y < bottom; y++) {
-      const v = hi - (y - top) / (bottom - top) * (hi - lo);
-      const [r, gg, b] = scale.color(v / unit.factor);
-      g.fillStyle = `rgb(${r},${gg},${b})`; g.fillRect(x0, y, barW, 1.5);
-    }
-    g.font = FONT; g.textBaseline = 'middle'; g.fillStyle = INK.secondary; g.textAlign = 'left';
-    g.fillText(unit.unit, x0, L.cb.y + 6);
-    const yOf = v => top + (hi - v) / (hi - lo || 1) * (bottom - top);
-    g.strokeStyle = INK.iso;
-    for (const v of this.cache.levels) { const y = yOf(v); if (y >= top && y <= bottom) { g.beginPath(); g.moveTo(x0, y); g.lineTo(x0 + barW, y); g.stroke(); } }
-    g.fillStyle = INK.primary;
-    for (const v of niceTicks(lo, hi, Math.max(3, Math.round((bottom - top) / 45)))) {
-      const y = yOf(v);
-      if (y < top - 1 || y > bottom + 1) continue;
-      g.fillRect(x0 + barW, y - 0.5, 4, 1);
-      g.fillText(this.format(v), x0 + barW + 7, y);
-    }
-  }
-
   pointer(e) {
-    if (!this.grid) return;
+    if (!this.grid || !this.panels[0]) return;
     const r = this.canvas.getBoundingClientRect(), L = this.layout();
     const x = e.clientX - r.left, y = e.clientY - r.top;
-    if (x < L.x0 || x > L.x0 + L.pw || y < L.y0 || y > L.y0 + L.ph) {
+    const R = L.rects.find(q => x >= q.x0 && x <= q.x0 + q.pw && y >= q.y0 && y <= q.y0 + q.ph);
+    if (!R) {
       if (this.hover) { this.hover = null; this.draw(); this.renderReadout(); }
       return;
     }
     const { nx, ny } = this.grid;
-    const i = Math.round((x - L.x0) / L.pw * (nx - 1)), j = Math.round((L.y0 + L.ph - y) / L.ph * (ny - 1));
+    const i = Math.round((x - R.x0) / R.pw * (nx - 1)), j = Math.round((R.y0 + R.ph - y) / R.ph * (ny - 1));
     this.hover = { i, j, k: j * nx + i };
     this.draw();
     this.renderReadout();
@@ -267,28 +282,33 @@ export class DistortionChart {
 
   /** Readout for the hovered node, or for the centre when nothing is hovered. */
   renderReadout() {
-    if (!this.readout || !this.grid || !this.unit) return;
+    const p0 = this.panels[0];
+    if (!this.readout || !this.grid || !p0) return;
     const { nx, ny, fields, spanWE, spanNS } = this.grid;
     const k = this.hover ? this.hover.k : Math.floor(ny / 2) * nx + Math.floor(nx / 2);
     const i = k % nx, j = Math.floor(k / nx);
     const e = -spanWE / 2 + i * spanWE / (nx - 1), n = -spanNS / 2 + j * spanNS / (ny - 1);
-    const v = metricValue(fields, this.metric, k) * this.unit.factor;
+    const v = fields[p0.field][k] * p0.unit.factor;
     this.onHover?.({ k, e, n, value: v });
     const t = this.t, f = this.format, fx = (x, d) => f(x, d, d);
     const rows = [
       [this.hover ? t('readHere') : t('readCentre'), `e = ${fx(e, 1)} m, n = ${fx(n, 1)} m`],
-      [t(`metric_${this.metric}`), `${f(v)} ${this.unit.unit}`],
+      [p0.title, `${f(v)} ${p0.unit.unit}`],
+    ];
+    const p1 = this.panels[1];
+    if (p1) rows.push([t('panel3dTitle'), `${f(fields.d3cloud[k] * p1.unit.factor)} ${p1.unit.unit}`]);
+    rows.push(
       ['φ, λ', `${fx(fields.lat[k], 5)}°, ${fx(fields.lon[k], 5)}°`],
       ['k', fx(fields.k[k], 8)],
       [t('efShort'), fx(fields.ef[k], 8)],
       ['γ', `${fx(fields.gamma[k], 4)}°`],
       [t('geoidN'), Number.isFinite(fields.geoidN[k]) ? `${fx(fields.geoidN[k], 3)} m` : t('geoidOff')],
-    ];
+    );
     this.readout.innerHTML = rows.map(([a, b]) => `<div><dt>${a}</dt><dd>${b}</dd></div>`).join('');
   }
 }
 
-// OffscreenCanvas when available (workers, modern browsers), else a detached <canvas>
+// OffscreenCanvas when available, else a detached <canvas>
 function makeCanvas(w, h) {
   if (typeof OffscreenCanvas !== 'undefined') return new OffscreenCanvas(w, h);
   const c = document.createElement('canvas'); c.width = w; c.height = h; return c;

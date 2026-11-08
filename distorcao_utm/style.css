@@ -67,6 +67,7 @@ button.secondary:hover, .lang button:hover { border-color: var(--accent); }
 .card h3 { font-size: 0.95rem; margin: 14px 0 2px; }
 figcaption { margin-bottom: 6px; }
 #chart-metric { color: var(--text-secondary); font-size: 0.9rem; }
+.check.show3d { margin: 6px 0 0; font-size: 0.88rem; }
 #chart { width: 100%; height: 440px; display: block; cursor: crosshair; touch-action: none; }
 .readout { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 2px 14px; margin: 6px 0; font-size: 0.82rem; min-height: 3.2em; }
 .readout div, #stats div { display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px dotted var(--line); }
