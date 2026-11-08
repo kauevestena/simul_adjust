@@ -33,7 +33,8 @@ jobs:
           node ajusta_planos/test_volume.js
           node test.js
   browsers:
-    runs-on: ubuntu-latest
+    # Playwright 1.51.1 (pinned in package-lock) cannot install browsers on ubuntu-latest (26.04)
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -58,7 +59,8 @@ jobs:
           name: story-${{ matrix.browser }}-screenshots
           path: channel_tunnel_story/test-results/
   live-map:
-    runs-on: ubuntu-latest
+    # Playwright 1.51.1 (pinned in package-lock) cannot install browsers on ubuntu-latest (26.04)
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4

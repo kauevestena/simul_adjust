@@ -8,7 +8,8 @@ permissions:
   contents: read
 jobs:
   network-preanalysis:
-    runs-on: ubuntu-latest
+    # Playwright 1.51.1 (pinned in package-lock) cannot install browsers on ubuntu-latest (26.04)
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
