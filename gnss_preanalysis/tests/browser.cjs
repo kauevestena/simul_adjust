@@ -20,7 +20,8 @@ const server = http.createServer((req, res) => {
 });
 const fixtureStyle = { version: 8, sources: {}, layers: [{ id: 'background', type: 'background', paint: { 'background-color': '#e8eef0' } }] };
 const terrainTile = fs.readFileSync(path.join(__dirname, 'fixtures/synthetic-terrain.png'));
-const SHOTS = process.env.GNSS_SCREENSHOTS;
+// Relative paths are taken from the repository root (CI uploads gnss_preanalysis/test-results/).
+const SHOTS = process.env.GNSS_SCREENSHOTS && path.resolve(root, process.env.GNSS_SCREENSHOTS);
 const LIVE = process.env.GNSS_LIVE_MAP === '1';
 
 /** GNSS_LIVE_MAP=1: real OpenFreeMap style/tiles and AWS Terrarium, Curitiba heights, label glyphs, style switch. */
