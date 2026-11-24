@@ -1325,6 +1325,15 @@
         <div class="card-tags"><span class="tech-tag">Pré-análise 3D</span><span class="tech-tag">Estação total</span><span class="tech-tag">ENU / GNSS</span></div>
         <div class="card-actions"><a href="network_preanalysis/" class="btn-launch"><span class="btn-text">Abrir Simulador →</span></a><a href="network_preanalysis/" target="_blank" rel="noopener" class="btn-icon-ext" title="Abrir em nova aba">↗</a></div>
       </article>
+      <article class="sim-card" data-card-id="gnss_preanalysis" data-category="ajustamento" style="--card-accent: #38bdf8; --card-accent-glow: rgba(56, 189, 248, 0.2); --card-icon-bg: rgba(56, 189, 248, 0.12); --card-btn-bg: linear-gradient(135deg, #0369a1, #0284c7);">
+        <div class="card-top"><div class="card-icon-box">🛰️</div><span class="card-category-badge">Pré-análise · PT-BR / EN</span></div>
+        <h2 class="card-title">Pré-análise de Redes GNSS</h2>
+        <div class="card-path">gnss_preanalysis/</div>
+        <p class="card-description">Projete redes de linhas de base GNSS sobre um mapa real, com altitudes do MDT da AWS e estações RBMC como apoio. Veja a MVC a priori de cada vetor e a precisão da rede antes de ir a campo.</p>
+        <ul class="card-features"><li>Precisão nominal a + b·ppm, centragem e altura da antena, rotação ENU → XYZ</li><li>Sessões, linhas triviais, correlação entre linhas e guia de tempo do IBGE</li><li>Elipses, redundância e MDB; snap nas estações RBMC</li></ul>
+        <div class="card-tags"><span class="tech-tag">GNSS</span><span class="tech-tag">MapLibre</span><span class="tech-tag">RBMC</span></div>
+        <div class="card-actions"><a href="gnss_preanalysis/" class="btn-launch"><span class="btn-text">Abrir Simulador →</span></a><a href="gnss_preanalysis/" target="_blank" rel="noopener" class="btn-icon-ext" title="Abrir em nova aba">↗</a></div>
+      </article>
 <article class="sim-card" data-card-id="camera_proj" data-category="geodesia-3d" style="--card-accent: #2dd4bf; --card-accent-glow: rgba(45, 212, 191, 0.2); --card-icon-bg: rgba(45, 212, 191, 0.12); --card-btn-bg: linear-gradient(135deg, #0f766e, #0d9488);">
 <div class="card-top"><div class="card-icon-box">📷</div><span class="card-category-badge">Fotogrametria · PT-BR / EN</span></div>
 <h2 class="card-title">Formação de Imagens — Camera Projection</h2>
@@ -2076,6 +2085,32 @@ Análise geoespacial e mapeamento de cobertura de vegetação urbana obtida a pa
       "Total station",
       "ENU / GNSS"
     ],
+    "btn": "Launch Simulator →"
+  }
+},
+  "gnss_preanalysis": {
+  "pt-BR": {
+    "badge": "Pré-análise · PT-BR / EN",
+    "title": "Pré-análise de Redes GNSS",
+    "desc": "Projete redes de linhas de base GNSS sobre um mapa real, com altitudes do MDT da AWS e estações RBMC como apoio. Veja a MVC a priori de cada vetor e a precisão da rede antes de ir a campo.",
+    "features": [
+      "Precisão nominal a + b·ppm, centragem e altura da antena, rotação ENU → XYZ",
+      "Sessões, linhas triviais, correlação entre linhas e guia de tempo do IBGE",
+      "Elipses, redundância e MDB; snap nas estações RBMC"
+    ],
+    "tags": ["GNSS", "MapLibre", "RBMC"],
+    "btn": "Abrir Simulador →"
+  },
+  "en": {
+    "badge": "Pre-analysis · PT-BR / EN",
+    "title": "GNSS Network Pre-Analysis",
+    "desc": "Design GNSS baseline networks on a real map, with heights from the AWS DEM and RBMC stations as control. See the a priori covariance of every vector and the network precision before fieldwork.",
+    "features": [
+      "Nominal a + b·ppm precision, centering and antenna height, ENU → XYZ rotation",
+      "Sessions, trivial baselines, baseline correlation and the IBGE session-time guide",
+      "Ellipses, redundancy and MDB; snapping to RBMC stations"
+    ],
+    "tags": ["GNSS", "MapLibre", "RBMC"],
     "btn": "Launch Simulator →"
   }
 },

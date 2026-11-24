@@ -1,0 +1,8 @@
+id,city,in_sirgas_list,status,lat_dms,lon_dms,h_m,frame,kind,source,document_date
+CORU,"Corumbá",yes,,-19 00 01.01,-57 37 46.61,156.5,site log approximate position,site_log,https://www.sirgas.org/archive/gps/DGF/station/log/coru00bra_20230531.log,2023-05-31
+CRAT,"Crato",yes,,-07 14 16.86,-39 24 56.17,436.0,SIRGAS2000 (site log approximate position),site_log,https://www.sirgas.org/archive/gps/DGF/station/log/crat00bra_20210429.log,2021-04-29
+MSGR,"Campo Grande",yes,,-20 26 43.32,-54 43 24.26,532.6,ITRF (site log approximate position),site_log,https://geoftp.ibge.gov.br/informacoes_sobre_posicionamento_geodesico/rbmc/relatorio/log_sirgas/msgr00bra_20230627.log,2023-06-27
+MTGA,"Barra do Garças",yes,,-15 52 31.04,-52 18 43.46,340.2,site log approximate position,site_log,https://www.sirgas.org/archive/gps/DGF/station/log/mtga00bra_20260112.log,2026-01-12
+MSPP,"Ponta Pora",yes,,-22 37 17.84864,-55 36 31.87357,648.193,SIRGAS2000 epoch 2000.4 (official),ibge_report,https://geoftp.ibge.gov.br/informacoes_sobre_posicionamento_geodesico/rbmc/relatorio/Descritivo_MSPP,2017-04-12
+PRPI,"Pinhais",no,unverified,-25 23 12.23467,-49 07 35.55641,910.018,SIRGAS2000 epoch 2000.4 (official),ibge_report,https://geoftp.ibge.gov.br/informacoes_sobre_posicionamento_geodesico/rbmc/relatorio/Descritivo_PRPI.pdf,2023-12-15
+STHA,"Santa Helena",no,unverified,-24 50 46.03952,-54 20 34.03940,242.582,SIRGAS2000 epoch 2000.4 (official),ibge_report,https://geoftp.ibge.gov.br/informacoes_sobre_posicionamento_geodesico/rbmc/relatorio/Descritivo_STHA.pdf,

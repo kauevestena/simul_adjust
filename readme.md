@@ -7,7 +7,7 @@ This monorepo contains multiple independent serverless applications, each design
 
 - **Serverless Architecture**: All applications are built to execute without requiring server management or backend services
 - **Client-Side Execution**: Applications run directly on the user's machine or browser environment
-- **Independent Applications**: Each app has its own interface and model; the shared Terrarium loader is used by `nivelamento` and `network_preanalysis`.
+- **Independent Applications**: Each app has its own interface and model; the shared Terrarium loader is used by `nivelamento`, `network_preanalysis` and `gnss_preanalysis`.
 - **Self-Contained**: Every application includes its own configuration, dependencies, and documentation
 
 ### Surveyor Valley has moved
@@ -38,6 +38,24 @@ Laboratório de projeto de redes de estação total: interface 2D, cálculo 3D E
 apoio GNSS fixo/estocástico, precisão prevista, redundância e confiabilidade.
 Inclui plano ideal, terreno rural e ruas de Pato Branco com limite de colocação
 de 3 m, usando o carregador Terrarium compartilhado com `nivelamento`. Veja a [documentação em português](network_preanalysis/README.pt-BR.md).
+
+### GNSS Network Pre-Analysis / Pré-análise de Redes GNSS
+
+[`gnss_preanalysis/`](gnss_preanalysis/) is a bilingual PT-BR/EN design tool for GNSS baseline
+networks on a MapLibre/OpenFreeMap map: new points take their height from the AWS Terrarium DEM,
+clicks snap to RBMC stations (a documented snapshot of 141 stations), and baselines are grouped in
+sessions. Each vector's a priori covariance comes from the nominal precision (a + b·ppm, linear or
+quadratic, per component or 2D), plus centering and antenna-height errors, rotated from ENU to XYZ;
+the network gives σE/σN/σU, ellipses, redundancy and MDB, with trivial-baseline detection, an optional
+session-correlation model and the IBGE (2008) session-time guide. See its [documentation](gnss_preanalysis/README.md).
+
+Ferramenta bilíngue para projetar redes de linhas de base GNSS sobre um mapa MapLibre/OpenFreeMap:
+pontos novos recebem a altitude do MDT Terrarium da AWS, os cliques se ajustam às estações da RBMC
+(retrato documentado de 141 estações) e as linhas são agrupadas em sessões. A MVC a priori de cada
+vetor vem da precisão nominal (a + b·ppm, linear ou quadrática, por componente ou 2D), mais centragem
+e altura da antena, rotacionada de ENU para XYZ; a rede fornece σE/σN/σU, elipses, redundância e MDB,
+com detecção de linhas triviais, modelo opcional de correlação na sessão e o guia de tempo do IBGE
+(2008). Veja a [documentação em português](gnss_preanalysis/README.pt-BR.md).
 
 ### Transform Lab / Laboratório de Transformação 3D
 

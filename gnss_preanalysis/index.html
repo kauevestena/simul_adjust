@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pré-análise de Redes GNSS</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 60'%3E%3Cpath d='M30 6L54 50H6Z' fill='none' stroke='%230d817e' stroke-width='6'/%3E%3Ccircle cx='30' cy='35' r='7' fill='%23d9480f'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="../channel_tunnel_story/vendor/maplibre-gl.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="../channel_tunnel_story/vendor/maplibre-gl.js" defer></script>
+</head>
+<body>
+  <header>
+    <a class="portal" href="../" data-t="portal"></a>
+    <div class="heading"><span data-t="subtitle"></span><h1 data-t="title"></h1></div>
+    <div class="languages" role="group" data-label="language"><button data-lang="pt-BR">PT</button><button data-lang="en">EN</button></div>
+    <button id="theory" data-t="theory"></button><button id="help" data-t="help"></button>
+  </header>
+  <div class="scenario-bar">
+    <label><span data-t="examples"></span><select id="example"><option value="network" data-t="exNetwork"></option><option value="radial" data-t="exRadial"></option><option value="trivial" data-t="exTrivial"></option><option value="long" data-t="exLong"></option><option value="empty" data-t="exEmpty"></option></select></label>
+    <label><span data-t="basemap"></span><select id="basemap"><option value="positron">Positron</option><option value="liberty">Liberty</option></select></label>
+    <span class="spacer"></span>
+    <button id="save" data-t="save"></button><button id="load" data-t="load"></button><input id="file" type="file" accept="application/json,.json" hidden>
+    <button id="import-cors" data-t="importCors"></button><input id="cors-file" type="file" accept=".csv,.txt,.json,.geojson,text/csv,application/json" hidden>
+    <button id="toggle-panel" data-t="panel" aria-expanded="true"></button>
+  </div>
+  <main id="workspace">
+    <section class="map-area">
+      <div class="tools" role="toolbar" data-label="tools">
+        <button data-tool="select" data-t="select"></button>
+        <button data-tool="point">+ <span data-t="point"></span></button>
+        <button data-tool="baseline">↔ <span data-t="baseline"></span></button>
+        <button data-tool="delete" data-t="delete"></button>
+        <span class="tool-separator"></span>
+        <label class="session-pick"><span data-t="activeSession"></span><select id="active-session"></select></label>
+        <button id="add-session" data-label="addSession">+ S</button>
+        <span class="tool-separator"></span>
+        <button id="undo" data-label="undo">↶</button><button id="redo" data-label="redo">↷</button><button id="fit" data-t="fit"></button>
+      </div>
+      <div id="drawing">
+        <div id="map" data-label="map"></div>
+        <div id="map-caption"><strong id="mode-title"></strong><span id="hint"></span></div>
+        <div id="map-legend"></div>
+        <div id="map-fallback" role="status" hidden><strong data-t="mapUnavailable"></strong><span data-t="mapUnavailableBody"></span></div>
+        <div id="busy" role="status" hidden data-t="loading"></div>
+      </div>
+      <div id="error" role="alert" hidden></div>
+      <footer><div id="status"></div><div id="metrics"></div><div id="comparison" hidden></div></footer>
+    </section>
+    <aside id="inspector">
+      <div class="inspector-heading"><h2 data-t="panel"></h2><button id="clear-selection" data-t="network"></button></div>
+      <div id="context"></div>
+      <details id="model-section" open><summary data-t="precisionModel"></summary>
+        <label><span data-t="preset"></span><select id="preset"><option value="static" data-t="pStatic"></option><option value="hpStatic" data-t="pHpStatic"></option><option value="rtk" data-t="pRtk"></option><option value="ibge2008" data-t="pIbge"></option><option value="custom" data-t="pCustom"></option></select></label>
+        <div class="fields two"><label><span data-t="aH"></span><input id="aH" type="number" min="0" max="1000" step="0.1"></label><label><span data-t="bH"></span><input id="bH" type="number" min="0" max="1000" step="0.1"></label>
+        <label><span data-t="aV"></span><input id="aV" type="number" min="0" max="1000" step="0.1"></label><label><span data-t="bV"></span><input id="bV" type="number" min="0" max="1000" step="0.1"></label></div>
+        <label><span data-t="combination"></span><select id="combination"><option value="linear" data-t="linear"></option><option value="quadratic" data-t="quadratic"></option></select></label>
+        <label><span data-t="horizontalSpec"></span><select id="horizontal"><option value="component" data-t="perComponent"></option><option value="radial" data-t="radial2d"></option></select></label>
+        <label><span data-t="frequency"></span><select id="frequency"><option value="dual" data-t="dual"></option><option value="single" data-t="single"></option></select></label>
+        <p class="note" id="preset-note"></p>
+      </details>
+      <details id="setup-section"><summary data-t="setupErrors"></summary>
+        <p class="note" data-t="setupNote"></p>
+        <div class="fields two"><label><span data-t="newCentering"></span><input id="new-c" type="number" min="0" max="100" step="0.1"></label><label><span data-t="newHeight"></span><input id="new-h" type="number" min="0" max="100" step="0.1"></label>
+        <label><span data-t="corsCentering"></span><input id="cors-c" type="number" min="0" max="100" step="0.1"></label><label><span data-t="corsHeight"></span><input id="cors-h" type="number" min="0" max="100" step="0.1"></label></div>
+      </details>
+      <details id="session-section" open><summary data-t="sessions"></summary>
+        <div id="session-list"></div>
+        <div class="checks"><label><input id="session-correlation" type="checkbox"><span data-t="sessionCorrelation"></span></label></div>
+        <label><span data-t="trivialHandling"></span><select id="trivial"><option value="flag" data-t="trivialFlag"></option><option value="exclude" data-t="trivialExclude"></option></select></label>
+        <p class="note" data-t="sessionNote"></p>
+      </details>
+      <details id="view-section"><summary data-t="layers"></summary>
+        <div class="checks">
+          <label><input id="labels" type="checkbox" checked><span data-t="labels"></span></label>
+          <label><input id="ellipses" type="checkbox" checked><span data-t="ellipses"></span></label>
+          <label><input id="precision-labels" type="checkbox"><span data-t="precisionLabels"></span></label>
+          <label><input id="redundancy-color" type="checkbox"><span data-t="redundancyColor"></span></label>
+          <label><input id="cors-layer" type="checkbox" checked><span data-t="corsLayer"></span></label>
+          <label><input id="cors-inactive" type="checkbox"><span data-t="corsInactive"></span></label>
+          <label><input id="hillshade" type="checkbox" checked><span data-t="hillshade"></span></label>
+          <label><input id="snap" type="checkbox" checked><span data-t="snapCors"></span></label>
+          <label><input id="auto-exaggeration" type="checkbox" checked><span data-t="autoExaggeration"></span></label>
+        </div>
+        <div class="fields two"><label><span data-t="confidence"></span><select id="confidence"><option value="1sigma" data-t="oneSigma"></option><option value="95" data-t="confidence95"></option></select></label>
+        <label><span data-t="exaggeration"></span><input id="exaggeration" type="number" min="1" max="10000000" step="1000" value="100000"></label>
+        <label><span data-t="snapRadius"></span><input id="snap-px" type="number" min="2" max="60" step="1" value="16"></label>
+        <label><span data-t="geoid"></span><input id="geoid" type="number" min="-200" max="200" step="0.1" value="0"></label></div>
+      </details>
+      <details id="reliability-section"><summary data-t="reliability"></summary>
+        <div class="fields two"><label><span data-t="alpha"></span><input id="alpha" type="number" min="0.000001" max="0.2" step="0.001" value="0.001"></label><label><span data-t="power"></span><input id="power" type="number" min="0.5" max="0.9998" step="0.05" value="0.8"></label></div>
+        <p class="note" data-t="reliabilityNote"></p><button id="clear-effect" data-t="clearEffect"></button>
+      </details>
+      <div class="panel-actions"><button id="pin" data-t="compare"></button><button id="matrices" data-t="matrix"></button></div>
+      <p class="note credits" data-t="credits"></p>
+    </aside>
+  </main>
+  <dialog id="help-dialog"><div class="dialog-top"><h2 data-t="help"></h2><button data-close="help-dialog" data-t="close"></button></div><div class="prose" data-html="helpBody"></div></dialog>
+  <dialog id="theory-dialog"><div class="dialog-top"><h2 data-t="theory"></h2><button data-close="theory-dialog" data-t="close"></button></div><div class="prose" data-html="theoryBody"></div></dialog>
+  <dialog id="matrix-dialog"><div class="dialog-top"><h2 data-t="matrix"></h2><button data-close="matrix-dialog" data-t="close"></button></div><p data-t="matrixHint"></p><label><select id="matrix-choice"><option value="A">A</option><option value="Q">Σ_Lb</option><option value="P">P</option><option value="N">N = AᵀPA</option><option value="S">Σxx</option></select></label><p class="note" data-t="matrixLimited"></p><pre id="matrix-content"></pre><pre id="matrix-order"></pre><button id="matrix-save" data-t="matrixSave"></button></dialog>
+  <script type="module" src="app.mjs"></script>
+</body>
+</html>
