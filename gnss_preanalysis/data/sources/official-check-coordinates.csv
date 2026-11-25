@@ -1,0 +1,4 @@
+id,lat_dms,lon_dms,h_m,source
+POLI,-23 33 20.33228,-46 43 49.12319,730.622,https://geoftp.ibge.gov.br/informacoes_sobre_posicionamento_geodesico/rbmc/relatorio/Descritivo_POLI
+SPC1,-22 48 58.63052,-47 03 45.69584,622.980,https://geoftp.ibge.gov.br/informacoes_sobre_posicionamento_geodesico/rbmc/relatorio/Descritivo_SPC1
+SCFL,-27 35 57.76613,-48 31 10.32159,17.072,https://geoftp.ibge.gov.br/informacoes_sobre_posicionamento_geodesico/rbmc/relatorio/Descritivo_SCFL

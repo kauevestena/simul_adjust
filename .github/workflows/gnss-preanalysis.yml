@@ -1,0 +1,77 @@
+name: GNSS pre-analysis tests
+on:
+  push:
+    paths:
+      - "gnss_preanalysis/**"
+      - "shared/terrarium.mjs"
+      - "network_preanalysis/network/coordinates.mjs"
+      - "network_preanalysis/network/stochastic.mjs"
+      - "network_preanalysis/network/reliability.mjs"
+      - "network_preanalysis/vendor/ml-matrix.mjs"
+      - "channel_tunnel_story/vendor/**"
+      - "index.html"
+      - ".github/workflows/gnss-preanalysis.yml"
+  pull_request:
+    paths:
+      - "gnss_preanalysis/**"
+      - "shared/terrarium.mjs"
+      - "network_preanalysis/network/coordinates.mjs"
+      - "network_preanalysis/network/stochastic.mjs"
+      - "network_preanalysis/network/reliability.mjs"
+      - "network_preanalysis/vendor/ml-matrix.mjs"
+      - "channel_tunnel_story/vendor/**"
+      - "index.html"
+      - ".github/workflows/gnss-preanalysis.yml"
+permissions:
+  contents: read
+jobs:
+  gnss-preanalysis:
+    # Playwright 1.51.1 (pinned in package-lock) cannot install browsers on ubuntu-latest (26.04)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: gnss_preanalysis/package-lock.json
+      - run: npm ci --prefix gnss_preanalysis
+      - name: Model, NumPy/SciPy reference, RBMC snapshot and dictionaries
+        run: npm test --prefix gnss_preanalysis
+      - name: Portal inline scripts still compile
+        run: node --test channel_tunnel_story/tests/structure.test.mjs
+      - run: npx --prefix gnss_preanalysis playwright install --with-deps chromium
+      - name: Real page with fixture basemap and DEM (desktop and phone)
+        run: npm run test:browser --prefix gnss_preanalysis
+        env:
+          GNSS_SCREENSHOTS: gnss_preanalysis/test-results
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gnss-preanalysis-screenshots
+          path: gnss_preanalysis/test-results/
+  live-map:
+    # External services (OpenFreeMap, AWS Terrain Tiles): informative, does not block merges.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: gnss_preanalysis/package-lock.json
+      - run: npm ci --prefix gnss_preanalysis
+      - run: npx --prefix gnss_preanalysis playwright install --with-deps chromium
+      - name: Load real OpenFreeMap vector tiles and Terrarium heights
+        run: npm run test:browser --prefix gnss_preanalysis
+        env:
+          GNSS_LIVE_MAP: "1"
+          GNSS_SCREENSHOTS: gnss_preanalysis/test-results
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gnss-preanalysis-live-screenshots
+          path: gnss_preanalysis/test-results/

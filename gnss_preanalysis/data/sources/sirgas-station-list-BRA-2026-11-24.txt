@@ -1,0 +1,192 @@
+# SIRGAS station list, rows whose 9-character ID ends in BRA.
+# Source page: https://www.sirgas.org/en/stations/station-list
+# Retrieved and transcribed: 2026-11-24 (columns: ID | City, Country | Status | Network and Agency, run together on the page).
+# The page renders Network and Agency in one cell; scripts/build_cors.py splits them by the known network names.
+ALAR00BRA | Arapiraca, Brazil | active | RBMC IBGE
+ALMA00BRA | Maceio, Brazil | removed | RBMC IBGE, UFAL
+AMBC00BRA | Barcelos, Brazil | removed | RBMC IBGE
+AMCO00BRA | Porto Urucu, Brazil | active | RBMC IBGE
+AMCR00BRA | Coari, Brazil | inactive | RBMC IBGE
+AMHA00BRA | Humaita, Brazil | active | RBMC IBGE, UEA
+AMPR00BRA | Parintins, Brazil | removed | RBMC IBGE
+AMPT00BRA | Parintins, Brazil | active | RBMC IBGE, UFAM
+AMTE00BRA | Tefe, Brazil | active | ITRF2020, RBMC IBGE
+AMTG00BRA | Tabatinga, Brazil | inactive | RBMC IBGE
+AMUA00BRA | Manaus, Brazil | active | RBMC IBGE, UEA
+APLJ00BRA | Laranjal do Jari, Brazil | active | RBMC IBGE, IFAP
+APMA00BRA | Macapa, Brazil | active | RBMC IBGE, DTCEA-MQ
+APS100BRA | Santana, Brazil | active | RBMC IBGE
+APSA00BRA | Santana, Brazil | removed | RBMC IBGE
+BABJ00BRA | Bom Jesus da Lapa, Brazil | active | RBMC IBGE
+BABR00BRA | Barreiras, Brazil | active | ITRF2020, RBMC IBGE
+BAIC00BRA | Irece, Brazil | active | RBMC IBGE
+BAIL00BRA | Ilheus, Brazil | active | RBMC IBGE
+BAIR00BRA | Irece, Brazil | removed | RBMC IBGE
+BAIT00BRA | Itaberaba, Brazil | active | RBMC IBGE, UNEB
+BAPA00BRA | Paulo Afonso, Brazil | active | RBMC IBGE, IFBA
+BATF00BRA | Teixeira de Freitas, Brazil | active | RBMC IBGE
+BAVC00BRA | Vitória da Conquista, Brazil | active | RBMC IBGE
+BELE00BRA | Belem, Brazil | active | ITRF2020, IGS, RBMC, RIBaC IBGE, INCRA , SIPAM
+BEPA00BRA | Belem, Brazil | inactive | RBMC IBGE, INPE
+BOAV00BRA | Boa Vista, Brazil | active | IGS20, ITRF2020, RBMC IBGE
+BOMJ00BRA | Bom Jesus da Lapa, Brazil | removed | ITRF2020, RBMC, RIBaC IBGE, INCRA , Marinha
+BRAZ00BRA | Brasilia, Brazil | active | IGS20, ITRF2020, RBMC, RIBaC IBGE, INCRA
+BRFT00BRA | Eusebio, Brazil | active | IGS20, ITRF2020, RBMC NOAA-NGS, INPE
+CEEU00BRA | Euzébio, Brazil | active | ITRF2020, RBMC, RIBaC IBGE, INPE
+CEFE00BRA | Vitoria, Brazil | active | ITRF2020, RBMC IBGE
+CEFT00BRA | Fortaleza - Porto, Brazil | inactive | ITRF2020, RBMC IBGE
+CESB00BRA | Sobral, Brazil | active | RBMC IBGE, CCS-UVA
+CHPI00BRA | Cachoeira, Brazil | active | IGS20, ITRF2020, RBMC JPL, EarthScope, INPE
+CORU00BRA | Corumbá, Brazil | active | RBMC IBGE, UFMS
+CRAT00BRA | Crato, Brazil | active | RBMC, RIBaC IBGE, INCRA, URCA
+CRUZ00BRA | Cruzeiro do Sul, Brazil | removed | RBMC IBGE
+CUIB00BRA | Cuiaba, Brazil | active | ITRF2020, RBMC, RIBaC IBGE, INCRA , INPE
+EACH00BRA | Sao Paulo, Brazil | active | RBMC IBGE, USP-EACH
+EESC00BRA | Sao Carlos, Brazil | active | RBMC IBGE
+ESNV00BRA | Nova Venecia, Brazil | active | RBMC IBGE, IFES
+GOGY00BRA | Goiania, Brazil | active | RBMC IBGE
+GOJA00BRA | Jataí, Brazil | active | ITRF2020, RBMC IBGE, UFG
+GOUR00BRA | Uruacu, Brazil | active | RBMC IBGE, IFG
+GUAI00BRA | Guaira, Brazil | active | RBMC IBGE
+GVA100BRA | Governador Valadares, Brazil | removed | RBMC IBGE
+GVAL00BRA | Gov. Valadares, Brazil | removed | RBMC IBGE, CEMIG
+IFSC00BRA | Florianopolis, Brazil | active | RBMC IBGE
+ILHA00BRA | Ilha Solteira, Brazil | active | ITRF2020, RBMC UNESP
+IMBT00BRA | Imbituba, Brazil | removed | ITRF2020, RBMC, TIGA IBGE
+IMPZ00BRA | Imperatriz, Brazil | active | ITRF2020, RBMC, RIBaC IBGE, INCRA, CFET, UNEDI
+ITAI00BRA | Foz do Iguaçu, Brazil | active | RBMC IBGE, Itaipu
+ITAM00BRA | Itacoatiara, Brazil | removed | RBMC IBGE, UEA
+JAMG00BRA | Jaiba, Brazil | removed | RBMC IBGE, EPAMIG
+MABA00BRA | Maraba, Brazil | active | RBMC IBGE
+MABB00BRA | Bacabal, Brazil | active | RBMC IBGE, IFMA
+MABS00BRA | Balsas, Brazil | removed | RBMC IBGE, UEMA
+MCL100BRA | Montes Claros, Brazil | removed | RMBC IBGE, CEMIG
+MCLA00BRA | Montes Claros, Brazil | removed | RBMC, RIBaC IBGE, INCRA , CEMIG
+MGBH00BRA | Belo Horizonte, Brazil | active | ITRF2020, RBMC IBGE
+MGIN00BRA | Inconfidentes, Brazil | active | ITRF2020, RBMC IBGE, EAFI
+MGJF00BRA | Juiz de Fora, Brazil | active | RBMC IBGE, UFJF
+MGJP00BRA | Belo Horizonte, Brazil | active | RBMC IBGE, FJP
+MGLA00BRA | Lavras, Brazil | active | RBMC IBGE, UFLA
+MGMC00BRA | Montes Claros, Brazil | active | RBMC IBGE
+MGMT00BRA | Monte Carmelo, Brazil | active | RBMC IBGE, UFU
+MGRP00BRA | Rio Paranaíba, Brazil | active | RBMC IBGE, URP
+MGTO00BRA | Teofilo Otoni, Brazil | inactive | RBMC IBGE, UFVJM
+MGUB00BRA | Uberlandia, Brazil | active | ITRF2020, RBMC IBGE, UFU
+MGV100BRA | Varginha, Brazil | removed | RBMC IBGE, CEMIG
+MGVA00BRA | Varginha, Brazil | removed | RBMC IBGE, CEMIG
+MSBL00BRA | Bela Vista, Brazil | inactive | RBMC IBGE, UA-Br
+MSCB00BRA | Corumbá, Brazil | removed | RBMC IBGE, Embrapa
+MSCG00BRA | Campo Grande, Brazil | removed | ITRF2020, RBMC IBGE, UNIDERP
+MSDR00BRA | Dourados, Brazil | active | RBMC IBGE
+MSGR00BRA | Campo Grande, Brazil | active | IGS, RBMC IBGE
+MSJR00BRA | Jardim, Brazil | inactive | RBMC IBGE, IFMGS
+MSMJ00BRA | Maracaju, Brazil | inactive | RBMC IBGE
+MSMN00BRA | Mundo Novo, Brazil | inactive | RBMC IBGE, PRFAPM
+MSNV00BRA | Naviraí, Brazil | inactive | RBMC IBGE, IFMS
+MSPM00BRA | Porto Murtinho, Brazil | active | RBMC IBGE
+MSPP00BRA | Ponta Pora, Brazil | inactive | RBMC IBGE, IFMS
+MTBA00BRA | Barra do Garças, Brazil | removed | RBMC IBGE, INCRA
+MTCA00BRA | Caceres, Brazil | active | RBMC IBGE, IFMT-CC
+MTCN00BRA | Canarana, Brazil | removed | RBMC IBGE
+MTCO00BRA | Colider, Brazil | removed | ITRF2020, RBMC, RIBaC IBGE, INCRA
+MTGA00BRA | Barra do Garças, Brazil | active | RBMC IBGE, UFMT
+MTIT00BRA | Itiquira, Brazil | removed | RBMC IBGE, ECI
+MTJI00BRA | Juína, Brazil | active | RBMC IBGE, IFMG
+MTLA00BRA | Pontes e Lacerda, Brazil | active | RBMC IBGE, IFMT
+MTLE00BRA | Primavera do Leste, Brazil | inactive | RBMC IBGE, IFMT
+MTNM00BRA | Nova Mutum, Brazil | removed | RBMC IBGE, PTPM
+MTNX00BRA | Nova Xavantina, Brazil | removed | RBMC IBGE
+MTSC00BRA | Barao de Malgaco, Brazil | inactive | RBMC IBGE, SESC
+MTSF00BRA | São Felix do Araguaia, Brazil | removed | RBMC IBGE, INCRA
+MTSR00BRA | Sorriso, Brazil | active | ITRF2020, RBMC IBGE
+MTVB00BRA | Vila Bela da Santíssima Trindade, Brazil | removed | RBMC IBGE, INCRA
+NAUS00BRA | Manaus, Brazil | active | ITRF2020, RBMC, RIBaC IBGE, INCRA , SIPAM
+NEIA00BRA | Cananeia, Brazil | active | ITRF2020, RBMC IBGE, IO/USP
+ONRJ00BRA | Rio de Janeiro, Brazil | active | ITRF2020, RBMC, RIBaC IBGE, INCRA , ON
+OURI00BRA | Ourinhos, Brazil | removed | RBMC UNESP
+PAAR00BRA | Altamira, Brazil | active | RBMC IBGE, UFPA
+PAAT00BRA | Altamira, Brazil | removed | RBMC IBGE
+PAIT00BRA | Itaituba, Brazil | inactive | ITRF2020, RBMC IBGE
+PARA00BRA | Curitiba, Brazil | removed | ITRF2020, RBMC, RIBaC IBGE, INCRA, UFPR
+PASM00BRA | Santarem, Brazil | active | RBMC IBGE, IFG
+PBCG00BRA | Campina Grande, Brazil | active | RBMC IBGE, INCRA
+PBJP00BRA | Joao Pessoa, Brazil | active | RBMC IBGE
+PBPT00BRA | Patos, Brazil | active | RBMC IBGE, IFPB
+PEAF00BRA | Afogados da Ingazeira, Brazil | active | RBMC IBGE, IFPE
+PEPE00BRA | Petrolina, Brazil | active | ITRF2020, RBMC, RIBaC IBGE, INCRA
+PERC00BRA | Recife, Brazil | active | RBMC IBGE, IFPE
+PICR00BRA | Corrente, Brazil | active | RBMC IBGE
+PIFL00BRA | Floriano, Brazil | active | RBMC IBGE, UFPI
+PISR00BRA | São Raimundo Nonato, Brazil | active | RBMC IBGE, UNIVASF
+PITN00BRA | Teresina, Brazil | inactive | RBMC IBGE
+POAL00BRA | Porto Alegre, Brazil | active | IGS20, ITRF2020, RBMC, RIBaC IBGE, INCRA , UFRGS
+POLI00BRA | Sao Paulo, Brazil | active | RBMC IBGE, EP/USP
+POVE00BRA | Porto Velho, Brazil | active | IGS20, ITRF2020, RBMC, RIBaC IBGE, INCRA , SIPAM
+PPTE00BRA | Presidente Prudente, Brazil | active | ITRF2020, RBMC, RIBaC IBGE, INCRA , UNESP
+PRCL00BRA | Cascavel, Brazil | active | RBMC IBGE
+PRCV00BRA | Cascavel, Brazil | inactive | RBMC IBGE
+PRGU00BRA | Guarapuava, Brazil | active | RBMC IBGE, UNICENTRO
+PRMA00BRA | Maringá, Brazil | active | RBMC IBGE, UEM
+PRUR00BRA | Umuarama, Brazil | inactive | RBMC IBGE, IFP
+RECF00BRA | Recife, Brazil | removed | IGS20, ITRF2020, RBMC, RIBaC IBGE, INCRA , UFPE
+RIOB00BRA | Rio Branco, Brazil | inactive | ITRF2020, RBMC IBGE
+RIOD00BRA | Rio de Janeiro, Brazil | removed | RBMC, RIBaC IBGE, INCRA
+RJCG00BRA | Campos dos Goytacazes, Brazil | active | RBMC IBGE, INCRA
+RJNI00BRA | Niteroi, Brazil | active | RBMC IBGE, UFF
+RJRE00BRA | Resende, Brazil | inactive | RBMC IBGE
+RJVA00BRA | Vassouras, Brazil | active | RBMC IBGE, NO-BR
+RNMO00BRA | Mossoro, Brazil | removed | RBMC IBGE
+RNNA00BRA | Natal, Brazil | active | ITRF2020, RBMC IBGE, INPE
+RNPF00BRA | Pau dos Ferros, Brazil | inactive | RBMC IBGE, UERN
+ROCD00BRA | Colorado D'Oeste, Brazil | removed | ITRF2020, RBMC IBGE, INCRA
+ROGM00BRA | Guajara-Mirim, Brazil | removed | RBMC, RIBaC IBGE, INCRA
+ROGU00BRA | Guajara-Mirim, Brazil | active | RBMC IBGE
+ROJI00BRA | Ji-Paraná, Brazil | active | RBMC IBGE, INCRA
+ROSA00BRA | Rosana, Brazil | active | ITRF2020, RBMC UNESP
+ROVI00BRA | Vilhena, Brazil | removed | RMBC IBGE, UNIR
+RSAL00BRA | Alegrete, Brazil | active | RBMC IBGE
+RSCL00BRA | Cerro Largo, Brazil | active | RBMC IBGE, UFFS
+RSPE00BRA | Pelotas, Brazil | active | RBMC IBGE, UFPEL
+RSPF00BRA | Passo Fundo, Brazil | active | RBMC IBGE, UPF
+RSSL00BRA | Sao Leopoldo, Brazil | active | RBMC IBGE, UNISINOS
+SAGA00BRA | São Gabriel da Cachoeira, Brazil | active | ITRF2020, RBMC IBGE
+SALU00BRA | Sao Luis, Brazil | active | IGS20, ITRF2020, RBMC IBGE
+SALV00BRA | Salvador, Brazil | removed | ITRF2020, RBMC IBGE, CONDER
+SAVO00BRA | Salvador, Brazil | inactive | IGS20, ITRF2020, RBMC, RIBaC IBGE, INCRA
+SCAQ00BRA | Araquari, Brazil | active | RBMC IBGE, IFC
+SCBL00BRA | Blumenau, Brazil | active | RBMC IBGE
+SCCA00BRA | Cacador, Brazil | active | RBMC IBGE, IFSC
+SCCH00BRA | Chapecó, Brazil | active | RBMC IBGE
+SCCR00BRA | Criciuma, Brazil | active | RBMC IBGE
+SCFL00BRA | Florianopolis, Brazil | active | RBMC IBGE, UFSC
+SCIM00BRA | Imbituba, Brazil | active | RBMC IBGE
+SCLA00BRA | Lages, Brazil | active | RBMC IBGE, INCRA
+SEAJ00BRA | Sao Cristovao, Brazil | active | RBMC IBGE
+SJRP00BRA | Sao Jose do Rio Preto, Brazil | active | RBMC UNESP
+SJSP00BRA | Sao Jose dos Campos, Brazil | active | RBMC IBGE, INPE
+SMAR00BRA | Santa Maria, Brazil | active | ITRF2020, RBMC, RIBaC IBGE, INCRA, UFSM
+SPAR00BRA | Aracatuba, Brazil | inactive | RBMC IBGE
+SPBO00BRA | Botucatu, Brazil | active | RBMC UNESP, IBGE
+SPBP00BRA | Braganca Paulista, Brazil | removed | RBMC IBGE
+SPC100BRA | Campinas, Brazil | active | RBMC IBGE, UNICAMP
+SPCA00BRA | Campinas, Brazil | removed | RBMC IBGE, UNICAMP
+SPDR00BRA | Dracena, Brazil | active | RBMC IBGE, UNESP
+SPFE00BRA | Fernandopolis, Brazil | active | RBMC UNESP, IBGE
+SPFR00BRA | Franca, Brazil | active | RBMC UNESP, IBGE
+SPJA00BRA | Jaboticabal, Brazil | active | RBMC UNESP, IBGE
+SPLI00BRA | Lins-Unilins, Brazil | active | RBMC IBGE, UNILINS
+SPOR00BRA | Ourinhos, Brazil | active | RBMC IBGE, UNESP
+SPPI00BRA | Piracicaba, Brazil | removed | RBMC IBGE, UNESP
+SPS100BRA | Sorocaba, Brazil | inactive | RBMC UNESP, IBGE
+SPTU00BRA | Tupa, Brazil | active | ITRF2020, IGS, RBMC IBGE, UNESP
+SSA100BRA | Salvador Capitania, Brazil | active | RBMC, TIGA IBGE
+TOGU00BRA | Gurupi, Brazil | active | RBMC IBGE, INCRA
+TOPL00BRA | Palmas, Brazil | inactive | IGS20, ITRF2020, RBMC, RIBaC IBGE, INCRA
+UBA100BRA | Ubatuba, Brazil | active | RBMC IBGE
+UBAT00BRA | Ubatuba, Brazil | removed | RBMC IBGE, IO/USP
+UBE100BRA | Uberlandia, Brazil | removed | RBMC IBGE, CEMIG
+UBER00BRA | Uberlandia, Brazil | removed | RBMC IBGE, CEMIG
+UEPP00BRA | Presidente Prudente, Brazil | removed | RBMC IBGE
+UFPR00BRA | Curitiba, Brazil | active | IGS20, ITRF2020, RBMC IBGE
+VARG00BRA | Varginha, Brazil | removed | RBMC IBGE, CEMIG
+VICO00BRA | Viscosa, Brazil | active | RBMC, RIBaC IBGE, INCRA , UFV
