@@ -1,15 +1,19 @@
 // Controller: project state, undo/redo, terrain heights, map events and panels.
 import { t, num, setLanguage, initialLanguage } from './i18n.mjs';
 import { analyze, externalEffect } from './model/analysis.mjs';
-import { emptyProject, makePoint, makeSession, makeBaseline, serialize, deserialize, nextId, uniqueBaselineId, removePoint,
+import { emptyProject, makePoint, makeSession, makeBaseline, nextId, uniqueBaselineId, removePoint,
   removeSession, clone, SESSION_COLORS, validateProject, LIMITS } from './model/network.mjs';
 import { PRESETS, validateSettings } from './model/stochastic.mjs';
-import { loadDataset, parseCorsCsv, parseCorsGeoJson } from './model/cors.mjs';
+import { loadDataset, mergeStations } from './model/cors.mjs';
+import { IMPORT_LIMIT } from './model/importer.mjs';
+import { applyImport, addStationPoint, applyGeoidToStations } from './model/stations.mjs';
+import { projectToGeoJSON, stringifyGeoJSON, readProject, MAX_PROJECT_TEXT } from './model/geojson.mjs';
 import { buildExample, EXAMPLE_IDS } from './model/examples.mjs';
-import { createTerrarium } from '../shared/terrarium.mjs';
+import { createTerrarium, tilePixel } from '../shared/terrarium.mjs';
 import { createMapView } from './map.mjs';
 import { ellipseRing, offset, CONFIDENCE_2D, redundancyColor } from './geometry.mjs';
 import { esc, summaryHtml, pointHtml, baselineHtml, stationHtml, sessionsHtml } from './inspector.mjs';
+import { createImportWizard } from './wizard.mjs';
 
 const $ = id => document.getElementById(id);
 const state = {
@@ -18,7 +22,7 @@ const state = {
     hillshade: true, snap: true, snapPx: 16, confidence: '1sigma', exaggeration: 100000, autoExaggeration: true },
   effect: null, comparison: null, busy: 0,
 };
-let result = analyze(state.project), view = null, readyResolve;
+let result = analyze(state.project), view = null, wizard = null, readyResolve;
 const undoStack = [], redoStack = [], terrain = createTerrarium();
 export const ready = new Promise(r => { readyResolve = r; });
 export const getState = () => state;
@@ -27,16 +31,18 @@ export const getProject = () => state.project;
 export const isBusy = () => state.busy > 0;
 export const getView = () => view;
 
+const INFO_CODES = new Set(['imported', 'importedPoints', 'importRemoved', 'openedInWizard']);
 function showError(code, values = {}) {
   const el = $('error');
   if (!code) { el.hidden = true; el.textContent = ''; return; }
-  el.hidden = false; el.textContent = t(code, values); el.dataset.code = code; el.classList.toggle('info', code === 'imported');
+  el.hidden = false; el.textContent = t(code, values); el.dataset.code = code; el.classList.toggle('info', INFO_CODES.has(code));
 }
 
 // ---------- project edits ----------
-function commit(mutate, { history = true } = {}) {
+/** Validated, undoable edit. raise: rethrow the error code instead of showing it (the wizard shows it inline). */
+function commit(mutate, { history = true, raise = false } = {}) {
   const draft = clone(state.project);
-  try { mutate(draft); validateProject(draft); } catch (error) { showError(error.message); return false; }
+  try { mutate(draft); validateProject(draft); } catch (error) { if (raise) throw error; showError(error.message); return false; }
   if (history) { undoStack.push(state.project); if (undoStack.length > 60) undoStack.shift(); redoStack.length = 0; }
   state.project = draft; showError(null);
   if (!draft.sessions.some(s => s.id === state.activeSession)) state.activeSession = draft.sessions[0].id;
@@ -80,21 +86,80 @@ async function fillHeights() {
 }
 
 function sessionColor(id) { const s = state.project.sessions.find(x => x.id === id); return SESSION_COLORS[(s?.color ?? 0) % SESSION_COLORS.length]; }
-function stationById(id) { return state.stations.find(s => s.id === id); }
+// Stations to snap to: the bundled RBMC list overlaid by the project's imported stations.
+let merged = { bundled: null, imported: null, list: [] };
+function allStations() {
+  const imported = state.project.stations || [];
+  if (merged.bundled !== state.stations || merged.imported !== imported) merged = { bundled: state.stations, imported, list: mergeStations(state.stations, imported) };
+  return merged.list;
+}
+function stationById(id) { return allStations().find(s => s.id === id); }
 function visibleStations() {
   const inNetwork = new Set(state.project.points.map(p => p.corsId).filter(Boolean));
-  return state.stations.filter(s => !inNetwork.has(s.id) && (s.status !== 'inactive' || state.view.corsInactive));
+  return allStations().filter(s => !inNetwork.has(s.id) && (s.status !== 'inactive' || state.view.corsInactive));
 }
 function addStation(id) {
   const existing = state.project.points.find(p => p.corsId === id);
   if (existing) return existing.id;
   const s = stationById(id);
   if (!s) return null;
-  let pid = s.id;
-  if (state.project.points.some(p => p.id === pid)) pid = nextId(`${s.id}_`, state.project.points.map(p => p.id));
-  const ok = commit(p => { p.points.push(makePoint({ id: pid, label: s.id, lat: s.lat, lon: s.lon, h: s.h, hSource: 'cors', kind: 'cors', corsId: s.id })); });
+  let pid = null;
+  const ok = commit(p => { pid = addStationPoint(p, s, 'fixed'); });
   return ok ? pid : null;
 }
+
+// ---------- station import (wizard host) ----------
+const fitPadding = () => (innerWidth > 900 && wizard?.isOpen ? { top: 70, bottom: 70, left: 70, right: Math.min(540, innerWidth * 0.45) } : 50);
+function previewImport(stations, { fit = false } = {}) {
+  if (!view?.available) return;
+  view.setSource('import', { type: 'FeatureCollection', features: (stations || []).map(s => ({ type: 'Feature', properties: { id: s.id },
+    geometry: { type: 'Point', coordinates: [s.lon, s.lat] } })) });
+  if (fit && stations?.length) view.fit(stations, fitPadding());
+}
+function planImport(stations, { mode, conflict }) {
+  const draft = clone(state.project);
+  const summary = applyImport(draft, stations.map(s => ({ ...s, h: s.h ?? 0 })), { mode, conflict, bundledIds: state.stations.map(s => s.id) });
+  const pointsFit = draft.points.length <= LIMITS.points, stationsFit = (draft.stations?.length ?? 0) <= IMPORT_LIMIT;
+  return { ...summary, total: draft.points.length, max: LIMITS.points, maxStations: IMPORT_LIMIT, pointsFit, stationsFit, fits: pointsFit && stationsFit };
+}
+/** DEM heights h = H + N₀ for imported records, grouped by tile; scattered lists use coarser tiles (≤ 48 requests). */
+async function sampleStationHeights(list, progress) {
+  const n0 = state.project.settings.geoidUndulation, keyOf = (s, z) => { const p = tilePixel(s.lon, s.lat, z); return `${p.x}/${p.y}`; };
+  let zoom = 14;
+  while (zoom > 8 && new Set(list.map(s => keyOf(s, zoom))).size > 48) zoom--;
+  const order = list.map(s => ({ s, key: keyOf(s, zoom) })).sort((a, b) => a.key.localeCompare(b.key)).map(x => x.s);
+  let next = 0, done = 0;
+  const worker = async () => {
+    while (next < order.length) {
+      const s = order[next++];
+      try { const H = await terrain.sample(s.lon, s.lat, zoom); Object.assign(s, { H, h: H + n0, heightSource: 'dem' }); }
+      catch { s.h = null; s.heightSource = 'missing'; delete s.H; }
+      progress?.(++done, order.length);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(6, order.length) }, worker));
+}
+async function importStations(stations, { mode, conflict, progress }) {
+  const pending = stations.filter(s => s.h === null);
+  if (pending.length) {
+    state.busy++; renderBusy();
+    try { await sampleStationHeights(pending, progress); } finally { state.busy--; renderBusy(); }
+  }
+  // No DEM: an approximate height (mean of the known ones), flagged like a point without terrain.
+  const known = stations.filter(s => Number.isFinite(s.h));
+  const fallback = known.length ? known.reduce((sum, s) => sum + s.h, 0) / known.length : fallbackHeight(state.project);
+  stations.forEach(s => { if (!Number.isFinite(s.h)) { s.h = fallback; s.heightSource = 'missing'; } });
+  const missing = stations.filter(s => s.heightSource === 'missing').length;
+  let summary;
+  commit(p => { summary = applyImport(p, stations, { mode, conflict, bundledIds: state.stations.map(s => s.id) }); }, { raise: true });
+  const details = [mode !== 'points' && summary.points ? t('detailControl', { count: summary.points }) : '',
+    summary.replaced ? t('detailReplaced', { count: summary.replaced }) : '', summary.renamed ? t('detailRenamed', { count: summary.renamed }) : '',
+    summary.skipped ? t('detailSkipped', { count: summary.skipped }) : '', missing ? t('detailMissing', { count: missing }) : ''].filter(Boolean);
+  showError(mode === 'points' ? 'importedPoints' : 'imported', { count: summary.count, details: details.length ? ` ${details.join(' · ')}.` : '' });
+  if (view?.available && stations.length) view.fit(stations);
+  return true;
+}
+function removeImported() { if (commit(p => { delete p.stations; })) showError('importRemoved'); }
 function snapStation(lngLat) {
   if (!state.view.snap || !view?.available) return null;
   let best = null, distance = Infinity;
@@ -218,7 +283,8 @@ function renderMap() {
     return { id: pt.id, lat: pt.lat, lon: pt.lon, classes, tag: state.view.labels ? (pt.label || pt.id) : '', sub,
       aria: `${pt.label || pt.id} · ${t(pt.kind === 'cors' ? 'kindCors' : 'kindNew')}`, draggable: pt.kind === 'new' };
   }), { draggable: state.tool === 'select' });
-  const corsFeatures = state.view.cors ? visibleStations().map(s => ({ type: 'Feature', properties: { id: s.id, status: s.status },
+  const imported = new Set((p.stations || []).map(s => s.id));
+  const corsFeatures = state.view.cors ? visibleStations().map(s => ({ type: 'Feature', properties: { id: s.id, status: s.status, imported: imported.has(s.id) },
     geometry: { type: 'Point', coordinates: [s.lon, s.lat] } })) : [];
   view.setSource('cors', { type: 'FeatureCollection', features: corsFeatures });
   const byId = new Map(p.points.map(x => [x.id, x]));
@@ -245,6 +311,7 @@ function renderMap() {
   if (state.tool !== 'baseline' || !state.pendingFrom) view.setSource('rubber', { type: 'FeatureCollection', features: [] });
   const legend = [`<div><i class="lg-new"></i>${esc(t('legendNew'))}</div>`, `<div><i class="lg-fixed"></i>${esc(t('legendFixed'))}</div>`,
     `<div><i class="lg-stoch"></i>${esc(t('legendStochastic'))}</div>`, `<div><i class="lg-cors"></i>${esc(t('legendCors'))}</div>`,
+    ...(imported.size ? [`<div><i class="lg-imported"></i>${esc(t('legendImported'))}</div>`] : []),
     `<div><i class="lg-trivial"></i>${esc(t('legendTrivial'))}</div>`,
     `<div>${esc(t('legendEllipse', { x: num(state.view.exaggeration, 0), conf: state.view.confidence === '95' ? '95%' : '1σ' }))}</div>`];
   if (state.view.redundancyColor) legend.push(`<div>${esc(t('legendRedundancy'))}</div>`);
@@ -352,7 +419,11 @@ function bindSettings() {
   stat('alpha', 'alpha'); stat('power', 'power');
   $('geoid').addEventListener('change', e => {
     const n0 = Number(e.target.value);
-    settingsEdit((s, p) => { s.geoidUndulation = n0; p.points.forEach(x => { if (x.hSource === 'terrain' && Number.isFinite(x.H)) x.h = x.H + n0; }); });
+    settingsEdit((s, p) => {
+      s.geoidUndulation = n0;
+      p.points.forEach(x => { if (x.hSource === 'terrain' && Number.isFinite(x.H)) x.h = x.H + n0; });
+      applyGeoidToStations(p, n0);
+    });
   });
   const viewToggle = (id, key, after) => $(id).addEventListener('change', e => { state.view[key] = e.target.checked; after?.(); render(); });
   viewToggle('labels', 'labels'); viewToggle('ellipses', 'ellipses'); viewToggle('precision-labels', 'precisionLabels');
@@ -393,6 +464,27 @@ function download(name, text, type = 'application/json') {
   a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; document.body.append(a); a.click();
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 0);
 }
+/** Points and baselines as one GeoJSON FeatureCollection (two layers in QGIS), results as attributes. */
+function saveGeoJSON() {
+  const slug = String(state.project.title || '').normalize('NFD').replace(/[^\w-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+  download(`gnss-preanalysis${slug ? `-${slug}` : ''}.geojson`, stringifyGeoJSON(projectToGeoJSON(state.project, result)), 'application/geo+json');
+}
+async function openFile(file) {
+  if (!file) return;
+  if (file.size > MAX_PROJECT_TEXT) { showError('invalidProject'); return; }
+  const text = await file.text();
+  let project;
+  try { project = readProject(text); }
+  catch (error) {
+    if (error.message !== 'notProject') { showError(error.message); return; }
+    // Not a saved network (e.g. a plain list of points): offer it to the import wizard.
+    showError(wizard.openWith(text, file.name) ? 'openedInWizard' : 'notProject');
+    return;
+  }
+  if (!project.stations && state.project.stations?.length) project.stations = state.project.stations; // keep the imported library
+  wizard.close();
+  replaceProject(project);
+}
 function fullMatrix(blocks, m) {
   const out = Array.from({ length: m }, () => Array(m).fill(0));
   for (const b of blocks) for (let i = 0; i < b.size; i++) for (let j = 0; j < b.size; j++) out[b.start + i][b.start + j] = b.q[i][j];
@@ -414,7 +506,7 @@ function renderMatrix() {
 // ---------- startup ----------
 function setTool(tool) { state.tool = tool; state.pendingFrom = null; render(); }
 function bindUi() {
-  document.querySelectorAll('[data-lang]').forEach(b => b.addEventListener('click', () => setLanguage(b.dataset.lang, () => { syncSettingsForm(); render(); })));
+  document.querySelectorAll('[data-lang]').forEach(b => b.addEventListener('click', () => setLanguage(b.dataset.lang, () => { syncSettingsForm(); render(); wizard?.refresh(); })));
   document.querySelectorAll('[data-tool]').forEach(b => b.addEventListener('click', () => setTool(b.dataset.tool)));
   $('undo').addEventListener('click', undo); $('redo').addEventListener('click', redo);
   $('fit').addEventListener('click', () => view?.fit?.(state.project.points));
@@ -427,25 +519,13 @@ function bindUi() {
   });
   $('example').addEventListener('change', e => loadExample(e.target.value));
   $('basemap').addEventListener('change', e => view?.setBasemap?.(e.target.value));
-  $('save').addEventListener('click', () => download('gnss-preanalysis.json', serialize(state.project)));
+  $('save').addEventListener('click', saveGeoJSON);
   $('load').addEventListener('click', () => $('file').click());
-  $('file').addEventListener('change', async e => {
-    const file = e.target.files[0]; e.target.value = '';
-    if (!file) return;
-    try { replaceProject(deserialize(await file.text())); } catch (error) { showError(error.message); }
-  });
-  $('import-cors').addEventListener('click', () => $('cors-file').click());
-  $('cors-file').addEventListener('change', async e => {
-    const file = e.target.files[0]; e.target.value = '';
-    if (!file) return;
-    try {
-      const text = await file.text(), list = /\.(geo)?json$/i.test(file.name) || text.trim().startsWith('{') ? parseCorsGeoJson(text) : parseCorsCsv(text);
-      const ids = new Set(list.map(s => s.id));
-      state.stations = [...state.stations.filter(s => !ids.has(s.id)), ...list];
-      showError('imported', { count: list.length }); render();
-      if (list.length && view?.available) view.fit(list);
-    } catch { showError('invalidCors'); }
-  });
+  $('file').addEventListener('change', e => { const file = e.target.files[0]; e.target.value = ''; openFile(file); });
+  $('import-cors').addEventListener('click', () => { showError(null); wizard.open(); });
+  // A file dropped anywhere: a saved project opens; anything else goes to the import wizard.
+  document.addEventListener('dragover', e => { if ([...(e.dataTransfer?.types || [])].includes('Files')) e.preventDefault(); });
+  document.addEventListener('drop', e => { const file = e.dataTransfer?.files?.[0]; if (file) { e.preventDefault(); openFile(file); } });
   $('pin').addEventListener('click', () => { state.comparison = metrics(); renderFooter(); });
   $('matrices').addEventListener('click', () => { renderMatrix(); $('matrix-dialog').showModal(); });
   $('matrix-choice').addEventListener('change', renderMatrix);
@@ -455,7 +535,8 @@ function bindUi() {
   $('theory').addEventListener('click', () => $('theory-dialog').showModal());
   document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => $(b.dataset.close).close()));
   document.addEventListener('keydown', e => {
-    const typing = /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement?.tagName);
+    // Keys typed in a form field or inside a dialog (the import wizard) never edit the network.
+    const typing = /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement?.tagName) || Boolean(document.activeElement?.closest?.('dialog[open]'));
     if (e.key === 'Escape' && state.pendingFrom) { state.pendingFrom = null; render(); }
     if (typing) return;
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); }
@@ -468,12 +549,21 @@ function bindUi() {
 }
 function loadExample(name) {
   $('example').value = name;
-  if (name === 'empty' || !state.stations.length) { replaceProject(emptyProject(), { fit: false }); if (name === 'empty') view?.fit?.(state.stations); return; }
-  try { replaceProject(buildExample(name, state.stations)); } catch (error) { showError(error.message); replaceProject(emptyProject(), { fit: false }); }
+  const imported = state.project.stations; // the imported library stays across examples
+  const keep = p => { if (imported?.length) p.stations = imported; return p; };
+  if (name === 'empty' || !state.stations.length) {
+    replaceProject(keep(emptyProject()), { fit: false });
+    if (name === 'empty') view?.fit?.(imported?.length ? imported : state.stations);
+    return;
+  }
+  try { replaceProject(keep(buildExample(name, state.stations))); } catch (error) { showError(error.message); replaceProject(keep(emptyProject()), { fit: false }); }
 }
 
 async function main() {
   setLanguage(initialLanguage());
+  wizard = createImportWizard({
+    importedCount: () => state.project.stations?.length ?? 0, removeImported, preview: previewImport, plan: planImport, import: importStations,
+  });
   bindUi(); syncSettingsForm();
   if (innerWidth <= 700) { $('workspace').classList.add('panel-hidden'); $('toggle-panel').setAttribute('aria-expanded', 'false'); }
   try { const data = await loadDataset(); state.dataset = data.metadata; state.stations = data.stations; } catch { showError('corsMissing'); }
@@ -481,6 +571,7 @@ async function main() {
   const requested = new URLSearchParams(location.search).get('example');
   loadExample(EXAMPLE_IDS.includes(requested) || requested === 'empty' ? requested : 'network');
   if (!view.available) { $('map-fallback').hidden = false; readyResolve?.(); }
-  window.__gnss = { getState, getResult, getProject, isBusy, getView, ready, setTool, addPointAt, createBaseline, addStation, loadExample, undo, redo };
+  window.__gnss = { getState, getResult, getProject, isBusy, getView, ready, setTool, addPointAt, createBaseline, addStation, loadExample, undo, redo,
+    allStations, getWizard: () => wizard.state };
 }
 main();

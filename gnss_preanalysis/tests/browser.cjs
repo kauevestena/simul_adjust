@@ -188,24 +188,104 @@ async function main() {
     await page.click('[data-tool="select"]');
     await shot('04-snap');
 
-    // 9. JSON save/load round trip and matrices dialog.
-    const [download] = await Promise.all([page.waitForEvent('download'), page.click('#save')]);
-    const saved = JSON.parse(fs.readFileSync(await download.path(), 'utf8'));
-    assert.equal(saved.format, 'gnss-preanalysis'); assert.equal(saved.points.length, 3);
+    // 9. GeoJSON save/load round trip (points + baselines, results as attributes), older JSON, matrices dialog.
+    const saveGeoJSON = async () => {
+      const [download] = await Promise.all([page.waitForEvent('download'), page.click('#save')]);
+      assert.match(download.suggestedFilename(), /\.geojson$/);
+      return JSON.parse(fs.readFileSync(await download.path(), 'utf8'));
+    };
+    const saved = await saveGeoJSON();
+    assert.equal(saved.type, 'FeatureCollection'); assert.equal(saved.gnss_preanalysis.format, 'gnss-preanalysis-geojson');
+    assert.deepEqual(saved.features.map(f => f.geometry.type).sort(), ['LineString', 'Point', 'Point', 'Point'], 'two layers: points and baselines');
+    const savedLine = saved.features.find(f => f.geometry.type === 'LineString').properties;
+    assert.ok(savedLine.length_km > 0 && savedLine.from === 'P1' && savedLine.to === 'PRPI');
+    assert.ok(saved.features.filter(f => f.geometry.type === 'Point').every(f => f.geometry.coordinates.length === 3 && 'sigma_e_mm' in f.properties));
+    const legacy = await page.evaluate(() => JSON.stringify(window.__gnss.getProject()));
     await page.selectOption('#example', 'network'); await settle();
-    await page.setInputFiles('#file', { name: 'net.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(saved)) });
+    await page.setInputFiles('#file', { name: 'net.geojson', mimeType: 'application/geo+json', buffer: Buffer.from(JSON.stringify(saved)) });
+    await page.waitForFunction(() => window.__gnss.getProject().points.length === 3);
+    assert.deepEqual(JSON.parse(legacy), await project(), 'GeoJSON round trip');
+    await page.selectOption('#example', 'network'); await settle();
+    await page.setInputFiles('#file', { name: 'old.json', mimeType: 'application/json', buffer: Buffer.from(legacy) });
     await page.waitForFunction(() => window.__gnss.getProject().points.length === 3);
     await page.setInputFiles('#file', { name: 'bad.json', mimeType: 'application/json', buffer: Buffer.from('{"format":"x"}') });
     await page.waitForSelector('#error:not([hidden])');
+    assert.match(await page.textContent('#error'), /not recognised/);
     assert.equal((await project()).points.length, 3, 'invalid file keeps the project');
     await page.selectOption('#example', 'network'); await settle();
     await page.click('#matrices'); assert.match(await page.textContent('#matrix-order'), /P1\.X/);
     await page.selectOption('#matrix-choice', 'S'); assert.notEqual((await page.textContent('#matrix-content')).trim(), '—');
     await page.click('#matrix-dialog [data-close]');
 
-    // 10. Imported CORS list.
-    await page.setInputFiles('#cors-file', { name: 'mine.csv', mimeType: 'text/csv', buffer: Buffer.from('id,lat,lon,h\nZZZ1,-25.5,-49.3,900\n') });
-    await page.waitForFunction(() => window.__gnss.getState().stations.some(s => s.id === 'ZZZ1'));
+    // 10. Import wizard. (a) GeoJSON with coordinates only: automatic IDs, DEM heights, map preview, stations to snap to.
+    const previewCount = () => page.evaluate(() => window.__gnss.getView().data.import.features.length);
+    const coordsOnly = { type: 'FeatureCollection', features: [[-49.31, -25.52], [-49.28, -25.47], [-49.25, -25.55]]
+      .map(c => ({ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: c } })) };
+    await page.click('#import-cors');
+    assert.equal(await page.locator('#import-dialog').isVisible(), true);
+    await page.setInputFiles('#import-file', { name: 'campus.geojson', mimeType: 'application/geo+json', buffer: Buffer.from(JSON.stringify(coordsOnly)) });
+    await page.waitForSelector('#import-dialog [data-panel="2"]:not([hidden])');
+    assert.match(await page.textContent('#import-summary'), /3 of 3 valid.*3 automatic ID.*3 height\(s\) will come from the DEM/);
+    assert.match(await page.textContent('#import-preview'), /CAMP1/);
+    assert.equal(await previewCount(), 3, 'orange preview on the map');
+    await shot('05-wizard-columns');
+    await page.click('#import-next');
+    assert.match(await page.textContent('#import-final'), /3 station\(s\) to import/);
+    await shot('06-wizard-import');
+    await page.click('#import-run');
+    await page.waitForSelector('#import-dialog', { state: 'hidden' });
+    let imported = await page.evaluate(() => window.__gnss.getProject().stations);
+    assert.deepEqual(imported.map(s => s.id), ['CAMP1', 'CAMP2', 'CAMP3']);
+    assert.ok(imported.every(s => s.heightSource === 'dem' && Number.isFinite(s.H) && Math.abs(s.h - s.H) < 1e-9), 'h = H + N₀ (N₀ = 0)');
+    assert.match(await page.textContent('#error'), /Stations imported: 3/);
+    assert.equal(await previewCount(), 0, 'preview cleared');
+    assert.match(await page.textContent('#map-legend'), /Imported station/);
+    await shot('07-imported-stations');
+    const camp3 = await screenOf([-49.25, -25.55]);
+    await page.mouse.click(camp3.x, camp3.y);
+    assert.match(await page.textContent('#context'), /Imported station[\s\S]*CAMP3[\s\S]*AWS DEM/);
+    // Snapping to an imported station adds it as fixed control with its DEM height; undo/redo cover the import.
+    await page.check('#snap'); await page.click('[data-tool="point"]');
+    const camp = await screenOf([-49.31, -25.52]);
+    await page.mouse.click(camp.x + 5, camp.y - 4);
+    p = await project();
+    const campPoint = p.points.find(x => x.corsId === 'CAMP1');
+    assert.deepEqual([campPoint.kind, campPoint.control, campPoint.hSource], ['cors', 'fixed', 'terrain']);
+    await page.click('#undo'); assert.equal((await project()).points.some(x => x.corsId === 'CAMP1'), false);
+    await page.click('#undo'); assert.equal((await project()).stations, undefined, 'undo removes the import');
+    await page.click('#redo'); assert.equal((await project()).stations.length, 3);
+    await page.click('[data-tool="select"]');
+    await page.selectOption('#example', 'trivial'); await settle();
+    assert.equal((await project()).stations.length, 3, 'the imported library stays across examples');
+    const withStations = await saveGeoJSON();
+    assert.equal(withStations.gnss_preanalysis.stations.length, 3, 'imported stations travel in the GeoJSON');
+    // (b) Pasted CSV with ";", DMS and decimal comma as new network points (one height from the file, one from the DEM).
+    await page.click('#import-cors');
+    await page.fill('#import-text', 'ponto;latitude;longitude;altitude\nM1;25°29\'10"S;49°17\'30"O;905,25\nM2;25 30 00 S;49 16 00 W;\n');
+    await page.click('#import-read');
+    await page.waitForSelector('#import-dialog [data-panel="2"]:not([hidden])');
+    assert.match(await page.textContent('#import-summary'), /2 of 2 valid/);
+    await page.click('#import-next'); await page.selectOption('#import-add', 'points');
+    assert.match(await page.textContent('#import-final'), /2 point\(s\) to import/);
+    await page.click('#import-run');
+    await page.waitForFunction(() => window.__gnss.getProject().points.some(x => x.id === 'M2'));
+    const m = (await project()).points.filter(x => ['M1', 'M2'].includes(x.id));
+    assert.deepEqual(m.map(x => [x.kind, x.hSource]), [['new', 'manual'], ['new', 'terrain']]);
+    assert.ok(Math.abs(m[0].lat - -(25 + 29 / 60 + 10 / 3600)) < 1e-12 && Math.abs(m[0].lon - -(49 + 17 / 60 + 30 / 3600)) < 1e-12, 'DMS, O = Oeste');
+    assert.equal(m[0].h, 905.25); assert.ok(Math.abs(m[1].lon - -(49 + 16 / 60)) < 1e-12);
+    assert.match(await page.textContent('#error'), /New points imported into the network: 2/);
+    assert.equal(await page.locator('.gnss-marker[data-id="M1"]').count(), 1);
+    // (c) "Open" with a plain point file hands it to the wizard; Esc closes it; the wizard removes imported stations.
+    await page.setInputFiles('#file', { name: 'pontos.geojson', mimeType: 'application/geo+json', buffer: Buffer.from(JSON.stringify(coordsOnly)) });
+    await page.waitForSelector('#import-dialog[open] [data-panel="2"]:not([hidden])');
+    assert.match(await page.textContent('#error'), /not a saved network/);
+    await page.keyboard.press('Escape');
+    await page.waitForSelector('#import-dialog', { state: 'hidden' });
+    await page.click('#import-cors');
+    assert.match(await page.textContent('#import-current'), /3 imported station/);
+    await page.click('#import-remove');
+    assert.equal((await project()).stations, undefined);
+    await page.click('#import-dialog [data-close]');
 
     // 11. Basemap switch keeps the network layers (re-installed after style.load).
     await page.selectOption('#basemap', 'liberty');
@@ -223,9 +303,16 @@ async function main() {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.waitForTimeout(300);
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'horizontal overflow');
-    await shot('05-phone');
+    await shot('08-phone');
     await page.click('#toggle-panel'); assert.equal(await page.locator('#inspector').isVisible(), false);
     await page.click('#toggle-panel'); assert.equal(await page.locator('#inspector').isVisible(), true);
+    // The wizard is a bottom sheet on phones: it fits the screen and leaves the top of the map visible.
+    await page.click('#import-cors');
+    const sheet = await page.locator('#import-dialog').boundingBox();
+    assert.ok(sheet.x >= 0 && sheet.x + sheet.width <= 391 && sheet.y > 200, `wizard on phone ${JSON.stringify(sheet)}`);
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'wizard overflow');
+    await shot('09-wizard-phone');
+    await page.click('#import-dialog [data-close]');
     await context.close();
 
     // 14. DEM failure: points keep an approximate height, flagged, and the network still computes.
@@ -238,6 +325,13 @@ async function main() {
       src: window.__gnss.getProject().points.map(p => p.hSource) }));
     assert.ok(res2.codes.includes('heightAssumed')); assert.equal(res2.dof, 0); assert.ok(res2.src.includes('missing'));
     assert.match(await p2.textContent('#error'), /Elevation unavailable/);
+    // Imported coordinates without the DEM: an approximate height, flagged, and the import still completes.
+    await p2.click('#import-cors');
+    await p2.setInputFiles('#import-file', { name: 'pts.csv', mimeType: 'text/csv', buffer: Buffer.from('lat,lon\n-25.52,-49.31\n-25.47,-49.28\n') });
+    await p2.click('#import-next'); await p2.click('#import-run');
+    await p2.waitForFunction(() => window.__gnss.getProject().stations?.length === 2, null, { timeout: 60000 });
+    assert.ok((await p2.evaluate(() => window.__gnss.getProject().stations)).every(s => s.heightSource === 'missing' && Number.isFinite(s.h)));
+    assert.match(await p2.textContent('#error'), /2 without the DEM/);
     await failing.close();
     console.log('gnss_preanalysis browser suite passed');
   } finally { await browser.close(); server.close(); }

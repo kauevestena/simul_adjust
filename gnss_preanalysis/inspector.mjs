@@ -84,10 +84,12 @@ export function stationHtml(station, project) {
   const source = { ngl: 'srcNgl', site_log: 'srcLog', ibge_report: 'srcIbge', import: 'srcImport' }[station.coordSource] || 'srcImport';
   const status = { active: 'stActive', inactive: 'stInactive', unverified: 'stUnverified' }[station.status] || 'stActive';
   const link = /^https?:\/\//.test(station.reference || '') ? `<a href="${esc(station.reference)}" target="_blank" rel="noopener">${esc(t('reference'))}</a>` : '';
-  return `<span class="badge">${esc(t('station'))}</span><h3>${esc(station.id)}${station.city ? ` · ${esc(station.city)}` : ''}</h3><dl>
+  const heightSource = { file: 'hFile', dem: 'terrain', constant: 'hConstant', missing: 'missing' }[station.heightSource];
+  return `<span class="badge ${station.coordSource === 'import' ? 'imported' : ''}">${esc(t(station.coordSource === 'import' ? 'importedStation' : 'station'))}</span><h3>${esc(station.id)}${station.city ? ` · ${esc(station.city)}` : ''}</h3><dl>
     ${row(t('status'), esc(t(status)))}${row(t('networks'), esc((station.networks || []).join(', ')))}
     ${row(t('agencies'), esc((station.agencies || []).join(', ')) || '—')}
     ${row(t('latitude'), station.lat.toFixed(6))}${row(t('longitude'), station.lon.toFixed(6))}${row(t('height'), `${num(station.h, 3)} m`)}
+    ${heightSource ? row(t('heightSource'), esc(t(heightSource))) : ''}
     ${row(t('coordSource'), esc(t(source)))}</dl><p class="note">${link}</p>
     <div class="panel-actions">${inNetwork ? `<p class="note">${esc(t('inNetwork'))}</p>` : `<button id="add-station" data-id="${esc(station.id)}">${esc(t('addToNetwork'))}</button>`}</div>`;
 }

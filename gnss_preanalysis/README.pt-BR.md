@@ -17,7 +17,7 @@ python -m http.server 8000   # depois http://localhost:8000/gnss_preanalysis/
 
 Não há etapa de build nem instalação de pacotes em tempo de execução. Módulos ES exigem HTTP, não
 `file://`. O mapa base (`tiles.openfreemap.org`) e o MDT (`s3.amazonaws.com/elevation-tiles-prod`)
-são baixados durante o uso; sem eles, o cálculo, os painéis e os arquivos JSON continuam funcionando.
+são baixados durante o uso; sem eles, o cálculo, os painéis e os arquivos GeoJSON continuam funcionando.
 
 ## Como explorar
 
@@ -32,7 +32,10 @@ são baixados durante o uso; sem eles, o cálculo, os painéis e os arquivos JSO
   lateral. **Teoria** resume as fórmulas; **Matrizes** mostra A, Σ_Lb, P, N e Σxx.
 - Quatro exemplos: rede com duas estações RBMC e quatro pontos em quatro sessões; irradiação sem
   redundância; sessão com quatro receptores e três linhas triviais; e linhas longas diante do guia de
-  tempo do IBGE. Os projetos são salvos e abertos em JSON versionado.
+  tempo do IBGE.
+- **Salvar GeoJSON** / **Abrir GeoJSON** guardam o projeto num único GeoJSON que os SIG leem
+  diretamente; **Importar estações** abre um assistente em três passos para listas de estações ou
+  pontos (veja abaixo).
 
 ## Modelo estocástico de um vetor
 
@@ -106,7 +109,8 @@ Não há correção para testes múltiplos.
 ## Altitudes e estações
 
 - **MDT.** `shared/terrarium.mjs` amostra os AWS Terrain Tiles (Terrarium, z14, pixel vizinho por
-  truncamento). O valor é tratado como uma altitude H do tipo ortométrica e **h = H + N₀**, com N₀
+  truncamento; listas importadas espalhadas por uma área grande usam tiles menos detalhados para
+  pedir no máximo 48). O valor é tratado como uma altitude H do tipo ortométrica e **h = H + N₀**, com N₀
   constante definida por você (0 m por padrão, aproximação didática como em `network_preanalysis`).
   Enquanto o tile carrega, ou se falhar, o ponto mantém uma altitude aproximada com o aviso
   `heightAssumed`; ela nunca é apresentada como dado do MDT. A altitude quase não afeta a covariância
@@ -115,9 +119,67 @@ Não há correção para testes múltiplos.
   (removidas ficam de fora). As coordenadas são **aproximadas** (decímetros; 134 do NGL, as demais de
   site logs e descritivos do IBGE): servem para projetar, não para calcular. Veja
   [data/README.md](data/README.md).
-- **Suas estações.** "Importar estações" lê CSV (`id,lat,lon,h[,city,status]`, graus decimais, h
-  elipsoidal; `;` com vírgula decimal também é aceito) ou GeoJSON de pontos (`properties.id`, `h` ou a
-  terceira coordenada). IDs têm 4 caracteres; estações importadas substituem as do pacote com o mesmo ID.
+- **Suas estações e pontos.** Veja o assistente de importação abaixo.
+
+## Arquivos de projeto GeoJSON
+
+**Salvar GeoJSON** grava uma única FeatureCollection (RFC 7946): pontos da rede como feições `Point`
+e linhas de base como feições `LineString`, que o QGIS lista como duas camadas (subcamadas de pontos
+e de linhas do mesmo arquivo). As posições são `[longitude, latitude, h]`, com h a altitude elipsoidal em
+metros. Os resultados são atributos para consulta e mapas; ao abrir o arquivo, são ignorados e
+recalculados.
+
+| Pontos | Significado |
+|---|---|
+| `id`, `label`, `kind`, `control`, `cors_id` | ID (as linhas se referem a ele), rótulo, `new`/`cors`, `free`/`fixed`/`stochastic`, ID da estação |
+| `h_m`, `h_source`, `dem_H_m` | h elipsoidal (m), sua origem (`terrain`, `cors`, `manual`, `pending`, `missing`), H do MDT |
+| `ctrl_e_mm`, `ctrl_n_mm`, `ctrl_u_mm` | σ do apoio estocástico |
+| `setup_c_mm`, `setup_h_mm` | σ de centragem e de altura da antena próprios do ponto (nulo: o padrão) |
+| `used` | o ponto entra no cálculo |
+| `sigma_e_mm`, `sigma_n_mm`, `sigma_u_mm` | σ previsto a 1σ (0 no apoio fixo, nulo se não calculado) |
+| `ell_major_mm`, `ell_minor_mm`, `ell_azim_deg` | semieixos da elipse 1σ e azimute do semieixo maior (a partir do norte, 0–180°); ×2,4477 para 95 % |
+
+| Linhas de base | Significado |
+|---|---|
+| `id`, `from`, `to`, `active` | ID do vetor, extremidades, se é usado |
+| `session`, `session_label`, `duration_min` | ID, nome e duração da sessão |
+| `length_km`, `included`, `trivial` | comprimento; dentro do ajustamento; linha dependente (trivial) |
+| `apriori_e_mm`, `apriori_n_mm`, `apriori_u_mm` | σ a priori do vetor, com a instalação |
+| `sigma_e_mm`, `sigma_n_mm`, `sigma_u_mm` | σ do vetor após o ajustamento |
+| `redundancy`, `mdb_e_mm`, `mdb_n_mm`, `mdb_u_mm` | redundância (traço/3, 0–1); MDB ao longo de E, N, U (nulo: não detectável) |
+| `ibge_min`, `short_session` | sessão mínima pelo guia do IBGE (min); se a sessão é mais curta |
+
+Configurações, sessões e estações importadas vão no membro de nível superior `gnss_preanalysis`, que os
+SIG ignoram. Um arquivo editado num SIG continua abrindo: atributos alterados e pontos movidos são
+lidos, um ponto acrescentado sem ID nem altitude recebe o próximo ID `P` livre e altitude do MDT, e uma linha
+desenhada com *snap* entre dois pontos vira linha de base mesmo sem `from`/`to`. A altitude vem de
+`h_m`; apague-a depois de mover um ponto para que o MDT seja consultado de novo. Se o SIG descartar o
+membro de nível superior ao salvar, as sessões são refeitas a partir dos atributos das linhas e as
+configurações de precisão voltam ao padrão. **Abrir GeoJSON** também lê os `.json` salvos por versões
+anteriores; um arquivo que não é uma rede salva (p. ex. só pontos) vai para o assistente de importação,
+e soltar qualquer arquivo na página faz o mesmo.
+
+## Assistente de importação
+
+**Importar estações** abre um painel flutuante, deixando o mapa visível:
+
+1. **Arquivo**: solte ou escolha um arquivo, ou cole o texto. GeoJSON (feições Point/MultiPoint;
+   linhas e polígonos são ignorados), listas JSON, CSV, TSV, texto separado por `;`, `|` ou espaços,
+   com ou sem cabeçalho (nomes de colunas em PT e EN são reconhecidos: `lat`/`latitude`,
+   `lon`/`longitude`, `id`/`código`/`ponto`, `nome`, `h`/`altitude`, `status`/`situação`).
+2. **Colunas**: confirme o separador, o cabeçalho e a coluna de cada campo. Só latitude e longitude são
+   obrigatórias: graus decimais com ponto ou vírgula decimal, ou GMS como `25°26'54"S`, `S 25 26 54,1`
+   ou `49:13:51.4W` (O/L de Oeste/Leste também valem). IDs ausentes recebem um prefixo e um contador,
+   IDs repetidos o sufixo `-2`; a altitude vem do arquivo, do MDT (h = H + N₀) ou de uma constante.
+   Linhas rejeitadas aparecem com o motivo (coordenadas projetadas, por exemplo), colunas lat/lon
+   trocadas são detectadas e os pontos válidos aparecem em laranja no mapa.
+3. **Importar**: use os registros como **estações de referência** para o *snap* (em violeta, salvas no
+   projeto), como estações que também entram na rede como **apoio fixo** ou **estocástico**, ou como
+   **pontos novos** da rede (incógnitas). IDs já em uso podem ser renomeados, substituídos (pontos da
+   rede ligados a uma estação substituída acompanham a mudança) ou ignorados.
+
+As importações podem ser desfeitas, permanecem no projeto ao trocar de exemplo e são salvas no
+GeoJSON. Até 5 MB e 5000 registros por arquivo; os limites da rede continuam valendo.
 
 ## Validação
 
@@ -135,9 +197,12 @@ apoio estocástico, irradiação, linhas triviais mantidas/excluídas/correlacio
 IBGE com vetores longos. Os testes em Node comparam posto, redundância, Σxx, σ, elipses, σ a priori e
 ajustado dos vetores e MDB. Também verificam o exemplo de 5 km (σX 6,60, σY 6,87, σZ 6,16 mm;
 ρXY −0,29), o retrato da RBMC (somas de verificação, limites do Brasil, concordância com coordenadas
-oficiais do IBGE), a importação CSV/GeoJSON, JSON e os dicionários. O teste de navegador usa a página
-real com cliques de mouse (inserção, *snap*, desenho, arraste, sessões, configurações, arquivos,
-layout de celular, falha do MDT), com OpenFreeMap e Terrarium respondidos por arquivos locais;
+oficiais do IBGE), o importador (ângulos decimais, com vírgula decimal e em GMS, separadores,
+cabeçalhos, coordenadas trocadas ou projetadas), os modos de importação e os conflitos, os ciclos
+salvar/abrir em GeoJSON (com e sem o membro de nível superior, JSON antigo) e os dicionários. O teste de navegador usa a página
+real com cliques de mouse (inserção, *snap*, desenho, arraste, sessões, configurações, arquivos
+GeoJSON, o assistente com um GeoJSON só de coordenadas e uma tabela GMS colada, layout de celular,
+falha do MDT), com OpenFreeMap e Terrarium respondidos por arquivos locais;
 `GNSS_SCREENSHOTS=/tmp/dir` guarda capturas e `CHROME_PATH` escolhe um Chrome local.
 
 ```sh
@@ -147,8 +212,10 @@ python gnss_preanalysis/tests/generate_reference.py
 ## Estrutura e dependências
 
 `model/` independe da interface (`stochastic.mjs`, `analysis.mjs`, `network.mjs`, `cors.mjs`,
-`examples.mjs`). `app.mjs` guarda estado, histórico e eventos; `map.mjs`, a visão MapLibre;
-`inspector.mjs`, os painéis; `geometry.mjs`, os desenhos no mapa; e `i18n.mjs`, o dicionário PT-BR/EN
+`importer.mjs` para leitura e mapeamento de colunas, `stations.mjs` para os modos de importação,
+`geojson.mjs` para os arquivos de projeto, `examples.mjs`). `app.mjs` guarda estado, histórico e
+eventos; `map.mjs`, a visão MapLibre; `wizard.mjs`, o assistente de importação; `inspector.mjs`, os
+painéis; `geometry.mjs`, os desenhos no mapa; e `i18n.mjs`, o dicionário PT-BR/EN
 (parâmetro `lang` da URL, depois `monorepo_lang` no armazenamento, depois o navegador; a troca atualiza
 textos, URL e link do portal). Reutilizados sem cópia: MapLibre GL JS 4.7.1 de
 `channel_tunnel_story/vendor`, o pacote SVD ml-matrix e as funções WGS84/ENU, de covariância e de
