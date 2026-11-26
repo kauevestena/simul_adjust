@@ -17,7 +17,7 @@ python -m http.server 8000   # then http://localhost:8000/gnss_preanalysis/
 
 No build step or runtime package install. ES modules require HTTP, not `file://`. The basemap
 (`tiles.openfreemap.org`) and the DEM (`s3.amazonaws.com/elevation-tiles-prod`) are fetched at
-runtime; without them the computation, the panels and JSON files still work.
+runtime; without them the computation, the panels and GeoJSON files still work.
 
 ## Explore
 
@@ -32,7 +32,9 @@ runtime; without them the computation, the panels and JSON files still work.
   side panel. **Theory** summarises the formulas; **Matrices** shows A, Σ_Lb, P, N and Σxx.
 - Four examples: a network with two RBMC stations and four points in four sessions; a radial
   survey without redundancy; a four-receiver session with three trivial baselines; and long
-  baselines against the IBGE session-time guide. Projects are saved/opened as versioned JSON.
+  baselines against the IBGE session-time guide.
+- **Save GeoJSON** / **Open GeoJSON** keep the project in one GeoJSON file that GIS software reads
+  directly; **Import stations** opens a three-step wizard for station or point lists (see below).
 
 ## Stochastic model of one vector
 
@@ -106,7 +108,8 @@ external effect of an MDB on the points can be drawn on the map. No multiple-tes
 
 ## Heights and stations
 
-- **DEM.** `shared/terrarium.mjs` samples AWS Terrain Tiles (Terrarium, z14, floored nearest pixel).
+- **DEM.** `shared/terrarium.mjs` samples AWS Terrain Tiles (Terrarium, z14, floored nearest pixel;
+  imported lists spread over a large area use coarser tiles so that at most 48 are requested).
   The value is taken as an orthometric-like height H and **h = H + N₀**, with N₀ a constant you set
   (0 m by default, a didactic approximation like `network_preanalysis`). While a tile is loading,
   or if it fails, the point keeps an approximate height and a `heightAssumed` warning; it is never
@@ -115,9 +118,66 @@ external effect of an MDB on the points can be drawn on the map. No multiple-tes
 - **RBMC.** `data/rbmc-stations.json` is a pinned snapshot of 141 active/inactive RBMC stations
   (removed ones excluded). Coordinates are **approximate** (decimetres; 134 from NGL, others from site
   logs and IBGE reports): fine for design, not for computing. See [data/README.md](data/README.md).
-- **Your own stations.** "Import stations" reads CSV (`id,lat,lon,h[,city,status]`, decimal degrees,
-  ellipsoidal h; `;` with decimal commas also accepted) or GeoJSON points (`properties.id`, `h` or
-  the third coordinate). IDs have 4 characters; imported stations replace bundled ones with the same ID.
+- **Your own stations and points.** See the import wizard below.
+
+## GeoJSON project files
+
+**Save GeoJSON** writes one RFC 7946 FeatureCollection: network points as `Point` features and
+baselines as `LineString` features, so QGIS lists them as two layers (point and line sublayers of
+the same file). Positions are `[longitude, latitude, h]`, with h the ellipsoidal height in metres. Results are
+attributes for reading and mapping; when the file is opened they are ignored and recomputed.
+
+| Points | Meaning |
+|---|---|
+| `id`, `label`, `kind`, `control`, `cors_id` | ID (baselines refer to it), map label, `new`/`cors`, `free`/`fixed`/`stochastic`, station ID |
+| `h_m`, `h_source`, `dem_H_m` | ellipsoidal h (m), its origin (`terrain`, `cors`, `manual`, `pending`, `missing`), DEM H |
+| `ctrl_e_mm`, `ctrl_n_mm`, `ctrl_u_mm` | σ of stochastic control |
+| `setup_c_mm`, `setup_h_mm` | the point's own centering and antenna-height σ (null: the default) |
+| `used` | the point takes part in the computation |
+| `sigma_e_mm`, `sigma_n_mm`, `sigma_u_mm` | predicted σ at 1σ (0 for fixed control, null if not computed) |
+| `ell_major_mm`, `ell_minor_mm`, `ell_azim_deg` | 1σ ellipse semi-axes and azimuth of the major axis (from north, 0–180°); ×2.4477 for 95 % |
+
+| Baselines | Meaning |
+|---|---|
+| `id`, `from`, `to`, `active` | vector ID, end points, whether it is used |
+| `session`, `session_label`, `duration_min` | session ID, name and duration |
+| `length_km`, `included`, `trivial` | length; inside the adjustment; dependent (trivial) baseline |
+| `apriori_e_mm`, `apriori_n_mm`, `apriori_u_mm` | a priori σ of the vector, setup included |
+| `sigma_e_mm`, `sigma_n_mm`, `sigma_u_mm` | σ of the vector after the adjustment |
+| `redundancy`, `mdb_e_mm`, `mdb_n_mm`, `mdb_u_mm` | redundancy (trace/3, 0–1); MDB along E, N, U (null: undetectable) |
+| `ibge_min`, `short_session` | minimum session by the IBGE guide (min); whether the session is shorter |
+
+Settings, sessions and imported stations travel in the top-level member `gnss_preanalysis`, which GIS
+software ignores. A file edited in a GIS still opens: changed attributes and moved points are read
+back, a point added without ID or height gets the next free `P` ID and its height from the DEM, and a line
+snapped between two points becomes a baseline even without `from`/`to`. Heights come from `h_m`, so
+clear it after moving a point to have the DEM sampled again. If the GIS drops the top-level member
+when saving, sessions are rebuilt from the baseline attributes and the precision settings return to
+their defaults. **Open GeoJSON** also reads the `.json` files saved by earlier versions; a file that
+is not a saved network (e.g. plain points) is handed to the import wizard, and dropping any file on
+the page does the same.
+
+## Import wizard
+
+**Import stations** opens a floating panel, so the map stays visible:
+
+1. **File**: drop or choose a file, or paste text. GeoJSON (Point/MultiPoint features; lines and
+   polygons are skipped), JSON arrays, CSV, TSV, `;`, `|` or whitespace-separated text, with or
+   without a header (PT and EN column names are recognised: `lat`/`latitude`, `lon`/`longitude`,
+   `id`/`código`/`ponto`, `nome`, `h`/`altitude`, `status`/`situação`).
+2. **Columns**: confirm the delimiter, header and the column of each field. Only latitude and
+   longitude are required: decimal degrees with a dot or a decimal comma, or DMS such as `25°26'54"S`,
+   `S 25 26 54,1` or `49:13:51.4W` (O/L for Oeste/Leste also work). Missing IDs get a prefix and a
+   counter, repeated IDs a `-2` suffix; heights come from the file, the DEM (h = H + N₀) or a
+   constant. Rejected rows are listed with the reason (projected coordinates, for example), swapped
+   lat/lon columns are detected, and the valid points are previewed in orange on the map.
+3. **Import**: use the records as **reference stations** to snap to (shown in violet, saved with the
+   project), as stations that also join the network as **fixed** or **stochastic control**, or as
+   **new network points** (unknowns). IDs already in use can be renamed, replaced (network points
+   tied to a replaced station move with it) or skipped.
+
+Imports are undoable, stay in the project across examples and are saved in the GeoJSON. Up to 5 MB
+and 5000 records per file; the network limits still apply.
 
 ## Validation
 
@@ -134,9 +194,12 @@ independent and correlated sessions, quadratic/radial/high-precision settings, s
 a radial survey, trivial baselines kept/excluded/correlated and the IBGE preset with long vectors.
 The Node tests compare rank, redundancy, Σxx, σ, ellipses, a priori and adjusted vector σ and MDB.
 They also check the 5 km worked example (σX 6.60, σY 6.87, σZ 6.16 mm; ρXY −0.29), the RBMC
-snapshot (checksums, Brazil bounds, agreement with official IBGE coordinates), CSV/GeoJSON import,
-JSON round trips and the dictionaries. The browser test drives the real page with mouse clicks
-(placing, snapping, drawing, dragging, sessions, settings, files, phone layout, DEM failure) with
+snapshot (checksums, Brazil bounds, agreement with official IBGE coordinates), the importer
+(decimal, decimal comma and DMS angles, delimiters, headers, swapped or projected coordinates), the
+import modes and conflicts, GeoJSON round trips (with and without the top-level member, older JSON)
+and the dictionaries. The browser test drives the real page with mouse clicks
+(placing, snapping, drawing, dragging, sessions, settings, GeoJSON files, the import wizard with a
+coordinates-only GeoJSON and a pasted DMS table, phone layout, DEM failure) with
 OpenFreeMap and Terrarium answered by local fixtures; `GNSS_SCREENSHOTS=/tmp/dir` keeps screenshots
 and `CHROME_PATH` selects a local Chrome.
 
@@ -147,8 +210,10 @@ python gnss_preanalysis/tests/generate_reference.py
 ## Structure and dependencies
 
 `model/` is UI-independent (`stochastic.mjs`, `analysis.mjs`, `network.mjs`, `cors.mjs`,
-`examples.mjs`). `app.mjs` holds state, history and events, `map.mjs` the MapLibre view,
-`inspector.mjs` the panels, `geometry.mjs` the map drawings and `i18n.mjs` the PT-BR/EN dictionary
+`importer.mjs` for parsing and column mapping, `stations.mjs` for import modes, `geojson.mjs` for
+project files, `examples.mjs`). `app.mjs` holds state, history and events, `map.mjs` the MapLibre view,
+`wizard.mjs` the import wizard, `inspector.mjs` the panels, `geometry.mjs` the map drawings and
+`i18n.mjs` the PT-BR/EN dictionary
 (URL `lang`, then `monorepo_lang` in storage, then the browser; switching updates text, URL and the
 portal link). Reused without copies: MapLibre GL JS 4.7.1 from `channel_tunnel_story/vendor`, the
 ml-matrix SVD bundle and the WGS84/ENU, covariance and reliability helpers from

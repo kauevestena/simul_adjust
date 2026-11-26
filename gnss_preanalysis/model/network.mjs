@@ -1,6 +1,7 @@
 // Serializable GNSS network project (version 1). Geographic degrees, ellipsoidal h in metres,
 // standard deviations in mm, session durations in minutes. No UI state is stored here.
 import { defaultSettings, validateSettings } from './stochastic.mjs';
+import { validateStations } from './cors.mjs';
 
 export const FORMAT = 'gnss-preanalysis';
 export const LIMITS = Object.freeze({ points: 150, baselines: 600, sessions: 60 });
@@ -22,7 +23,7 @@ export function validatePoint(p) {
       ![p.lat, p.lon, p.h].every(Number.isFinite) || Math.abs(p.lat) > 85 || Math.abs(p.lon) > 180 || Math.abs(p.h) > 12000 ||
       !['new', 'cors'].includes(p.kind) || !['free', 'fixed', 'stochastic'].includes(p.control) ||
       !['terrain', 'cors', 'manual', 'pending', 'missing'].includes(p.hSource) ||
-      (p.corsId != null && !text(p.corsId, 9))) throw Error('invalidPoint');
+      (p.corsId != null && !text(p.corsId, 20))) throw Error('invalidPoint');
   if (!Array.isArray(p.sigmaControl) || p.sigmaControl.length !== 3 || !p.sigmaControl.every(x => Number.isFinite(x) && x > 0 && x <= 10000))
     throw Error('invalidSigma');
   if (p.setup != null && (![p.setup.centering, p.setup.height].every(x => Number.isFinite(x) && x >= 0 && x <= 100))) throw Error('invalidSetup');
@@ -35,6 +36,7 @@ export function validateProject(project) {
       p.sessions.length > LIMITS.sessions || !p.sessions.length || (p.title != null && (typeof p.title !== 'string' || p.title.length > 120)))
     throw Error('invalidProject');
   validateSettings(p.settings);
+  if (p.stations != null) validateStations(p.stations, { strict: false }); // stations imported into this project
   const ids = new Set();
   for (const point of p.points) { validatePoint(point); if (ids.has(point.id)) throw Error('invalidPoint'); ids.add(point.id); }
   const sessions = new Set();

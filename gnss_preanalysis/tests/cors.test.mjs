@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { validateStations, nearestStation, haversine, parseCorsCsv, parseCorsGeoJson } from '../model/cors.mjs';
+import { validateStations, nearestStation, haversine, mergeStations } from '../model/cors.mjs';
 
 const data = JSON.parse(readFileSync(new URL('../data/rbmc-stations.json', import.meta.url), 'utf8'));
 const sorted = value => Array.isArray(value) ? value.map(sorted) : value && typeof value === 'object'
@@ -49,15 +49,13 @@ test('nearest station and snapping radius', () => {
   assert.ok(Math.abs(haversine({ lat: 0, lon: 0 }, { lat: 0, lon: 1 }) - 111195) < 5);
 });
 
-test('imported CORS lists: CSV with or without header, semicolons and GeoJSON', () => {
-  const a = parseCorsCsv('id,lat,lon,h,city\nabcd,-10.5,-40.25,120.5,Somewhere\nEFGH,-10.6,-40.3,99,Else');
-  assert.deepEqual(a.map(s => s.id), ['ABCD', 'EFGH']); assert.equal(a[0].h, 120.5); assert.equal(a[0].networks[0], 'custom');
-  const b = parseCorsCsv('# comment\nWXYZ;-10,5;-40,25;12');
-  assert.equal(b[0].lat, -10.5); assert.equal(b[0].lon, -40.25);
-  assert.throws(() => parseCorsCsv('id,lat,lon\nAB,-10,-40'), /invalidCors/);
-  assert.throws(() => parseCorsCsv('id,lat,lon\nABCD,-100,-40'), /invalidCors/);
-  assert.throws(() => parseCorsCsv('id,lat,lon\nABCD,-10,-40\nABCD,-11,-40'), /invalidCors/);
-  const g = parseCorsGeoJson({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: { id: 'qrst' }, geometry: { type: 'Point', coordinates: [-45, -20, 800] } }] });
-  assert.equal(g[0].id, 'QRST'); assert.equal(g[0].h, 800);
-  assert.throws(() => parseCorsGeoJson({ type: 'Feature' }), /invalidCors/);
+test('imported stations: relaxed IDs, required fields, merge over the bundled list', () => {
+  const ok = [{ id: 'Base_01', city: 'Campus', status: 'active', networks: ['minha rede'], agencies: [], lat: -25.4, lon: -49.2, h: 900, coordSource: 'import' }];
+  validateStations(ok, { strict: false });
+  assert.throws(() => validateStations(ok), /invalidCors/, 'bundled rule: 4-character upper-case IDs');
+  for (const bad of [{ id: 'has space' }, { id: '-x' }, { id: 'a'.repeat(21) }, { status: 'removed' }, { lat: 90 }, { h: NaN }, { city: 3 }, { networks: 'x' }])
+    assert.throws(() => validateStations([{ ...ok[0], ...bad }], { strict: false }), /invalidCors/, JSON.stringify(bad));
+  assert.throws(() => validateStations([ok[0], ok[0]], { strict: false }), /invalidCors/, 'duplicate');
+  const merged = mergeStations(data.stations, [{ ...ok[0], id: 'UFPR', lat: -10 }]);
+  assert.equal(merged.length, data.stations.length); assert.equal(merged.find(s => s.id === 'UFPR').lat, -10);
 });

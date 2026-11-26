@@ -19,8 +19,8 @@
     <label><span data-t="examples"></span><select id="example"><option value="network" data-t="exNetwork"></option><option value="radial" data-t="exRadial"></option><option value="trivial" data-t="exTrivial"></option><option value="long" data-t="exLong"></option><option value="empty" data-t="exEmpty"></option></select></label>
     <label><span data-t="basemap"></span><select id="basemap"><option value="positron">Positron</option><option value="liberty">Liberty</option></select></label>
     <span class="spacer"></span>
-    <button id="save" data-t="save"></button><button id="load" data-t="load"></button><input id="file" type="file" accept="application/json,.json" hidden>
-    <button id="import-cors" data-t="importCors"></button><input id="cors-file" type="file" accept=".csv,.txt,.json,.geojson,text/csv,application/json" hidden>
+    <button id="save" data-t="save" data-label="saveTitle"></button><button id="load" data-t="load" data-label="loadTitle"></button><input id="file" type="file" accept=".geojson,.json,application/geo+json,application/json" hidden>
+    <button id="import-cors" data-t="importCors"></button>
     <button id="toggle-panel" data-t="panel" aria-expanded="true"></button>
   </div>
   <main id="workspace">
@@ -96,6 +96,47 @@
   </main>
   <dialog id="help-dialog"><div class="dialog-top"><h2 data-t="help"></h2><button data-close="help-dialog" data-t="close"></button></div><div class="prose" data-html="helpBody"></div></dialog>
   <dialog id="theory-dialog"><div class="dialog-top"><h2 data-t="theory"></h2><button data-close="theory-dialog" data-t="close"></button></div><div class="prose" data-html="theoryBody"></div></dialog>
+  <dialog id="import-dialog" class="wizard" aria-labelledby="import-title">
+    <div class="dialog-top"><h2 id="import-title" data-t="importTitle"></h2><button data-close="import-dialog" data-t="close"></button></div>
+    <ol class="steps"><li data-step="1" data-t="stepFile"></li><li data-step="2" data-t="stepColumns"></li><li data-step="3" data-t="stepImport"></li></ol>
+    <section data-panel="1">
+      <div id="drop-zone" role="button" tabindex="0"><strong data-t="dropHint"></strong><span data-t="importFormats"></span></div>
+      <button id="import-choose" data-t="chooseFile"></button>
+      <input id="import-file" type="file" accept=".geojson,.json,.csv,.tsv,.txt,application/geo+json,application/json,text/csv,text/plain" hidden>
+      <label><span data-t="pasteLabel"></span><textarea id="import-text" rows="5" spellcheck="false" placeholder="lat;lon&#10;-25,4484;-49,2310&#10;25°26'54&quot;S;49°13'51&quot;O"></textarea></label>
+      <div id="import-current"></div>
+    </section>
+    <section data-panel="2" hidden>
+      <p id="import-detected" class="note"></p>
+      <div id="import-table-options" class="fields two"><label><span data-t="delimiter"></span><select id="import-delimiter"></select></label>
+        <div class="checks"><label><input id="import-header" type="checkbox"><span data-t="headerRow"></span></label></div></div>
+      <label id="import-coords-wrap"><span data-t="coordsFrom"></span><select id="import-coords"><option value="geometry" data-t="coordsGeometry"></option><option value="properties" data-t="coordsProperties"></option></select></label>
+      <div class="fields three">
+        <label><span data-t="mapLat"></span><select id="map-lat"></select></label><label><span data-t="mapLon"></span><select id="map-lon"></select></label>
+        <label><span data-t="mapH"></span><select id="map-h"></select></label><label><span data-t="mapId"></span><select id="map-id"></select></label>
+        <label><span data-t="mapName"></span><select id="map-name"></select></label><label><span data-t="mapStatus"></span><select id="map-status"></select></label>
+      </div>
+      <div class="checks"><label><input id="import-swap" type="checkbox"><span data-t="swapLatLon"></span></label></div>
+      <p id="import-swap-hint" class="note danger" data-t="swapHint" hidden></p>
+      <div class="fields three"><label class="span2"><span data-t="heightMode"></span><select id="import-height-mode"><option value="file" data-t="heightFile"></option><option value="dem" data-t="heightDem"></option><option value="constant" data-t="heightConstant"></option></select></label>
+        <label><span data-t="idPrefix"></span><input id="import-prefix" maxlength="12" value="IMP" autocomplete="off"></label>
+        <label id="import-constant-wrap" hidden><span data-t="constantHeight"></span><input id="import-constant" type="number" min="-500" max="9000" step="0.1" value="0"></label></div>
+      <p id="import-summary" class="note" role="status"></p>
+      <div class="table-wrap"><table id="import-preview"></table></div>
+      <p class="note" data-t="importPreviewNote"></p>
+    </section>
+    <section data-panel="3" hidden>
+      <label><span data-t="importUse"></span><select id="import-add"><option value="stations" data-t="useStations"></option><option value="fixed" data-t="useFixed"></option><option value="stochastic" data-t="useStochastic"></option><option value="points" data-t="usePoints"></option></select></label>
+      <div id="import-catalogue" class="fields two"><label><span data-t="importNetwork"></span><input id="import-network" maxlength="40" autocomplete="off"></label>
+        <label><span data-t="importDefaultStatus"></span><select id="import-status"><option value="active" data-t="stActive"></option><option value="inactive" data-t="stInactive"></option></select></label></div>
+      <label id="import-conflict-wrap" hidden><span data-t="importConflict"></span><select id="import-conflict"><option value="rename" data-t="conflictRename"></option><option value="replace" data-t="conflictReplace"></option><option value="skip" data-t="conflictSkip"></option></select></label>
+      <p id="import-final" class="note" role="status"></p>
+      <p class="note" data-t="importUseNote"></p>
+      <p id="import-progress" class="note" role="status"></p>
+    </section>
+    <p id="import-error" class="note danger" role="alert" hidden></p>
+    <div class="wizard-actions"><button id="import-back" data-t="back" hidden></button><span class="spacer"></span><button id="import-read" data-t="readPasted"></button><button id="import-next" class="primary" data-t="next" hidden></button><button id="import-run" class="primary" data-t="importRun" hidden></button></div>
+  </dialog>
   <dialog id="matrix-dialog"><div class="dialog-top"><h2 data-t="matrix"></h2><button data-close="matrix-dialog" data-t="close"></button></div><p data-t="matrixHint"></p><label><select id="matrix-choice"><option value="A">A</option><option value="Q">Σ_Lb</option><option value="P">P</option><option value="N">N = AᵀPA</option><option value="S">Σxx</option></select></label><p class="note" data-t="matrixLimited"></p><pre id="matrix-content"></pre><pre id="matrix-order"></pre><button id="matrix-save" data-t="matrixSave"></button></dialog>
   <script type="module" src="app.mjs"></script>
 </body>

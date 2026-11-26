@@ -2,9 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { words, detectLanguage } from '../i18n.mjs';
+import { DELIMITERS } from '../wizard.mjs';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-const source = ['../app.mjs', '../inspector.mjs', '../model/analysis.mjs', '../model/network.mjs', '../model/stochastic.mjs', '../model/cors.mjs']
+const source = ['../app.mjs', '../inspector.mjs', '../wizard.mjs', '../model/analysis.mjs', '../model/network.mjs', '../model/stochastic.mjs',
+  '../model/cors.mjs', '../model/importer.mjs', '../model/stations.mjs', '../model/geojson.mjs']
   .map(f => readFileSync(new URL(f, import.meta.url), 'utf8')).join('\n');
 
 test('every entry has non-empty Portuguese and English text with the same placeholders', () => {
@@ -17,9 +19,13 @@ test('every entry has non-empty Portuguese and English text with the same placeh
 
 test('the page and the code only use defined keys', () => {
   for (const m of html.matchAll(/data-(?:t|label|html)="([^"]+)"/g)) assert.ok(words[m[1]], `index.html: ${m[1]}`);
-  for (const m of source.matchAll(/(?:diag|showError)\('(\w+)'/g)) assert.ok(words[m[1]], `diagnostic ${m[1]}`);
+  for (const m of source.matchAll(/(?:diag|showError|error)\('(\w+)'/g)) assert.ok(words[m[1]], `diagnostic ${m[1]}`);
+  for (const m of source.matchAll(/\bt\('(\w+)'/g)) assert.ok(words[m[1]], `t('${m[1]}')`);
+  for (const [, key] of DELIMITERS) assert.ok(words[key], key);
+  // Row errors of the importer are shown in the wizard preview.
+  for (const m of source.matchAll(/error: '(\w+)'/g)) assert.ok(words[m[1]], `row error ${m[1]}`);
   for (const m of source.matchAll(/throw (?:Object\.assign\()?Error\('(\w+)'\)/g)) assert.ok(words[m[1]], `error ${m[1]}`);
-  for (const code of ['coincident', 'terrainMissing', 'corsMissing', 'invalidCors', 'lastSession'])
+  for (const code of ['coincident', 'terrainMissing', 'corsMissing', 'invalidCors', 'lastSession', 'notProject', 'openedInWizard', 'hFile', 'hConstant'])
     assert.ok(words[code], code);
 });
 

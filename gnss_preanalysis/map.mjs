@@ -8,7 +8,7 @@ const STATION_ATTRIBUTION = 'RBMC/IBGE · SIRGAS · NGL';
 const empty = () => ({ type: 'FeatureCollection', features: [] });
 
 export function createMapView(container, callbacks) {
-  const view = { available: false, map: null, markers: new Map(), data: { cors: empty(), baselines: empty(), ellipses: empty(), effect: empty(), rubber: empty() },
+  const view = { available: false, map: null, markers: new Map(), data: { cors: empty(), baselines: empty(), ellipses: empty(), effect: empty(), rubber: empty(), import: empty() },
     hillshade: true, styleName: 'positron', lastDragEnd: 0 };
   const gl = window.maplibregl;
   if (!gl) { callbacks.onUnavailable?.('noLibrary'); return view; }
@@ -35,7 +35,7 @@ export function createMapView(container, callbacks) {
     if (!map.getLayer('gnss-hillshade')) map.addLayer({ id: 'gnss-hillshade', type: 'hillshade', source: 'gnss-dem',
       layout: { visibility: view.hillshade ? 'visible' : 'none' },
       paint: { 'hillshade-exaggeration': 0.35, 'hillshade-shadow-color': '#4f6b73', 'hillshade-highlight-color': '#ffffff' } }, before);
-    for (const id of ['cors', 'baselines', 'ellipses', 'effect', 'rubber'])
+    for (const id of Object.keys(view.data))
       if (!map.getSource(`gnss-${id}`)) map.addSource(`gnss-${id}`, { type: 'geojson', data: view.data[id] });
     const add = layer => { if (!map.getLayer(layer.id)) map.addLayer(layer); };
     add({ id: 'gnss-ellipses-fill', type: 'fill', source: 'gnss-ellipses', paint: { 'fill-color': '#d9480f', 'fill-opacity': 0.12 } });
@@ -52,12 +52,23 @@ export function createMapView(container, callbacks) {
     add({ id: 'gnss-rubber', type: 'line', source: 'gnss-rubber', paint: { 'line-color': '#f2b705', 'line-width': 2.5, 'line-dasharray': [2, 1] } });
     add({ id: 'gnss-cors-circle', type: 'circle', source: 'gnss-cors', paint: {
       'circle-radius': ['interpolate', ['linear'], ['zoom'], 3, 3, 8, 5.5, 13, 8],
-      'circle-color': ['match', ['get', 'status'], 'active', '#0b4f6c', 'unverified', '#4f8aa0', '#97a6ab'],
+      // Imported stations in violet, the bundled RBMC list in blue; inactive ones in pale tones.
+      'circle-color': ['case', ['get', 'imported'], ['match', ['get', 'status'], 'inactive', '#b8addf', '#7048e8'],
+        ['match', ['get', 'status'], 'active', '#0b4f6c', 'unverified', '#4f8aa0', '#97a6ab']],
       'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1.5, 'circle-opacity': 0.9 } });
+    // Import preview (wizard): drawn above everything, never clickable.
+    add({ id: 'gnss-import-circle', type: 'circle', source: 'gnss-import', paint: {
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 3, 3.5, 8, 6, 13, 8.5], 'circle-color': '#f08c00',
+      'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1.5, 'circle-opacity': 0.95 } });
     const font = textFont();
-    if (font && map.getStyle().glyphs) add({ id: 'gnss-cors-label', type: 'symbol', source: 'gnss-cors', minzoom: 6,
-      layout: { 'text-field': ['get', 'id'], 'text-font': font, 'text-size': 11, 'text-offset': [0, 1.1], 'text-anchor': 'top', 'text-allow-overlap': false },
-      paint: { 'text-color': '#0b4f6c', 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 } });
+    if (font && map.getStyle().glyphs) {
+      add({ id: 'gnss-cors-label', type: 'symbol', source: 'gnss-cors', minzoom: 6,
+        layout: { 'text-field': ['get', 'id'], 'text-font': font, 'text-size': 11, 'text-offset': [0, 1.1], 'text-anchor': 'top', 'text-allow-overlap': false },
+        paint: { 'text-color': ['case', ['get', 'imported'], '#5235b8', '#0b4f6c'], 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 } });
+      add({ id: 'gnss-import-label', type: 'symbol', source: 'gnss-import', minzoom: 7,
+        layout: { 'text-field': ['get', 'id'], 'text-font': font, 'text-size': 11, 'text-offset': [0, 1.1], 'text-anchor': 'top', 'text-allow-overlap': false },
+        paint: { 'text-color': '#a85a00', 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 } });
+    }
   }
   map.on('style.load', () => { install(); callbacks.onStyle?.(); });
   map.on('load', () => { clearTimeout(timeout); install(); callbacks.onReady?.(); });

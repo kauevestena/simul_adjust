@@ -27,8 +27,9 @@ export function createTerrarium({ loadTile = browserTile, maxTiles = 64 } = {}) 
   const cache = new Map();
   return {
     metadata: { source: TERRARIUM_URL, zoom: 14, sampling: 'floor-nearest-pixel', height: 'terrain elevation H; source vertical datum must be preserved by scenario' },
-    async sample(lon, lat) {
-      const p = tilePixel(lon, lat), key = `${p.zoom}/${p.x}/${p.y}`;
+    // zoom < 14 trades resolution for fewer tiles (e.g. many scattered points).
+    async sample(lon, lat, zoom = 14) {
+      const p = tilePixel(lon, lat, zoom), key = `${p.zoom}/${p.x}/${p.y}`;
       if (!cache.has(key)) {
         const url = TERRARIUM_URL.replace('{z}', p.zoom).replace('{x}', p.x).replace('{y}', p.y);
         const pending = Promise.resolve().then(() => loadTile(url)).catch(error => { cache.delete(key); throw error; });
