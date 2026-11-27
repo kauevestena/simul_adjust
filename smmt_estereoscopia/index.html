@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Simulação SMMT: Estereoscopia</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f172a'/%3E%3Cpolygon points='18,16 6,50 38,50' fill='%2338bdf8' fill-opacity='0.6'/%3E%3Cpolygon points='46,16 26,50 58,50' fill='%23fb923c' fill-opacity='0.6'/%3E%3Cpolygon points='32,39 26,50 38,50' fill='%2322c55e'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">◫</span>
+        <div>
+          <strong data-t="brandTitle">Simulação SMMT: Estereoscopia</strong>
+          <span data-t="subtitle"></span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <a id="portal-link" class="portal-link" href="../" data-t="portal">← Portal</a>
+        <div class="language" role="group" aria-label="Language / Idioma">
+          <button type="button" data-lang="pt-BR" aria-pressed="true">PT-BR</button>
+          <button type="button" data-lang="en" aria-pressed="false">EN</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <aside class="sidebar">
+        <details open>
+          <summary><span class="step">01</span><span data-t="sectionRig"></span></summary>
+          <div class="controls">
+            <div class="control">
+              <label data-t="mountMode"></label>
+              <div class="mode-switch" role="group">
+                <button type="button" data-mode="nadir" aria-pressed="false" data-t="modeNadir"></button>
+                <button type="button" data-mode="front" aria-pressed="true" data-t="modeFront"></button>
+              </div>
+            </div>
+            <div class="control">
+              <label for="height" data-t="height"></label>
+              <div class="inputrow">
+                <input id="height-range" type="range" min="0.5" max="5.0" step="0.05" value="1.5" />
+                <input id="height" type="number" min="0.5" max="5.0" step="0.05" value="1.5" />
+                <span class="unit">m</span>
+              </div>
+            </div>
+            <div class="control">
+              <label for="baseline" data-t="baseline"></label>
+              <div class="inputrow">
+                <input id="baseline-range" type="range" min="0.1" max="2.5" step="0.02" value="0.9" />
+                <input id="baseline" type="number" min="0.1" max="2.5" step="0.02" value="0.9" />
+                <span class="unit">m</span>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <details open>
+          <summary><span class="step">02</span><span data-t="sectionAxes"></span></summary>
+          <div class="controls">
+            <div class="control">
+              <label for="convergenceDeg" data-t="convergence"></label>
+              <div class="inputrow">
+                <input id="convergenceDeg-range" type="range" min="-20" max="45" step="0.5" value="0" />
+                <input id="convergenceDeg" type="number" min="-20" max="45" step="0.5" value="0" />
+                <span class="unit">°</span>
+              </div>
+              <p class="hint" data-t="convergenceHint"></p>
+            </div>
+            <div class="btn-row">
+              <button type="button" id="btn-parallel" data-t="btnParallel"></button>
+              <button type="button" id="btn-cross-ground" class="primary" data-t="btnCrossGround"></button>
+            </div>
+            <div class="control">
+              <label id="pitch-label" for="pitchDeg" data-t="pitchFront"></label>
+              <div class="inputrow">
+                <input id="pitchDeg-range" type="range" min="0" max="75" step="0.5" value="25" />
+                <input id="pitchDeg" type="number" min="0" max="75" step="0.5" value="25" />
+                <span class="unit">°</span>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <details open>
+          <summary><span class="step">03</span><span data-t="sectionCamera"></span></summary>
+          <div class="controls">
+            <div class="control">
+              <label for="sensor-preset" data-t="sensorPreset"></label>
+              <select id="sensor-preset">
+                <option value="1_18"></option>
+                <option value="2_3"></option>
+                <option value="1_inch" selected></option>
+                <option value="apsc"></option>
+                <option value="fullframe"></option>
+                <option value="custom" data-t="sensorCustom"></option>
+              </select>
+            </div>
+            <div class="control">
+              <label for="focal" data-t="focal"></label>
+              <div class="inputrow">
+                <input id="focal-range" type="range" min="2.8" max="50" step="0.2" value="8" />
+                <input id="focal" type="number" min="2.8" max="50" step="0.2" value="8" />
+                <span class="unit">mm</span>
+              </div>
+            </div>
+            <div class="fields two">
+              <label>
+                <span data-t="sensorWidth"></span>
+                <input id="sensorWidth" type="number" min="3" max="44" step="0.1" value="13.2" />
+              </label>
+              <label>
+                <span data-t="sensorHeight"></span>
+                <input id="sensorHeight" type="number" min="2" max="33" step="0.1" value="8.8" />
+              </label>
+            </div>
+            <div class="fields two">
+              <label>
+                <span data-t="resX"></span>
+                <input id="resX" type="number" min="640" max="12000" step="16" value="4096" />
+              </label>
+              <label>
+                <span data-t="resY"></span>
+                <input id="resY" type="number" min="480" max="9000" step="16" value="2732" />
+              </label>
+            </div>
+          </div>
+        </details>
+
+        <details open>
+          <summary><span class="step">04</span><span data-t="sectionRoad"></span></summary>
+          <div class="controls">
+            <div class="control">
+              <label for="roadWidth" data-t="roadWidth"></label>
+              <div class="inputrow">
+                <input id="roadWidth-range" type="range" min="2.5" max="16.0" step="0.1" value="7.0" />
+                <input id="roadWidth" type="number" min="2.5" max="16.0" step="0.1" value="7.0" />
+                <span class="unit">m</span>
+              </div>
+            </div>
+            <div class="control">
+              <label for="targetOverlap" data-t="targetOverlap"></label>
+              <div class="inputrow">
+                <input id="targetOverlap-range" type="range" min="5" max="90" step="5" value="20" />
+                <input id="targetOverlap" type="number" min="5" max="90" step="5" value="20" />
+                <span class="unit">%</span>
+              </div>
+            </div>
+            <div class="toggles">
+              <label class="check"><input id="showCar" type="checkbox" checked /><span data-t="showCar"></span></label>
+              <label class="check"><input id="showFrustums" type="checkbox" checked /><span data-t="showFrustums"></span></label>
+              <label class="check"><input id="showAxes" type="checkbox" checked /><span data-t="showAxes"></span></label>
+              <label class="check"><input id="showDimensions" type="checkbox" checked /><span data-t="showDimensions"></span></label>
+            </div>
+          </div>
+        </details>
+
+        <div class="sidebar-footer">
+          <button type="button" id="reset-all" data-t="resetAll"></button>
+        </div>
+      </aside>
+
+      <section class="content">
+        <div class="viewport-card">
+          <div class="viewport-toolbar">
+            <div class="view-buttons">
+              <button type="button" data-view="iso" class="active" data-t="viewIso"></button>
+              <button type="button" data-view="rear" data-t="viewRear"></button>
+              <button type="button" data-view="top" data-t="viewTop"></button>
+              <button type="button" data-view="side" data-t="viewSide"></button>
+            </div>
+            <span class="nav-hint" data-t="navigateHint"></span>
+          </div>
+
+          <div id="viewport-3d" class="viewport-3d">
+            <div class="legend-overlay">
+              <span><i class="swatch left"></i><em data-t="legendLeft"></em></span>
+              <span><i class="swatch right"></i><em data-t="legendRight"></em></span>
+              <span><i class="swatch overlap"></i><em data-t="legendOverlap"></em></span>
+              <span><i class="swatch crossing"></i><em data-t="legendCrossing"></em></span>
+            </div>
+          </div>
+        </div>
+
+        <section class="panel ortho-panel">
+          <div class="panel-head ortho-head">
+            <div>
+              <h2 data-t="orthoTitle"></h2>
+              <p class="hint" data-t="orthoSubtitle"></p>
+            </div>
+            <div class="ortho-toolbar">
+              <div class="tab-switch" role="tablist">
+                <button type="button" role="tab" data-ortho-tab="preview" aria-selected="true" data-t="orthoTabPreview"></button>
+                <button type="button" role="tab" data-ortho-tab="bands" aria-selected="false" data-t="orthoTabBands"></button>
+              </div>
+              <div class="ortho-subcontrols">
+                <select id="ortho-camera" aria-label="Camera">
+                  <option value="left" data-t="orthoCamLeft"></option>
+                  <option value="right" data-t="orthoCamRight"></option>
+                </select>
+                <select id="ortho-ratio" aria-label="Usable GSD ratio">
+                  <option value="2.0">≤ 2.0× GSD</option>
+                  <option value="3.0">≤ 3.0× GSD</option>
+                  <option value="3.5" selected>≤ 3.5× GSD</option>
+                  <option value="5.0">≤ 5.0× GSD</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="ortho-row">
+            <figure class="ortho-box">
+              <figcaption id="ortho-left-caption" data-t="orthoCapOriginal"></figcaption>
+              <canvas id="ortho-canvas-left" width="420" height="270"></canvas>
+            </figure>
+            <figure class="ortho-box">
+              <figcaption id="ortho-right-caption" data-t="orthoCapOrtho"></figcaption>
+              <canvas id="ortho-canvas-right" width="420" height="270"></canvas>
+            </figure>
+          </div>
+
+          <div id="ortho-band-legend" class="band-legend" hidden>
+            <span class="viridis-label best" id="viridis-min-label"></span>
+            <div class="viridis-bar" aria-hidden="true"></div>
+            <span class="viridis-label worst" id="viridis-max-label"></span>
+          </div>
+
+          <div id="ortho-tooltip" class="ortho-tooltip" hidden></div>
+
+          <div class="ortho-stats" aria-live="polite">
+            <div><span data-t="orthoStatUsableArea"></span><strong id="o-usable-area">0.00 m²</strong></div>
+            <div><span data-t="orthoStatUsablePct"></span><strong id="o-usable-pct">0%</strong></div>
+            <div><span data-t="orthoStatSkyPct"></span><strong id="o-sky-pct">0%</strong></div>
+            <div><span data-t="orthoStatGsdRange"></span><strong id="o-gsd-range">0.00 → 0.00 mm/px</strong></div>
+          </div>
+        </section>
+
+        <div class="metrics" aria-live="polite">
+          <article class="metric highlight">
+            <span data-t="metricOverlapArea"></span>
+            <strong id="m-overlap-pct">0%</strong>
+            <small id="m-overlap-lat"></small>
+          </article>
+          <article class="metric">
+            <span data-t="metricOverlapWidth"></span>
+            <strong id="m-overlap-width">0.00 m</strong>
+            <small id="m-overlap-area"></small>
+          </article>
+          <article class="metric">
+            <span data-t="metricSwath"></span>
+            <strong id="m-swath">0.00 m</strong>
+            <small id="m-road-cover"></small>
+          </article>
+          <article class="metric">
+            <span data-t="metricGsd"></span>
+            <strong id="m-gsd">0.00 mm/px</strong>
+            <small id="m-bh-ratio"></small>
+          </article>
+          <article class="metric">
+            <span data-t="metricCrossing"></span>
+            <strong id="m-crossing">—</strong>
+            <small id="m-crossing-sub"></small>
+          </article>
+          <article class="metric">
+            <span data-t="metricFov"></span>
+            <strong id="m-fov">0° × 0°</strong>
+            <small id="m-along-depth"></small>
+          </article>
+        </div>
+
+        <section class="panel chart-panel">
+          <div class="panel-head">
+            <div>
+              <h2 data-t="chartTitle"></h2>
+              <p class="hint" data-t="chartSubtitle"></p>
+            </div>
+            <div class="chart-legend">
+              <span class="leg-cur"><i class="line-swatch green"></i><em data-t="chartCurrentCurve"></em></span>
+              <span class="leg-par" id="legend-parallel"><i class="line-swatch cyan dashed"></i><em data-t="chartParallelCurve"></em></span>
+            </div>
+          </div>
+          <svg id="height-chart" viewBox="0 0 680 240" role="img" aria-label="Height vs Overlap Chart"></svg>
+        </section>
+
+        <details class="panel theory-panel">
+          <summary data-t="theoryTitle"></summary>
+          <p data-t="theoryIntro"></p>
+          <p class="formula">
+            HFOV = 2·arctan(Ws / 2f) &nbsp;|&nbsp; VFOV = 2·arctan(Hs / 2f)<br />
+            Y_cruz = H − (B / (2·tan α))·cos(pitch) &nbsp;|&nbsp; α_solo = arctan(B·cos(pitch) / 2H)<br />
+            GSD = (D_opt · Ws / (f · Nx)) · 1000 [mm/px]
+          </p>
+          <p data-t="theoryCross"></p>
+        </details>
+      </section>
+    </main>
+
+    <script type="module" src="app.mjs"></script>
+  </body>
+</html>
