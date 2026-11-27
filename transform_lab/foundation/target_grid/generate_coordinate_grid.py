@@ -224,8 +224,89 @@ def generate_grid_pdf(filename="/home/kaue/coordinate_grid_a4.pdf"):
     c.save()
     print(f"Generated PDF saved to {filename}")
 
+CELL_M = 0.03  # 3 cm spacing expressed in meters
+
+
+def _grid_point_name(idx):
+    """Same sequential naming as the PDF: A0..Z0, A1..Z1, A2..R2."""
+    return f"{chr(ord('A') + (idx % 26))}{idx // 26}"
+
+
+def generate_grid_geojson(filename=None):
+    """Export the 7 x 10 grid as GeoJSON with coordinates in meters.
+
+    Local Cartesian coordinates (right-handed, origin at lower-left vertex).
+    Not WGS84 lon/lat, so the RFC 7946 default CRS is intentionally replaced.
+    """
+    if filename is None:
+        filename = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                "coordinate_grid.geojson")
+
+    features = []
+    idx = 0
+    for r in range(ROWS + 1):
+        for col in range(COLS + 1):
+            x_cm, y_cm = col * 3, r * 3
+            features.append({
+                "type": "Feature",
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [round(col * CELL_M, 6), round(r * CELL_M, 6)],
+                },
+                "properties": {
+                    "name": _grid_point_name(idx),
+                    "kind": "grid_point",
+                    "col": col,
+                    "row": r,
+                    "x_cm": x_cm,
+                    "y_cm": y_cm,
+                },
+            })
+            idx += 1
+
+    x_max = round(COLS * CELL_M, 6)
+    y_max = round(ROWS * CELL_M, 6)
+    for col in range(COLS + 1):
+        x = round(col * CELL_M, 6)
+        features.append({
+            "type": "Feature",
+            "geometry": {"type": "LineString", "coordinates": [[x, 0.0], [x, y_max]]},
+            "properties": {"kind": "grid_line", "orientation": "vertical", "index": col},
+        })
+    for r in range(ROWS + 1):
+        y = round(r * CELL_M, 6)
+        features.append({
+            "type": "Feature",
+            "geometry": {"type": "LineString", "coordinates": [[0.0, y], [x_max, y]]},
+            "properties": {"kind": "grid_line", "orientation": "horizontal", "index": r},
+        })
+
+    collection = {
+        "type": "FeatureCollection",
+        "crs": {
+            "type": "name",
+            "properties": {"name": "urn:ogc:def:crs:LOCAL:CARTESIAN:RIGHT_HANDED:METRE"},
+        },
+        "name": "coordinate_grid_m",
+        "description": (
+            "Grade de coordenadas A4 (7x10 pontos, espaçamento 3 cm) em metros. "
+            "Sistema cartesiano local, dextrógiro, origem no vértice inferior esquerdo. "
+            "| A4 coordinate grid (7x10 points, 3 cm spacing) in meters. "
+            "Local right-handed Cartesian system, origin at lower-left vertex."
+        ),
+        "features": features,
+    }
+
+    import json
+    with open(filename, "w", encoding="utf-8") as fh:
+        json.dump(collection, fh, ensure_ascii=False, indent=2)
+    print(f"Generated GeoJSON saved to {filename} ({len(features)} features)")
+    return filename
+
+
 if __name__ == "__main__":
     out_pdf = "/home/kaue/coordinate_grid_a4.pdf"
     if len(sys.argv) > 1:
         out_pdf = sys.argv[1]
     generate_grid_pdf(out_pdf)
+    generate_grid_geojson()

@@ -1,0 +1,1630 @@
+{
+  "type": "FeatureCollection",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:LOCAL:CARTESIAN:RIGHT_HANDED:METRE"
+    }
+  },
+  "name": "coordinate_grid_m",
+  "description": "Grade de coordenadas A4 (7x10 pontos, espaçamento 3 cm) em metros. Sistema cartesiano local, dextrógiro, origem no vértice inferior esquerdo. | A4 coordinate grid (7x10 points, 3 cm spacing) in meters. Local right-handed Cartesian system, origin at lower-left vertex.",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.0,
+          0.0
+        ]
+      },
+      "properties": {
+        "name": "A0",
+        "kind": "grid_point",
+        "col": 0,
+        "row": 0,
+        "x_cm": 0,
+        "y_cm": 0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.03,
+          0.0
+        ]
+      },
+      "properties": {
+        "name": "B0",
+        "kind": "grid_point",
+        "col": 1,
+        "row": 0,
+        "x_cm": 3,
+        "y_cm": 0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.06,
+          0.0
+        ]
+      },
+      "properties": {
+        "name": "C0",
+        "kind": "grid_point",
+        "col": 2,
+        "row": 0,
+        "x_cm": 6,
+        "y_cm": 0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.09,
+          0.0
+        ]
+      },
+      "properties": {
+        "name": "D0",
+        "kind": "grid_point",
+        "col": 3,
+        "row": 0,
+        "x_cm": 9,
+        "y_cm": 0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.12,
+          0.0
+        ]
+      },
+      "properties": {
+        "name": "E0",
+        "kind": "grid_point",
+        "col": 4,
+        "row": 0,
+        "x_cm": 12,
+        "y_cm": 0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.15,
+          0.0
+        ]
+      },
+      "properties": {
+        "name": "F0",
+        "kind": "grid_point",
+        "col": 5,
+        "row": 0,
+        "x_cm": 15,
+        "y_cm": 0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.18,
+          0.0
+        ]
+      },
+      "properties": {
+        "name": "G0",
+        "kind": "grid_point",
+        "col": 6,
+        "row": 0,
+        "x_cm": 18,
+        "y_cm": 0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.0,
+          0.03
+        ]
+      },
+      "properties": {
+        "name": "H0",
+        "kind": "grid_point",
+        "col": 0,
+        "row": 1,
+        "x_cm": 0,
+        "y_cm": 3
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.03,
+          0.03
+        ]
+      },
+      "properties": {
+        "name": "I0",
+        "kind": "grid_point",
+        "col": 1,
+        "row": 1,
+        "x_cm": 3,
+        "y_cm": 3
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.06,
+          0.03
+        ]
+      },
+      "properties": {
+        "name": "J0",
+        "kind": "grid_point",
+        "col": 2,
+        "row": 1,
+        "x_cm": 6,
+        "y_cm": 3
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.09,
+          0.03
+        ]
+      },
+      "properties": {
+        "name": "K0",
+        "kind": "grid_point",
+        "col": 3,
+        "row": 1,
+        "x_cm": 9,
+        "y_cm": 3
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.12,
+          0.03
+        ]
+      },
+      "properties": {
+        "name": "L0",
+        "kind": "grid_point",
+        "col": 4,
+        "row": 1,
+        "x_cm": 12,
+        "y_cm": 3
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.15,
+          0.03
+        ]
+      },
+      "properties": {
+        "name": "M0",
+        "kind": "grid_point",
+        "col": 5,
+        "row": 1,
+        "x_cm": 15,
+        "y_cm": 3
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.18,
+          0.03
+        ]
+      },
+      "properties": {
+        "name": "N0",
+        "kind": "grid_point",
+        "col": 6,
+        "row": 1,
+        "x_cm": 18,
+        "y_cm": 3
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.0,
+          0.06
+        ]
+      },
+      "properties": {
+        "name": "O0",
+        "kind": "grid_point",
+        "col": 0,
+        "row": 2,
+        "x_cm": 0,
+        "y_cm": 6
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.03,
+          0.06
+        ]
+      },
+      "properties": {
+        "name": "P0",
+        "kind": "grid_point",
+        "col": 1,
+        "row": 2,
+        "x_cm": 3,
+        "y_cm": 6
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.06,
+          0.06
+        ]
+      },
+      "properties": {
+        "name": "Q0",
+        "kind": "grid_point",
+        "col": 2,
+        "row": 2,
+        "x_cm": 6,
+        "y_cm": 6
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.09,
+          0.06
+        ]
+      },
+      "properties": {
+        "name": "R0",
+        "kind": "grid_point",
+        "col": 3,
+        "row": 2,
+        "x_cm": 9,
+        "y_cm": 6
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.12,
+          0.06
+        ]
+      },
+      "properties": {
+        "name": "S0",
+        "kind": "grid_point",
+        "col": 4,
+        "row": 2,
+        "x_cm": 12,
+        "y_cm": 6
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.15,
+          0.06
+        ]
+      },
+      "properties": {
+        "name": "T0",
+        "kind": "grid_point",
+        "col": 5,
+        "row": 2,
+        "x_cm": 15,
+        "y_cm": 6
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.18,
+          0.06
+        ]
+      },
+      "properties": {
+        "name": "U0",
+        "kind": "grid_point",
+        "col": 6,
+        "row": 2,
+        "x_cm": 18,
+        "y_cm": 6
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.0,
+          0.09
+        ]
+      },
+      "properties": {
+        "name": "V0",
+        "kind": "grid_point",
+        "col": 0,
+        "row": 3,
+        "x_cm": 0,
+        "y_cm": 9
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.03,
+          0.09
+        ]
+      },
+      "properties": {
+        "name": "W0",
+        "kind": "grid_point",
+        "col": 1,
+        "row": 3,
+        "x_cm": 3,
+        "y_cm": 9
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.06,
+          0.09
+        ]
+      },
+      "properties": {
+        "name": "X0",
+        "kind": "grid_point",
+        "col": 2,
+        "row": 3,
+        "x_cm": 6,
+        "y_cm": 9
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.09,
+          0.09
+        ]
+      },
+      "properties": {
+        "name": "Y0",
+        "kind": "grid_point",
+        "col": 3,
+        "row": 3,
+        "x_cm": 9,
+        "y_cm": 9
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.12,
+          0.09
+        ]
+      },
+      "properties": {
+        "name": "Z0",
+        "kind": "grid_point",
+        "col": 4,
+        "row": 3,
+        "x_cm": 12,
+        "y_cm": 9
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.15,
+          0.09
+        ]
+      },
+      "properties": {
+        "name": "A1",
+        "kind": "grid_point",
+        "col": 5,
+        "row": 3,
+        "x_cm": 15,
+        "y_cm": 9
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.18,
+          0.09
+        ]
+      },
+      "properties": {
+        "name": "B1",
+        "kind": "grid_point",
+        "col": 6,
+        "row": 3,
+        "x_cm": 18,
+        "y_cm": 9
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.0,
+          0.12
+        ]
+      },
+      "properties": {
+        "name": "C1",
+        "kind": "grid_point",
+        "col": 0,
+        "row": 4,
+        "x_cm": 0,
+        "y_cm": 12
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.03,
+          0.12
+        ]
+      },
+      "properties": {
+        "name": "D1",
+        "kind": "grid_point",
+        "col": 1,
+        "row": 4,
+        "x_cm": 3,
+        "y_cm": 12
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.06,
+          0.12
+        ]
+      },
+      "properties": {
+        "name": "E1",
+        "kind": "grid_point",
+        "col": 2,
+        "row": 4,
+        "x_cm": 6,
+        "y_cm": 12
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.09,
+          0.12
+        ]
+      },
+      "properties": {
+        "name": "F1",
+        "kind": "grid_point",
+        "col": 3,
+        "row": 4,
+        "x_cm": 9,
+        "y_cm": 12
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.12,
+          0.12
+        ]
+      },
+      "properties": {
+        "name": "G1",
+        "kind": "grid_point",
+        "col": 4,
+        "row": 4,
+        "x_cm": 12,
+        "y_cm": 12
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.15,
+          0.12
+        ]
+      },
+      "properties": {
+        "name": "H1",
+        "kind": "grid_point",
+        "col": 5,
+        "row": 4,
+        "x_cm": 15,
+        "y_cm": 12
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.18,
+          0.12
+        ]
+      },
+      "properties": {
+        "name": "I1",
+        "kind": "grid_point",
+        "col": 6,
+        "row": 4,
+        "x_cm": 18,
+        "y_cm": 12
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.0,
+          0.15
+        ]
+      },
+      "properties": {
+        "name": "J1",
+        "kind": "grid_point",
+        "col": 0,
+        "row": 5,
+        "x_cm": 0,
+        "y_cm": 15
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.03,
+          0.15
+        ]
+      },
+      "properties": {
+        "name": "K1",
+        "kind": "grid_point",
+        "col": 1,
+        "row": 5,
+        "x_cm": 3,
+        "y_cm": 15
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.06,
+          0.15
+        ]
+      },
+      "properties": {
+        "name": "L1",
+        "kind": "grid_point",
+        "col": 2,
+        "row": 5,
+        "x_cm": 6,
+        "y_cm": 15
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.09,
+          0.15
+        ]
+      },
+      "properties": {
+        "name": "M1",
+        "kind": "grid_point",
+        "col": 3,
+        "row": 5,
+        "x_cm": 9,
+        "y_cm": 15
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.12,
+          0.15
+        ]
+      },
+      "properties": {
+        "name": "N1",
+        "kind": "grid_point",
+        "col": 4,
+        "row": 5,
+        "x_cm": 12,
+        "y_cm": 15
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.15,
+          0.15
+        ]
+      },
+      "properties": {
+        "name": "O1",
+        "kind": "grid_point",
+        "col": 5,
+        "row": 5,
+        "x_cm": 15,
+        "y_cm": 15
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.18,
+          0.15
+        ]
+      },
+      "properties": {
+        "name": "P1",
+        "kind": "grid_point",
+        "col": 6,
+        "row": 5,
+        "x_cm": 18,
+        "y_cm": 15
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.0,
+          0.18
+        ]
+      },
+      "properties": {
+        "name": "Q1",
+        "kind": "grid_point",
+        "col": 0,
+        "row": 6,
+        "x_cm": 0,
+        "y_cm": 18
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.03,
+          0.18
+        ]
+      },
+      "properties": {
+        "name": "R1",
+        "kind": "grid_point",
+        "col": 1,
+        "row": 6,
+        "x_cm": 3,
+        "y_cm": 18
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.06,
+          0.18
+        ]
+      },
+      "properties": {
+        "name": "S1",
+        "kind": "grid_point",
+        "col": 2,
+        "row": 6,
+        "x_cm": 6,
+        "y_cm": 18
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.09,
+          0.18
+        ]
+      },
+      "properties": {
+        "name": "T1",
+        "kind": "grid_point",
+        "col": 3,
+        "row": 6,
+        "x_cm": 9,
+        "y_cm": 18
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.12,
+          0.18
+        ]
+      },
+      "properties": {
+        "name": "U1",
+        "kind": "grid_point",
+        "col": 4,
+        "row": 6,
+        "x_cm": 12,
+        "y_cm": 18
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.15,
+          0.18
+        ]
+      },
+      "properties": {
+        "name": "V1",
+        "kind": "grid_point",
+        "col": 5,
+        "row": 6,
+        "x_cm": 15,
+        "y_cm": 18
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.18,
+          0.18
+        ]
+      },
+      "properties": {
+        "name": "W1",
+        "kind": "grid_point",
+        "col": 6,
+        "row": 6,
+        "x_cm": 18,
+        "y_cm": 18
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.0,
+          0.21
+        ]
+      },
+      "properties": {
+        "name": "X1",
+        "kind": "grid_point",
+        "col": 0,
+        "row": 7,
+        "x_cm": 0,
+        "y_cm": 21
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.03,
+          0.21
+        ]
+      },
+      "properties": {
+        "name": "Y1",
+        "kind": "grid_point",
+        "col": 1,
+        "row": 7,
+        "x_cm": 3,
+        "y_cm": 21
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.06,
+          0.21
+        ]
+      },
+      "properties": {
+        "name": "Z1",
+        "kind": "grid_point",
+        "col": 2,
+        "row": 7,
+        "x_cm": 6,
+        "y_cm": 21
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.09,
+          0.21
+        ]
+      },
+      "properties": {
+        "name": "A2",
+        "kind": "grid_point",
+        "col": 3,
+        "row": 7,
+        "x_cm": 9,
+        "y_cm": 21
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.12,
+          0.21
+        ]
+      },
+      "properties": {
+        "name": "B2",
+        "kind": "grid_point",
+        "col": 4,
+        "row": 7,
+        "x_cm": 12,
+        "y_cm": 21
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.15,
+          0.21
+        ]
+      },
+      "properties": {
+        "name": "C2",
+        "kind": "grid_point",
+        "col": 5,
+        "row": 7,
+        "x_cm": 15,
+        "y_cm": 21
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.18,
+          0.21
+        ]
+      },
+      "properties": {
+        "name": "D2",
+        "kind": "grid_point",
+        "col": 6,
+        "row": 7,
+        "x_cm": 18,
+        "y_cm": 21
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.0,
+          0.24
+        ]
+      },
+      "properties": {
+        "name": "E2",
+        "kind": "grid_point",
+        "col": 0,
+        "row": 8,
+        "x_cm": 0,
+        "y_cm": 24
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.03,
+          0.24
+        ]
+      },
+      "properties": {
+        "name": "F2",
+        "kind": "grid_point",
+        "col": 1,
+        "row": 8,
+        "x_cm": 3,
+        "y_cm": 24
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.06,
+          0.24
+        ]
+      },
+      "properties": {
+        "name": "G2",
+        "kind": "grid_point",
+        "col": 2,
+        "row": 8,
+        "x_cm": 6,
+        "y_cm": 24
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.09,
+          0.24
+        ]
+      },
+      "properties": {
+        "name": "H2",
+        "kind": "grid_point",
+        "col": 3,
+        "row": 8,
+        "x_cm": 9,
+        "y_cm": 24
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.12,
+          0.24
+        ]
+      },
+      "properties": {
+        "name": "I2",
+        "kind": "grid_point",
+        "col": 4,
+        "row": 8,
+        "x_cm": 12,
+        "y_cm": 24
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.15,
+          0.24
+        ]
+      },
+      "properties": {
+        "name": "J2",
+        "kind": "grid_point",
+        "col": 5,
+        "row": 8,
+        "x_cm": 15,
+        "y_cm": 24
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.18,
+          0.24
+        ]
+      },
+      "properties": {
+        "name": "K2",
+        "kind": "grid_point",
+        "col": 6,
+        "row": 8,
+        "x_cm": 18,
+        "y_cm": 24
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.0,
+          0.27
+        ]
+      },
+      "properties": {
+        "name": "L2",
+        "kind": "grid_point",
+        "col": 0,
+        "row": 9,
+        "x_cm": 0,
+        "y_cm": 27
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.03,
+          0.27
+        ]
+      },
+      "properties": {
+        "name": "M2",
+        "kind": "grid_point",
+        "col": 1,
+        "row": 9,
+        "x_cm": 3,
+        "y_cm": 27
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.06,
+          0.27
+        ]
+      },
+      "properties": {
+        "name": "N2",
+        "kind": "grid_point",
+        "col": 2,
+        "row": 9,
+        "x_cm": 6,
+        "y_cm": 27
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.09,
+          0.27
+        ]
+      },
+      "properties": {
+        "name": "O2",
+        "kind": "grid_point",
+        "col": 3,
+        "row": 9,
+        "x_cm": 9,
+        "y_cm": 27
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.12,
+          0.27
+        ]
+      },
+      "properties": {
+        "name": "P2",
+        "kind": "grid_point",
+        "col": 4,
+        "row": 9,
+        "x_cm": 12,
+        "y_cm": 27
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.15,
+          0.27
+        ]
+      },
+      "properties": {
+        "name": "Q2",
+        "kind": "grid_point",
+        "col": 5,
+        "row": 9,
+        "x_cm": 15,
+        "y_cm": 27
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.18,
+          0.27
+        ]
+      },
+      "properties": {
+        "name": "R2",
+        "kind": "grid_point",
+        "col": 6,
+        "row": 9,
+        "x_cm": 18,
+        "y_cm": 27
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.27
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "grid_line",
+        "orientation": "vertical",
+        "index": 0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            0.03,
+            0.0
+          ],
+          [
+            0.03,
+            0.27
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "grid_line",
+        "orientation": "vertical",
+        "index": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            0.06,
+            0.0
+          ],
+          [
+            0.06,
+            0.27
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "grid_line",
+        "orientation": "vertical",
+        "index": 2
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            0.09,
+            0.0
+          ],
+          [
+            0.09,
+            0.27
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "grid_line",
+        "orientation": "vertical",
+        "index": 3
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            0.12,
+            0.0
+          ],
+          [
+            0.12,
+            0.27
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "grid_line",
+        "orientation": "vertical",
+        "index": 4
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            0.15,
+            0.0
+          ],
+          [
+            0.15,
+            0.27
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "grid_line",
+        "orientation": "vertical",
+        "index": 5
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            0.18,
+            0.0
+          ],
+          [
+            0.18,
+            0.27
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "grid_line",
+        "orientation": "vertical",
+        "index": 6
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            0.0,
+            0.0
+          ],
+          [
+            0.18,
+            0.0
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "grid_line",
+        "orientation": "horizontal",
+        "index": 0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            0.0,
+            0.03
+          ],
+          [
+            0.18,
+            0.03
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "grid_line",
+        "orientation": "horizontal",
+        "index": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            0.0,
+            0.06
+          ],
+          [
+            0.18,
+            0.06
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "grid_line",
+        "orientation": "horizontal",
+        "index": 2
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            0.0,
+            0.09
+          ],
+          [
+            0.18,
+            0.09
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "grid_line",
+        "orientation": "horizontal",
+        "index": 3
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            0.0,
+            0.12
+          ],
+          [
+            0.18,
+            0.12
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "grid_line",
+        "orientation": "horizontal",
+        "index": 4
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            0.0,
+            0.15
+          ],
+          [
+            0.18,
+            0.15
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "grid_line",
+        "orientation": "horizontal",
+        "index": 5
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            0.0,
+            0.18
+          ],
+          [
+            0.18,
+            0.18
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "grid_line",
+        "orientation": "horizontal",
+        "index": 6
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            0.0,
+            0.21
+          ],
+          [
+            0.18,
+            0.21
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "grid_line",
+        "orientation": "horizontal",
+        "index": 7
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            0.0,
+            0.24
+          ],
+          [
+            0.18,
+            0.24
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "grid_line",
+        "orientation": "horizontal",
+        "index": 8
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            0.0,
+            0.27
+          ],
+          [
+            0.18,
+            0.27
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "grid_line",
+        "orientation": "horizontal",
+        "index": 9
+      }
+    }
+  ]
+}
