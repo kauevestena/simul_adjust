@@ -362,6 +362,11 @@ async function axe(page) {
     const storyCard=page.locator('#simulatorsGrid > .sim-card[data-card-id="channel_tunnel_story"]');
     const otherCard=page.locator('#simulatorsGrid > .sim-card[data-card-id="transform_lab"]');
     assert.equal(await storyCard.count(),1,'Channel Tunnel card is a direct grid child');
+    assert.equal(await storyCard.isVisible(),false,'Channel Tunnel card is hidden by default');
+    assert.equal(await page.locator('#unfinishedToggleBtn').getAttribute('aria-pressed'),'false');
+    await page.click('#unfinishedToggleBtn');
+    assert.equal(await page.locator('#unfinishedToggleBtn').getAttribute('aria-pressed'),'true');
+    assert.equal(await storyCard.isVisible(),true,'Channel Tunnel card becomes visible when development toggle is enabled');
     assert.equal(await storyCard.getAttribute('data-status'),'experimental');
     assert.match(await storyCard.locator('.badge-experimental').textContent(),/Experimental/);
     const width=await storyCard.evaluate(el=>el.getBoundingClientRect().width);
